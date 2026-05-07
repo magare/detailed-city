@@ -1,0 +1,48 @@
+import * as THREE from 'three';
+import type { Updatable } from '../types/city';
+
+export class RenderLoop {
+  private readonly timer = new THREE.Timer();
+  private frameId = 0;
+  private running = false;
+
+  constructor(
+    private readonly renderer: THREE.WebGLRenderer,
+    private readonly scene: THREE.Scene,
+    private readonly camera: THREE.PerspectiveCamera,
+    private readonly updatables: Updatable[]
+  ) {}
+
+  start(): void {
+    if (this.running) {
+      return;
+    }
+
+    this.running = true;
+    this.timer.connect(document);
+    this.frameId = requestAnimationFrame(this.tick);
+  }
+
+  dispose(): void {
+    this.running = false;
+    cancelAnimationFrame(this.frameId);
+    this.timer.dispose();
+  }
+
+  private tick = (timestamp: number): void => {
+    if (!this.running) {
+      return;
+    }
+
+    this.timer.update(timestamp);
+    const delta = Math.min(this.timer.getDelta(), 0.05);
+    const elapsed = this.timer.getElapsed();
+
+    for (const updatable of this.updatables) {
+      updatable.update(delta, elapsed);
+    }
+
+    this.renderer.render(this.scene, this.camera);
+    this.frameId = requestAnimationFrame(this.tick);
+  };
+}
