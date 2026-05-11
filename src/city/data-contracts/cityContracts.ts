@@ -35,6 +35,7 @@ export type CityObjectKind =
   | 'utility-edge'
   | 'utility-node'
   | 'vertical-slice'
+  | 'waterfront-edge'
   | 'waterway'
   | 'zoning-district';
 
@@ -500,6 +501,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2'],
       description: 'Waterways render as terrain surfaces with closer edge detail later.'
+    },
+    {
+      objectKind: 'waterfront-edge',
+      scope: 'public-realm-prop',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Waterfront edge objects render promenades, quays, piers, flood walls, and ecological banks.'
     }
   ]
 };
@@ -754,6 +762,33 @@ export interface WaterwayContract extends CityObjectBase<'waterway'> {
   readonly docks: readonly WaterwayDockContract[];
   readonly outfalls: readonly WaterwayOutfallContract[];
   readonly connectedWaterwayIds: readonly CityId[];
+}
+
+export type WaterfrontEdgeKind = 'ecological-edge' | 'flood-wall' | 'pier' | 'promenade' | 'public-access' | 'quay';
+export type WaterfrontFloodProtectionKind = 'berm' | 'flood-wall' | 'none';
+export type WaterfrontMaterialHint = 'boardwalk' | 'concrete-promenade' | 'ecological-planting' | 'stone-quay';
+
+export interface WaterfrontEdgeContract extends CityObjectBase<'waterfront-edge'> {
+  readonly waterfrontKind: WaterfrontEdgeKind;
+  readonly waterwayId: CityId;
+  readonly waterwayEdgeSegmentId?: CityId;
+  readonly dockId?: CityId;
+  readonly boundary: Polygon2D;
+  readonly center: Point2D;
+  readonly centerline: readonly [Point2D, Point2D];
+  readonly lengthMeters: number;
+  readonly widthMeters: number;
+  readonly elevationMeters: number;
+  readonly publicAccess: boolean;
+  readonly publicAccessPoint?: Point2D;
+  readonly connectedPublicRealmIds: readonly CityId[];
+  readonly connectedRoadIds: readonly CityId[];
+  readonly connectedWaterwayComponentIds: readonly CityId[];
+  readonly floodProtection: {
+    readonly kind: WaterfrontFloodProtectionKind;
+    readonly crestElevationMeters?: number;
+  };
+  readonly materialHint: WaterfrontMaterialHint;
 }
 
 export const CITY_CONSTRAINT_KINDS = [

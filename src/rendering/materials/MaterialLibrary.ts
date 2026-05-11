@@ -132,6 +132,12 @@ export class MaterialLibrary {
     opacity: 0.42
   });
 
+  readonly waterfrontEdge = new THREE.MeshStandardMaterial({
+    color: 0xb9b7a6,
+    roughness: 0.82,
+    metalness: 0.04
+  });
+
   readonly signPanelWhite = new THREE.MeshStandardMaterial({
     color: 0xe7e6d8,
     roughness: 0.52
@@ -184,6 +190,7 @@ export class MaterialLibrary {
     this.streetFurnitureWood.dispose();
     this.streetFurnitureAccent.dispose();
     this.shelterGlass.dispose();
+    this.waterfrontEdge.dispose();
     this.signPanelWhite.dispose();
     this.signPanelGreen.dispose();
     this.signPanelBlue.dispose();

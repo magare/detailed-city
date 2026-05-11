@@ -52,6 +52,7 @@ type GeneratedCityForValidation = Pick<
   | 'streetLights'
   | 'trees'
   | 'verticalSlices'
+  | 'waterfrontEdges'
   | 'waterways'
   | 'zoningDistricts'
 >;
@@ -62,6 +63,7 @@ type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][number];
+type ValidationWaterfrontEdge = GeneratedCityForValidation['waterfrontEdges'][number];
 type ValidationWaterway = GeneratedCityForValidation['waterways'][number];
 type ValidationZoningDistrict = GeneratedCityForValidation['zoningDistricts'][number];
 
@@ -95,6 +97,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:facade:sign',
   'binding:facade:entrance-door',
   'binding:facade:night-window',
+  'binding:waterfront:edge',
   'binding:vehicle:traffic-car'
 ] as const;
 
@@ -108,6 +111,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'street-light',
   'street-furniture',
   'lane-marking',
+  'waterfront-edge',
   'traffic-vehicle'
 ] as const satisfies readonly CityObjectKind[];
 
@@ -182,6 +186,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateCityMetrics(city, issues);
   validateZoningDistricts(city, issues);
   validateWaterways(city, issues);
+  validateWaterfrontEdges(city, issues);
 
   for (const road of city.roads) {
     if (road.length <= 0 || road.width <= 0 || road.laneCount <= 0 || road.widthMeters <= 0) {
@@ -2258,6 +2263,25 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
     }
   }
 
+  for (const waterfrontEdge of city.waterfrontEdges) {
+    validatePoint2D(city.geospatial, waterfrontEdge.id, 'center', waterfrontEdge.center, issues);
+    validatePolygon2D(city.geospatial, waterfrontEdge.id, 'boundary', waterfrontEdge.boundary, issues);
+    validatePolyline2D(city.geospatial, waterfrontEdge.id, 'centerline', waterfrontEdge.centerline, issues);
+    if (waterfrontEdge.publicAccessPoint) {
+      validatePoint2D(city.geospatial, waterfrontEdge.id, 'publicAccessPoint', waterfrontEdge.publicAccessPoint, issues);
+    }
+    validateHeightValue(city.geospatial, waterfrontEdge.id, 'elevationMeters', waterfrontEdge.elevationMeters, issues);
+    if (waterfrontEdge.floodProtection.crestElevationMeters !== undefined) {
+      validateHeightValue(
+        city.geospatial,
+        waterfrontEdge.id,
+        'floodProtection.crestElevationMeters',
+        waterfrontEdge.floodProtection.crestElevationMeters,
+        issues
+      );
+    }
+  }
+
   for (const tree of city.trees) {
     validatePoint2D(city.geospatial, tree.id, 'center', tree.center, issues);
     validateHeightValue(city.geospatial, tree.id, 'height', tree.height, issues);
@@ -3108,6 +3132,145 @@ function createWaterwayIssue(
     category: 'land',
     objectId: waterway.id,
     ...createIssueFocus(waterway.center, `Regenerate ${waterway.id} waterway edges, crossings, docks, culverts, and outfalls from current road and land data.`),
+    message
+  };
+}
+
+function validateWaterfrontEdges(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  for (const edge of city.waterfrontEdges) {
+    const waterway = city.waterways.find((candidate) => candidate.id === edge.waterwayId);
+
+    if (!waterway || edge.parentId !== edge.waterwayId) {
+      issues.push(
+        createWaterfrontIssue(
+          edge,
+          'missing-waterway',
+          `Waterfront edge ${edge.id} must be parented to existing waterway ${edge.waterwayId}.`
+        )
+      );
+      continue;
+    }
+
+    if (edge.lengthMeters <= 0 || edge.widthMeters <= 0) {
+      issues.push(
+        createWaterfrontIssue(edge, 'invalid-dimensions', `Waterfront edge ${edge.id} must have positive length and width.`)
+      );
+    }
+
+    if (edge.publicAccess && !edge.publicAccessPoint) {
+      issues.push(
+        createWaterfrontIssue(
+          edge,
+          'missing-public-access-point',
+          `Public waterfront edge ${edge.id} must expose a public access point.`
+        )
+      );
+    }
+
+    if (!edge.publicAccess && edge.waterfrontKind === 'public-access') {
+      issues.push(
+        createWaterfrontIssue(edge, 'inaccessible-public-access', `Waterfront public access edge ${edge.id} must be public.`)
+      );
+    }
+
+    if (edge.waterfrontKind === 'flood-wall' && edge.floodProtection.kind !== 'flood-wall') {
+      issues.push(
+        createWaterfrontIssue(edge, 'missing-flood-wall-protection', `Flood wall edge ${edge.id} must expose flood-wall protection.`)
+      );
+    }
+
+    if (edge.waterfrontKind !== 'flood-wall' && edge.floodProtection.kind === 'flood-wall') {
+      issues.push(
+        createWaterfrontIssue(edge, 'unexpected-flood-wall-protection', `Only flood wall edges should expose flood-wall protection.`)
+      );
+    }
+
+    if (edge.waterwayEdgeSegmentId && !waterway.edgeSegments.some((segment) => segment.id === edge.waterwayEdgeSegmentId)) {
+      issues.push(
+        createWaterfrontIssue(
+          edge,
+          `missing-waterway-edge-${toIssueIdToken(edge.waterwayEdgeSegmentId)}`,
+          `Waterfront edge ${edge.id} references missing waterway edge segment ${edge.waterwayEdgeSegmentId}.`
+        )
+      );
+    }
+
+    if (edge.dockId && !waterway.docks.some((dock) => dock.id === edge.dockId)) {
+      issues.push(
+        createWaterfrontIssue(
+          edge,
+          `missing-dock-${toIssueIdToken(edge.dockId)}`,
+          `Waterfront edge ${edge.id} references missing dock ${edge.dockId}.`
+        )
+      );
+    }
+
+    for (const publicRealmId of edge.connectedPublicRealmIds) {
+      if (!hasObjectId(city, publicRealmId)) {
+        issues.push(
+          createWaterfrontIssue(
+            edge,
+            `missing-public-realm-${toIssueIdToken(publicRealmId)}`,
+            `Waterfront edge ${edge.id} references missing public realm object ${publicRealmId}.`
+          )
+        );
+      }
+    }
+
+    for (const roadId of edge.connectedRoadIds) {
+      const road = city.objectIndex.objectsById[roadId];
+
+      if (!road || road.kind !== 'road-segment') {
+        issues.push(
+          createWaterfrontIssue(
+            edge,
+            `missing-road-${toIssueIdToken(roadId)}`,
+            `Waterfront edge ${edge.id} references missing road ${roadId}.`
+          )
+        );
+      }
+    }
+
+    for (const componentId of edge.connectedWaterwayComponentIds) {
+      if (!hasWaterwayComponent(waterway, componentId)) {
+        issues.push(
+          createWaterfrontIssue(
+            edge,
+            `missing-water-component-${toIssueIdToken(componentId)}`,
+            `Waterfront edge ${edge.id} references missing waterway component ${componentId}.`
+          )
+        );
+      }
+    }
+  }
+}
+
+function hasWaterwayComponent(waterway: ValidationWaterway, componentId: string): boolean {
+  return (
+    waterway.id === componentId ||
+    waterway.edgeSegments.some((segment) => segment.id === componentId) ||
+    waterway.channels.some((channel) => channel.id === componentId) ||
+    waterway.crossingRefs.some((crossing) => crossing.id === componentId) ||
+    waterway.culverts.some((culvert) => culvert.id === componentId) ||
+    waterway.docks.some((dock) => dock.id === componentId) ||
+    waterway.outfalls.some((outfall) => outfall.id === componentId)
+  );
+}
+
+function createWaterfrontIssue(
+  edge: ValidationWaterfrontEdge,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `waterfront-${issueIdSuffix}-${toIssueIdToken(edge.id)}`,
+    severity: 'error',
+    category: 'land',
+    objectId: edge.id,
+    ...createIssueFocus(
+      edge.center,
+      `Regenerate ${edge.id} from current waterway edge, dock, public realm, and road references.`
+    ),
     message
   };
 }

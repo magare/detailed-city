@@ -15,6 +15,7 @@ import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
 import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
+import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
@@ -58,6 +59,11 @@ export class CityGenerator {
       parks,
       roads,
       waterways
+    });
+    const waterfrontEdges = new WaterfrontGenerator().create({
+      waterways,
+      roads,
+      parks
     });
     const parkTrees = terrainGenerator.generateTreePlantings(parks);
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
@@ -145,6 +151,7 @@ export class CityGenerator {
       activeFrontages,
       parks,
       waterways,
+      waterfrontEdges,
       trees,
       assetCatalog: [...DEFAULT_RENDER_ASSET_CATALOG],
       assetBindings: [...DEFAULT_RENDER_BINDINGS]

@@ -36,7 +36,7 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'public-realm',
     name: 'Public Realm Render Layer',
-    objectKinds: ['park', 'tree-planting', 'street-light', 'street-furniture'] as const
+    objectKinds: ['park', 'tree-planting', 'street-light', 'street-furniture', 'waterfront-edge'] as const
   },
   {
     id: 'agents',

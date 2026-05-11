@@ -25,11 +25,12 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const zebraCrossing = traffic.markings.find((marking) => marking.markingType === 'zebra-crossing-stripe');
 
   expect(catalog.pickableObjectIds).toHaveLength(
-      city.roads.length +
+    city.roads.length +
       city.buildings.length +
       city.activeFrontages.length +
       city.parks.length +
       city.waterways.length +
+      city.waterfrontEdges.length +
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length +
@@ -41,6 +42,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
   expect(catalog.countsByKind['street-furniture']).toBe(city.streetFurniture.length);
+  expect(catalog.countsByKind['waterfront-edge']).toBe(city.waterfrontEdges.length);
   expect(catalog.countsByKind['lane-marking']).toBe(traffic.markings.length);
   expect(zebraCrossing).toBeTruthy();
   expect(catalog.metadataByObjectId[building.id]).toMatchObject({
@@ -94,6 +96,15 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       sidewalkId: streetFurniture.sidewalkId,
       sliceId: streetFurniture.sliceId,
       curbZoneId: streetFurniture.curbZoneId
+    }
+  });
+  expect(catalog.metadataByObjectId[city.waterfrontEdges[0].id]).toMatchObject({
+    objectId: city.waterfrontEdges[0].id,
+    kind: 'waterfront-edge',
+    ownerDomain: 'land',
+    parentId: city.waterfrontEdges[0].waterwayId,
+    references: {
+      waterfrontEdgeId: city.waterfrontEdges[0].id
     }
   });
   expect(catalog.metadataByObjectId[zebraCrossing?.id ?? '']).toMatchObject({

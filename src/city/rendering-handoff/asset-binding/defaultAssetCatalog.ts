@@ -31,6 +31,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:building:storefront-sign:primitive', 'building', 'Storefront Sign Primitive', 'storefront-sign', 3.2, 'lod4'),
   createProceduralAsset('asset:building:entrance-door:primitive', 'building', 'Entrance Door Primitive', 'entrance-door', 2.2, 'lod4'),
   createProceduralAsset('asset:building:night-window:primitive', 'building', 'Night Window Primitive', 'night-window', 2.4, 'lod3'),
+  createProceduralAsset('asset:street-prop:waterfront-edge:primitive', 'street-prop', 'Waterfront Edge Primitive', 'waterfront-edge', 18, 'lod2'),
   createProceduralAsset('asset:vehicle:traffic-car:primitive', 'vehicle', 'Traffic Car Primitive', 'vehicle', 4.8, 'lod2')
 ] as const satisfies readonly AssetDefinition[];
 
@@ -295,6 +296,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'window-glow',
     fallbackMaterial: 'windowGlow',
     fallbackGeometry: 'night-window-box'
+  },
+  {
+    id: 'binding:waterfront:edge',
+    objectKind: 'waterfront-edge',
+    semanticTag: 'waterfront-edge',
+    assetId: 'asset:street-prop:waterfront-edge:primitive',
+    materialZone: 'waterfront',
+    fallbackMaterial: 'waterfrontEdge',
+    fallbackGeometry: 'waterfront-edge-box'
   },
   {
     id: 'binding:vehicle:traffic-car',

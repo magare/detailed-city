@@ -22,6 +22,7 @@ export interface CityPickingReferences {
   readonly laneId?: CityId;
   readonly parkId?: CityId;
   readonly waterwayId?: CityId;
+  readonly waterfrontEdgeId?: CityId;
   readonly sliceId?: CityId;
   readonly curbZoneId?: CityId;
   readonly intersectionId?: CityId;
@@ -61,7 +62,15 @@ interface CityPickingUserData {
 
 type PickableObjectSource = Pick<
   GeneratedCity,
-  'activeFrontages' | 'buildings' | 'parks' | 'roads' | 'streetFurniture' | 'streetLights' | 'trees' | 'waterways'
+  | 'activeFrontages'
+  | 'buildings'
+  | 'parks'
+  | 'roads'
+  | 'streetFurniture'
+  | 'streetLights'
+  | 'trees'
+  | 'waterfrontEdges'
+  | 'waterways'
 >;
 
 export function createCityPickingMetadataCatalog(
@@ -75,6 +84,7 @@ export function createCityPickingMetadataCatalog(
     ...city.activeFrontages,
     ...city.parks,
     ...city.waterways,
+    ...city.waterfrontEdges,
     ...city.trees,
     ...city.streetLights,
     ...city.streetFurniture,
@@ -199,6 +209,8 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.parkId = object.id;
   } else if (object.kind === 'waterway') {
     references.waterwayId = object.id;
+  } else if (object.kind === 'waterfront-edge') {
+    references.waterfrontEdgeId = object.id;
   } else if (
     (object.kind === 'lane-marking' || object.kind === 'traffic-vehicle') &&
     !references.roadId &&

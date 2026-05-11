@@ -17,6 +17,7 @@ export type CityOverlayId =
   | 'districts'
   | 'zoning'
   | 'waterways'
+  | 'waterfront'
   | 'city-metrics'
   | 'constraints'
   | 'resilience-goals'
@@ -68,6 +69,7 @@ export function createCityOverlayDatasets(
     createDataset('districts', 'Districts', 'domain-data', createDistrictFeatures(city)),
     createDataset('zoning', 'Zoning', 'domain-data', createZoningFeatures(city)),
     createDataset('waterways', 'Waterways', 'domain-data', createWaterwayFeatures(city)),
+    createDataset('waterfront', 'Waterfront', 'domain-data', createWaterfrontFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
@@ -276,6 +278,31 @@ function createWaterwayFeatures(city: GeneratedCity): CityOverlayFeature[] {
       }
     }))
   ]);
+}
+
+function createWaterfrontFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.waterfrontEdges.map((edge) => ({
+    id: `overlay:waterfront:${edge.id}`,
+    overlayId: 'waterfront',
+    objectId: edge.id,
+    objectKind: edge.kind,
+    ownerDomain: edge.ownerDomain,
+    label: edge.name ?? edge.id,
+    geometry: { type: 'polygon', points: edge.boundary },
+    metadata: {
+      waterfrontKind: edge.waterfrontKind,
+      waterwayId: edge.waterwayId,
+      waterwayEdgeSegmentId: edge.waterwayEdgeSegmentId ?? '',
+      dockId: edge.dockId ?? '',
+      publicAccess: edge.publicAccess,
+      publicRealmConnections: edge.connectedPublicRealmIds.length,
+      roadConnections: edge.connectedRoadIds.length,
+      floodProtection: edge.floodProtection.kind,
+      materialHint: edge.materialHint,
+      lengthMeters: edge.lengthMeters,
+      widthMeters: edge.widthMeters
+    }
+  }));
 }
 
 function createCityMetricFeatures(city: GeneratedCity): CityOverlayFeature[] {

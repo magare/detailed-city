@@ -44,6 +44,7 @@ const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|regulatory-sign|street-name-sign|wayfinding-sign)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
 const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
+const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -100,6 +101,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('utility-edge', ['utility-edge-<slug>'], [exact(String.raw`utility-edge-${NAMED_ID}`)], optional(['utility-node'])),
   entry('utility-node', ['utility-node-<slug>'], [exact(String.raw`utility-node-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'road-segment'])),
   entry('vertical-slice', ['slice-detailed-street-<road-id>'], [exact(String.raw`slice-detailed-street-${ROAD_ID}`)], required(['road-segment'])),
+  entry('waterfront-edge', ['waterfront-edge-<waterway-id>-<kind>-<index>'], [exact(String.raw`waterfront-edge-${NAMED_ID}-${WATERFRONT_EDGE_KIND}-\d+`)], required(['waterway'])),
   entry('waterway', ['<waterway-slug>'], [exact(NAMED_ID)], none()),
   entry('zoning-district', ['zoning-district-<district-slug>'], [exact(String.raw`zoning-district-${NAMED_ID}`)], required(['district']))
 ] as const satisfies readonly CityObjectKindRegistryEntry[];

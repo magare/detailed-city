@@ -29,9 +29,10 @@ test('generated city object index is deterministic and resolves road children', 
   expect(firstCity.objectIndex.countsByKind['resilience-goal']).toBe(7);
   expect(firstCity.objectIndex.countsByKind['administrative-boundary']).toBe(18);
   expect(firstCity.objectIndex.countsByKind['zoning-district']).toBe(5);
-  expect(firstCity.objectIndex.countsByKind.asset).toBe(30);
-  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(32);
-  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(32);
+  expect(firstCity.objectIndex.countsByKind['waterfront-edge']).toBe(11);
+  expect(firstCity.objectIndex.countsByKind.asset).toBe(31);
+  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(33);
+  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(33);
   expect(firstCity.objectIndex.objectsById['slice-detailed-street-road-v-6']).toMatchObject({
     id: 'slice-detailed-street-road-v-6',
     kind: 'vertical-slice',
@@ -73,8 +74,8 @@ test('generated city object index is deterministic and resolves road children', 
 test('render asset catalog provides fallback coverage for current scene objects', () => {
   const city = new CityGenerator(cityConfig).generate();
 
-  expect(city.assetCatalog).toHaveLength(30);
-  expect(city.assetBindings).toHaveLength(30);
+  expect(city.assetCatalog).toHaveLength(31);
+  expect(city.assetBindings).toHaveLength(31);
   expect(city.validation.issues.filter((issue) => issue.category === 'asset')).toEqual([]);
   expect(city.assetBindings).toEqual(
     expect.arrayContaining([

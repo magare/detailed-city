@@ -34,6 +34,7 @@ import type {
   ParcelContract,
   TrafficVehicleContract,
   ValidationResult,
+  WaterfrontEdgeContract,
   WaterwayContract,
   ZoningDistrictContract
 } from '../city/data-contracts/cityContracts';
@@ -190,6 +191,8 @@ export interface ParkPatch extends CityObjectBase<'park'> {
 
 export interface Waterway extends WaterwayContract {}
 
+export interface WaterfrontEdge extends WaterfrontEdgeContract {}
+
 export interface TreePlanting extends CityObjectBase<'tree-planting'> {
   plantingContext: 'park' | 'street';
   parkId?: string;
@@ -243,6 +246,7 @@ export type GeneratedCityObject =
   | ActiveFrontage
   | ParkPatch
   | Waterway
+  | WaterfrontEdge
   | TreePlanting;
 
 export type GeneratedRuntimeCityObject = GeneratedCityObject | LaneMarkingPlan | TrafficVehiclePlan;
@@ -278,6 +282,7 @@ export interface GeneratedCity {
   activeFrontages: ActiveFrontage[];
   parks: ParkPatch[];
   waterways: Waterway[];
+  waterfrontEdges: WaterfrontEdge[];
   trees: TreePlanting[];
   objectIndex: CityObjectIndex<GeneratedCityObject>;
   assetCatalog: AssetDefinition[];

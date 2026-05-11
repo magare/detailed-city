@@ -52,6 +52,7 @@ export interface CityDiagnostics {
   readonly parcelModel: ParcelModelDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
+  readonly waterfrontModel: WaterfrontModelDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
@@ -113,6 +114,10 @@ export interface CityDiagnostics {
     readonly waterwayCulverts: number;
     readonly waterwayDocks: number;
     readonly waterwayOutfalls: number;
+    readonly waterfrontEdges: number;
+    readonly waterfrontPublicAccessEdges: number;
+    readonly waterfrontFloodProtectionEdges: number;
+    readonly waterfrontPiers: number;
     readonly districtUseMixRules: number;
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
@@ -220,6 +225,17 @@ export interface WaterwayNetworkDiagnostics {
   readonly navigableChannels: number;
 }
 
+export interface WaterfrontModelDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly publicAccessEdges: number;
+  readonly connectedPublicRealmEdges: number;
+  readonly connectedRoadEdges: number;
+  readonly floodProtectionEdges: number;
+  readonly piers: number;
+  readonly materialHints: readonly string[];
+}
+
 export interface ConstraintLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -274,6 +290,7 @@ export function createCityDiagnostics(
   const parcelModel = createParcelModelDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
+  const waterfrontModel = createWaterfrontModelDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
@@ -301,6 +318,7 @@ export function createCityDiagnostics(
     parcelModel,
     zoningModel,
     waterwayNetwork,
+    waterfrontModel,
     districtCharacter,
     cityMetrics,
     constraintLayer,
@@ -353,6 +371,10 @@ export function createCityDiagnostics(
       waterwayCulverts: waterwayNetwork.culverts,
       waterwayDocks: waterwayNetwork.docks,
       waterwayOutfalls: waterwayNetwork.outfalls,
+      waterfrontEdges: waterfrontModel.total,
+      waterfrontPublicAccessEdges: waterfrontModel.publicAccessEdges,
+      waterfrontFloodProtectionEdges: waterfrontModel.floodProtectionEdges,
+      waterfrontPiers: waterfrontModel.piers,
       districtUseMixRules: districtCharacter.useMixRules,
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
@@ -575,6 +597,25 @@ function hasContinuousWaterEdges(waterway: GeneratedCity['waterways'][number]): 
 
     return visited.size === sideSegments.length;
   });
+}
+
+function createWaterfrontModelDiagnostics(city: GeneratedCity): WaterfrontModelDiagnostics {
+  const byKind: Record<string, number> = {};
+
+  for (const edge of city.waterfrontEdges) {
+    byKind[edge.waterfrontKind] = (byKind[edge.waterfrontKind] ?? 0) + 1;
+  }
+
+  return {
+    total: city.waterfrontEdges.length,
+    byKind,
+    publicAccessEdges: city.waterfrontEdges.filter((edge) => edge.publicAccess).length,
+    connectedPublicRealmEdges: city.waterfrontEdges.filter((edge) => edge.connectedPublicRealmIds.length > 0).length,
+    connectedRoadEdges: city.waterfrontEdges.filter((edge) => edge.connectedRoadIds.length > 0).length,
+    floodProtectionEdges: city.waterfrontEdges.filter((edge) => edge.floodProtection.kind !== 'none').length,
+    piers: city.waterfrontEdges.filter((edge) => edge.waterfrontKind === 'pier').length,
+    materialHints: [...new Set(city.waterfrontEdges.map((edge) => edge.materialHint))].sort()
+  };
 }
 
 function createConstraintLayerDiagnostics(city: GeneratedCity): ConstraintLayerDiagnostics {

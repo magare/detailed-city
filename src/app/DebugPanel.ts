@@ -132,6 +132,10 @@ export class DebugPanel {
         `${diagnostics.waterwayNetwork.edgeSegments} edges, ${diagnostics.waterwayNetwork.crossings} crossings, ${diagnostics.waterwayNetwork.outfalls} outfalls`
       ),
       createMetric(
+        'Waterfront',
+        `${diagnostics.waterfrontModel.total} edges, ${diagnostics.waterfrontModel.publicAccessEdges} public, ${diagnostics.waterfrontModel.piers} piers`
+      ),
+      createMetric(
         'Constraints',
         `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
       ),

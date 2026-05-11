@@ -27,6 +27,7 @@ import type {
   TrafficPlan,
   TreePlanting,
   Updatable,
+  WaterfrontEdge,
   Waterway
 } from '../../types/city';
 import { disposeObject3D } from '../../utils/dispose';
@@ -67,6 +68,7 @@ export class City implements Updatable {
     this.addWaterways(generated.waterways);
     this.addRoads(generated.roads);
     this.addParks(generated.parks);
+    this.addWaterfrontEdges(generated.waterfrontEdges);
     this.addTreePlantings(generated.trees);
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
@@ -121,6 +123,23 @@ export class City implements Updatable {
       mesh.position.set(park.center.x, 0.11, park.center.z);
       mesh.receiveShadow = true;
       this.attachPickingMetadata(mesh, park.id);
+      this.layerGroups['public-realm'].add(mesh);
+    }
+  }
+
+  private addWaterfrontEdges(edges: WaterfrontEdge[]): void {
+    for (const edge of edges) {
+      const bounds = getBoundaryBounds(edge.boundary);
+      const geometry = new THREE.BoxGeometry(
+        Math.max(1, bounds.maxX - bounds.minX),
+        edge.waterfrontKind === 'flood-wall' ? 1.6 : 0.16,
+        Math.max(1, bounds.maxZ - bounds.minZ)
+      );
+      const mesh = new THREE.Mesh(geometry, this.materials.waterfrontEdge);
+      mesh.name = edge.id;
+      mesh.position.set(edge.center.x, edge.waterfrontKind === 'flood-wall' ? 0.82 : 0.16, edge.center.z);
+      mesh.receiveShadow = true;
+      this.attachPickingMetadata(mesh, edge.id);
       this.layerGroups['public-realm'].add(mesh);
     }
   }
@@ -387,4 +406,13 @@ function applyTrafficVehiclePosition(vehicle: TrafficVehicle): void {
     vehicle.mesh.position.x = vehicle.fixedCoordinate;
     vehicle.mesh.position.z = routeCoordinate;
   }
+}
+
+function getBoundaryBounds(boundary: WaterfrontEdge['boundary']): { minX: number; maxX: number; minZ: number; maxZ: number } {
+  return {
+    minX: Math.min(...boundary.map((point) => point.x)),
+    maxX: Math.max(...boundary.map((point) => point.x)),
+    minZ: Math.min(...boundary.map((point) => point.z)),
+    maxZ: Math.max(...boundary.map((point) => point.z))
+  };
 }

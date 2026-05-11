@@ -40,6 +40,7 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     ),
     parks: city.parks.map((park) => withProceduralMetadata(park, 'terrain-parks')),
     waterways: city.waterways.map((waterway) => withProceduralMetadata(waterway, 'terrain-waterways')),
+    waterfrontEdges: city.waterfrontEdges.map((edge) => withProceduralMetadata(edge, 'land-waterfront')),
     trees: city.trees.map((tree) => withProceduralMetadata(tree, 'environment-tree-plantings')),
     assetCatalog: city.assetCatalog.map((asset) => withProceduralMetadata(asset, 'render-asset-catalog'))
   };
