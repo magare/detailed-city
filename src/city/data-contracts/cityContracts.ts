@@ -585,10 +585,10 @@ export const DEFAULT_STREET_PROFILES = [
   {
     id: 'service-alley',
     hierarchy: 'alley',
-    totalWidthMeters: 8,
-    vehicleLanes: 1,
-    laneWidthMeters: 4,
-    sidewalkWidthMeters: 0,
+    totalWidthMeters: 12,
+    vehicleLanes: 2,
+    laneWidthMeters: 3,
+    sidewalkWidthMeters: 2,
     bikeLane: 'none',
     parking: 'loading-only',
     median: false,
@@ -600,15 +600,29 @@ export const DEFAULT_STREET_PROFILES = [
     id: 'waterfront-promenade',
     hierarchy: 'promenade',
     totalWidthMeters: 20,
-    vehicleLanes: 0,
-    laneWidthMeters: 0,
-    sidewalkWidthMeters: 10,
+    vehicleLanes: 2,
+    laneWidthMeters: 2.8,
+    sidewalkWidthMeters: 8,
     bikeLane: 'cycle-track',
     parking: 'none',
     median: false,
     treeZone: true,
     transitLane: false,
     designSpeedKph: 10
+  },
+  {
+    id: 'transit-corridor',
+    hierarchy: 'transit-corridor',
+    totalWidthMeters: 30,
+    vehicleLanes: 4,
+    laneWidthMeters: 3.2,
+    sidewalkWidthMeters: 4.8,
+    bikeLane: 'protected',
+    parking: 'loading-only',
+    median: true,
+    treeZone: true,
+    transitLane: true,
+    designSpeedKph: 35
   }
 ] as const satisfies readonly StreetProfile[];
 
@@ -1166,6 +1180,12 @@ export interface RoadSegmentContract extends CityObjectBase<'road-segment'> {
   readonly hierarchy: StreetHierarchy;
   readonly streetProfileId: string;
   readonly widthMeters: number;
+  readonly rightOfWayWidthMeters: number;
+  readonly designSpeedKph: number;
+  readonly corridorId: CityId;
+  readonly corridorName: string;
+  readonly continuityGroupId: CityId;
+  readonly transitEligible: boolean;
   readonly lanes: readonly LaneContract[];
   readonly sidewalks: readonly SidewalkContract[];
 }

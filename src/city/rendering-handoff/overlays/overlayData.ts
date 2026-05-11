@@ -437,7 +437,13 @@ function createRoadFeatures(city: GeneratedCity): CityOverlayFeature[] {
     metadata: {
       hierarchy: road.hierarchy,
       profile: road.streetProfileId,
-      lanes: road.laneCount
+      lanes: road.laneCount,
+      corridorId: road.corridorId,
+      corridorName: road.corridorName,
+      continuityGroupId: road.continuityGroupId,
+      designSpeedKph: road.designSpeedKph,
+      rightOfWayWidthMeters: road.rightOfWayWidthMeters,
+      transitEligible: road.transitEligible
     }
   }));
 }

@@ -51,6 +51,7 @@ export interface CityDiagnostics {
   readonly blockModel: BlockModelDiagnostics;
   readonly parcelModel: ParcelModelDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
+  readonly roadNetwork: RoadNetworkDiagnostics;
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly waterfrontModel: WaterfrontModelDiagnostics;
   readonly hazardLayer: HazardLayerDiagnostics;
@@ -109,6 +110,9 @@ export interface CityDiagnostics {
     readonly zoningDistricts: number;
     readonly zoningFormBasedDistricts: number;
     readonly parcelsWithZoning: number;
+    readonly roadHierarchyKinds: number;
+    readonly namedRoadCorridors: number;
+    readonly transitEligibleRoads: number;
     readonly waterwayEdgeSegments: number;
     readonly waterwayChannels: number;
     readonly waterwayCrossings: number;
@@ -217,6 +221,17 @@ export interface ZoningModelDiagnostics {
   readonly zoningCodes: readonly string[];
 }
 
+export interface RoadNetworkDiagnostics {
+  readonly total: number;
+  readonly byHierarchy: Readonly<Record<string, number>>;
+  readonly byProfile: Readonly<Record<string, number>>;
+  readonly namedCorridors: readonly string[];
+  readonly hierarchyKinds: number;
+  readonly transitEligibleRoads: number;
+  readonly averageDesignSpeedKph: number;
+  readonly totalRightOfWayMeters: number;
+}
+
 export interface WaterwayNetworkDiagnostics {
   readonly total: number;
   readonly edgeSegments: number;
@@ -306,6 +321,7 @@ export function createCityDiagnostics(
   const blockModel = createBlockModelDiagnostics(city);
   const parcelModel = createParcelModelDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
+  const roadNetwork = createRoadNetworkDiagnostics(city);
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
   const hazardLayer = createHazardLayerDiagnostics(city);
@@ -335,6 +351,7 @@ export function createCityDiagnostics(
     blockModel,
     parcelModel,
     zoningModel,
+    roadNetwork,
     waterwayNetwork,
     waterfrontModel,
     hazardLayer,
@@ -384,6 +401,9 @@ export function createCityDiagnostics(
       zoningDistricts: zoningModel.total,
       zoningFormBasedDistricts: zoningModel.formBasedDistricts,
       parcelsWithZoning: zoningModel.parcelsWithZoning,
+      roadHierarchyKinds: roadNetwork.hierarchyKinds,
+      namedRoadCorridors: roadNetwork.namedCorridors.length,
+      transitEligibleRoads: roadNetwork.transitEligibleRoads,
       waterwayEdgeSegments: waterwayNetwork.edgeSegments,
       waterwayChannels: waterwayNetwork.channels,
       waterwayCrossings: waterwayNetwork.crossings,
@@ -566,6 +586,33 @@ function createZoningModelDiagnostics(city: GeneratedCity): ZoningModelDiagnosti
     maxFloorAreaRatio,
     frontageRuleCounts,
     zoningCodes: city.zoningDistricts.map((zoning) => zoning.zoningCode).sort()
+  };
+}
+
+function createRoadNetworkDiagnostics(city: GeneratedCity): RoadNetworkDiagnostics {
+  const byHierarchy: Record<string, number> = {};
+  const byProfile: Record<string, number> = {};
+  const namedCorridors = new Set<string>();
+  let speedTotal = 0;
+  let totalRightOfWayMeters = 0;
+
+  for (const road of city.roads) {
+    byHierarchy[road.hierarchy] = (byHierarchy[road.hierarchy] ?? 0) + 1;
+    byProfile[road.streetProfileId] = (byProfile[road.streetProfileId] ?? 0) + 1;
+    namedCorridors.add(road.corridorName);
+    speedTotal += road.designSpeedKph;
+    totalRightOfWayMeters += road.rightOfWayWidthMeters;
+  }
+
+  return {
+    total: city.roads.length,
+    byHierarchy,
+    byProfile,
+    namedCorridors: [...namedCorridors].sort(),
+    hierarchyKinds: Object.keys(byHierarchy).length,
+    transitEligibleRoads: city.roads.filter((road) => road.transitEligible).length,
+    averageDesignSpeedKph: Number((speedTotal / Math.max(1, city.roads.length)).toFixed(1)),
+    totalRightOfWayMeters: Number(totalRightOfWayMeters.toFixed(1))
   };
 }
 

@@ -217,13 +217,15 @@ function createWaterwayCrossings(
     .map((road) => {
       const edgeSegmentIds = getOppositeEdgeSegmentIds(waterwayId, road.center.x, minX, length, edgeSegments);
 
+      const isGradeSeparated = road.hierarchy === 'arterial' || road.hierarchy === 'transit-corridor';
+
       return {
         id: `${waterwayId}-crossing-${road.id}`,
-        crossingKind: road.hierarchy === 'arterial' ? 'bridge' : 'culvert',
+        crossingKind: isGradeSeparated ? 'bridge' : 'culvert',
         roadId: road.id,
         center: { x: road.center.x, z: center.z },
         edgeSegmentIds,
-        clearanceMeters: road.hierarchy === 'arterial' ? 5.2 : 2.4
+        clearanceMeters: isGradeSeparated ? 5.2 : 2.4
       };
     });
 }

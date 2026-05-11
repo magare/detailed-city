@@ -95,6 +95,12 @@ export interface RoadSegment extends RoadSegmentContract {
   length: number;
   width: number;
   widthMeters: number;
+  rightOfWayWidthMeters: number;
+  designSpeedKph: number;
+  corridorId: string;
+  corridorName: string;
+  continuityGroupId: string;
+  transitEligible: boolean;
   laneCount: number;
   lanes: LaneContract[];
   sidewalks: SidewalkContract[];

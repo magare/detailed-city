@@ -10,6 +10,7 @@ import type {
   Point3D,
   Polygon2D,
   RenderBinding,
+  StreetProfile,
   ValidationIssue,
   ValidationResult
 } from '../cityContracts';
@@ -193,6 +194,9 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateWaterways(city, issues);
   validateWaterfrontEdges(city, issues);
   validateHazardZones(city, issues);
+  const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
+    DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
+  );
 
   for (const road of city.roads) {
     if (road.length <= 0 || road.width <= 0 || road.laneCount <= 0 || road.widthMeters <= 0) {
@@ -214,6 +218,59 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         objectId: road.id,
         ...createIssueFocus(road.center, 'Regenerate road lanes so laneCount matches the lane array length.'),
         message: `Road declares ${road.laneCount} lanes but generated ${road.lanes.length}.`
+      });
+    }
+
+    const profile = streetProfilesById.get(road.streetProfileId);
+    if (!profile) {
+      issues.push({
+        id: `unknown-road-street-profile-${road.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: road.id,
+        ...createIssueFocus(road.center, 'Assign the road to one of the registered street profiles.'),
+        message: `Road ${road.id} references unknown street profile ${road.streetProfileId}.`
+      });
+    } else {
+      if (
+        road.hierarchy !== profile.hierarchy ||
+        road.laneCount !== profile.vehicleLanes ||
+        road.designSpeedKph !== profile.designSpeedKph
+      ) {
+        issues.push({
+          id: `road-profile-policy-mismatch-${road.id}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: road.id,
+          ...createIssueFocus(road.center, 'Regenerate the road from its street profile policy.'),
+          message: `Road ${road.id} must match street profile ${profile.id} hierarchy, lane count, and speed policy.`
+        });
+      }
+
+      if (
+        road.rightOfWayWidthMeters < road.widthMeters - 0.001 ||
+        road.rightOfWayWidthMeters !== profile.totalWidthMeters ||
+        road.transitEligible !== (profile.transitLane || profile.hierarchy === 'transit-corridor')
+      ) {
+        issues.push({
+          id: `road-right-of-way-policy-mismatch-${road.id}`,
+          severity: 'error',
+          category: 'geometry',
+          objectId: road.id,
+          ...createIssueFocus(road.center, 'Regenerate the road right-of-way and transit eligibility from its street profile.'),
+          message: `Road ${road.id} right-of-way or transit eligibility does not match street profile ${profile.id}.`
+        });
+      }
+    }
+
+    if (!road.corridorId || !road.corridorName || !road.continuityGroupId) {
+      issues.push({
+        id: `missing-road-corridor-${road.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: road.id,
+        ...createIssueFocus(road.center, 'Assign corridor identity, display name, and continuity group to the road.'),
+        message: `Road ${road.id} must belong to a named corridor and continuity group.`
       });
     }
 

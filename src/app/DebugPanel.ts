@@ -162,6 +162,10 @@ export class DebugPanel {
         `${diagnostics.objectCounts.trafficVehicles} agents, ${diagnostics.objectCounts.laneMarkings} markings`
       ),
       createMetric(
+        'Streets',
+        `${diagnostics.roadNetwork.hierarchyKinds} hierarchies, ${diagnostics.roadNetwork.namedCorridors.length} corridors, ${diagnostics.roadNetwork.transitEligibleRoads} transit`
+      ),
+      createMetric(
         'City',
         `${diagnostics.objectCounts.buildings} buildings, ${diagnostics.objectCounts.activeFrontages} frontages`
       ),

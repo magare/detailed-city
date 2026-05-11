@@ -1,5 +1,6 @@
 import {
   DEFAULT_STREET_PROFILES,
+  type CityId,
   type LaneContract,
   type SidewalkContract,
   type StreetHierarchy,
@@ -28,16 +29,12 @@ export class RoadNetworkGenerator {
 
     for (let index = 0; index <= this.config.gridSize; index += 1) {
       const offset = -bounds.halfSpan + this.config.roadWidth / 2 + index * bounds.spacing;
-      const isAvenue = index % 3 === 0 || index === Math.floor(this.config.gridSize / 2);
-      const laneCount = isAvenue ? 4 : 2;
-      const hierarchy = isAvenue ? 'arterial' : 'local';
-      const streetProfileId = isAvenue ? 'grand-avenue' : 'residential-street';
-      const profile = getStreetProfile(streetProfileId);
-      const width = getCarriagewayWidth(profile, isAvenue ? this.config.roadWidth * 1.34 : this.config.roadWidth);
       const verticalCenter = { x: offset, z: 0 };
       const horizontalCenter = { x: 0, z: offset };
       const verticalId = `road-v-${index}`;
       const horizontalId = `road-h-${index}`;
+      const verticalPolicy = createStreetPolicy('vertical', index, this.config.gridSize, this.config.roadWidth);
+      const horizontalPolicy = createStreetPolicy('horizontal', index, this.config.gridSize, this.config.roadWidth);
 
       roads.push({
         id: verticalId,
@@ -47,14 +44,20 @@ export class RoadNetworkGenerator {
         orientation: 'vertical',
         center: verticalCenter,
         centerline: axisAlignedCenterline(verticalCenter, bounds.span, 'vertical'),
-        hierarchy,
-        streetProfileId,
+        hierarchy: verticalPolicy.hierarchy,
+        streetProfileId: verticalPolicy.streetProfileId,
         length: bounds.span,
-        width,
-        widthMeters: width,
-        laneCount,
-        lanes: createLanes(verticalId, laneCount, profile),
-        sidewalks: createSidewalks(verticalId, profile)
+        width: verticalPolicy.carriagewayWidth,
+        widthMeters: verticalPolicy.carriagewayWidth,
+        rightOfWayWidthMeters: verticalPolicy.rightOfWayWidthMeters,
+        designSpeedKph: verticalPolicy.designSpeedKph,
+        corridorId: verticalPolicy.corridorId,
+        corridorName: verticalPolicy.corridorName,
+        continuityGroupId: verticalPolicy.continuityGroupId,
+        transitEligible: verticalPolicy.transitEligible,
+        laneCount: verticalPolicy.laneCount,
+        lanes: createLanes(verticalId, verticalPolicy.laneCount, verticalPolicy.profile),
+        sidewalks: createSidewalks(verticalId, verticalPolicy.profile)
       });
 
       roads.push({
@@ -65,14 +68,20 @@ export class RoadNetworkGenerator {
         orientation: 'horizontal',
         center: horizontalCenter,
         centerline: axisAlignedCenterline(horizontalCenter, bounds.span, 'horizontal'),
-        hierarchy,
-        streetProfileId,
+        hierarchy: horizontalPolicy.hierarchy,
+        streetProfileId: horizontalPolicy.streetProfileId,
         length: bounds.span,
-        width,
-        widthMeters: width,
-        laneCount,
-        lanes: createLanes(horizontalId, laneCount, profile),
-        sidewalks: createSidewalks(horizontalId, profile)
+        width: horizontalPolicy.carriagewayWidth,
+        widthMeters: horizontalPolicy.carriagewayWidth,
+        rightOfWayWidthMeters: horizontalPolicy.rightOfWayWidthMeters,
+        designSpeedKph: horizontalPolicy.designSpeedKph,
+        corridorId: horizontalPolicy.corridorId,
+        corridorName: horizontalPolicy.corridorName,
+        continuityGroupId: horizontalPolicy.continuityGroupId,
+        transitEligible: horizontalPolicy.transitEligible,
+        laneCount: horizontalPolicy.laneCount,
+        lanes: createLanes(horizontalId, horizontalPolicy.laneCount, horizontalPolicy.profile),
+        sidewalks: createSidewalks(horizontalId, horizontalPolicy.profile)
       });
     }
 
@@ -122,6 +131,97 @@ export class RoadNetworkGenerator {
 
     return intersections;
   }
+}
+
+type StreetPolicy = {
+  readonly hierarchy: StreetHierarchy;
+  readonly streetProfileId: string;
+  readonly profile: StreetProfile;
+  readonly laneCount: number;
+  readonly carriagewayWidth: number;
+  readonly rightOfWayWidthMeters: number;
+  readonly designSpeedKph: number;
+  readonly corridorId: CityId;
+  readonly corridorName: string;
+  readonly continuityGroupId: CityId;
+  readonly transitEligible: boolean;
+};
+
+function createStreetPolicy(
+  orientation: RoadSegment['orientation'],
+  index: number,
+  gridSize: number,
+  roadWidth: number
+): StreetPolicy {
+  const midpoint = Math.floor(gridSize / 2);
+  const policyBase = selectPolicyBase(orientation, index, gridSize, midpoint);
+  const profile = getStreetProfile(policyBase.streetProfileId);
+  const profileFallbackWidth =
+    profile.hierarchy === 'arterial' || profile.hierarchy === 'transit-corridor' ? roadWidth * 1.34 : roadWidth;
+  const carriagewayWidth = getCarriagewayWidth(profile, profileFallbackWidth);
+
+  return {
+    hierarchy: profile.hierarchy,
+    streetProfileId: profile.id,
+    profile,
+    laneCount: profile.vehicleLanes,
+    carriagewayWidth,
+    rightOfWayWidthMeters: profile.totalWidthMeters,
+    designSpeedKph: profile.designSpeedKph,
+    corridorId: policyBase.corridorId,
+    corridorName: policyBase.corridorName,
+    continuityGroupId: policyBase.continuityGroupId,
+    transitEligible: profile.transitLane || profile.hierarchy === 'transit-corridor'
+  };
+}
+
+function selectPolicyBase(
+  orientation: RoadSegment['orientation'],
+  index: number,
+  gridSize: number,
+  midpoint: number
+): Pick<StreetPolicy, 'streetProfileId' | 'corridorId' | 'corridorName' | 'continuityGroupId'> {
+  if (orientation === 'vertical' && index === midpoint) {
+    return createPolicyBase('grand-avenue', 'corridor-central-grand-avenue', 'Central Grand Avenue');
+  }
+
+  if (orientation === 'horizontal' && index === midpoint) {
+    return createPolicyBase('transit-corridor', 'corridor-crosstown-transit', 'Crosstown Transit Corridor');
+  }
+
+  if (orientation === 'horizontal' && index === Math.max(1, Math.floor(gridSize / 3))) {
+    return createPolicyBase('waterfront-promenade', 'corridor-south-river-promenade', 'South River Promenade');
+  }
+
+  if (orientation === 'vertical' && (index === 2 || index === gridSize - 2)) {
+    return createPolicyBase('service-alley', 'corridor-service-alley-spines', 'Service Alley Spines');
+  }
+
+  if (index % 3 === 0 || index === 0 || index === gridSize) {
+    const name = orientation === 'vertical' ? `North South Avenue ${index}` : `East West Avenue ${index}`;
+    return createPolicyBase('grand-avenue', `corridor-${orientation}-avenue-${index}`, name);
+  }
+
+  if (index % 2 === 0) {
+    const name = orientation === 'vertical' ? `Collector Street ${index}` : `Market Collector ${index}`;
+    return createPolicyBase('main-street', `corridor-${orientation}-collector-${index}`, name);
+  }
+
+  const name = orientation === 'vertical' ? `Local Street ${index}` : `Neighborhood Street ${index}`;
+  return createPolicyBase('residential-street', `corridor-${orientation}-local-${index}`, name);
+}
+
+function createPolicyBase(
+  streetProfileId: string,
+  corridorId: CityId,
+  corridorName: string
+): Pick<StreetPolicy, 'streetProfileId' | 'corridorId' | 'corridorName' | 'continuityGroupId'> {
+  return {
+    streetProfileId,
+    corridorId,
+    corridorName,
+    continuityGroupId: corridorId
+  };
 }
 
 function getStreetProfile(streetProfileId: string): StreetProfile {
