@@ -126,6 +126,10 @@ export class DebugPanel {
         `${diagnostics.importExport.supportedFormatCount} formats, ${diagnostics.importExport.proceduralSeedExport.objectCount} objects`
       ),
       createMetric('Registry', `${diagnostics.objectRegistry.registeredKinds} kinds`),
+      createMetric(
+        'Groups',
+        `${diagnostics.objectGroups.groupCount} groups, ${diagnostics.objectGroups.countsByKind['district']} districts`
+      ),
       createMetric('Overlays', `${diagnostics.overlays.length}: ${overlayNames}`),
       createMetric(
         'LOD',

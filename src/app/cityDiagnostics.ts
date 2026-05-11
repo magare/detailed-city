@@ -3,6 +3,12 @@ import { cityConfig as defaultCityConfig } from '../config/cityConfig';
 import { createConfigDiagnostics, type ConfigDiagnostics } from '../config/configSchema';
 import type { CityObjectIndex, SourceType } from '../city/data-contracts/cityContracts';
 import { createGeneratedRuntimeObjectIndex } from '../city/data-contracts/generatedCityObjectIndex';
+import { createGeneratedCityObjectGroupIndex } from '../city/data-contracts/generatedCityObjectGroups';
+import {
+  createCityObjectGroupDiagnostics,
+  type CityObjectGroupDiagnostics,
+  type CityObjectGroupIndex
+} from '../city/data-contracts/cityObjectGroups';
 import {
   createCityObjectRegistryDiagnostics,
   type CityObjectRegistryDiagnostics
@@ -43,6 +49,8 @@ export interface CityDiagnostics {
   };
   readonly trafficValidation: GeneratedCity['validation'];
   readonly objectIndex: CityObjectIndex<GeneratedRuntimeCityObject>;
+  readonly objectGroupIndex: CityObjectGroupIndex<GeneratedRuntimeCityObject>;
+  readonly objectGroups: CityObjectGroupDiagnostics;
   readonly objectRegistry: CityObjectRegistryDiagnostics;
   readonly geospatial: GeneratedCity['geospatial'];
   readonly sourceMetadata: {
@@ -92,6 +100,8 @@ export interface CityDiagnostics {
     readonly laneMarkings: number;
     readonly trafficVehicles: number;
     readonly indexedObjects: number;
+    readonly objectGroups: number;
+    readonly emptyObjectGroups: number;
     readonly duplicateObjectIds: number;
     readonly registeredObjectKinds: number;
   };
@@ -109,11 +119,6 @@ export function createCityDiagnostics(
   activeCityConfig: CityConfig = defaultCityConfig
 ): CityDiagnostics {
   const objectIndex = createGeneratedRuntimeObjectIndex(city, traffic);
-  const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
-  const overlays = createCityOverlayDatasets(city, objectIndex);
-  const picking = createCityPickingMetadataCatalog(city, traffic, objectIndex);
-  const performance = createStaticPerformanceDiagnostics(city.performanceBudget, traffic.vehicles.length);
-  const objectRegistry = createCityObjectRegistryDiagnostics();
   const trafficValidation = validateTrafficPlan({
     roads: city.roads,
     crossings: city.crossings,
@@ -122,6 +127,16 @@ export function createCityDiagnostics(
     traffic,
     lodPolicy: city.lodPolicy
   });
+  const objectGroupIndex = createGeneratedCityObjectGroupIndex(city, traffic, objectIndex, [
+    ...city.validation.issues,
+    ...trafficValidation.issues
+  ]);
+  const objectGroups = createCityObjectGroupDiagnostics(objectGroupIndex);
+  const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
+  const overlays = createCityOverlayDatasets(city, objectIndex);
+  const picking = createCityPickingMetadataCatalog(city, traffic, objectIndex);
+  const performance = createStaticPerformanceDiagnostics(city.performanceBudget, traffic.vehicles.length);
+  const objectRegistry = createCityObjectRegistryDiagnostics();
   const sourceMetadata = createSourceMetadataDiagnostics(objectIndex);
   const lodCoverage = createCityLodPolicyDiagnostics(city.lodPolicy, objectIndex.objects);
   const assetBindingDiagnostics = createAssetBindingDiagnostics(city.assetCatalog, city.assetBindings);
@@ -138,6 +153,8 @@ export function createCityDiagnostics(
     validationIssueFocus: createValidationIssueFocusDiagnostics(city.validation.issues),
     trafficValidation,
     objectIndex,
+    objectGroupIndex,
+    objectGroups,
     objectRegistry,
     geospatial: city.geospatial,
     sourceMetadata,
@@ -182,6 +199,8 @@ export function createCityDiagnostics(
       laneMarkings: objectIndex.countsByKind['lane-marking'] ?? 0,
       trafficVehicles: objectIndex.countsByKind['traffic-vehicle'] ?? 0,
       indexedObjects: objectIndex.objectIds.length,
+      objectGroups: objectGroups.groupCount,
+      emptyObjectGroups: objectGroups.emptyGroupCount,
       duplicateObjectIds: objectIndex.duplicateIds.length,
       registeredObjectKinds: objectRegistry.registeredKinds
     },

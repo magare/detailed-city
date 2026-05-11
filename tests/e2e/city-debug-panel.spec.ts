@@ -32,6 +32,8 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('6 formats, 3812 objects');
   expect(panelText).toContain('Registry');
   expect(panelText).toContain('27 kinds');
+  expect(panelText).toContain('Groups');
+  expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
   expect(panelText).toContain('5: districts, parcels, roads, validation-issues, owner-domains');
   expect(panelText).toContain('LOD');
