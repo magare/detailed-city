@@ -829,6 +829,45 @@ export interface BlockPermeabilityMetricsContract {
   readonly averageParcelFrontageMeters: number;
 }
 
+export interface ParcelSetbackContract {
+  readonly frontMeters: number;
+  readonly sideMeters: number;
+  readonly rearMeters: number;
+}
+
+export interface ParcelLotSplitContract {
+  readonly splitGrid: readonly [number, number];
+  readonly lotIndex: readonly [number, number];
+  readonly isEdgeLot: boolean;
+  readonly canMerge: boolean;
+}
+
+export interface ParcelDevelopmentRightsContract {
+  readonly maxFloorAreaRatio: number;
+  readonly maxFloorAreaSqM: number;
+  readonly maxCoverageRatio: number;
+  readonly maxHeightMeters: number;
+  readonly transferable: boolean;
+  readonly status: 'as-of-right' | 'limited' | 'constrained';
+}
+
+export interface ParcelFrontagePriorityContract {
+  readonly roadId: CityId;
+  readonly side: BlockFrontageSide;
+  readonly frontageClass: BlockFrontageClass;
+  readonly priority: 'primary' | 'secondary' | 'service';
+}
+
+export interface ParcelFitContract {
+  readonly buildableEnvelopeId: CityId;
+  readonly buildableEnvelope: Polygon2D;
+  readonly buildableAreaSqM: number;
+  readonly minBuildableWidthMeters: number;
+  readonly minBuildableDepthMeters: number;
+  readonly preferredBuildingCenter: Point2D;
+  readonly canFitBuilding: boolean;
+}
+
 export interface BlockContract extends CityObjectBase<'block'> {
   readonly boundary: Polygon2D;
   readonly districtId: CityId;
@@ -852,6 +891,12 @@ export interface ParcelContract extends CityObjectBase<'parcel'> {
   readonly districtId: CityId;
   readonly blockId: CityId;
   readonly blockBuildableEnvelopeId: CityId;
+  readonly setbacks: ParcelSetbackContract;
+  readonly lotSplit: ParcelLotSplitContract;
+  readonly developmentRights: ParcelDevelopmentRightsContract;
+  readonly frontagePriority: readonly ParcelFrontagePriorityContract[];
+  readonly parcelConstraintIds: readonly CityId[];
+  readonly fit: ParcelFitContract;
   readonly administrativeBoundaryIds: readonly CityId[];
   readonly wardId: CityId;
   readonly neighborhoodId: CityId;

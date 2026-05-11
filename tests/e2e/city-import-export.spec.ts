@@ -70,8 +70,8 @@ test('procedural seed export is deterministic JSON without renderer-only fields'
     roads: 26,
     lanes: 72,
     sidewalks: 52,
-    buildings: 562,
-    activeFrontages: 45,
+    buildings: 583,
+    activeFrontages: 44,
     assetCatalog: 30,
     renderBindings: 30
   });

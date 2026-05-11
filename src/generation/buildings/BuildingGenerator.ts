@@ -9,7 +9,10 @@ import type {
   BlockFrontageContract,
   BlockInternalAccessContract,
   BuildingFrontageSide,
-  LandUse
+  LandUse,
+  ParcelFitContract,
+  ParcelFrontagePriorityContract,
+  ParcelSetbackContract
 } from '../../city/data-contracts/cityContracts';
 import type {
   BlockPlan,
@@ -30,6 +33,16 @@ export interface GeneratedLandAndBuildings {
   blocks: BlockPlan[];
   parcels: Parcel[];
   buildings: BuildingPlan[];
+}
+
+function getPriorityRank(priority: ParcelFrontagePriorityContract['priority']): number {
+  if (priority === 'primary') {
+    return 0;
+  }
+  if (priority === 'secondary') {
+    return 1;
+  }
+  return 2;
 }
 
 export class BuildingGenerator {
@@ -96,15 +109,6 @@ export class BuildingGenerator {
 
             const center = this.getLotCenter(envelopeBounds, lotX, lotZ, lotSize);
             const parcelSize = { x: lotSize, z: lotSize };
-            const maxFootprintSide = Math.sqrt(maxCoverageRatio) * lotSize;
-            const buildableSide = Math.min(
-              maxFootprintSide,
-              Math.max(4, lotSize - this.config.building.setback - this.random.range(0.5, 3.5))
-            );
-            const buildingSize = {
-              x: Math.min(maxFootprintSide, buildableSide * this.random.range(0.82, 1.08)),
-              z: Math.min(maxFootprintSide, buildableSide * this.random.range(0.82, 1.08))
-            };
             const id = `parcel-${blockX}-${blockZ}-${lotX}-${lotZ}`;
             const buildingId = `building-${blockX}-${blockZ}-${lotX}-${lotZ}`;
             const heightMeters = this.getHeight(district, districtConfig.heightBias, normalizedBlock);
@@ -112,6 +116,24 @@ export class BuildingGenerator {
             const frontageRoadIds = this.getFrontageRoadIds(blockX, blockZ, lotX, lotZ, split);
             const primaryFrontageRoadId = frontageRoadIds[0];
             const publicEntranceIds = [`${buildingId}-entrance-primary`];
+            const parcelModel = this.createParcelModel({
+              id,
+              district,
+              block: blockPlan,
+              center,
+              size: parcelSize,
+              lotX,
+              lotZ,
+              split,
+              frontageRoadIds,
+              maxHeightMeters,
+              maxCoverageRatio
+            });
+            const maxFootprintSide = Math.sqrt(maxCoverageRatio) * lotSize;
+            const buildingSize = {
+              x: Math.min(maxFootprintSide, parcelModel.fit.minBuildableWidthMeters * this.random.range(0.78, 0.96)),
+              z: Math.min(maxFootprintSide, parcelModel.fit.minBuildableDepthMeters * this.random.range(0.78, 0.96))
+            };
 
             parcels.push({
               id,
@@ -127,6 +149,7 @@ export class BuildingGenerator {
               districtId,
               blockId,
               blockBuildableEnvelopeId: blockPlan.buildableEnvelope.id,
+              ...parcelModel,
               administrativeBoundaryIds: [],
               wardId: '',
               neighborhoodId: '',
@@ -144,7 +167,7 @@ export class BuildingGenerator {
               parentId: id,
               lod: 'lod1',
               parcelId: id,
-              footprint: rectanglePolygon(center, buildingSize),
+              footprint: rectanglePolygon(parcelModel.fit.preferredBuildingCenter, buildingSize),
               uses: this.selectBuildingUses(allowedUses),
               heightMeters,
               floorCount: this.getFloorCount(district, heightMeters),
@@ -154,7 +177,7 @@ export class BuildingGenerator {
               primaryFrontageSide: this.getFrontageSide(primaryFrontageRoadId, blockX, blockZ),
               entranceIds: publicEntranceIds,
               publicEntranceIds,
-              center,
+              center: parcelModel.fit.preferredBuildingCenter,
               size: buildingSize,
               district,
               roofStyle
@@ -328,6 +351,138 @@ export class BuildingGenerator {
     }
 
     return 'west';
+  }
+
+  private createParcelModel(input: {
+    readonly id: string;
+    readonly district: DistrictKind;
+    readonly block: BlockPlan;
+    readonly center: { x: number; z: number };
+    readonly size: { x: number; z: number };
+    readonly lotX: number;
+    readonly lotZ: number;
+    readonly split: number;
+    readonly frontageRoadIds: readonly string[];
+    readonly maxHeightMeters: number;
+    readonly maxCoverageRatio: number;
+  }): Pick<Parcel, 'setbacks' | 'lotSplit' | 'developmentRights' | 'frontagePriority' | 'parcelConstraintIds' | 'fit'> {
+    const setbacks = this.getParcelSetbacks(input.district, input.frontageRoadIds.length);
+    const fit = this.createParcelFit(input.id, input.center, input.size, setbacks);
+    const maxFloorAreaRatio = this.getMaxFloorAreaRatio(input.district);
+
+    return {
+      setbacks,
+      lotSplit: {
+        splitGrid: [input.split, input.split],
+        lotIndex: [input.lotX, input.lotZ],
+        isEdgeLot:
+          input.lotX === 0 ||
+          input.lotZ === 0 ||
+          input.lotX === input.split - 1 ||
+          input.lotZ === input.split - 1,
+        canMerge: input.block.subdivisionConstraints.allowLotMerging || input.frontageRoadIds.length <= 1
+      },
+      developmentRights: {
+        maxFloorAreaRatio,
+        maxFloorAreaSqM: Number((input.size.x * input.size.z * maxFloorAreaRatio).toFixed(2)),
+        maxCoverageRatio: input.maxCoverageRatio,
+        maxHeightMeters: input.maxHeightMeters,
+        transferable: input.district === 'downtown' || input.district === 'waterfront',
+        status: input.district === 'industrial' ? 'limited' : fit.canFitBuilding ? 'as-of-right' : 'constrained'
+      },
+      frontagePriority: this.createParcelFrontagePriority(input.block, input.frontageRoadIds),
+      parcelConstraintIds: [],
+      fit
+    };
+  }
+
+  private getParcelSetbacks(district: DistrictKind, frontageCount: number): ParcelSetbackContract {
+    const frontageBonus = frontageCount > 1 ? 0.5 : 0;
+
+    if (district === 'downtown') {
+      return { frontMeters: 1.5, sideMeters: 1, rearMeters: 1.5 };
+    }
+    if (district === 'industrial') {
+      return { frontMeters: 4 + frontageBonus, sideMeters: 3, rearMeters: 4 };
+    }
+    if (district === 'civic') {
+      return { frontMeters: 3 + frontageBonus, sideMeters: 2.5, rearMeters: 3 };
+    }
+    if (district === 'waterfront') {
+      return { frontMeters: 2.5 + frontageBonus, sideMeters: 2, rearMeters: 3 };
+    }
+    return { frontMeters: 2.5 + frontageBonus, sideMeters: 2, rearMeters: 2.5 };
+  }
+
+  private createParcelFit(
+    parcelId: string,
+    center: { x: number; z: number },
+    size: { x: number; z: number },
+    setbacks: ParcelSetbackContract
+  ): ParcelFitContract {
+    const buildableWidth = Math.max(2, size.x - setbacks.sideMeters * 2);
+    const buildableDepth = Math.max(2, size.z - setbacks.frontMeters - setbacks.rearMeters);
+    const centerOffsetZ = (setbacks.frontMeters - setbacks.rearMeters) / 2;
+
+    return {
+      buildableEnvelopeId: `${parcelId}-buildable-envelope`,
+      buildableEnvelope: rectanglePolygon({ x: center.x, z: center.z + centerOffsetZ }, { x: buildableWidth, z: buildableDepth }),
+      buildableAreaSqM: Number((buildableWidth * buildableDepth).toFixed(2)),
+      minBuildableWidthMeters: buildableWidth,
+      minBuildableDepthMeters: buildableDepth,
+      preferredBuildingCenter: { x: center.x, z: center.z + centerOffsetZ },
+      canFitBuilding: buildableWidth >= 4 && buildableDepth >= 4
+    };
+  }
+
+  private getMaxFloorAreaRatio(district: DistrictKind): number {
+    if (district === 'downtown') {
+      return 8;
+    }
+    if (district === 'waterfront') {
+      return 5;
+    }
+    if (district === 'civic') {
+      return 3.5;
+    }
+    if (district === 'industrial') {
+      return 2.2;
+    }
+    return 2.8;
+  }
+
+  private createParcelFrontagePriority(
+    block: BlockPlan,
+    frontageRoadIds: readonly string[]
+  ): ParcelFrontagePriorityContract[] {
+    return frontageRoadIds
+      .map((roadId) => {
+        const frontage = block.frontageClasses.find((candidate) => candidate.roadId === roadId);
+        const side = frontage?.side ?? this.getBlockSideForRoad(block, roadId);
+        const frontageClass = frontage?.frontageClass ?? 'secondary';
+
+        return {
+          roadId,
+          side,
+          frontageClass,
+          priority: this.getParcelFrontagePriority(frontageClass)
+        };
+      })
+      .sort((left, right) => getPriorityRank(left.priority) - getPriorityRank(right.priority));
+  }
+
+  private getBlockSideForRoad(block: BlockPlan, roadId: string): BuildingFrontageSide {
+    return this.getFrontageSide(roadId, block.grid.x, block.grid.z);
+  }
+
+  private getParcelFrontagePriority(frontageClass: BlockFrontageClass): ParcelFrontagePriorityContract['priority'] {
+    if (frontageClass === 'primary' || frontageClass === 'waterfront') {
+      return 'primary';
+    }
+    if (frontageClass === 'service' || frontageClass === 'industrial') {
+      return 'service';
+    }
+    return 'secondary';
   }
 
   private selectBuildingUses(allowedUses: readonly LandUse[]): LandUse[] {

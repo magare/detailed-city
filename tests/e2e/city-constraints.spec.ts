@@ -122,7 +122,10 @@ test('constraint validation catches no-build conflicts and exposes overlay focus
       })
     ])
   );
-  expect(validationOverlay?.features[0]).toMatchObject({
+  const invalidConstraintFeature = validationOverlay?.features.find(
+    (feature) => feature.objectId === 'constraint-no-build-zone-test'
+  );
+  expect(invalidConstraintFeature).toMatchObject({
     overlayId: 'validation-issues',
     objectId: 'constraint-no-build-zone-test',
     objectKind: 'constraint',

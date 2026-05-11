@@ -207,7 +207,12 @@ function createParcelFeatures(city: GeneratedCity): CityOverlayFeature[] {
       district: parcel.district,
       blockId: parcel.blockId,
       blockBuildableEnvelopeId: parcel.blockBuildableEnvelopeId,
-      frontageRoads: parcel.frontageRoadIds.length
+      parcelBuildableEnvelopeId: parcel.fit.buildableEnvelopeId,
+      frontageRoads: parcel.frontageRoadIds.length,
+      primaryFrontageRoad: parcel.frontagePriority[0]?.roadId ?? '',
+      buildableAreaSqM: parcel.fit.buildableAreaSqM,
+      developmentStatus: parcel.developmentRights.status,
+      constraints: parcel.parcelConstraintIds.length
     }
   }));
 }

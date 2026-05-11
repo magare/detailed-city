@@ -1006,6 +1006,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
+  const blocksById = new Map(city.blocks.map((block) => [block.id, block]));
 
   for (const parcel of city.parcels) {
     if (!hasObjectId(city, parcel.districtId) || !hasObjectId(city, parcel.blockId)) {
@@ -1065,6 +1066,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         message: 'Parcel must carry at least one allowed land use.'
       });
     }
+
+    validateParcelModel(parcel, blocksById.get(parcel.blockId), city.constraints, roadsById, issues);
   }
 
   for (const building of city.buildings) {
@@ -1098,6 +1101,18 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         category: 'geometry',
         objectId: building.id,
         message: 'Building footprint must fit inside its parcel envelope.'
+      });
+    }
+
+    if (!isPolygonWithinPolygonBounds(building.footprint, parcel.fit.buildableEnvelope)) {
+      issues.push({
+        id: `building-outside-parcel-envelope-${building.id}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: building.id,
+        affectedBoundary: building.footprint,
+        suggestedFix: `Resize or move ${building.id} so it fits inside ${parcel.fit.buildableEnvelopeId}.`,
+        message: `Building footprint must fit inside parcel buildable envelope ${parcel.fit.buildableEnvelopeId}.`
       });
     }
 
@@ -1522,6 +1537,168 @@ function validateBlockModel(
         affectedBoundary: parcel.boundary,
         suggestedFix: `Regenerate ${parcel.id} from ${block.id}'s buildable envelope.`,
         message: `Parcel ${parcel.id} must fit inside parent block ${block.id}'s buildable envelope.`
+      });
+    }
+  }
+}
+
+function validateParcelModel(
+  parcel: GeneratedCityForValidation['parcels'][number],
+  block: ValidationBlock | undefined,
+  constraints: readonly ValidationConstraint[],
+  roadsById: ReadonlyMap<string, GeneratedCityForValidation['roads'][number]>,
+  issues: ValidationIssue[]
+): void {
+  const setbackValues = [parcel.setbacks.frontMeters, parcel.setbacks.sideMeters, parcel.setbacks.rearMeters];
+  if (setbackValues.some((value) => value < 0 || !Number.isFinite(value))) {
+    issues.push({
+      id: `invalid-parcel-setbacks-${parcel.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Regenerate ${parcel.id} with finite non-negative front, side, and rear setbacks.`),
+      message: `Parcel ${parcel.id} must expose valid setback controls.`
+    });
+  }
+
+  if (parcel.fit.buildableEnvelopeId !== `${parcel.id}-buildable-envelope`) {
+    issues.push({
+      id: `invalid-parcel-envelope-id-${parcel.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Set ${parcel.id}.fit.buildableEnvelopeId to ${parcel.id}-buildable-envelope.`),
+      message: `Parcel ${parcel.id} must expose a stable buildable envelope ID.`
+    });
+  }
+
+  if (
+    parcel.fit.buildableEnvelope.length < 4 ||
+    parcel.fit.buildableAreaSqM <= 0 ||
+    parcel.fit.minBuildableWidthMeters <= 0 ||
+    parcel.fit.minBuildableDepthMeters <= 0 ||
+    !isFiniteNumber(parcel.fit.preferredBuildingCenter.x) ||
+    !isFiniteNumber(parcel.fit.preferredBuildingCenter.z)
+  ) {
+    issues.push({
+      id: `invalid-parcel-fit-${parcel.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Regenerate ${parcel.id}.fit from parcel dimensions and setbacks.`),
+      message: `Parcel ${parcel.id} must expose a valid fit helper and buildable area.`
+    });
+  }
+
+  if (!isPolygonWithinPolygonBounds(parcel.fit.buildableEnvelope, parcel.boundary)) {
+    issues.push({
+      id: `parcel-envelope-outside-boundary-${parcel.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: parcel.id,
+      affectedBoundary: parcel.fit.buildableEnvelope,
+      suggestedFix: `Regenerate ${parcel.id}.fit.buildableEnvelope inside the parcel boundary.`,
+      message: `Parcel ${parcel.id} buildable envelope must stay inside the parcel boundary.`
+    });
+  }
+
+  if (block && parcel.blockBuildableEnvelopeId !== block.buildableEnvelope.id) {
+    issues.push({
+      id: `invalid-parcel-block-envelope-${parcel.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Set ${parcel.id}.blockBuildableEnvelopeId to ${block.buildableEnvelope.id}.`),
+      message: `Parcel ${parcel.id} must reference parent block buildable envelope ${block.buildableEnvelope.id}.`
+    });
+  }
+
+  if (
+    parcel.lotSplit.splitGrid.length !== 2 ||
+    parcel.lotSplit.lotIndex.length !== 2 ||
+    parcel.lotSplit.splitGrid.some((value) => value <= 0) ||
+    parcel.lotSplit.lotIndex[0] < 0 ||
+    parcel.lotSplit.lotIndex[1] < 0 ||
+    parcel.lotSplit.lotIndex[0] >= parcel.lotSplit.splitGrid[0] ||
+    parcel.lotSplit.lotIndex[1] >= parcel.lotSplit.splitGrid[1]
+  ) {
+    issues.push({
+      id: `invalid-parcel-lot-split-${parcel.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Regenerate ${parcel.id}.lotSplit with valid split grid and lot index.`),
+      message: `Parcel ${parcel.id} must expose valid lot split metadata.`
+    });
+  }
+
+  if (
+    parcel.developmentRights.maxFloorAreaRatio <= 0 ||
+    parcel.developmentRights.maxFloorAreaSqM <= 0 ||
+    parcel.developmentRights.maxCoverageRatio <= 0 ||
+    parcel.developmentRights.maxCoverageRatio > 1 ||
+    parcel.developmentRights.maxHeightMeters <= 0 ||
+    parcel.developmentRights.maxCoverageRatio !== parcel.maxCoverageRatio ||
+    parcel.developmentRights.maxHeightMeters !== parcel.maxHeightMeters
+  ) {
+    issues.push({
+      id: `invalid-parcel-development-rights-${parcel.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Synchronize ${parcel.id}.developmentRights with parcel zoning limits.`),
+      message: `Parcel ${parcel.id} must expose coherent development rights.`
+    });
+  }
+
+  if (parcel.frontagePriority.length === 0) {
+    issues.push({
+      id: `missing-parcel-frontage-priority-${parcel.id}`,
+      severity: 'error',
+      category: 'graph',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Create frontage priority entries for ${parcel.id}'s frontage roads.`),
+      message: `Parcel ${parcel.id} must rank its frontage roads.`
+    });
+  }
+
+  const frontagePriorityRoads = new Set(parcel.frontagePriority.map((frontage) => frontage.roadId));
+  for (const frontageRoadId of parcel.frontageRoadIds) {
+    if (!frontagePriorityRoads.has(frontageRoadId)) {
+      issues.push({
+        id: `missing-parcel-frontage-priority-road-${parcel.id}-${frontageRoadId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: parcel.id,
+        ...createIssueFocus(parcel.center, `Add ${frontageRoadId} to ${parcel.id}.frontagePriority.`),
+        message: `Parcel ${parcel.id} frontage priority must include frontage road ${frontageRoadId}.`
+      });
+    }
+  }
+
+  for (const frontage of parcel.frontagePriority) {
+    if (!roadsById.has(frontage.roadId)) {
+      issues.push({
+        id: `invalid-parcel-frontage-priority-road-${parcel.id}-${frontage.roadId}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: parcel.id,
+        ...createIssueFocus(parcel.center, `Attach ${parcel.id} frontage priority to an existing road.`),
+        message: `Parcel ${parcel.id} frontage priority references missing road ${frontage.roadId}.`
+      });
+    }
+  }
+
+  const constraintIds = new Set(constraints.map((constraint) => constraint.id));
+  for (const constraintId of parcel.parcelConstraintIds) {
+    if (!constraintIds.has(constraintId)) {
+      issues.push({
+        id: `missing-parcel-constraint-${parcel.id}-${toIssueIdToken(constraintId)}`,
+        severity: 'error',
+        category: 'land',
+        objectId: parcel.id,
+        ...createIssueFocus(parcel.center, `Remove ${constraintId} from ${parcel.id} or generate the referenced constraint.`),
+        message: `Parcel ${parcel.id} references missing parcel constraint ${constraintId}.`
       });
     }
   }

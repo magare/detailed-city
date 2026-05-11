@@ -22,7 +22,15 @@ export function applyConstraintFilters(
 
   return {
     ...land,
-    parcels: land.parcels.filter((parcel) => !blockedParcelIds.has(parcel.id)),
+    parcels: land.parcels
+      .filter((parcel) => !blockedParcelIds.has(parcel.id))
+      .map((parcel) => ({
+        ...parcel,
+        parcelConstraintIds: constraints
+          .filter((constraint) => isPointInsidePolygon(parcel.center, constraint.boundary))
+          .map((constraint) => constraint.id)
+          .sort()
+      })),
     buildings: land.buildings.filter(
       (building) =>
         !blockedParcelIds.has(building.parcelId) &&

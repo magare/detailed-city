@@ -49,6 +49,7 @@ export interface CityDiagnostics {
   readonly masterPlan: MasterPlanDiagnostics;
   readonly administrativeBoundaries: AdministrativeBoundaryDiagnostics;
   readonly blockModel: BlockModelDiagnostics;
+  readonly parcelModel: ParcelModelDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
@@ -98,6 +99,9 @@ export interface CityDiagnostics {
     readonly blockAlleys: number;
     readonly blockFrontages: number;
     readonly blockBuildableEnvelopes: number;
+    readonly parcelBuildableEnvelopes: number;
+    readonly parcelsWithConstraints: number;
+    readonly primaryFrontageParcels: number;
     readonly districtUseMixRules: number;
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
@@ -172,6 +176,15 @@ export interface BlockModelDiagnostics {
   readonly averagePermeabilityScore: number;
 }
 
+export interface ParcelModelDiagnostics {
+  readonly total: number;
+  readonly buildableEnvelopes: number;
+  readonly parcelsWithConstraints: number;
+  readonly primaryFrontageParcels: number;
+  readonly averageBuildableAreaSqM: number;
+  readonly developmentStatuses: Readonly<Record<string, number>>;
+}
+
 export interface ConstraintLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -223,6 +236,7 @@ export function createCityDiagnostics(
   const masterPlan = createMasterPlanDiagnostics(CITY_BLUEPRINT.masterPlan);
   const administrativeBoundaries = createAdministrativeBoundaryDiagnostics(city);
   const blockModel = createBlockModelDiagnostics(city);
+  const parcelModel = createParcelModelDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
@@ -247,6 +261,7 @@ export function createCityDiagnostics(
     masterPlan,
     administrativeBoundaries,
     blockModel,
+    parcelModel,
     districtCharacter,
     cityMetrics,
     constraintLayer,
@@ -287,6 +302,9 @@ export function createCityDiagnostics(
       blockAlleys: blockModel.alleys,
       blockFrontages: blockModel.frontageClasses,
       blockBuildableEnvelopes: blockModel.buildableEnvelopes,
+      parcelBuildableEnvelopes: parcelModel.buildableEnvelopes,
+      parcelsWithConstraints: parcelModel.parcelsWithConstraints,
+      primaryFrontageParcels: parcelModel.primaryFrontageParcels,
       districtUseMixRules: districtCharacter.useMixRules,
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
@@ -406,6 +424,27 @@ function createBlockModelDiagnostics(city: GeneratedCity): BlockModelDiagnostics
     frontageClasses: city.blocks.reduce((sum, block) => sum + block.frontageClasses.length, 0),
     permeability,
     averagePermeabilityScore: Number((scoreTotal / Math.max(1, city.blocks.length)).toFixed(2))
+  };
+}
+
+function createParcelModelDiagnostics(city: GeneratedCity): ParcelModelDiagnostics {
+  const developmentStatuses: Record<string, number> = {};
+  let buildableAreaTotal = 0;
+
+  for (const parcel of city.parcels) {
+    developmentStatuses[parcel.developmentRights.status] = (developmentStatuses[parcel.developmentRights.status] ?? 0) + 1;
+    buildableAreaTotal += parcel.fit.buildableAreaSqM;
+  }
+
+  return {
+    total: city.parcels.length,
+    buildableEnvelopes: city.parcels.filter((parcel) => parcel.fit.buildableEnvelope.length >= 4).length,
+    parcelsWithConstraints: city.parcels.filter((parcel) => parcel.parcelConstraintIds.length > 0).length,
+    primaryFrontageParcels: city.parcels.filter((parcel) =>
+      parcel.frontagePriority.some((frontage) => frontage.priority === 'primary')
+    ).length,
+    averageBuildableAreaSqM: Number((buildableAreaTotal / Math.max(1, city.parcels.length)).toFixed(2)),
+    developmentStatuses
   };
 }
 

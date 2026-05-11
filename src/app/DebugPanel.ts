@@ -120,6 +120,10 @@ export class DebugPanel {
         `${diagnostics.blockModel.total} blocks, ${diagnostics.blockModel.alleys} access, ${diagnostics.blockModel.averagePermeabilityScore} permeability`
       ),
       createMetric(
+        'Parcels',
+        `${diagnostics.parcelModel.total} parcels, ${diagnostics.parcelModel.buildableEnvelopes} envelopes, ${diagnostics.parcelModel.primaryFrontageParcels} primary`
+      ),
+      createMetric(
         'Constraints',
         `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
       ),
