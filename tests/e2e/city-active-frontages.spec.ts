@@ -13,24 +13,24 @@ test('active frontages are deterministic detailed-street facade objects', () => 
   expect(firstCity.activeFrontages.map((frontage) => frontage.id)).toEqual(
     secondCity.activeFrontages.map((frontage) => frontage.id)
   );
-  expect(firstCity.activeFrontages).toHaveLength(42);
-  expect(firstCity.objectIndex.countsByKind.facade).toBe(42);
+  expect(firstCity.activeFrontages).toHaveLength(46);
+  expect(firstCity.objectIndex.countsByKind.facade).toBe(46);
   expect(firstFrontage).toMatchObject({
-    id: 'facade-active-frontage-building-5-0-1-0-road-v-6',
+    id: 'facade-active-frontage-building-5-1-2-1-road-v-6',
     kind: 'facade',
     ownerDomain: 'buildings',
-    parentId: 'building-5-0-1-0',
+    parentId: 'building-5-1-2-1',
     lod: 'lod3',
     facadeType: 'active-frontage',
     sliceId: 'slice-detailed-street-road-v-6',
-    buildingId: 'building-5-0-1-0',
-    parcelId: 'parcel-5-0-1-0',
+    buildingId: 'building-5-1-2-1',
+    parcelId: 'parcel-5-1-2-1',
     roadId: 'road-v-6',
     sidewalkId: 'road-v-6-sidewalk-left',
     frontageSide: 'east',
     roadSide: 'left',
     activeUses: ['mixed-use', 'hospitality'],
-    publicEntranceIds: ['building-5-0-1-0-entrance-primary'],
+    publicEntranceIds: ['building-5-1-2-1-entrance-primary'],
     assetBindingIds: {
       storefrontWindow: 'binding:facade:storefront-window',
       awning: 'binding:facade:awning',
@@ -45,8 +45,8 @@ test('active frontages are deterministic detailed-street facade objects', () => 
     }
   });
   expect(firstFrontage.storefront).toMatchObject({
-    displayWindowCount: 4,
-    signTextCode: 'road-v-6:building-5-0-1-0:storefront-0',
+    displayWindowCount: 2,
+    signTextCode: 'road-v-6:building-5-1-2-1:storefront-0',
     awning: {
       enabled: true,
       depthMeters: 0.92,
@@ -54,14 +54,14 @@ test('active frontages are deterministic detailed-street facade objects', () => 
     },
     nightWindows: {
       enabledByDefault: true,
-      litWindowCount: 2
+      litWindowCount: 1
     }
   });
   expect(parentBuilding).toMatchObject({
     kind: 'building',
     primaryFrontageRoadId: 'road-v-6',
     primaryFrontageSide: 'east',
-    publicEntranceIds: ['building-5-0-1-0-entrance-primary']
+    publicEntranceIds: ['building-5-1-2-1-entrance-primary']
   });
   expect(firstCity.assetBindings).toEqual(
     expect.arrayContaining([

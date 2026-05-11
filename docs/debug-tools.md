@@ -25,6 +25,7 @@ The panel currently exposes:
 
 - Seed.
 - Active config quality preset, grid size, and traffic density.
+- District character rule count and transition-buffer count.
 - Validation status and issue count.
 - Geospatial frame mode and coordinate precision.
 - Source metadata tagged-object coverage.

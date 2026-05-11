@@ -10,7 +10,7 @@ import type {
   ValidationIssue,
   ValidationResult
 } from '../cityContracts';
-import { CITY_LOD_TIERS } from '../cityContracts';
+import { CITY_LOD_TIERS, DEFAULT_STREET_PROFILES } from '../cityContracts';
 import { hasCityObject } from '../cityObjectIndex';
 import { CITY_OBJECT_KIND_REGISTRY_ENTRIES, validateCityObjectRegistryIdentity } from '../cityObjectRegistry';
 import { validateCityLodPolicy } from '../lodPolicy';
@@ -41,6 +41,9 @@ type GeneratedCityForValidation = Pick<
   | 'verticalSlices'
   | 'waterways'
 >;
+
+type ValidationBlock = GeneratedCityForValidation['blocks'][number];
+type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 
 const REQUIRED_RENDER_BINDING_IDS = [
   'binding:terrain:ground',
@@ -653,7 +656,11 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         message: 'Districts must have a boundary, primary uses, and allowed street profiles.'
       });
     }
+
+    validateDistrictCharacter(district, city.districts, issues);
   }
+
+  validateDistrictTransitions(city.blocks, city.districts, issues);
 
   for (const block of city.blocks) {
     if (!hasObjectId(city, block.districtId) || block.parentId !== block.districtId) {
@@ -1459,6 +1466,216 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
     validatePoint2D(city.geospatial, streetFurniture.id, 'position', streetFurniture.position, issues);
     validateHeightValue(city.geospatial, streetFurniture.id, 'heightMeters', streetFurniture.dimensions.heightMeters, issues);
   }
+}
+
+function validateDistrictCharacter(
+  district: ValidationDistrict,
+  districts: readonly ValidationDistrict[],
+  issues: ValidationIssue[]
+): void {
+  const [minHeight, maxHeight] = district.heightRangeMeters;
+
+  if (!isFiniteNumber(minHeight) || !isFiniteNumber(maxHeight) || minHeight <= 0 || maxHeight < minHeight) {
+    issues.push({
+      id: `invalid-district-height-range-${district.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: district.id,
+      message: `District ${district.id} must define a positive increasing height range.`
+    });
+  }
+
+  const useMix = Array.isArray(district.useMix) ? district.useMix : [];
+  const useMixTotal = useMix.reduce((sum, rule) => sum + rule.share, 0);
+  const useMixUses = new Set(useMix.map((rule) => rule.use));
+  const hasInvalidUseMixRule =
+    useMix.length === 0 ||
+    useMix.some((rule) => !isFiniteNumber(rule.share) || rule.share <= 0 || rule.share > 1) ||
+    useMixUses.size !== useMix.length ||
+    useMixTotal < 0.98 ||
+    useMixTotal > 1.02;
+
+  if (hasInvalidUseMixRule) {
+    issues.push({
+      id: `invalid-district-use-mix-${district.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: district.id,
+      message: `District ${district.id} use mix must contain unique positive shares totaling 1.0.`
+    });
+  }
+
+  for (const primaryUse of district.primaryUses) {
+    if (!useMixUses.has(primaryUse)) {
+      issues.push({
+        id: `district-primary-use-not-in-mix-${district.id}-${primaryUse}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: district.id,
+        message: `District ${district.id} primary use ${primaryUse} must be represented in the use mix.`
+      });
+    }
+  }
+
+  const streetProfileIds = new Set<string>(DEFAULT_STREET_PROFILES.map((profile) => profile.id));
+  for (const profileId of district.allowedStreetProfiles) {
+    if (!streetProfileIds.has(profileId)) {
+      issues.push({
+        id: `invalid-district-street-profile-${district.id}-${profileId}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: district.id,
+        message: `District ${district.id} references unknown street profile ${profileId}.`
+      });
+    }
+  }
+
+  const gradient = district.densityGradient;
+  if (
+    !gradient ||
+    !gradient.centerId ||
+    !isFiniteNumber(gradient.coreIntensity) ||
+    !isFiniteNumber(gradient.edgeIntensity) ||
+    gradient.coreIntensity < 0 ||
+    gradient.coreIntensity > 1 ||
+    gradient.edgeIntensity < 0 ||
+    gradient.edgeIntensity > 1 ||
+    !isFiniteNumber(gradient.heightMultiplierAtCore) ||
+    !isFiniteNumber(gradient.heightMultiplierAtEdge) ||
+    gradient.heightMultiplierAtCore <= 0 ||
+    gradient.heightMultiplierAtEdge <= 0
+  ) {
+    issues.push({
+      id: `invalid-district-density-gradient-${district.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: district.id,
+      message: `District ${district.id} density gradient must reference a center and finite positive multipliers.`
+    });
+  }
+
+  const landmarkTargets = Array.isArray(district.landmarkTargets) ? district.landmarkTargets : [];
+  if (landmarkTargets.length === 0) {
+    issues.push({
+      id: `invalid-district-landmark-target-${district.id}-missing`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: district.id,
+      message: `District ${district.id} must define at least one landmark target.`
+    });
+  }
+
+  for (const target of landmarkTargets) {
+    if (!target.id || !isFiniteNumber(target.targetCount) || target.targetCount <= 0) {
+      issues.push({
+        id: `invalid-district-landmark-target-${district.id}-${target.id || 'missing'}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: district.id,
+        message: `District ${district.id} landmark targets must have stable ids and positive target counts.`
+      });
+    }
+  }
+
+  const districtIds = new Set(districts.map((candidate) => candidate.id));
+  const transitionBuffers = Array.isArray(district.transitionBuffers) ? district.transitionBuffers : [];
+  if (transitionBuffers.length === 0) {
+    issues.push({
+      id: `invalid-district-transition-buffer-${district.id}-missing`,
+      severity: 'error',
+      category: 'graph',
+      objectId: district.id,
+      message: `District ${district.id} must define transition buffers to adjacent district types.`
+    });
+  }
+
+  for (const buffer of transitionBuffers) {
+    if (
+      buffer.adjacentDistrictId === district.id ||
+      !districtIds.has(buffer.adjacentDistrictId) ||
+      !isFiniteNumber(buffer.widthBlocks) ||
+      buffer.widthBlocks <= 0
+    ) {
+      issues.push({
+        id: `invalid-district-transition-buffer-${district.id}-${buffer.adjacentDistrictId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: district.id,
+        message: `District ${district.id} transition buffers must reference another generated district with positive width.`
+      });
+    }
+  }
+
+  if (
+    !district.styleHints ||
+    !district.styleHints.materialPalette ||
+    !district.styleHints.publicRealmCharacter ||
+    !Array.isArray(district.styleHints.preferredMaterialZones) ||
+    district.styleHints.preferredMaterialZones.length === 0
+  ) {
+    issues.push({
+      id: `invalid-district-style-hints-${district.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: district.id,
+      message: `District ${district.id} style hints must expose a palette, public realm character, and material zones.`
+    });
+  }
+}
+
+function validateDistrictTransitions(
+  blocks: readonly ValidationBlock[],
+  districts: readonly ValidationDistrict[],
+  issues: ValidationIssue[]
+): void {
+  const districtsById = new Map(districts.map((district) => [district.id, district]));
+  const blocksByGrid = new Map(blocks.map((block) => [`${block.grid.x}:${block.grid.z}`, block]));
+
+  for (const block of blocks) {
+    for (const neighbor of getRightAndNorthNeighbors(block, blocksByGrid)) {
+      if (block.districtId === neighbor.districtId) {
+        continue;
+      }
+
+      const district = districtsById.get(block.districtId);
+      const neighborDistrict = districtsById.get(neighbor.districtId);
+
+      if (
+        !district ||
+        !neighborDistrict ||
+        !hasDistrictTransitionBuffer(district, neighborDistrict.id) ||
+        !hasDistrictTransitionBuffer(neighborDistrict, district.id)
+      ) {
+        issues.push({
+          id: `illegal-district-transition-${block.id}-${neighbor.id}`,
+          severity: 'error',
+          category: 'zoning',
+          objectId: block.id,
+          ...createIssueFocus(
+            block.center,
+            `Add reciprocal transition buffers between ${block.districtId} and ${neighbor.districtId}, or change adjacent block district assignments.`
+          ),
+          message: `Blocks ${block.id} and ${neighbor.id} create an illegal transition between ${block.districtId} and ${neighbor.districtId}.`
+        });
+      }
+    }
+  }
+}
+
+function getRightAndNorthNeighbors(
+  block: ValidationBlock,
+  blocksByGrid: ReadonlyMap<string, ValidationBlock>
+): readonly ValidationBlock[] {
+  return [
+    blocksByGrid.get(`${block.grid.x + 1}:${block.grid.z}`),
+    blocksByGrid.get(`${block.grid.x}:${block.grid.z + 1}`)
+  ].filter((neighbor): neighbor is ValidationBlock => neighbor !== undefined);
+}
+
+function hasDistrictTransitionBuffer(district: ValidationDistrict, adjacentDistrictId: string): boolean {
+  return Array.isArray(district.transitionBuffers)
+    ? district.transitionBuffers.some((buffer) => buffer.adjacentDistrictId === adjacentDistrictId)
+    : false;
 }
 
 function validatePolyline2D(

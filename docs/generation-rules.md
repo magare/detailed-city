@@ -20,7 +20,7 @@ Generation must produce contract-valid city data first. Rendering consumes that 
 
 ## City Intent
 
-City intent belongs in `src/city/blueprint`, not inside individual generators. The first blueprint module is `src/city/blueprint/cityBlueprint.ts`; it owns district rules, named parks, waterways, and tree species assumptions.
+City intent belongs in `src/city/blueprint`, not inside individual generators. The first blueprint module is `src/city/blueprint/cityBlueprint.ts`; it owns district rules, use mix, density gradients, transition buffers, style hints, named parks, waterways, and tree species assumptions.
 
 ## Determinism
 
@@ -37,7 +37,7 @@ City intent belongs in `src/city/blueprint`, not inside individual generators. T
 
 ## District Rules
 
-District assignment should be read from blueprint rules:
+District assignment, height ranges, use mix, density gradients, transition buffers, style hints, and allowed street profiles should be read from blueprint rules:
 
 | District | Intent |
 | --- | --- |
@@ -46,6 +46,8 @@ District assignment should be read from blueprint rules:
 | Industrial | Production/logistics quarter with lower heights, yards, and freight access. |
 | Civic | Institutional district with plazas, education, healthcare, and emergency coverage. |
 | Residential | Medium-density neighborhoods with trees, local retail, and schools. |
+
+Generated districts must copy their blueprint character rules into the district contract. Blocks, parcels, and buildings then consume those rules for district ownership, allowed uses, and height envelopes instead of duplicating district-specific planning logic inside generators.
 
 ## Land And Parcel Rules
 

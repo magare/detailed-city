@@ -560,8 +560,47 @@ export interface DistrictContract extends CityObjectBase<'district'> {
   readonly boundary: Polygon2D;
   readonly density: 'low' | 'medium' | 'high' | 'super-tall';
   readonly primaryUses: readonly LandUse[];
+  readonly useMix: readonly DistrictUseMixRule[];
   readonly heightRangeMeters: readonly [number, number];
+  readonly densityGradient: DistrictDensityGradient;
   readonly allowedStreetProfiles: readonly string[];
+  readonly landmarkTargets: readonly DistrictLandmarkTarget[];
+  readonly transitionBuffers: readonly DistrictTransitionBuffer[];
+  readonly styleHints: DistrictStyleHints;
+}
+
+export interface DistrictUseMixRule {
+  readonly use: LandUse;
+  readonly share: number;
+}
+
+export interface DistrictLandmarkTarget {
+  readonly id: CityId;
+  readonly landmarkKind: 'civic-marker' | 'employment-node' | 'neighborhood-node' | 'skyline-peak' | 'waterfront-marker';
+  readonly targetCount: number;
+  readonly centerId?: CityId;
+}
+
+export interface DistrictDensityGradient {
+  readonly centerId: CityId;
+  readonly coreIntensity: number;
+  readonly edgeIntensity: number;
+  readonly heightMultiplierAtCore: number;
+  readonly heightMultiplierAtEdge: number;
+}
+
+export interface DistrictTransitionBuffer {
+  readonly adjacentDistrictId: CityId;
+  readonly widthBlocks: number;
+  readonly transitionKind: 'active-edge' | 'civic-buffer' | 'employment-buffer' | 'green-buffer' | 'mixed-use-buffer';
+}
+
+export interface DistrictStyleHints {
+  readonly materialPalette: string;
+  readonly facadeRhythm: 'civic-formal' | 'fine-grain' | 'industrial-large-bay' | 'mid-rise-waterfront' | 'residential-regular';
+  readonly roofline: 'civic-cornice' | 'flat-varied' | 'green-lowrise' | 'mechanical-sawtooth' | 'tower-stepped';
+  readonly publicRealmCharacter: string;
+  readonly preferredMaterialZones: readonly string[];
 }
 
 export interface BlockContract extends CityObjectBase<'block'> {

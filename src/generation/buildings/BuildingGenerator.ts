@@ -1,4 +1,9 @@
-import { CITY_BLUEPRINT, getBlueprintDistrictForNormalizedBlock } from '../../city/blueprint/cityBlueprint';
+import {
+  CITY_BLUEPRINT,
+  getBlueprintDistrictForNormalizedBlock,
+  getBlueprintDistrictHeightMultiplier,
+  getBlueprintDistrictRule
+} from '../../city/blueprint/cityBlueprint';
 import type { BuildingFrontageSide, LandUse } from '../../city/data-contracts/cityContracts';
 import type {
   BlockPlan,
@@ -40,6 +45,7 @@ export class BuildingGenerator {
 
         const district = this.getDistrict(blockX, blockZ);
         const districtConfig = this.config.districts[district];
+        const normalizedBlock = this.getNormalizedBlock(blockX, blockZ);
         const blockId = `block-${blockX}-${blockZ}`;
         const districtId = `district-${district}`;
         const allowedUses = this.getAllowedUses(district);
@@ -85,7 +91,7 @@ export class BuildingGenerator {
             };
             const id = `parcel-${blockX}-${blockZ}-${lotX}-${lotZ}`;
             const buildingId = `building-${blockX}-${blockZ}-${lotX}-${lotZ}`;
-            const heightMeters = this.getHeight(district, districtConfig.heightBias);
+            const heightMeters = this.getHeight(district, districtConfig.heightBias, normalizedBlock);
             const roofStyle = this.getRoofStyle(district, heightMeters);
             const frontageRoadIds = this.getFrontageRoadIds(blockX, blockZ, lotX, lotZ, split);
             const primaryFrontageRoadId = frontageRoadIds[0];
@@ -147,9 +153,12 @@ export class BuildingGenerator {
   }
 
   private getDistrict(blockX: number, blockZ: number): DistrictKind {
+    return getBlueprintDistrictForNormalizedBlock(this.getNormalizedBlock(blockX, blockZ));
+  }
+
+  private getNormalizedBlock(blockX: number, blockZ: number): { x: number; z: number } {
     const gridMax = Math.max(this.config.gridSize - 1, 1);
-    const normalized = { x: blockX / gridMax, z: blockZ / gridMax };
-    return getBlueprintDistrictForNormalizedBlock(normalized);
+    return { x: blockX / gridMax, z: blockZ / gridMax };
   }
 
   private getLotCenter(
@@ -176,12 +185,17 @@ export class BuildingGenerator {
     };
   }
 
-  private getHeight(district: DistrictKind, heightBias: number): number {
+  private getHeight(
+    district: DistrictKind,
+    heightBias: number,
+    normalizedBlock: { readonly x: number; readonly z: number }
+  ): number {
     const { minHeight, maxHeight } = this.config.building;
     const [districtMinHeight, districtMaxHeight] = this.getDistrictHeightRange(district);
     const districtBoost = district === 'downtown' ? this.random.range(0.7, 1.2) : this.random.range(0.32, 0.95);
     const shapedRandom = Math.pow(this.random.next(), 1.65);
-    const rawHeight = minHeight + (maxHeight - minHeight) * shapedRandom * heightBias * districtBoost;
+    const gradientMultiplier = getBlueprintDistrictHeightMultiplier(district, normalizedBlock);
+    const rawHeight = minHeight + (maxHeight - minHeight) * shapedRandom * heightBias * districtBoost * gradientMultiplier;
 
     return Math.min(districtMaxHeight, Math.max(districtMinHeight, rawHeight));
   }
@@ -231,8 +245,18 @@ export class BuildingGenerator {
           boundary: rectanglePolygon(center, size),
           density: rule.densityBand,
           primaryUses: rule.primaryUses,
+          useMix: rule.useMix,
           heightRangeMeters: rule.heightRangeMeters,
-          allowedStreetProfiles: getAllowedStreetProfiles(rule.id),
+          densityGradient: rule.densityGradient,
+          allowedStreetProfiles: rule.allowedStreetProfiles,
+          landmarkTargets: rule.landmarkTargets,
+          transitionBuffers: rule.transitionBuffers,
+          styleHints: rule.styleHints,
+          tags: {
+            blueprintDistrictRuleId: rule.id,
+            materialPalette: rule.styleHints.materialPalette,
+            densityGradientCenterId: rule.densityGradient.centerId
+          },
           district: rule.id
         }
       ];
@@ -240,14 +264,14 @@ export class BuildingGenerator {
   }
 
   private getDistrictHeightRange(district: DistrictKind): readonly [number, number] {
-    return CITY_BLUEPRINT.districtRules.find((rule) => rule.id === district)?.heightRangeMeters ?? [
-      this.config.building.minHeight,
-      this.config.building.maxHeight
-    ];
+    return getBlueprintDistrictRule(district).heightRangeMeters;
   }
 
   private getAllowedUses(district: DistrictKind): readonly LandUse[] {
-    return CITY_BLUEPRINT.districtRules.find((rule) => rule.id === district)?.primaryUses ?? ['residential'];
+    return getBlueprintDistrictRule(district)
+      .useMix.filter((mix) => mix.share > 0)
+      .sort((left, right) => right.share - left.share)
+      .map((mix) => mix.use);
   }
 
   private getFrontageRoadIds(blockX: number, blockZ: number, lotX: number, lotZ: number, split: number): string[] {
@@ -310,20 +334,5 @@ export class BuildingGenerator {
     }
 
     return district === 'downtown' || district === 'waterfront' ? 'high' : 'medium';
-  }
-}
-
-function getAllowedStreetProfiles(district: DistrictKind): string[] {
-  switch (district) {
-    case 'downtown':
-      return ['grand-avenue', 'main-street'];
-    case 'waterfront':
-      return ['waterfront-promenade', 'main-street', 'grand-avenue'];
-    case 'industrial':
-      return ['service-alley', 'main-street', 'grand-avenue'];
-    case 'civic':
-      return ['main-street', 'grand-avenue', 'residential-street'];
-    case 'residential':
-      return ['residential-street', 'main-street'];
   }
 }

@@ -47,6 +47,7 @@ export interface CityDiagnostics {
   readonly schemaVersion: string;
   readonly config: ConfigDiagnostics;
   readonly masterPlan: MasterPlanDiagnostics;
+  readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly validation: GeneratedCity['validation'];
   readonly validationIssueFocus: {
     readonly issuesWithFocus: number;
@@ -85,6 +86,10 @@ export interface CityDiagnostics {
     readonly masterPlanCenters: number;
     readonly masterPlanProtectedOpenSpaces: number;
     readonly masterPlanGrowthBoundaries: number;
+    readonly districtUseMixRules: number;
+    readonly districtLandmarkTargets: number;
+    readonly districtTransitionBuffers: number;
+    readonly districtStylePalettes: number;
     readonly districts: number;
     readonly verticalSlices: number;
     readonly blocks: number;
@@ -121,6 +126,15 @@ export interface CityDiagnostics {
   };
 }
 
+export interface DistrictCharacterDiagnostics {
+  readonly districtRules: number;
+  readonly useMixRules: number;
+  readonly landmarkTargets: number;
+  readonly transitionBuffers: number;
+  readonly stylePalettes: readonly string[];
+  readonly allowedStreetProfiles: readonly string[];
+}
+
 export function createCityDiagnostics(
   city: GeneratedCity,
   traffic: TrafficPlan,
@@ -142,6 +156,7 @@ export function createCityDiagnostics(
   ]);
   const objectGroups = createCityObjectGroupDiagnostics(objectGroupIndex);
   const masterPlan = createMasterPlanDiagnostics(CITY_BLUEPRINT.masterPlan);
+  const districtCharacter = createDistrictCharacterDiagnostics();
   const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
   const overlays = createCityOverlayDatasets(city, objectIndex);
   const picking = createCityPickingMetadataCatalog(city, traffic, objectIndex);
@@ -160,6 +175,7 @@ export function createCityDiagnostics(
     schemaVersion: city.schemaVersion,
     config,
     masterPlan,
+    districtCharacter,
     validation: city.validation,
     validationIssueFocus: createValidationIssueFocusDiagnostics(city.validation.issues),
     trafficValidation,
@@ -189,6 +205,10 @@ export function createCityDiagnostics(
       masterPlanCenters: masterPlan.centers.total,
       masterPlanProtectedOpenSpaces: masterPlan.protectedOpenSpaces.total,
       masterPlanGrowthBoundaries: masterPlan.growthBoundaries.total,
+      districtUseMixRules: districtCharacter.useMixRules,
+      districtLandmarkTargets: districtCharacter.landmarkTargets,
+      districtTransitionBuffers: districtCharacter.transitionBuffers,
+      districtStylePalettes: districtCharacter.stylePalettes.length,
       districts: city.districts.length,
       verticalSlices: city.verticalSlices.length,
       blocks: city.blocks.length,
@@ -233,6 +253,34 @@ function createValidationIssueFocusDiagnostics(
     issuesWithFocus: issues.filter((issue) => issue.affectedPoint || issue.affectedBoundary).length,
     issuesWithAffectedBoundary: issues.filter((issue) => issue.affectedBoundary).length,
     issuesWithSuggestedFix: issues.filter((issue) => issue.suggestedFix).length
+  };
+}
+
+function createDistrictCharacterDiagnostics(): DistrictCharacterDiagnostics {
+  const stylePalettes = new Set<string>();
+  const allowedStreetProfiles = new Set<string>();
+  let useMixRules = 0;
+  let landmarkTargets = 0;
+  let transitionBuffers = 0;
+
+  for (const rule of CITY_BLUEPRINT.districtRules) {
+    useMixRules += rule.useMix.length;
+    landmarkTargets += rule.landmarkTargets.length;
+    transitionBuffers += rule.transitionBuffers.length;
+    stylePalettes.add(rule.styleHints.materialPalette);
+
+    for (const profileId of rule.allowedStreetProfiles) {
+      allowedStreetProfiles.add(profileId);
+    }
+  }
+
+  return {
+    districtRules: CITY_BLUEPRINT.districtRules.length,
+    useMixRules,
+    landmarkTargets,
+    transitionBuffers,
+    stylePalettes: [...stylePalettes].sort(),
+    allowedStreetProfiles: [...allowedStreetProfiles].sort()
   };
 }
 

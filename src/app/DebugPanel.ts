@@ -107,6 +107,10 @@ export class DebugPanel {
         'Master Plan',
         `${diagnostics.masterPlan.centers.total} centers, ${diagnostics.masterPlan.protectedOpenSpaces.total} open spaces, ${diagnostics.masterPlan.growthBoundaries.total} boundaries`
       ),
+      createMetric(
+        'Districts',
+        `${diagnostics.districtCharacter.districtRules} rules, ${diagnostics.districtCharacter.transitionBuffers} transitions`
+      ),
       createMetric('Validation', getStatusLabel(diagnostics.validation.passed, diagnostics.validation.issues.length)),
       createMetric('Geo', `${diagnostics.geospatial.coordinateSystem}, ${coordinatePrecision}m`),
       createMetric(

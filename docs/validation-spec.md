@@ -49,7 +49,8 @@ Validation is a first-class city system. It protects the project from procedural
 - Geospatial frame metadata, local x/z meter units, origin metadata, coordinate precision/tolerance fields, local coordinate bounds, height datum range, and future import projection metadata.
 - Coordinate-bearing generated objects use finite x/z meter values inside the local frame tolerance.
 - Point3D and height-bearing objects stay inside the configured local ground-plane height datum tolerance.
-- District boundaries, primary uses, and allowed street profiles.
+- District boundaries, primary uses, use mix totals, height ranges, density gradients, landmark targets, transition buffers, style hints, and allowed street profiles.
+- Adjacent block district transitions have reciprocal district transition buffer rules and validation focus data when they fail.
 - Block geometry and district parent relationships.
 - Positive road length, width, widthMeters, lane count, lane widths, sidewalk clear widths, and lane totals that fit road width.
 - Lane and sidewalk parent references back to their road segment.
