@@ -240,9 +240,18 @@ function getRouteNodesForRoad(
 
 function selectLane(road: RoadSegment, direction: 1 | -1, vehicleIndex: number): LaneContract {
   const targetDirection = direction === 1 ? 'forward' : 'backward';
-  const candidates = road.lanes.filter((lane) => lane.direction === targetDirection);
+  const candidates = road.lanes.filter(
+    (lane) =>
+      lane.direction === targetDirection &&
+      lane.allowedModes.includes('vehicle') &&
+      lane.turnMovements.includes('through')
+  );
 
-  return candidates[vehicleIndex % Math.max(1, candidates.length)] ?? road.lanes[vehicleIndex % road.lanes.length];
+  return (
+    candidates[vehicleIndex % Math.max(1, candidates.length)] ??
+    road.lanes.find((lane) => lane.allowedModes.includes('vehicle')) ??
+    road.lanes[vehicleIndex % road.lanes.length]
+  );
 }
 
 function getLaneCenterOffset(road: RoadSegment, selectedLane: LaneContract): number {

@@ -19,7 +19,7 @@ test('traffic vehicles reference lanes, route nodes, stop zones, and profile spe
   expect(firstVehicle).toMatchObject({
     id: 'traffic-vehicle-0',
     roadId: 'road-v-0',
-    laneId: 'road-v-0-lane-0',
+    laneId: 'road-v-0-lane-1',
     axis: 'z',
     direction: 1,
     speed: 6.89,
@@ -38,7 +38,7 @@ test('traffic vehicles reference lanes, route nodes, stop zones, and profile spe
   expect(firstVehicle.stopBehavior.stopZoneOffsetsMeters).toEqual([-220, -176, -132, -88, -44, 0, 44, 88, 132, 176, 220]);
   expect(detailedStreetVehicle).toMatchObject({
     roadId: 'road-v-6',
-    laneId: 'road-v-6-lane-3',
+    laneId: 'road-v-6-lane-2',
     route: {
       spawnNodeId: 'intersection-v6-h12',
       destinationNodeId: 'intersection-v6-h0'
@@ -162,7 +162,7 @@ test('browser traffic vehicles move along route offsets', async ({ page }) => {
   expect(sample).toMatchObject({
     vehicle: {
       roadId: 'road-v-6',
-      laneId: 'road-v-6-lane-3',
+      laneId: 'road-v-6-lane-2',
       route: {
         spawnNodeId: 'intersection-v6-h12',
         destinationNodeId: 'intersection-v6-h0'

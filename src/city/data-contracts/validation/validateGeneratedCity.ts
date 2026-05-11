@@ -7,11 +7,13 @@ import type {
   GeospatialFrame,
   HazardMitigationKind,
   IntersectionControlType,
+  LaneRole,
   Point2D,
   Point3D,
   Polygon2D,
   RenderBinding,
   StreetProfile,
+  TravelMode,
   ValidationIssue,
   ValidationResult
 } from '../cityContracts';
@@ -123,6 +125,8 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
 ] as const satisfies readonly CityObjectKind[];
 
 const ASSET_FORMATS = ['glb', 'gltf', 'png', 'jpg', 'webp', 'ktx2', 'hdr', 'exr', 'procedural'] as const satisfies readonly AssetFormat[];
+const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
+const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const ASSET_CATEGORIES = [
   'building',
   'effect',
@@ -298,6 +302,74 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
           message: 'Lane must reference its parent road and have a positive width.'
         });
       }
+
+      if (
+        lane.laneIndex < 0 ||
+        !LANE_ROLES.includes(lane.laneRole) ||
+        lane.allowedModes.length === 0 ||
+        lane.turnMovements.length === 0 ||
+        !lane.continuityGroupId
+      ) {
+        issues.push({
+          id: `invalid-lane-policy-${lane.id}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: lane.id,
+          ...createIssueFocus(road.center, 'Regenerate lane role, allowed modes, turn movements, and continuity metadata.'),
+          message: 'Lane must expose lane-level role, allowed modes, turn movements, and continuity metadata.'
+        });
+      }
+
+      const allowedModes = new Set(lane.allowedModes);
+      const restrictedModes = new Set(lane.restrictedModes);
+      if (
+        lane.allowedModes.some((mode) => !TRAVEL_MODES.includes(mode)) ||
+        lane.restrictedModes.some((mode) => !TRAVEL_MODES.includes(mode)) ||
+        lane.allowedModes.some((mode) => restrictedModes.has(mode)) ||
+        TRAVEL_MODES.some((mode) => !allowedModes.has(mode) && !restrictedModes.has(mode))
+      ) {
+        issues.push({
+          id: `invalid-lane-mode-policy-${lane.id}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: lane.id,
+          ...createIssueFocus(road.center, 'Declare every travel mode as either allowed or restricted, without overlap.'),
+          message: 'Lane allowed and restricted travel modes must be complete and non-overlapping.'
+        });
+      }
+
+      if (lane.laneRole === 'bus-only' && (lane.allowedModes.includes('vehicle') || !lane.allowedModes.includes('bus'))) {
+        issues.push({
+          id: `invalid-bus-lane-policy-${lane.id}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: lane.id,
+          ...createIssueFocus(road.center, 'Bus-only lanes must allow bus/emergency access and restrict regular vehicles.'),
+          message: 'Bus-only lane policy must restrict regular vehicles and allow bus access.'
+        });
+      }
+
+      if (lane.laneRole === 'reversible' && !lane.reversible) {
+        issues.push({
+          id: `invalid-reversible-lane-policy-${lane.id}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: lane.id,
+          ...createIssueFocus(road.center, 'Mark reversible lane roles with reversible=true.'),
+          message: 'Reversible lanes must set reversible=true.'
+        });
+      }
+    }
+
+    if (road.transitEligible && !road.lanes.some((lane) => lane.allowedModes.includes('bus'))) {
+      issues.push({
+        id: `missing-bus-eligible-lane-${road.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: road.id,
+        ...createIssueFocus(road.center, 'Transit-eligible roads must include at least one bus-capable lane.'),
+        message: `Transit-eligible road ${road.id} must include at least one bus-capable lane.`
+      });
     }
 
     for (const sidewalk of road.sidewalks) {

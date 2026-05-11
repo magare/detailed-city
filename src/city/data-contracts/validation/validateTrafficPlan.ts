@@ -178,6 +178,14 @@ export function validateTrafficPlan(source: TrafficPlanValidationSource): Valida
         objectId: vehicle.id,
         message: `Traffic vehicle ${vehicle.id} lane direction must match its route direction.`
       });
+    } else if (!lane.allowedModes.includes('vehicle') || !lane.turnMovements.includes('through')) {
+      issues.push({
+        id: `traffic-vehicle-lane-mode-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} must use a vehicle-through lane.`
+      });
     }
 
     if (road) {

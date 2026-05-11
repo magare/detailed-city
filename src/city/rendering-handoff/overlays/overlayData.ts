@@ -443,7 +443,11 @@ function createRoadFeatures(city: GeneratedCity): CityOverlayFeature[] {
       continuityGroupId: road.continuityGroupId,
       designSpeedKph: road.designSpeedKph,
       rightOfWayWidthMeters: road.rightOfWayWidthMeters,
-      transitEligible: road.transitEligible
+      transitEligible: road.transitEligible,
+      laneRoles: road.lanes.map((lane) => lane.laneRole).join(','),
+      busOnlyLanes: road.lanes.filter((lane) => lane.laneRole === 'bus-only').length,
+      reversibleLanes: road.lanes.filter((lane) => lane.reversible).length,
+      turnPocketLanes: road.lanes.filter((lane) => lane.laneRole === 'turn-pocket').length
     }
   }));
 }

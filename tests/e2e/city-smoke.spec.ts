@@ -312,7 +312,7 @@ test('renders a nonblank WebGL city scene', async ({ page }, testInfo) => {
       firstCrossingSidewalks: 'road-v-0-sidewalk-left,road-v-0-sidewalk-right',
       roadLaneParent: 'road-v-0',
       trafficVehicleKind: 'traffic-vehicle',
-      trafficVehicleLane: 'road-v-0-lane-0',
+      trafficVehicleLane: 'road-v-0-lane-1',
       trafficVehicleRouteNodes: 13,
       vehicleFallbackGeometry: 'vehicle-box',
       storefrontFallbackGeometry: 'storefront-window-box',

@@ -52,6 +52,7 @@ export interface CityDiagnostics {
   readonly parcelModel: ParcelModelDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
+  readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly waterfrontModel: WaterfrontModelDiagnostics;
@@ -114,6 +115,10 @@ export interface CityDiagnostics {
     readonly roadHierarchyKinds: number;
     readonly namedRoadCorridors: number;
     readonly transitEligibleRoads: number;
+    readonly busOnlyLanes: number;
+    readonly reversibleLanes: number;
+    readonly turnPocketLanes: number;
+    readonly laneContinuityGroups: number;
     readonly signalizedIntersections: number;
     readonly raisedJunctions: number;
     readonly intersectionConflictPoints: number;
@@ -236,6 +241,16 @@ export interface RoadNetworkDiagnostics {
   readonly totalRightOfWayMeters: number;
 }
 
+export interface LaneRestrictionDiagnostics {
+  readonly total: number;
+  readonly byRole: Readonly<Record<string, number>>;
+  readonly busOnlyLanes: number;
+  readonly reversibleLanes: number;
+  readonly turnPocketLanes: number;
+  readonly freightRestrictedLanes: number;
+  readonly continuityGroups: number;
+}
+
 export interface IntersectionBehaviorDiagnostics {
   readonly total: number;
   readonly byControlType: Readonly<Record<string, number>>;
@@ -338,6 +353,7 @@ export function createCityDiagnostics(
   const parcelModel = createParcelModelDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
+  const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
@@ -369,6 +385,7 @@ export function createCityDiagnostics(
     parcelModel,
     zoningModel,
     roadNetwork,
+    laneRestrictions,
     intersectionBehavior,
     waterwayNetwork,
     waterfrontModel,
@@ -422,6 +439,10 @@ export function createCityDiagnostics(
       roadHierarchyKinds: roadNetwork.hierarchyKinds,
       namedRoadCorridors: roadNetwork.namedCorridors.length,
       transitEligibleRoads: roadNetwork.transitEligibleRoads,
+      busOnlyLanes: laneRestrictions.busOnlyLanes,
+      reversibleLanes: laneRestrictions.reversibleLanes,
+      turnPocketLanes: laneRestrictions.turnPocketLanes,
+      laneContinuityGroups: laneRestrictions.continuityGroups,
       signalizedIntersections: intersectionBehavior.signalized,
       raisedJunctions: intersectionBehavior.raisedJunctions,
       intersectionConflictPoints: intersectionBehavior.conflictPoints,
@@ -634,6 +655,27 @@ function createRoadNetworkDiagnostics(city: GeneratedCity): RoadNetworkDiagnosti
     transitEligibleRoads: city.roads.filter((road) => road.transitEligible).length,
     averageDesignSpeedKph: Number((speedTotal / Math.max(1, city.roads.length)).toFixed(1)),
     totalRightOfWayMeters: Number(totalRightOfWayMeters.toFixed(1))
+  };
+}
+
+function createLaneRestrictionDiagnostics(city: GeneratedCity): LaneRestrictionDiagnostics {
+  const byRole: Record<string, number> = {};
+  const continuityGroups = new Set<string>();
+  const lanes = city.roads.flatMap((road) => road.lanes);
+
+  for (const lane of lanes) {
+    byRole[lane.laneRole] = (byRole[lane.laneRole] ?? 0) + 1;
+    continuityGroups.add(lane.continuityGroupId);
+  }
+
+  return {
+    total: lanes.length,
+    byRole,
+    busOnlyLanes: byRole['bus-only'] ?? 0,
+    reversibleLanes: byRole.reversible ?? 0,
+    turnPocketLanes: byRole['turn-pocket'] ?? 0,
+    freightRestrictedLanes: lanes.filter((lane) => lane.restrictedModes.includes('freight')).length,
+    continuityGroups: continuityGroups.size
   };
 }
 

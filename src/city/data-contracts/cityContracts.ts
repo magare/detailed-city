@@ -1136,10 +1136,19 @@ export interface ParcelContract extends CityObjectBase<'parcel'> {
 
 export interface LaneContract extends CityObjectBase<'lane'> {
   readonly roadSegmentId: CityId;
-  readonly allowedModes: readonly ('vehicle' | 'bus' | 'bike' | 'freight' | 'emergency')[];
+  readonly laneIndex: number;
+  readonly laneRole: LaneRole;
+  readonly allowedModes: readonly TravelMode[];
+  readonly restrictedModes: readonly TravelMode[];
   readonly widthMeters: number;
   readonly direction: 'forward' | 'backward';
+  readonly turnMovements: readonly TurnMovement[];
+  readonly reversible: boolean;
+  readonly continuityGroupId: CityId;
 }
+
+export type TravelMode = 'vehicle' | 'bus' | 'bike' | 'freight' | 'emergency';
+export type LaneRole = 'general' | 'bus-only' | 'turn-pocket' | 'reversible' | 'service';
 
 export type RoadMarkingOrientation = 'horizontal' | 'vertical';
 

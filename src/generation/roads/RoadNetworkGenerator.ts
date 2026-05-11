@@ -5,9 +5,11 @@ import {
   type IntersectionApproachPriority,
   type IntersectionControlType,
   type LaneContract,
+  type LaneRole,
   type SidewalkContract,
   type StreetHierarchy,
-  type StreetProfile
+  type StreetProfile,
+  type TravelMode
 } from '../../city/data-contracts/cityContracts';
 import type { CityBounds, CityConfig, IntersectionPlan, RoadSegment } from '../../types/city';
 import { axisAlignedCenterline } from '../../utils/geometry';
@@ -435,17 +437,83 @@ function getStreetProfile(streetProfileId: string): StreetProfile {
 }
 
 function createLanes(roadId: string, laneCount: number, profile: StreetProfile): LaneContract[] {
-  return Array.from({ length: laneCount }, (_, index) => ({
-    id: `${roadId}-lane-${index}`,
-    kind: 'lane',
-    ownerDomain: 'mobility',
-    parentId: roadId,
-    lod: 'lod2',
-    roadSegmentId: roadId,
-    allowedModes: profile.transitLane && index === 0 ? ['vehicle', 'bus', 'emergency'] : ['vehicle', 'freight', 'emergency'],
-    widthMeters: profile.laneWidthMeters || 3,
-    direction: index < Math.ceil(laneCount / 2) ? 'forward' : 'backward'
-  }));
+  return Array.from({ length: laneCount }, (_, index) => {
+    const direction = index < Math.ceil(laneCount / 2) ? 'forward' : 'backward';
+    const laneRole = getLaneRole(profile, index, laneCount);
+    const allowedModes = getAllowedModes(laneRole);
+
+    return {
+      id: `${roadId}-lane-${index}`,
+      kind: 'lane',
+      ownerDomain: 'mobility',
+      parentId: roadId,
+      lod: 'lod2',
+      roadSegmentId: roadId,
+      laneIndex: index,
+      laneRole,
+      allowedModes,
+      restrictedModes: getRestrictedModes(allowedModes),
+      widthMeters: profile.laneWidthMeters || 3,
+      direction,
+      turnMovements: getLaneTurnMovements(laneRole),
+      reversible: laneRole === 'reversible',
+      continuityGroupId: `${roadId}-${direction}-${laneRole}`
+    };
+  });
+}
+
+function getLaneRole(profile: StreetProfile, index: number, laneCount: number): LaneRole {
+  if (profile.transitLane && index === 0) {
+    return 'bus-only';
+  }
+
+  if (profile.hierarchy === 'transit-corridor' && index === 1) {
+    return 'reversible';
+  }
+
+  if (profile.hierarchy === 'arterial' && index === laneCount - 1) {
+    return 'turn-pocket';
+  }
+
+  if (profile.hierarchy === 'alley') {
+    return 'service';
+  }
+
+  return 'general';
+}
+
+function getAllowedModes(laneRole: LaneRole): readonly TravelMode[] {
+  switch (laneRole) {
+    case 'bus-only':
+      return ['bus', 'emergency'];
+    case 'reversible':
+      return ['vehicle', 'bus', 'emergency'];
+    case 'turn-pocket':
+      return ['vehicle', 'emergency'];
+    case 'service':
+      return ['vehicle', 'freight', 'emergency'];
+    case 'general':
+      return ['vehicle', 'freight', 'emergency'];
+  }
+}
+
+function getRestrictedModes(allowedModes: readonly TravelMode[]): readonly TravelMode[] {
+  const allowed = new Set(allowedModes);
+  return (['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const).filter((mode) => !allowed.has(mode));
+}
+
+function getLaneTurnMovements(laneRole: LaneRole): LaneContract['turnMovements'] {
+  switch (laneRole) {
+    case 'bus-only':
+      return ['through'];
+    case 'turn-pocket':
+      return ['left', 'right'];
+    case 'service':
+      return ['through', 'right'];
+    case 'reversible':
+    case 'general':
+      return ['left', 'through', 'right'];
+  }
 }
 
 function createSidewalks(roadId: string, profile: StreetProfile): SidewalkContract[] {
