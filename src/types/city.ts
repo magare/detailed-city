@@ -21,6 +21,7 @@ import type {
   Point2D,
   Polygon2D,
   RenderBinding,
+  ResilienceGoalContract,
   RoadSegmentContract,
   SidewalkGraphEdgeContract,
   SidewalkGraphNodeContract,
@@ -169,6 +170,8 @@ export interface DetailedStreetSlice extends DetailedStreetSliceContract {}
 
 export interface ConstraintPlan extends ConstraintContract {}
 
+export interface ResilienceGoalPlan extends ResilienceGoalContract {}
+
 export interface ParkPatch extends CityObjectBase<'park'> {
   center: Point2D;
   size: { x: number; z: number };
@@ -214,6 +217,7 @@ export type GeneratedCityObject =
   | AssetDefinition
   | DetailedStreetSlice
   | ConstraintPlan
+  | ResilienceGoalPlan
   | DistrictPlan
   | BlockPlan
   | RoadSegment
@@ -248,6 +252,7 @@ export interface GeneratedCity {
   bounds: CityBounds;
   districts: DistrictPlan[];
   constraints: ConstraintPlan[];
+  resilienceGoals: ResilienceGoalPlan[];
   blocks: BlockPlan[];
   verticalSlices: DetailedStreetSlice[];
   roads: RoadSegment[];

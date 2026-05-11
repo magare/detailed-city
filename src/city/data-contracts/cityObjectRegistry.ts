@@ -74,6 +74,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   ),
   entry('parcel', ['parcel-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(String.raw`parcel-\d+-\d+-\d+-\d+`)], required(['block'])),
   entry('park', ['<park-slug>'], [exact(NAMED_ID)], none()),
+  entry('resilience-goal', ['resilience-goal-<slug>'], [exact(String.raw`resilience-goal-${NAMED_ID}`)], none()),
   entry('road-segment', ['road-v-<index>', 'road-h-<index>'], [exact(ROAD_ID)], none()),
   entry('sensor', ['sensor-<slug>'], [exact(String.raw`sensor-${NAMED_ID}`)], optional(['building', 'road-segment', 'street-light', 'utility-node'])),
   entry('sidewalk', ['<road-id>-sidewalk-left', '<road-id>-sidewalk-right'], [exact(SIDEWALK_ID)], required(['road-segment'])),

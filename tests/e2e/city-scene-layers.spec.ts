@@ -33,6 +33,6 @@ test('scene layer diagnostics are deterministic and match current city data', ()
   );
   expect(layers.find((layer) => layer.id === 'agents')?.objectCount).toBe(traffic.vehicles.length);
   expect(layers.find((layer) => layer.id === 'overlays')?.objectCount).toBe(
-    city.verticalSlices.length + city.constraints.length
+    city.verticalSlices.length + city.constraints.length + city.resilienceGoals.length
   );
 });

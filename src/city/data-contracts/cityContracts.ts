@@ -20,6 +20,7 @@ export type CityObjectKind =
   | 'lane-marking'
   | 'parcel'
   | 'park'
+  | 'resilience-goal'
   | 'road-segment'
   | 'sensor'
   | 'sidewalk'
@@ -307,6 +308,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod0',
       allowedTiers: ['lod0'],
       description: 'Planning constraints are inspectable overlay contracts that gate land, road, and building validity.'
+    },
+    {
+      objectKind: 'resilience-goal',
+      scope: 'overlay',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'Resilience goals are blueprint overlay contracts for emergency, flood, continuity, and recovery targets.'
     },
     {
       objectKind: 'crossing',
@@ -638,6 +646,59 @@ export interface ConstraintContract extends CityObjectBase<'constraint'> {
   readonly minSetbackMeters?: number;
   readonly minClearanceMeters?: number;
   readonly maxHeightMeters?: number;
+}
+
+export const CITY_RESILIENCE_GOAL_KINDS = [
+  'redundancy',
+  'climate-adaptation',
+  'evacuation-route',
+  'emergency-access',
+  'continuity',
+  'shelter',
+  'recovery-priority'
+] as const;
+
+export type ResilienceGoalKind = (typeof CITY_RESILIENCE_GOAL_KINDS)[number];
+export type ResiliencePriority = ConstraintPriority;
+
+export type ResilienceContinuityTarget =
+  | 'emergency-response'
+  | 'mobility-network'
+  | 'public-shelter'
+  | 'stormwater-readiness'
+  | 'waterfront-access';
+
+export type ResilienceGoalMetric =
+  | 'adaptation-constraint-count'
+  | 'continuity-system-count'
+  | 'emergency-access-corridor-count'
+  | 'evacuation-route-count'
+  | 'recovery-anchor-count'
+  | 'redundant-corridor-count'
+  | 'shelter-candidate-count';
+
+export interface ResilienceGoalTarget {
+  readonly metric: ResilienceGoalMetric;
+  readonly minimumCount: number;
+  readonly unit: 'count';
+}
+
+export interface ResilienceGoalContract extends CityObjectBase<'resilience-goal'> {
+  readonly goalKind: ResilienceGoalKind;
+  readonly priority: ResiliencePriority;
+  readonly description: string;
+  readonly target: ResilienceGoalTarget;
+  readonly targetDistrictIds: readonly CityId[];
+  readonly requiredObjectIds: readonly CityId[];
+  readonly relatedObjectIds: readonly CityId[];
+  readonly routeRoadIds: readonly CityId[];
+  readonly shelterObjectIds: readonly CityId[];
+  readonly coveredConstraintIds: readonly CityId[];
+  readonly continuityTargets: readonly ResilienceContinuityTarget[];
+  readonly adaptationActions: readonly string[];
+  readonly recoveryPriority: number;
+  readonly focusPoint: Point2D;
+  readonly focusBoundary?: Polygon2D;
 }
 
 export interface BlockContract extends CityObjectBase<'block'> {
@@ -983,6 +1044,7 @@ export interface ValidationIssue {
     | 'lod'
     | 'metadata'
     | 'performance'
+    | 'resilience'
     | 'simulation'
     | 'utility-coverage'
     | 'zoning';

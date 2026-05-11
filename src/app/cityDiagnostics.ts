@@ -49,6 +49,7 @@ export interface CityDiagnostics {
   readonly masterPlan: MasterPlanDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
+  readonly resilienceGoals: ResilienceGoalDiagnostics;
   readonly validation: GeneratedCity['validation'];
   readonly validationIssueFocus: {
     readonly issuesWithFocus: number;
@@ -92,6 +93,7 @@ export interface CityDiagnostics {
     readonly districtTransitionBuffers: number;
     readonly districtStylePalettes: number;
     readonly constraints: number;
+    readonly resilienceGoals: number;
     readonly districts: number;
     readonly verticalSlices: number;
     readonly blocks: number;
@@ -145,6 +147,16 @@ export interface ConstraintLayerDiagnostics {
   readonly prohibitedObjectKinds: readonly string[];
 }
 
+export interface ResilienceGoalDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly criticalGoals: number;
+  readonly shelterCandidates: number;
+  readonly evacuationRouteRoads: readonly string[];
+  readonly continuityTargets: readonly string[];
+  readonly recoveryPriorities: readonly string[];
+}
+
 export function createCityDiagnostics(
   city: GeneratedCity,
   traffic: TrafficPlan,
@@ -168,6 +180,7 @@ export function createCityDiagnostics(
   const masterPlan = createMasterPlanDiagnostics(CITY_BLUEPRINT.masterPlan);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const constraintLayer = createConstraintLayerDiagnostics(city);
+  const resilienceGoals = createResilienceGoalDiagnostics(city);
   const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
   const overlays = createCityOverlayDatasets(city, objectIndex);
   const picking = createCityPickingMetadataCatalog(city, traffic, objectIndex);
@@ -188,6 +201,7 @@ export function createCityDiagnostics(
     masterPlan,
     districtCharacter,
     constraintLayer,
+    resilienceGoals,
     validation: city.validation,
     validationIssueFocus: createValidationIssueFocusDiagnostics(city.validation.issues),
     trafficValidation,
@@ -222,6 +236,7 @@ export function createCityDiagnostics(
       districtTransitionBuffers: districtCharacter.transitionBuffers,
       districtStylePalettes: districtCharacter.stylePalettes.length,
       constraints: city.constraints.length,
+      resilienceGoals: city.resilienceGoals.length,
       districts: city.districts.length,
       verticalSlices: city.verticalSlices.length,
       blocks: city.blocks.length,
@@ -318,6 +333,44 @@ function createConstraintLayerDiagnostics(city: GeneratedCity): ConstraintLayerD
         constraint.constraintKind === 'clearance' || constraint.constraintKind === 'emergency-access-corridor'
     ).length,
     prohibitedObjectKinds: [...prohibitedObjectKinds].sort()
+  };
+}
+
+function createResilienceGoalDiagnostics(city: GeneratedCity): ResilienceGoalDiagnostics {
+  const byKind: Record<string, number> = {};
+  const shelterCandidates = new Set<string>();
+  const evacuationRouteRoads = new Set<string>();
+  const continuityTargets = new Set<string>();
+
+  for (const goal of city.resilienceGoals) {
+    byKind[goal.goalKind] = (byKind[goal.goalKind] ?? 0) + 1;
+
+    for (const shelterId of goal.shelterObjectIds) {
+      shelterCandidates.add(shelterId);
+    }
+
+    if (goal.goalKind === 'evacuation-route' || goal.goalKind === 'emergency-access') {
+      for (const roadId of goal.routeRoadIds) {
+        evacuationRouteRoads.add(roadId);
+      }
+    }
+
+    for (const continuityTarget of goal.continuityTargets) {
+      continuityTargets.add(continuityTarget);
+    }
+  }
+
+  return {
+    total: city.resilienceGoals.length,
+    byKind,
+    criticalGoals: city.resilienceGoals.filter((goal) => goal.priority === 'critical').length,
+    shelterCandidates: shelterCandidates.size,
+    evacuationRouteRoads: [...evacuationRouteRoads].sort(),
+    continuityTargets: [...continuityTargets].sort(),
+    recoveryPriorities: city.resilienceGoals
+      .slice()
+      .sort((left, right) => left.recoveryPriority - right.recoveryPriority || left.id.localeCompare(right.id))
+      .map((goal) => goal.id)
   };
 }
 

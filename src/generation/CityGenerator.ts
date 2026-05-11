@@ -17,6 +17,7 @@ import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGe
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
 import { StreetTreeGenerator } from './public-realm/StreetTreeGenerator';
+import { ResilienceGoalGenerator } from './resilience/ResilienceGoalGenerator';
 import { PedestrianNetworkGenerator } from './roads/PedestrianNetworkGenerator';
 import { RoadNetworkGenerator } from './roads/RoadNetworkGenerator';
 import { applyDetailedStreetSliceTags, DetailedStreetSliceGenerator } from './slices/DetailedStreetSliceGenerator';
@@ -44,6 +45,12 @@ export class CityGenerator {
     const constraints = new ConstraintGenerator(this.config).create({ bounds, parks, waterways, roads });
     const excludedBlocks = terrainGenerator.getExcludedBlocks(bounds, constraints);
     const landAndBuildings = applyConstraintFilters(buildingGenerator.generate(bounds, excludedBlocks), constraints);
+    const resilienceGoals = new ResilienceGoalGenerator(this.config).create({
+      bounds,
+      parks,
+      roads,
+      waterways
+    });
     const parkTrees = terrainGenerator.generateTreePlantings(parks);
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
       roads,
@@ -101,6 +108,7 @@ export class CityGenerator {
       bounds,
       districts: landAndBuildings.districts,
       constraints,
+      resilienceGoals,
       blocks: landAndBuildings.blocks,
       verticalSlices: verticalSlicesWithCurbs,
       roads: sliceTagged.roads,

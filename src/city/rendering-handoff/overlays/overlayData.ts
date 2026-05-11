@@ -12,7 +12,14 @@ import type {
 import type { CityPlanningLayer } from '../../cityPlan';
 import type { GeneratedCity, GeneratedRuntimeCityObject } from '../../../types/city';
 
-export type CityOverlayId = 'districts' | 'constraints' | 'parcels' | 'roads' | 'validation-issues' | 'owner-domains';
+export type CityOverlayId =
+  | 'districts'
+  | 'constraints'
+  | 'resilience-goals'
+  | 'parcels'
+  | 'roads'
+  | 'validation-issues'
+  | 'owner-domains';
 
 export type CityOverlayGeometry =
   | { readonly type: 'none' }
@@ -55,6 +62,7 @@ export function createCityOverlayDatasets(
   return [
     createDataset('districts', 'Districts', 'domain-data', createDistrictFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
+    createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('parcels', 'Parcels', 'domain-data', createParcelFeatures(city)),
     createDataset('roads', 'Roads', 'domain-data', createRoadFeatures(city)),
     createDataset('validation-issues', 'Validation Issues', 'validation', createValidationIssueFeatures(city, runtimeObjectIndex)),
@@ -113,6 +121,31 @@ function createConstraintFeatures(city: GeneratedCity): CityOverlayFeature[] {
       ...(constraint.minSetbackMeters !== undefined ? { minSetbackMeters: constraint.minSetbackMeters } : {}),
       ...(constraint.minClearanceMeters !== undefined ? { minClearanceMeters: constraint.minClearanceMeters } : {}),
       ...(constraint.maxHeightMeters !== undefined ? { maxHeightMeters: constraint.maxHeightMeters } : {})
+    }
+  }));
+}
+
+function createResilienceGoalFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.resilienceGoals.map((goal) => ({
+    id: `overlay:resilience-goals:${goal.id}`,
+    overlayId: 'resilience-goals',
+    objectId: goal.id,
+    objectKind: goal.kind,
+    ownerDomain: goal.ownerDomain,
+    label: goal.name ?? goal.id,
+    geometry: goal.focusBoundary
+      ? { type: 'polygon', points: goal.focusBoundary }
+      : { type: 'point', point: goal.focusPoint },
+    metadata: {
+      goalKind: goal.goalKind,
+      priority: goal.priority,
+      targetMetric: goal.target.metric,
+      targetMinimumCount: goal.target.minimumCount,
+      targetDistricts: goal.targetDistrictIds.length,
+      routeRoads: goal.routeRoadIds.length,
+      shelterCandidates: goal.shelterObjectIds.length,
+      continuityTargets: goal.continuityTargets.length,
+      recoveryPriority: goal.recoveryPriority
     }
   }));
 }
@@ -226,6 +259,14 @@ function createOwnerDomainFeatures(
 }
 
 function getObjectGeometry(object: CityObjectBase): CityOverlayGeometry {
+  if ('focusBoundary' in object && isPointArray(object.focusBoundary)) {
+    return { type: 'polygon', points: object.focusBoundary };
+  }
+
+  if ('focusPoint' in object && isPoint(object.focusPoint)) {
+    return { type: 'point', point: object.focusPoint };
+  }
+
   if ('boundary' in object && isPointArray(object.boundary)) {
     return { type: 'polygon', points: object.boundary };
   }

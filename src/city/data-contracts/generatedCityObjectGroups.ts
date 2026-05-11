@@ -46,7 +46,7 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'overlays',
     name: 'Overlays Render Layer',
-    objectKinds: ['constraint', 'vertical-slice'] as const
+    objectKinds: ['constraint', 'resilience-goal', 'vertical-slice'] as const
   }
 ] as const;
 

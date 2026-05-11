@@ -115,6 +115,10 @@ export class DebugPanel {
         'Constraints',
         `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
       ),
+      createMetric(
+        'Resilience',
+        `${diagnostics.resilienceGoals.total} goals, ${diagnostics.resilienceGoals.shelterCandidates} shelters`
+      ),
       createMetric('Validation', getStatusLabel(diagnostics.validation.passed, diagnostics.validation.issues.length)),
       createMetric('Geo', `${diagnostics.geospatial.coordinateSystem}, ${coordinatePrecision}m`),
       createMetric(

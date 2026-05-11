@@ -13,6 +13,7 @@ import {
   type CityMasterPlan
 } from './master-plan/masterPlan';
 import { CITY_CONSTRAINT_RULES, type ConstraintRule } from './constraints/constraintLayer';
+import { CITY_RESILIENCE_GOAL_RULES, type ResilienceGoalRule } from './resilience/resilienceGoals';
 
 export interface DistrictRule {
   readonly id: DistrictKind;
@@ -48,6 +49,7 @@ export interface CityBlueprint {
   readonly masterPlan: CityMasterPlan;
   readonly districtRules: readonly DistrictRule[];
   readonly constraintRules: readonly ConstraintRule[];
+  readonly resilienceGoalRules: readonly ResilienceGoalRule[];
   readonly publicSpaces: readonly PlannedPublicSpace[];
   readonly waterways: readonly PlannedWaterway[];
   readonly treeSpeciesCycle: readonly ('plane' | 'rain-tree' | 'palm' | 'jacaranda')[];
@@ -57,6 +59,7 @@ export const CITY_BLUEPRINT: CityBlueprint = {
   id: 'detailed-city-v1',
   masterPlan: CITY_MASTER_PLAN,
   constraintRules: CITY_CONSTRAINT_RULES,
+  resilienceGoalRules: CITY_RESILIENCE_GOAL_RULES,
   districtRules: [
     {
       id: 'downtown',

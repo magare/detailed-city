@@ -9,6 +9,7 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     ...city,
     districts: city.districts.map((district) => withProceduralMetadata(district, 'terrain-districts')),
     constraints: city.constraints.map((constraint) => withProceduralMetadata(constraint, 'blueprint-constraints')),
+    resilienceGoals: city.resilienceGoals.map((goal) => withProceduralMetadata(goal, 'blueprint-resilience-goals')),
     blocks: city.blocks.map((block) => withProceduralMetadata(block, 'building-blocks')),
     verticalSlices: city.verticalSlices.map((slice) => withProceduralMetadata(slice, 'detailed-street-slices')),
     roads: city.roads.map(withRoadMetadata),

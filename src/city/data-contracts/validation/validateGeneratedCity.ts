@@ -11,7 +11,7 @@ import type {
   ValidationIssue,
   ValidationResult
 } from '../cityContracts';
-import { CITY_CONSTRAINT_KINDS, CITY_LOD_TIERS, DEFAULT_STREET_PROFILES } from '../cityContracts';
+import { CITY_CONSTRAINT_KINDS, CITY_LOD_TIERS, CITY_RESILIENCE_GOAL_KINDS, DEFAULT_STREET_PROFILES } from '../cityContracts';
 import { hasCityObject } from '../cityObjectIndex';
 import { CITY_OBJECT_KIND_REGISTRY_ENTRIES, validateCityObjectRegistryIdentity } from '../cityObjectRegistry';
 import { validateCityLodPolicy } from '../lodPolicy';
@@ -36,6 +36,7 @@ type GeneratedCityForValidation = Pick<
   | 'objectIndex'
   | 'parcels'
   | 'parks'
+  | 'resilienceGoals'
   | 'roads'
   | 'sidewalkGraph'
   | 'streetFurniture'
@@ -48,6 +49,7 @@ type GeneratedCityForValidation = Pick<
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
+type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][number];
 
 const REQUIRED_RENDER_BINDING_IDS = [
   'binding:terrain:ground',
@@ -1155,6 +1157,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   validateConstraints(city, issues, { parcelsById, roadsById });
+  validateResilienceGoals(city, issues, { roadsById });
 
   const activeFrontageBuildingIds = new Set(city.activeFrontages.map((frontage) => frontage.buildingId));
 
@@ -1403,6 +1406,14 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
 
   for (const constraint of city.constraints) {
     validatePolygon2D(city.geospatial, constraint.id, 'boundary', constraint.boundary, issues);
+  }
+
+  for (const goal of city.resilienceGoals) {
+    validatePoint2D(city.geospatial, goal.id, 'focusPoint', goal.focusPoint, issues);
+
+    if (goal.focusBoundary) {
+      validatePolygon2D(city.geospatial, goal.id, 'focusBoundary', goal.focusBoundary, issues);
+    }
   }
 
   for (const block of city.blocks) {
@@ -1709,6 +1720,344 @@ function validateConstraints(
     validateConstraintRoadClearances(constraint, issues, context);
     validateConstraintHeightLimit(city, constraint, issues);
   }
+}
+
+interface ResilienceGoalValidationContext {
+  readonly roadsById: ReadonlyMap<string, GeneratedCityForValidation['roads'][number]>;
+}
+
+function validateResilienceGoals(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  context: ResilienceGoalValidationContext
+): void {
+  for (const goal of city.resilienceGoals) {
+    validateResilienceGoalShape(goal, issues);
+    validateResilienceGoalReferences(city, goal, issues);
+    validateResilienceGoalCoverage(goal, issues);
+    validateResilienceRouteReadiness(goal, issues, context);
+  }
+}
+
+function validateResilienceGoalShape(goal: ValidationResilienceGoal, issues: ValidationIssue[]): void {
+  if (!(CITY_RESILIENCE_GOAL_KINDS as readonly string[]).includes(goal.goalKind)) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        `invalid-goal-kind-${toIssueIdToken(goal.goalKind)}`,
+        `Resilience goal ${goal.id} uses unknown kind ${goal.goalKind}.`,
+        'Use one of the registered resilience goal kinds before generating the city.'
+      )
+    );
+  }
+
+  if (goal.target.minimumCount <= 0 || !Number.isInteger(goal.target.minimumCount)) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'invalid-target-minimum',
+        `Resilience goal ${goal.id} must use a positive integer target minimum.`,
+        'Regenerate the goal target with a positive minimumCount value.'
+      )
+    );
+  }
+
+  const expectedMetric = getExpectedResilienceMetric(goal.goalKind);
+  if (goal.target.metric !== expectedMetric) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'metric-kind-mismatch',
+        `Resilience goal ${goal.id} uses metric ${goal.target.metric} for ${goal.goalKind}.`,
+        `Use ${expectedMetric} for ${goal.goalKind} goals.`
+      )
+    );
+  }
+
+  if (goal.target.unit !== 'count') {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'invalid-target-unit',
+        `Resilience goal ${goal.id} uses unsupported target unit ${goal.target.unit}.`,
+        'Use count-based targets until the metric model card adds richer units.'
+      )
+    );
+  }
+
+  if (goal.targetDistrictIds.length === 0) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'missing-target-districts',
+        `Resilience goal ${goal.id} must target at least one district.`,
+        'Attach the goal to the district IDs that later emergency or flood cards should evaluate.'
+      )
+    );
+  }
+
+  if (!isFiniteNumber(goal.focusPoint.x) || !isFiniteNumber(goal.focusPoint.z)) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'invalid-focus-point',
+        `Resilience goal ${goal.id} must expose a finite focus point.`,
+        'Regenerate the goal focus from a known road, open space, waterway, or normalized zone.'
+      )
+    );
+  }
+
+  if (!goal.focusBoundary || goal.focusBoundary.length < 4) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'invalid-focus-boundary',
+        `Resilience goal ${goal.id} must expose a focus boundary with at least four points.`,
+        'Regenerate the resilience focus boundary from deterministic blueprint geometry.'
+      )
+    );
+  }
+
+  if (!Number.isInteger(goal.recoveryPriority) || goal.recoveryPriority <= 0) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'invalid-recovery-priority',
+        `Resilience goal ${goal.id} must use a positive integer recovery priority.`,
+        'Assign a stable positive recoveryPriority for recovery ordering.'
+      )
+    );
+  }
+
+  if (goal.goalKind === 'climate-adaptation' && goal.adaptationActions.length === 0) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'missing-adaptation-actions',
+        `Climate adaptation goal ${goal.id} must list adaptation actions.`,
+        'Add explicit adaptation actions so future climate intervention cards can compare baseline and adapted scenarios.'
+      )
+    );
+  }
+
+  if (goal.goalKind === 'continuity' && goal.continuityTargets.length === 0) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'missing-continuity-targets',
+        `Continuity goal ${goal.id} must list continuity targets.`,
+        'Add continuityTargets so operations and utility cards can evaluate service continuity.'
+      )
+    );
+  }
+}
+
+function validateResilienceGoalReferences(
+  city: GeneratedCityForValidation,
+  goal: ValidationResilienceGoal,
+  issues: ValidationIssue[]
+): void {
+  for (const targetDistrictId of goal.targetDistrictIds) {
+    validateResilienceObjectReference(city, goal, targetDistrictId, 'district', 'target-district', issues);
+  }
+
+  for (const requiredObjectId of goal.requiredObjectIds) {
+    validateResilienceObjectReference(city, goal, requiredObjectId, undefined, 'required-reference', issues);
+  }
+
+  for (const relatedObjectId of goal.relatedObjectIds) {
+    validateResilienceObjectReference(city, goal, relatedObjectId, undefined, 'related-reference', issues);
+  }
+
+  for (const routeRoadId of goal.routeRoadIds) {
+    validateResilienceObjectReference(city, goal, routeRoadId, 'road-segment', 'route-road', issues);
+  }
+
+  for (const shelterObjectId of goal.shelterObjectIds) {
+    const object = city.objectIndex.objectsById[shelterObjectId];
+
+    if (!object) {
+      issues.push(
+        createResilienceGoalIssue(
+          goal,
+          `missing-shelter-object-${toIssueIdToken(shelterObjectId)}`,
+          `Resilience goal ${goal.id} references missing shelter candidate ${shelterObjectId}.`,
+          `Create shelter candidate ${shelterObjectId}, or remove it from ${goal.id}.shelterObjectIds.`
+        )
+      );
+    } else {
+      const shelterKind = object.kind as CityObjectKind;
+
+      if (shelterKind === 'park' || shelterKind === 'building' || shelterKind === 'civic-anchor') {
+        continue;
+      }
+
+      issues.push(
+        createResilienceGoalIssue(
+          goal,
+          `invalid-shelter-kind-${toIssueIdToken(shelterObjectId)}`,
+          `Resilience goal ${goal.id} shelter candidate ${shelterObjectId} is ${object.kind}.`,
+          'Shelter candidates must currently be parks, buildings, or future civic anchors.'
+        )
+      );
+    }
+  }
+
+  for (const constraintId of goal.coveredConstraintIds) {
+    validateResilienceObjectReference(city, goal, constraintId, 'constraint', 'covered-constraint', issues);
+  }
+}
+
+function validateResilienceObjectReference(
+  city: GeneratedCityForValidation,
+  goal: ValidationResilienceGoal,
+  objectId: string,
+  expectedKind: CityObjectKind | undefined,
+  referenceKind: string,
+  issues: ValidationIssue[]
+): void {
+  const object = city.objectIndex.objectsById[objectId];
+
+  if (!object) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        `missing-${referenceKind}-${toIssueIdToken(objectId)}`,
+        `Resilience goal ${goal.id} references missing ${referenceKind} ${objectId}.`,
+        `Create ${objectId} before generating ${goal.id}, or remove the stale ${referenceKind}.`
+      )
+    );
+    return;
+  }
+
+  if (expectedKind && object.kind !== expectedKind) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        `invalid-${referenceKind}-kind-${toIssueIdToken(objectId)}`,
+        `Resilience goal ${goal.id} expected ${objectId} to be ${expectedKind}, found ${object.kind}.`,
+        `Update ${goal.id}.${referenceKind} references so they point to ${expectedKind} objects.`
+      )
+    );
+  }
+}
+
+function validateResilienceGoalCoverage(goal: ValidationResilienceGoal, issues: ValidationIssue[]): void {
+  const coverageCount = getResilienceCoverageCount(goal);
+
+  if (coverageCount < goal.target.minimumCount) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'coverage-gap',
+        `Resilience goal ${goal.id} has coverage ${coverageCount}, below target ${goal.target.minimumCount}.`,
+        `Add ${goal.target.metric} references or lower the explicit target for ${goal.id}.`
+      )
+    );
+  }
+}
+
+function validateResilienceRouteReadiness(
+  goal: ValidationResilienceGoal,
+  issues: ValidationIssue[],
+  context: ResilienceGoalValidationContext
+): void {
+  if (
+    goal.goalKind !== 'redundancy' &&
+    goal.goalKind !== 'evacuation-route' &&
+    goal.goalKind !== 'emergency-access'
+  ) {
+    return;
+  }
+
+  if (goal.routeRoadIds.length === 0) {
+    issues.push(
+      createResilienceGoalIssue(
+        goal,
+        'missing-route-roads',
+        `Resilience goal ${goal.id} must identify route roads.`,
+        'Add routeRoadIds so later routing and emergency cards can consume this goal.'
+      )
+    );
+    return;
+  }
+
+  for (const roadId of goal.routeRoadIds) {
+    const road = context.roadsById.get(roadId);
+
+    if (!road) {
+      continue;
+    }
+
+    if (!road.lanes.some((lane) => lane.allowedModes.includes('emergency'))) {
+      issues.push(
+        createResilienceGoalIssue(
+          goal,
+          `route-road-without-emergency-mode-${toIssueIdToken(road.id)}`,
+          `Resilience route road ${road.id} has no emergency-capable lane.`,
+          `Add emergency mode to at least one lane on ${road.id}.`
+        )
+      );
+    }
+  }
+}
+
+function getExpectedResilienceMetric(goalKind: ValidationResilienceGoal['goalKind']): ValidationResilienceGoal['target']['metric'] {
+  switch (goalKind) {
+    case 'redundancy':
+      return 'redundant-corridor-count';
+    case 'climate-adaptation':
+      return 'adaptation-constraint-count';
+    case 'evacuation-route':
+      return 'evacuation-route-count';
+    case 'emergency-access':
+      return 'emergency-access-corridor-count';
+    case 'continuity':
+      return 'continuity-system-count';
+    case 'shelter':
+      return 'shelter-candidate-count';
+    case 'recovery-priority':
+      return 'recovery-anchor-count';
+    default:
+      return 'recovery-anchor-count';
+  }
+}
+
+function getResilienceCoverageCount(goal: ValidationResilienceGoal): number {
+  switch (goal.target.metric) {
+    case 'adaptation-constraint-count':
+      return goal.coveredConstraintIds.length;
+    case 'continuity-system-count':
+      return goal.continuityTargets.length;
+    case 'emergency-access-corridor-count':
+    case 'evacuation-route-count':
+    case 'redundant-corridor-count':
+      return goal.routeRoadIds.length;
+    case 'recovery-anchor-count':
+      return new Set([...goal.relatedObjectIds, ...goal.shelterObjectIds]).size;
+    case 'shelter-candidate-count':
+      return goal.shelterObjectIds.length;
+    default:
+      return 0;
+  }
+}
+
+function createResilienceGoalIssue(
+  goal: ValidationResilienceGoal,
+  issueIdSuffix: string,
+  message: string,
+  suggestedFix: string
+): ValidationIssue {
+  return {
+    id: `resilience-${issueIdSuffix}-${toIssueIdToken(goal.id)}`,
+    severity: 'error',
+    category: 'resilience',
+    objectId: goal.id,
+    affectedPoint: goal.focusPoint,
+    affectedBoundary: goal.focusBoundary,
+    suggestedFix,
+    message
+  };
 }
 
 function validateConstraintShapeAndKinds(
@@ -2465,8 +2814,10 @@ function getObjectAffectedPoint(object: unknown): Point2D | undefined {
   return (
     getFinitePoint(object.center) ??
     getFinitePoint(object.position) ??
+    getFinitePoint(object.focusPoint) ??
     getFirstFinitePoint(object.centerline) ??
     getFirstFinitePoint(object.boundary) ??
+    getFirstFinitePoint(object.focusBoundary) ??
     getFirstFinitePoint(object.footprint)
   );
 }

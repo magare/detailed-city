@@ -21,6 +21,7 @@ type GeneratedCityObjectSource = Pick<
   | 'intersections'
   | 'parcels'
   | 'parks'
+  | 'resilienceGoals'
   | 'roads'
   | 'sidewalkGraph'
   | 'streetFurniture'
@@ -34,6 +35,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
   return [
     ...city.districts,
     ...city.constraints,
+    ...city.resilienceGoals,
     ...city.verticalSlices,
     ...city.blocks,
     ...city.roads,
