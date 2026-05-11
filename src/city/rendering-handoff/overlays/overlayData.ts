@@ -14,6 +14,7 @@ import type { GeneratedCity, GeneratedRuntimeCityObject } from '../../../types/c
 
 export type CityOverlayId =
   | 'districts'
+  | 'city-metrics'
   | 'constraints'
   | 'resilience-goals'
   | 'parcels'
@@ -61,6 +62,7 @@ export function createCityOverlayDatasets(
 ): readonly CityOverlayDataset[] {
   return [
     createDataset('districts', 'Districts', 'domain-data', createDistrictFeatures(city)),
+    createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('parcels', 'Parcels', 'domain-data', createParcelFeatures(city)),
@@ -98,6 +100,25 @@ function createDistrictFeatures(city: GeneratedCity): CityOverlayFeature[] {
     metadata: {
       density: district.density,
       primaryUses: district.primaryUses.join(',')
+    }
+  }));
+}
+
+function createCityMetricFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.cityMetrics.map((metric) => ({
+    id: `overlay:city-metrics:${metric.id}`,
+    overlayId: 'city-metrics',
+    objectId: metric.id,
+    objectKind: metric.kind,
+    ownerDomain: metric.ownerDomain,
+    label: metric.name ?? metric.id,
+    geometry: { type: 'point', point: metric.focusPoint },
+    metadata: {
+      metricKind: metric.metricKind,
+      value: metric.value,
+      unit: metric.unit,
+      status: metric.status,
+      inputs: metric.computedFromObjectIds.length
     }
   }));
 }

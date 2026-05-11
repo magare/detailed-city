@@ -48,6 +48,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('asset', ['asset:<category>:<semantic-name>:primitive'], [exact(String.raw`asset:${NAMED_ID}(?::${NAMED_ID})+:primitive`)], none()),
   entry('block', ['block-<grid-x>-<grid-z>'], [exact(String.raw`block-\d+-\d+`)], required(['district'])),
   entry('building', ['building-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(BUILDING_ID)], required(['parcel'])),
+  entry('city-metric', ['city-metric-<metric-kind>'], [exact(String.raw`city-metric-${NAMED_ID}`)], none()),
   entry('civic-anchor', ['civic-anchor-<slug>'], [exact(String.raw`civic-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
   entry('constraint', ['constraint-<slug>'], [exact(String.raw`constraint-${NAMED_ID}`)], none()),
   entry('crossing', ['crossing-<intersection-id>-<road-id>'], [exact(CROSSING_ID)], required(['intersection'])),

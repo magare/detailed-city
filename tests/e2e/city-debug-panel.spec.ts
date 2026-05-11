@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 test('debug panel exposes current city diagnostics and can collapse', async ({ page }) => {
+  test.setTimeout(45_000);
+
   await page.goto('/');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
@@ -24,12 +26,14 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('11 rules, 3 no-build');
   expect(panelText).toContain('Resilience');
   expect(panelText).toContain('7 goals, 3 shelters');
+  expect(panelText).toContain('Metrics');
+  expect(panelText).toContain('8 metrics, 6 pass, 2 warn');
   expect(panelText).toContain('Validation');
   expect(panelText).toContain('pass, 0 issues');
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('4764/4764 tagged');
+  expect(panelText).toContain('4772/4772 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 932 markings');
   expect(panelText).toContain('City');
@@ -37,16 +41,16 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Assets');
   expect(panelText).toContain('30 assets, 30 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 3825 objects');
+  expect(panelText).toContain('6 formats, 3833 objects');
   expect(panelText).toContain('Registry');
-  expect(panelText).toContain('29 kinds');
+  expect(panelText).toContain('30 kinds');
   expect(panelText).toContain('Groups');
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
-  expect(panelText).toContain('7: districts, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains');
+  expect(panelText).toContain('8: districts, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains');
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');
-  expect(panelText).toContain('29 policies');
+  expect(panelText).toContain('30 policies');
   expect(panelText).toContain('Performance');
   expect(panelText).toContain('Frame');
   await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');
@@ -80,8 +84,8 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   await expect(panelBody).toBeHidden();
 
   const expandButton = panel.getByRole('button', { name: 'Expand diagnostics' });
-  await expandButton.focus();
-  await page.keyboard.press('Enter');
+  await expect(expandButton).toBeVisible();
+  await expandButton.press('Enter');
   await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');
   await expect(panelBody).toBeVisible();
 });

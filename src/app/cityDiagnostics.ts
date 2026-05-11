@@ -48,6 +48,7 @@ export interface CityDiagnostics {
   readonly config: ConfigDiagnostics;
   readonly masterPlan: MasterPlanDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
+  readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
   readonly resilienceGoals: ResilienceGoalDiagnostics;
   readonly validation: GeneratedCity['validation'];
@@ -92,6 +93,7 @@ export interface CityDiagnostics {
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
     readonly districtStylePalettes: number;
+    readonly cityMetrics: number;
     readonly constraints: number;
     readonly resilienceGoals: number;
     readonly districts: number;
@@ -147,6 +149,16 @@ export interface ConstraintLayerDiagnostics {
   readonly prohibitedObjectKinds: readonly string[];
 }
 
+export interface CityMetricDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly passing: number;
+  readonly warnings: number;
+  readonly failing: number;
+  readonly scoreAverage: number;
+  readonly valuesByKind: Readonly<Record<string, number>>;
+}
+
 export interface ResilienceGoalDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -179,6 +191,7 @@ export function createCityDiagnostics(
   const objectGroups = createCityObjectGroupDiagnostics(objectGroupIndex);
   const masterPlan = createMasterPlanDiagnostics(CITY_BLUEPRINT.masterPlan);
   const districtCharacter = createDistrictCharacterDiagnostics();
+  const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
   const resilienceGoals = createResilienceGoalDiagnostics(city);
   const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
@@ -200,6 +213,7 @@ export function createCityDiagnostics(
     config,
     masterPlan,
     districtCharacter,
+    cityMetrics,
     constraintLayer,
     resilienceGoals,
     validation: city.validation,
@@ -235,6 +249,7 @@ export function createCityDiagnostics(
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
       districtStylePalettes: districtCharacter.stylePalettes.length,
+      cityMetrics: city.cityMetrics.length,
       constraints: city.constraints.length,
       resilienceGoals: city.resilienceGoals.length,
       districts: city.districts.length,
@@ -333,6 +348,30 @@ function createConstraintLayerDiagnostics(city: GeneratedCity): ConstraintLayerD
         constraint.constraintKind === 'clearance' || constraint.constraintKind === 'emergency-access-corridor'
     ).length,
     prohibitedObjectKinds: [...prohibitedObjectKinds].sort()
+  };
+}
+
+function createCityMetricDiagnostics(city: GeneratedCity): CityMetricDiagnostics {
+  const byKind: Record<string, number> = {};
+  const valuesByKind: Record<string, number> = {};
+  const scoreMetrics = city.cityMetrics.filter((metric) => metric.unit === 'score');
+
+  for (const metric of city.cityMetrics) {
+    byKind[metric.metricKind] = (byKind[metric.metricKind] ?? 0) + 1;
+    valuesByKind[metric.metricKind] = metric.value;
+  }
+
+  return {
+    total: city.cityMetrics.length,
+    byKind,
+    passing: city.cityMetrics.filter((metric) => metric.status === 'pass').length,
+    warnings: city.cityMetrics.filter((metric) => metric.status === 'warn').length,
+    failing: city.cityMetrics.filter((metric) => metric.status === 'fail').length,
+    scoreAverage:
+      Math.round(
+        (scoreMetrics.reduce((sum, metric) => sum + metric.value, 0) / Math.max(1, scoreMetrics.length)) * 100
+      ) / 100,
+    valuesByKind
   };
 }
 

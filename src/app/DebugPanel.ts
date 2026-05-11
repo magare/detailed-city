@@ -119,6 +119,10 @@ export class DebugPanel {
         'Resilience',
         `${diagnostics.resilienceGoals.total} goals, ${diagnostics.resilienceGoals.shelterCandidates} shelters`
       ),
+      createMetric(
+        'Metrics',
+        `${diagnostics.cityMetrics.total} metrics, ${diagnostics.cityMetrics.passing} pass, ${diagnostics.cityMetrics.warnings} warn`
+      ),
       createMetric('Validation', getStatusLabel(diagnostics.validation.passed, diagnostics.validation.issues.length)),
       createMetric('Geo', `${diagnostics.geospatial.coordinateSystem}, ${coordinatePrecision}m`),
       createMetric(

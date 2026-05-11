@@ -14,6 +14,7 @@ type GeneratedCityObjectSource = Pick<
   | 'activeFrontages'
   | 'blocks'
   | 'buildings'
+  | 'cityMetrics'
   | 'constraints'
   | 'crossings'
   | 'curbZones'
@@ -34,6 +35,7 @@ type GeneratedCityObjectSource = Pick<
 export function listGeneratedCityObjects(city: GeneratedCityObjectSource): GeneratedCityObject[] {
   return [
     ...city.districts,
+    ...city.cityMetrics,
     ...city.constraints,
     ...city.resilienceGoals,
     ...city.verticalSlices,

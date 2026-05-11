@@ -11,7 +11,13 @@ import type {
   ValidationIssue,
   ValidationResult
 } from '../cityContracts';
-import { CITY_CONSTRAINT_KINDS, CITY_LOD_TIERS, CITY_RESILIENCE_GOAL_KINDS, DEFAULT_STREET_PROFILES } from '../cityContracts';
+import {
+  CITY_CONSTRAINT_KINDS,
+  CITY_LOD_TIERS,
+  CITY_METRIC_KINDS,
+  CITY_RESILIENCE_GOAL_KINDS,
+  DEFAULT_STREET_PROFILES
+} from '../cityContracts';
 import { hasCityObject } from '../cityObjectIndex';
 import { CITY_OBJECT_KIND_REGISTRY_ENTRIES, validateCityObjectRegistryIdentity } from '../cityObjectRegistry';
 import { validateCityLodPolicy } from '../lodPolicy';
@@ -26,6 +32,7 @@ type GeneratedCityForValidation = Pick<
   | 'activeFrontages'
   | 'blocks'
   | 'buildings'
+  | 'cityMetrics'
   | 'constraints'
   | 'crossings'
   | 'curbZones'
@@ -47,6 +54,7 @@ type GeneratedCityForValidation = Pick<
 >;
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
+type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][number];
@@ -164,6 +172,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateGeneratedCoordinates(city, issues);
   validateAssetCatalog(city.assetCatalog, issues);
   validateRenderBindings(city.assetCatalog, city.assetBindings, issues);
+  validateCityMetrics(city, issues);
 
   for (const road of city.roads) {
     if (road.length <= 0 || road.width <= 0 || road.laneCount <= 0 || road.widthMeters <= 0) {
@@ -1416,6 +1425,10 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
     }
   }
 
+  for (const metric of city.cityMetrics) {
+    validatePoint2D(city.geospatial, metric.id, 'focusPoint', metric.focusPoint, issues);
+  }
+
   for (const block of city.blocks) {
     validatePoint2D(city.geospatial, block.id, 'center', block.center, issues);
     validatePolygon2D(city.geospatial, block.id, 'boundary', block.boundary, issues);
@@ -2056,6 +2069,109 @@ function createResilienceGoalIssue(
     affectedPoint: goal.focusPoint,
     affectedBoundary: goal.focusBoundary,
     suggestedFix,
+    message
+  };
+}
+
+function validateCityMetrics(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const metricKinds = new Set<ValidationCityMetric['metricKind']>();
+
+  for (const metric of city.cityMetrics) {
+    metricKinds.add(metric.metricKind);
+    validateCityMetricShape(metric, issues);
+    validateCityMetricReferences(city, metric, issues);
+  }
+
+  for (const requiredKind of CITY_METRIC_KINDS) {
+    if (!metricKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-city-metric-${requiredKind}`,
+        severity: 'error',
+        category: 'metrics',
+        objectId: `city-metric-${requiredKind}`,
+        message: `City metric ${requiredKind} must be computed after generation.`
+      });
+    }
+  }
+}
+
+function validateCityMetricShape(metric: ValidationCityMetric, issues: ValidationIssue[]): void {
+  if (!(CITY_METRIC_KINDS as readonly string[]).includes(metric.metricKind)) {
+    issues.push(createCityMetricIssue(metric, 'invalid-kind', `City metric ${metric.id} has unknown kind ${metric.metricKind}.`));
+  }
+
+  if (!Number.isFinite(metric.value) || metric.value < 0) {
+    issues.push(createCityMetricIssue(metric, 'invalid-value', `City metric ${metric.id} must have a finite non-negative value.`));
+  }
+
+  if (!Number.isFinite(metric.focusPoint.x) || !Number.isFinite(metric.focusPoint.z)) {
+    issues.push(createCityMetricIssue(metric, 'invalid-focus-point', `City metric ${metric.id} must expose a finite focus point.`));
+  }
+
+  if (metric.target.min === undefined && metric.target.max === undefined) {
+    issues.push(createCityMetricIssue(metric, 'missing-target', `City metric ${metric.id} must define a min or max target.`));
+  }
+
+  if (
+    (metric.target.min !== undefined && !Number.isFinite(metric.target.min)) ||
+    (metric.target.max !== undefined && !Number.isFinite(metric.target.max))
+  ) {
+    issues.push(createCityMetricIssue(metric, 'invalid-target', `City metric ${metric.id} has an invalid target bound.`));
+  }
+
+  if (metric.status === 'pass' && metric.target.min !== undefined && metric.value < metric.target.min) {
+    issues.push(createCityMetricIssue(metric, 'status-target-mismatch', `City metric ${metric.id} is passing below its minimum target.`));
+  }
+
+  if (metric.status === 'pass' && metric.target.max !== undefined && metric.value > metric.target.max) {
+    issues.push(createCityMetricIssue(metric, 'status-target-mismatch', `City metric ${metric.id} is passing above its maximum target.`));
+  }
+
+  if (metric.computedFromObjectIds.length === 0) {
+    issues.push(createCityMetricIssue(metric, 'missing-inputs', `City metric ${metric.id} must list computedFromObjectIds.`));
+  }
+}
+
+function validateCityMetricReferences(
+  city: GeneratedCityForValidation,
+  metric: ValidationCityMetric,
+  issues: ValidationIssue[]
+): void {
+  for (const objectId of metric.computedFromObjectIds) {
+    if (!hasObjectId(city, objectId)) {
+      issues.push(
+        createCityMetricIssue(
+          metric,
+          `missing-input-${toIssueIdToken(objectId)}`,
+          `City metric ${metric.id} references missing input object ${objectId}.`
+        )
+      );
+    }
+  }
+
+  for (const metricId of metric.relatedMetricIds) {
+    const relatedMetric = city.objectIndex.objectsById[metricId];
+
+    if (!relatedMetric || relatedMetric.kind !== 'city-metric') {
+      issues.push(
+        createCityMetricIssue(
+          metric,
+          `missing-related-metric-${toIssueIdToken(metricId)}`,
+          `City metric ${metric.id} references missing related metric ${metricId}.`
+        )
+      );
+    }
+  }
+}
+
+function createCityMetricIssue(metric: ValidationCityMetric, issueIdSuffix: string, message: string): ValidationIssue {
+  return {
+    id: `city-metric-${issueIdSuffix}-${toIssueIdToken(metric.id)}`,
+    severity: 'error',
+    category: 'metrics',
+    objectId: metric.id,
+    affectedPoint: metric.focusPoint,
+    suggestedFix: `Regenerate ${metric.id} from current city domain data and metric targets.`,
     message
   };
 }

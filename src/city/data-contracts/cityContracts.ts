@@ -8,6 +8,7 @@ export type CityObjectKind =
   | 'asset'
   | 'block'
   | 'building'
+  | 'city-metric'
   | 'civic-anchor'
   | 'constraint'
   | 'crossing'
@@ -301,6 +302,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2', 'lod3'],
       description: 'Civic anchors render as named building or place markers until dedicated assets exist.'
+    },
+    {
+      objectKind: 'city-metric',
+      scope: 'overlay',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'City metrics are blueprint-owned computed scorecards for walkability, density, services, traffic, energy, emissions, and quality.'
     },
     {
       objectKind: 'constraint',
@@ -701,6 +709,45 @@ export interface ResilienceGoalContract extends CityObjectBase<'resilience-goal'
   readonly focusBoundary?: Polygon2D;
 }
 
+export const CITY_METRIC_KINDS = [
+  'walkability',
+  'density',
+  'open-space-access',
+  'service-coverage',
+  'traffic',
+  'energy',
+  'emissions',
+  'quality-checks'
+] as const;
+
+export type CityMetricKind = (typeof CITY_METRIC_KINDS)[number];
+export type CityMetricStatus = 'pass' | 'warn' | 'fail';
+export type CityMetricUnit =
+  | 'score'
+  | 'ratio'
+  | 'objects-per-square-kilometer'
+  | 'vehicles-per-kilometer'
+  | 'megawatt-hours-per-day'
+  | 'kilograms-co2e-per-day';
+
+export interface CityMetricTarget {
+  readonly min?: number;
+  readonly max?: number;
+  readonly idealDirection: 'higher' | 'lower' | 'range';
+}
+
+export interface CityMetricContract extends CityObjectBase<'city-metric'> {
+  readonly metricKind: CityMetricKind;
+  readonly description: string;
+  readonly value: number;
+  readonly unit: CityMetricUnit;
+  readonly status: CityMetricStatus;
+  readonly target: CityMetricTarget;
+  readonly computedFromObjectIds: readonly CityId[];
+  readonly relatedMetricIds: readonly CityId[];
+  readonly focusPoint: Point2D;
+}
+
 export interface BlockContract extends CityObjectBase<'block'> {
   readonly boundary: Polygon2D;
   readonly districtId: CityId;
@@ -1043,6 +1090,7 @@ export interface ValidationIssue {
     | 'import-export'
     | 'lod'
     | 'metadata'
+    | 'metrics'
     | 'performance'
     | 'resilience'
     | 'simulation'

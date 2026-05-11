@@ -14,6 +14,7 @@ import { BuildingGenerator } from './buildings/BuildingGenerator';
 import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
+import { CityMetricGenerator } from './metrics/CityMetricGenerator';
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
 import { StreetTreeGenerator } from './public-realm/StreetTreeGenerator';
@@ -99,6 +100,17 @@ export class CityGenerator {
       buildings: sliceTagged.buildings
     });
     const trees = [...parkTrees, ...streetTrees];
+    const cityMetrics = new CityMetricGenerator(this.config).create({
+      bounds,
+      roads: sliceTagged.roads,
+      crossings: sliceTagged.crossings,
+      sidewalkGraph: sliceTagged.sidewalkGraph,
+      parcels: sliceTagged.parcels,
+      buildings: sliceTagged.buildings,
+      activeFrontages,
+      parks,
+      resilienceGoals
+    });
 
     const generatedWithoutMetadata: Omit<GeneratedCity, 'objectIndex' | 'validation'> = {
       schemaVersion: CITY_CONTRACT_SCHEMA_VERSION,
@@ -107,6 +119,7 @@ export class CityGenerator {
       performanceBudget: DEFAULT_PERFORMANCE_BUDGET,
       bounds,
       districts: landAndBuildings.districts,
+      cityMetrics,
       constraints,
       resilienceGoals,
       blocks: landAndBuildings.blocks,
