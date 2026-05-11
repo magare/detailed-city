@@ -174,6 +174,10 @@ export class DebugPanel {
         `${diagnostics.intersectionBehavior.signalized} signal, ${diagnostics.intersectionBehavior.stopControlled} stop, ${diagnostics.intersectionBehavior.raisedJunctions} raised`
       ),
       createMetric(
+        'Crossings',
+        `${diagnostics.crossingDetails.total} total, ${diagnostics.crossingDetails.midblockCrossings} midblock, ${diagnostics.crossingDetails.raisedCrossings} raised`
+      ),
+      createMetric(
         'City',
         `${diagnostics.objectCounts.buildings} buildings, ${diagnostics.objectCounts.activeFrontages} frontages`
       ),

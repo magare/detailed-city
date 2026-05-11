@@ -1247,17 +1247,37 @@ export interface IntersectionContract extends CityObjectBase<'intersection'> {
 }
 
 export interface CrossingContract extends CityObjectBase<'crossing'> {
-  readonly intersectionId: CityId;
+  readonly intersectionId?: CityId;
   readonly roadId: CityId;
   readonly center: Point2D;
   readonly connectedSidewalkIds: readonly [CityId, CityId];
   readonly widthMeters: number;
   readonly lengthMeters: number;
   readonly signalized: boolean;
+  readonly crossingLocation: CrossingLocation;
+  readonly crosswalkType: CrosswalkType;
+  readonly priority: CrossingPriority;
+  readonly hasRefugeIsland: boolean;
+  readonly raisedCrossing: boolean;
+  readonly tactileCues: boolean;
+  readonly curbRamps: readonly ['left', 'right'];
+  readonly signalPhase?: CrossingSignalPhase;
+}
+
+export type CrossingLocation = 'intersection' | 'midblock';
+export type CrosswalkType = 'zebra' | 'continental' | 'raised-table';
+export type CrossingPriority = 'signal-protected' | 'pedestrian-priority' | 'yield-controlled' | 'uncontrolled';
+
+export interface CrossingSignalPhase {
+  readonly phaseId: CityId;
+  readonly walkSeconds: number;
+  readonly clearanceSeconds: number;
+  readonly leadingPedestrianIntervalSeconds: number;
 }
 
 export interface SidewalkGraphNodeContract extends CityObjectBase<'sidewalk-graph-node'> {
-  readonly intersectionId: CityId;
+  readonly intersectionId?: CityId;
+  readonly crossingId?: CityId;
   readonly sidewalkId: CityId;
   readonly position: Point2D;
 }

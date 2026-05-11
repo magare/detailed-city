@@ -54,6 +54,7 @@ export interface CityDiagnostics {
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
+  readonly crossingDetails: CrossingDetailDiagnostics;
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly waterfrontModel: WaterfrontModelDiagnostics;
   readonly hazardLayer: HazardLayerDiagnostics;
@@ -149,6 +150,11 @@ export interface CityDiagnostics {
     readonly roads: number;
     readonly intersections: number;
     readonly crossings: number;
+    readonly midblockCrossings: number;
+    readonly raisedCrossings: number;
+    readonly tactileCrossings: number;
+    readonly crossingRefugeIslands: number;
+    readonly crossingSignalPhases: number;
     readonly curbZones: number;
     readonly sidewalkGraphNodes: number;
     readonly sidewalkGraphEdges: number;
@@ -263,6 +269,18 @@ export interface IntersectionBehaviorDiagnostics {
   readonly averageCornerRadiusMeters: number;
 }
 
+export interface CrossingDetailDiagnostics {
+  readonly total: number;
+  readonly byLocation: Readonly<Record<string, number>>;
+  readonly byType: Readonly<Record<string, number>>;
+  readonly byPriority: Readonly<Record<string, number>>;
+  readonly midblockCrossings: number;
+  readonly raisedCrossings: number;
+  readonly tactileCrossings: number;
+  readonly refugeIslandCrossings: number;
+  readonly signalPhases: number;
+}
+
 export interface WaterwayNetworkDiagnostics {
   readonly total: number;
   readonly edgeSegments: number;
@@ -355,6 +373,7 @@ export function createCityDiagnostics(
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
+  const crossingDetails = createCrossingDetailDiagnostics(city);
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
   const hazardLayer = createHazardLayerDiagnostics(city);
@@ -387,6 +406,7 @@ export function createCityDiagnostics(
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
+    crossingDetails,
     waterwayNetwork,
     waterfrontModel,
     hazardLayer,
@@ -473,6 +493,11 @@ export function createCityDiagnostics(
       roads: city.roads.length,
       intersections: city.intersections.length,
       crossings: city.crossings.length,
+      midblockCrossings: crossingDetails.midblockCrossings,
+      raisedCrossings: crossingDetails.raisedCrossings,
+      tactileCrossings: crossingDetails.tactileCrossings,
+      crossingRefugeIslands: crossingDetails.refugeIslandCrossings,
+      crossingSignalPhases: crossingDetails.signalPhases,
       curbZones: city.curbZones.length,
       sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
       sidewalkGraphEdges: city.sidewalkGraph.edges.length,
@@ -698,6 +723,30 @@ function createIntersectionBehaviorDiagnostics(city: GeneratedCity): Intersectio
     conflictPoints: city.intersections.reduce((sum, intersection) => sum + intersection.conflictPoints.length, 0),
     turnConstraints: city.intersections.reduce((sum, intersection) => sum + intersection.turnConstraints.length, 0),
     averageCornerRadiusMeters: Number((cornerRadiusTotal / Math.max(1, city.intersections.length)).toFixed(1))
+  };
+}
+
+function createCrossingDetailDiagnostics(city: GeneratedCity): CrossingDetailDiagnostics {
+  const byLocation: Record<string, number> = {};
+  const byType: Record<string, number> = {};
+  const byPriority: Record<string, number> = {};
+
+  for (const crossing of city.crossings) {
+    byLocation[crossing.crossingLocation] = (byLocation[crossing.crossingLocation] ?? 0) + 1;
+    byType[crossing.crosswalkType] = (byType[crossing.crosswalkType] ?? 0) + 1;
+    byPriority[crossing.priority] = (byPriority[crossing.priority] ?? 0) + 1;
+  }
+
+  return {
+    total: city.crossings.length,
+    byLocation,
+    byType,
+    byPriority,
+    midblockCrossings: byLocation.midblock ?? 0,
+    raisedCrossings: city.crossings.filter((crossing) => crossing.raisedCrossing).length,
+    tactileCrossings: city.crossings.filter((crossing) => crossing.tactileCues).length,
+    refugeIslandCrossings: city.crossings.filter((crossing) => crossing.hasRefugeIsland).length,
+    signalPhases: city.crossings.filter((crossing) => crossing.signalPhase).length
   };
 }
 

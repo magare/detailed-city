@@ -47,11 +47,15 @@ export class DetailedStreetSliceGenerator {
     const intersectionIdSet = new Set(intersectionIds);
     const sidewalkIds = road.sidewalks.map((sidewalk) => sidewalk.id);
     const sidewalkIdSet = new Set(sidewalkIds);
-    const crossings = source.crossings.filter((crossing) => intersectionIdSet.has(crossing.intersectionId));
+    const crossings = source.crossings.filter(
+      (crossing) => crossing.intersectionId !== undefined && intersectionIdSet.has(crossing.intersectionId)
+    );
     const crossingIds = crossings.map((crossing) => crossing.id);
     const crossingIdSet = new Set(crossingIds);
     const graphNodeIds = source.sidewalkGraph.nodes
-      .filter((node) => intersectionIdSet.has(node.intersectionId) && sidewalkIdSet.has(node.sidewalkId))
+      .filter(
+        (node) => node.intersectionId !== undefined && intersectionIdSet.has(node.intersectionId) && sidewalkIdSet.has(node.sidewalkId)
+      )
       .map((node) => node.id);
     const graphEdgeIds = source.sidewalkGraph.edges
       .filter((edge) => {

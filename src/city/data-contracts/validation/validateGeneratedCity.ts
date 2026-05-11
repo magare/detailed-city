@@ -72,6 +72,9 @@ type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationHazardZone = GeneratedCityForValidation['hazardZones'][number];
 type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][number];
+type ValidationCrossing = GeneratedCityForValidation['crossings'][number];
+type ValidationIntersection = GeneratedCityForValidation['intersections'][number];
+type ValidationRoad = GeneratedCityForValidation['roads'][number];
 type ValidationWaterfrontEdge = GeneratedCityForValidation['waterfrontEdges'][number];
 type ValidationWaterway = GeneratedCityForValidation['waterways'][number];
 type ValidationZoningDistrict = GeneratedCityForValidation['zoningDistricts'][number];
@@ -127,6 +130,9 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
 const ASSET_FORMATS = ['glb', 'gltf', 'png', 'jpg', 'webp', 'ktx2', 'hdr', 'exr', 'procedural'] as const satisfies readonly AssetFormat[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
+const CROSSING_LOCATIONS = ['intersection', 'midblock'] as const;
+const CROSSWALK_TYPES = ['zebra', 'continental', 'raised-table'] as const;
+const CROSSING_PRIORITIES = ['signal-protected', 'pedestrian-priority', 'yield-controlled', 'uncontrolled'] as const;
 const ASSET_CATEGORIES = [
   'building',
   'effect',
@@ -572,25 +578,36 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   );
 
   for (const crossing of city.crossings) {
-    const intersection = intersectionsById.get(crossing.intersectionId);
+    const road = roadsById.get(crossing.roadId);
+    const intersection = crossing.intersectionId ? intersectionsById.get(crossing.intersectionId) : undefined;
 
-    if (!intersection || crossing.parentId !== crossing.intersectionId) {
-      issues.push({
-        id: `invalid-crossing-intersection-${crossing.id}`,
-        severity: 'error',
-        category: 'identifier',
-        objectId: crossing.id,
-        message: `Crossing must reference existing parent intersection ${crossing.intersectionId}.`
-      });
-    }
-
-    if (!hasObjectId(city, crossing.roadId)) {
+    if (!road) {
       issues.push({
         id: `missing-crossing-road-${crossing.id}-${crossing.roadId}`,
         severity: 'error',
         category: 'identifier',
         objectId: crossing.id,
         message: `Crossing references missing road ${crossing.roadId}.`
+      });
+    }
+
+    if (crossing.crossingLocation === 'intersection') {
+      if (!crossing.intersectionId || !intersection || crossing.parentId !== crossing.intersectionId) {
+        issues.push({
+          id: `invalid-crossing-intersection-${crossing.id}`,
+          severity: 'error',
+          category: 'identifier',
+          objectId: crossing.id,
+          message: `Intersection crossing must reference existing parent intersection ${crossing.intersectionId}.`
+        });
+      }
+    } else if (crossing.parentId !== crossing.roadId || crossing.intersectionId !== undefined) {
+      issues.push({
+        id: `invalid-midblock-crossing-parent-${crossing.id}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: crossing.id,
+        message: `Midblock crossing ${crossing.id} must be parented to road ${crossing.roadId} without an intersection reference.`
       });
     }
 
@@ -603,6 +620,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         message: `Crossing road ${crossing.roadId} must be connected to intersection ${intersection.id}.`
       });
     }
+
+    validateCrossingDetails(crossing, road, intersection, issues);
 
     for (const sidewalkId of crossing.connectedSidewalkIds) {
       if (!hasObjectId(city, sidewalkId)) {
@@ -857,13 +876,33 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   for (const node of city.sidewalkGraph.nodes) {
-    if (!hasObjectId(city, node.intersectionId) || node.parentId !== node.intersectionId) {
+    if (node.intersectionId) {
+      if (!hasObjectId(city, node.intersectionId) || node.parentId !== node.intersectionId) {
+        issues.push({
+          id: `invalid-sidewalk-node-intersection-${node.id}`,
+          severity: 'error',
+          category: 'identifier',
+          objectId: node.id,
+          message: `Sidewalk graph node must reference parent intersection ${node.intersectionId}.`
+        });
+      }
+    } else if (node.crossingId) {
+      if (!hasObjectId(city, node.crossingId) || node.parentId !== node.crossingId) {
+        issues.push({
+          id: `invalid-sidewalk-node-crossing-${node.id}`,
+          severity: 'error',
+          category: 'identifier',
+          objectId: node.id,
+          message: `Midblock sidewalk graph node must reference parent crossing ${node.crossingId}.`
+        });
+      }
+    } else {
       issues.push({
-        id: `invalid-sidewalk-node-intersection-${node.id}`,
+        id: `invalid-sidewalk-node-anchor-${node.id}`,
         severity: 'error',
         category: 'identifier',
         objectId: node.id,
-        message: `Sidewalk graph node must reference parent intersection ${node.intersectionId}.`
+        message: 'Sidewalk graph node must reference a parent intersection or crossing.'
       });
     }
 
@@ -926,6 +965,139 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         category: 'graph',
         objectId: edge.id,
         message: 'Sidewalk graph edge must reference an existing parent sidewalk.'
+      });
+    }
+  }
+
+  function validateCrossingDetails(
+    crossing: ValidationCrossing,
+    road: ValidationRoad | undefined,
+    intersection: ValidationIntersection | undefined,
+    targetIssues: ValidationIssue[]
+  ): void {
+    if (!includesValue(CROSSING_LOCATIONS, crossing.crossingLocation)) {
+      targetIssues.push({
+        id: `invalid-crossing-location-${crossing.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: crossing.id,
+        message: `Crossing ${crossing.id} must declare an intersection or midblock location.`
+      });
+    }
+
+    if (!includesValue(CROSSWALK_TYPES, crossing.crosswalkType)) {
+      targetIssues.push({
+        id: `invalid-crosswalk-type-${crossing.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: crossing.id,
+        message: `Crossing ${crossing.id} must declare a supported crosswalk type.`
+      });
+    }
+
+    if (!includesValue(CROSSING_PRIORITIES, crossing.priority)) {
+      targetIssues.push({
+        id: `invalid-crossing-priority-${crossing.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: crossing.id,
+        message: `Crossing ${crossing.id} must declare a supported crossing priority.`
+      });
+    }
+
+    if (crossing.curbRamps.length !== 2 || crossing.curbRamps[0] !== 'left' || crossing.curbRamps[1] !== 'right') {
+      targetIssues.push({
+        id: `invalid-crossing-curb-ramps-${crossing.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: crossing.id,
+        message: `Crossing ${crossing.id} must connect both sidewalks with left and right curb ramps.`
+      });
+    }
+
+    if (!crossing.tactileCues) {
+      targetIssues.push({
+        id: `missing-crossing-tactile-cues-${crossing.id}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: crossing.id,
+        message: `Crossing ${crossing.id} must expose tactile cues.`
+      });
+    }
+
+    if (crossing.crosswalkType === 'raised-table' && !crossing.raisedCrossing) {
+      targetIssues.push({
+        id: `raised-crosswalk-not-raised-${crossing.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: crossing.id,
+        message: `Raised-table crossing ${crossing.id} must be marked as a raised crossing.`
+      });
+    }
+
+    if (road) {
+      const profile = streetProfilesById.get(road.streetProfileId);
+      const expectedRefuge = Boolean(profile?.median);
+
+      if (crossing.hasRefugeIsland !== expectedRefuge) {
+        targetIssues.push({
+          id: `crossing-refuge-profile-mismatch-${crossing.id}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: crossing.id,
+          message: `Crossing ${crossing.id} refuge island flag must follow road profile ${road.streetProfileId}.`
+        });
+      }
+    }
+
+    if (crossing.signalized) {
+      const signalPhase = crossing.signalPhase;
+
+      if (
+        crossing.priority !== 'signal-protected' ||
+        !signalPhase ||
+        signalPhase.walkSeconds <= 0 ||
+        signalPhase.clearanceSeconds <= 0 ||
+        signalPhase.leadingPedestrianIntervalSeconds < 0
+      ) {
+        targetIssues.push({
+          id: `invalid-crossing-signal-phase-${crossing.id}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: crossing.id,
+          message: `Signalized crossing ${crossing.id} must declare protected priority and positive pedestrian signal timing.`
+        });
+      }
+    } else if (crossing.signalPhase) {
+      targetIssues.push({
+        id: `unsignalized-crossing-has-signal-phase-${crossing.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: crossing.id,
+        message: `Unsignalized crossing ${crossing.id} must not declare a pedestrian signal phase.`
+      });
+    }
+
+    if (intersection && crossing.signalized !== (intersection.signalExpectation === 'signalized')) {
+      targetIssues.push({
+        id: `crossing-signal-intersection-mismatch-${crossing.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: crossing.id,
+        message: `Crossing ${crossing.id} signalization must match intersection ${intersection.id}.`
+      });
+    }
+
+    if (
+      crossing.crossingLocation === 'midblock' &&
+      (crossing.priority !== 'pedestrian-priority' || !crossing.raisedCrossing || crossing.signalized)
+    ) {
+      targetIssues.push({
+        id: `invalid-midblock-crossing-detail-${crossing.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: crossing.id,
+        message: `Midblock crossing ${crossing.id} must be a raised pedestrian-priority unsignalized crossing.`
       });
     }
   }
@@ -4855,4 +5027,8 @@ function validateRenderBindings(
       });
     }
   }
+}
+
+function includesValue<T extends string>(values: readonly T[], value: string): value is T {
+  return values.includes(value as T);
 }

@@ -39,7 +39,7 @@ const ROAD_ID = String.raw`road-[vh]-\d+`;
 const INTERSECTION_ID = String.raw`intersection-v\d+-h\d+`;
 const SIDEWALK_SIDE = String.raw`(?:left|right)`;
 const SIDEWALK_ID = String.raw`${ROAD_ID}-sidewalk-${SIDEWALK_SIDE}`;
-const CROSSING_ID = String.raw`crossing-${INTERSECTION_ID}-${ROAD_ID}`;
+const CROSSING_ID = String.raw`crossing-(?:${INTERSECTION_ID}-${ROAD_ID}|midblock-${ROAD_ID}-\d+)`;
 const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|regulatory-sign|street-name-sign|wayfinding-sign)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
@@ -60,7 +60,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('city-metric', ['city-metric-<metric-kind>'], [exact(String.raw`city-metric-${NAMED_ID}`)], none()),
   entry('civic-anchor', ['civic-anchor-<slug>'], [exact(String.raw`civic-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
   entry('constraint', ['constraint-<slug>'], [exact(String.raw`constraint-${NAMED_ID}`)], none()),
-  entry('crossing', ['crossing-<intersection-id>-<road-id>'], [exact(CROSSING_ID)], required(['intersection'])),
+  entry(
+    'crossing',
+    ['crossing-<intersection-id>-<road-id>', 'crossing-midblock-<road-id>-<index>'],
+    [exact(CROSSING_ID)],
+    required(['intersection', 'road-segment'])
+  ),
   entry(
     'curb-zone',
     ['curb-zone-<road-id>-<side>-intersection-<index>-no-stopping', 'curb-zone-<road-id>-<side>-segment-<index>-<use>'],
@@ -95,7 +100,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     [exact(String.raw`sidewalk-edge-${CROSSING_ID}`), exact(String.raw`sidewalk-edge-${SIDEWALK_ID}-${INTERSECTION_ID}-${INTERSECTION_ID}`)],
     required(['crossing', 'sidewalk'])
   ),
-  entry('sidewalk-graph-node', ['sidewalk-node-<intersection-id>-<sidewalk-id>'], [exact(String.raw`sidewalk-node-${INTERSECTION_ID}-${SIDEWALK_ID}`)], required(['intersection'])),
+  entry(
+    'sidewalk-graph-node',
+    ['sidewalk-node-<intersection-id>-<sidewalk-id>', 'sidewalk-node-<crossing-id>-<sidewalk-id>'],
+    [exact(String.raw`sidewalk-node-(?:${INTERSECTION_ID}|${CROSSING_ID})-${SIDEWALK_ID}`)],
+    required(['intersection', 'crossing'])
+  ),
   entry('street-furniture', ['street-furniture-<road-id>-<side>-<index>-<type>'], [exact(String.raw`street-furniture-${ROAD_ID}-${SIDEWALK_SIDE}-\d+-${STREET_FURNITURE_TYPE}`)], required(['sidewalk'])),
   entry('street-light', ['street-light-<road-id>-<side>-<index>'], [exact(String.raw`street-light-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)], required(['sidewalk'])),
   entry('traffic-vehicle', ['traffic-vehicle-<index>'], [exact(String.raw`traffic-vehicle-\d+`)], required(['road-segment'])),

@@ -28,7 +28,7 @@ test('city metrics are deterministic, indexed, and exposed in diagnostics', () =
     ownerDomain: 'blueprint',
     lod: 'lod0',
     metricKind: 'walkability',
-    value: 96.38,
+    value: 96.02,
     status: 'pass'
   });
   expect(firstCity.objectIndex.objectsById['city-metric-density']).toMatchObject({
@@ -41,10 +41,10 @@ test('city metrics are deterministic, indexed, and exposed in diagnostics', () =
     passing: 6,
     warnings: 2,
     failing: 0,
-    scoreAverage: 79.51
+    scoreAverage: 79.42
   });
   expect(diagnostics.cityMetrics.valuesByKind).toMatchObject({
-    walkability: 96.38,
+    walkability: 96.02,
     density: 2029.27,
     'open-space-access': 21.65,
     'service-coverage': 100,
@@ -116,7 +116,7 @@ test('browser diagnostics expose city metrics for the debug panel', async ({ pag
     metrics: 8,
     passing: 6,
     warnings: 2,
-    walkability: 96.38,
+    walkability: 96.02,
     overlayFeatures: 8
   });
   expect(diagnostics.debugText).toContain('Metrics');

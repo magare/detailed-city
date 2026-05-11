@@ -41,15 +41,16 @@ export class TrafficLaneGenerator {
     const detailedRoads = roads.filter((road) => road.tags?.detailedStreetSliceId);
     const crossingCandidates = source.crossings ?? [];
     const detailedCrossings = crossingCandidates.filter((crossing) => crossing.tags?.detailedStreetSliceId);
+    const standaloneMidblockCrossings = crossingCandidates.filter((crossing) => crossing.crossingLocation === 'midblock');
+    const selectedCrossings =
+      detailedCrossings.length > 0
+        ? [...detailedCrossings, ...standaloneMidblockCrossings]
+        : crossingCandidates;
 
     return [
       ...this.createLaneDashes(roads),
       ...this.createTurnArrows(detailedRoads.length > 0 ? detailedRoads : roads),
-      ...this.createCrossingMarkings(
-        detailedCrossings.length > 0 ? detailedCrossings : crossingCandidates,
-        roadsById,
-        intersectionsById
-      )
+      ...this.createCrossingMarkings(selectedCrossings, roadsById, intersectionsById)
     ];
   }
 
@@ -121,9 +122,8 @@ export class TrafficLaneGenerator {
   ): LaneMarkingPlan[] {
     return crossings.flatMap((crossing) => {
       const road = roadsById.get(crossing.roadId);
-      const intersection = intersectionsById.get(crossing.intersectionId);
 
-      if (!road || !intersection) {
+      if (!road || (crossing.intersectionId && !intersectionsById.has(crossing.intersectionId))) {
         return [];
       }
 
@@ -387,9 +387,7 @@ function createTactilePaving(crossing: CrossingPlan, road: RoadSegment): LaneMar
 }
 
 function createRefugeIsland(crossing: CrossingPlan, road: RoadSegment): LaneMarkingPlan[] {
-  const profile = DEFAULT_STREET_PROFILES.find((candidate) => candidate.id === road.streetProfileId);
-
-  if (!profile?.median) {
+  if (!crossing.hasRefugeIsland) {
     return [];
   }
 

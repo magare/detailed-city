@@ -91,13 +91,26 @@ export function validateTrafficPlan(source: TrafficPlanValidationSource): Valida
         });
       }
 
-      if (!intersection || crossing?.intersectionId !== marking.intersectionId) {
+      if (
+        crossing?.intersectionId &&
+        (!intersection || crossing.intersectionId !== marking.intersectionId)
+      ) {
         issues.push({
           id: `missing-lane-marking-intersection-${marking.id}`,
           severity: 'error',
           category: 'identifier',
           objectId: marking.id,
           message: `Crossing marking ${marking.id} must reference the crossing intersection.`
+        });
+      }
+
+      if (crossing && !crossing.intersectionId && marking.intersectionId !== undefined) {
+        issues.push({
+          id: `unexpected-lane-marking-intersection-${marking.id}`,
+          severity: 'error',
+          category: 'identifier',
+          objectId: marking.id,
+          message: `Midblock crossing marking ${marking.id} must not reference an intersection.`
         });
       }
     } else if (marking.parentId !== marking.roadId && marking.parentId !== marking.laneId) {

@@ -113,7 +113,7 @@ export interface IntersectionPlan extends IntersectionContract {
 }
 
 export interface CrossingPlan extends CrossingContract {
-  intersectionId: string;
+  intersectionId?: string;
   roadId: string;
   roadOrientation: RoadOrientation;
 }
@@ -125,7 +125,8 @@ export interface StreetLight extends StreetLightContract {}
 export interface StreetFurniture extends StreetFurnitureContract {}
 
 export interface SidewalkGraphNode extends SidewalkGraphNodeContract {
-  intersectionId: string;
+  intersectionId?: string;
+  crossingId?: string;
   sidewalkId: string;
 }
 

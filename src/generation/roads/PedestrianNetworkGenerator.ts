@@ -6,7 +6,13 @@ import type {
   SidewalkGraphEdge,
   SidewalkGraphNode
 } from '../../types/city';
-import type { Point2D, SidewalkContract } from '../../city/data-contracts/cityContracts';
+import {
+  DEFAULT_STREET_PROFILES,
+  type CrossingPriority,
+  type CrosswalkType,
+  type Point2D,
+  type SidewalkContract
+} from '../../city/data-contracts/cityContracts';
 
 export interface PedestrianNetworkSeed {
   crossings: CrossingPlan[];
@@ -49,6 +55,32 @@ export class PedestrianNetworkGenerator {
       }
     }
 
+    for (const crossing of createMidblockCrossings(roads)) {
+      const road = roadsById.get(crossing.roadId);
+
+      if (!road || road.sidewalks.length < 2) {
+        continue;
+      }
+
+      const [firstSidewalk, secondSidewalk] = road.sidewalks;
+      const firstNode = getOrCreateMidblockNode(nodesById, crossing, road, firstSidewalk);
+      const secondNode = getOrCreateMidblockNode(nodesById, crossing, road, secondSidewalk);
+
+      crossings.push(crossing);
+      crossingEdges.push({
+        id: `sidewalk-edge-${crossing.id}`,
+        kind: 'sidewalk-graph-edge',
+        ownerDomain: 'mobility',
+        parentId: crossing.id,
+        lod: 'lod2',
+        fromNodeId: firstNode.id,
+        toNodeId: secondNode.id,
+        mode: 'crossing',
+        crossingId: crossing.id,
+        lengthMeters: crossing.lengthMeters
+      });
+    }
+
     return {
       crossings,
       sidewalkGraph: {
@@ -78,8 +110,80 @@ function createCrossing(
     connectedSidewalkIds: [firstSidewalk.id, secondSidewalk.id],
     widthMeters: 4.2,
     lengthMeters: road.widthMeters,
-    signalized: intersection.signalExpectation === 'signalized'
+    signalized: intersection.signalExpectation === 'signalized',
+    crossingLocation: 'intersection',
+    crosswalkType: getIntersectionCrosswalkType(intersection, road),
+    priority: getIntersectionCrossingPriority(intersection),
+    hasRefugeIsland: hasRefugeIsland(road),
+    raisedCrossing: intersection.raisedJunction,
+    tactileCues: true,
+    curbRamps: ['left', 'right'],
+    ...(intersection.signalExpectation === 'signalized' ? { signalPhase: createSignalPhase(intersection.id) } : {})
   };
+}
+
+function createMidblockCrossings(roads: readonly RoadSegment[]): CrossingPlan[] {
+  const promenade = roads.find((road) => road.id === 'road-h-4');
+
+  if (!promenade || promenade.sidewalks.length < 2) {
+    return [];
+  }
+
+  const [firstSidewalk, secondSidewalk] = promenade.sidewalks;
+  const offsets = [-promenade.length * 0.18, promenade.length * 0.18];
+
+  return offsets.map((offset, index) => {
+    const center = getPointAlongRoad(promenade, offset);
+
+    return {
+      id: `crossing-midblock-${promenade.id}-${index}`,
+      kind: 'crossing',
+      ownerDomain: 'mobility',
+      parentId: promenade.id,
+      lod: 'lod2',
+      roadId: promenade.id,
+      roadOrientation: promenade.orientation,
+      center,
+      connectedSidewalkIds: [firstSidewalk.id, secondSidewalk.id],
+      widthMeters: 5.2,
+      lengthMeters: promenade.widthMeters,
+      signalized: false,
+      crossingLocation: 'midblock',
+      crosswalkType: 'raised-table',
+      priority: 'pedestrian-priority',
+      hasRefugeIsland: false,
+      raisedCrossing: true,
+      tactileCues: true,
+      curbRamps: ['left', 'right']
+    };
+  });
+}
+
+function getOrCreateMidblockNode(
+  nodesById: Map<string, SidewalkGraphNode>,
+  crossing: CrossingPlan,
+  road: RoadSegment,
+  sidewalk: SidewalkContract
+): SidewalkGraphNode {
+  const id = getNodeId(crossing.id, sidewalk.id);
+  const existingNode = nodesById.get(id);
+
+  if (existingNode) {
+    return existingNode;
+  }
+
+  const node = {
+    id,
+    kind: 'sidewalk-graph-node',
+    ownerDomain: 'mobility',
+    parentId: crossing.id,
+    lod: 'lod2',
+    crossingId: crossing.id,
+    sidewalkId: sidewalk.id,
+    position: getNodePosition(crossing.center, road, sidewalk)
+  } satisfies SidewalkGraphNode;
+  nodesById.set(id, node);
+  return node;
 }
 
 function getOrCreateNode(
@@ -107,6 +211,54 @@ function getOrCreateNode(
   } satisfies SidewalkGraphNode;
   nodesById.set(id, node);
   return node;
+}
+
+function getIntersectionCrosswalkType(intersection: IntersectionPlan, road: RoadSegment): CrosswalkType {
+  if (intersection.raisedJunction) {
+    return 'raised-table';
+  }
+
+  return road.hierarchy === 'arterial' || road.hierarchy === 'transit-corridor' ? 'continental' : 'zebra';
+}
+
+function getIntersectionCrossingPriority(intersection: IntersectionPlan): CrossingPriority {
+  if (intersection.signalExpectation === 'signalized') {
+    return 'signal-protected';
+  }
+
+  if (intersection.controlType === 'yield') {
+    return 'pedestrian-priority';
+  }
+
+  return intersection.signalExpectation === 'stop-controlled' ? 'yield-controlled' : 'uncontrolled';
+}
+
+function hasRefugeIsland(road: RoadSegment): boolean {
+  const profile = DEFAULT_STREET_PROFILES.find((candidate) => candidate.id === road.streetProfileId);
+  return Boolean(profile?.median);
+}
+
+function createSignalPhase(intersectionId: string): CrossingPlan['signalPhase'] {
+  return {
+    phaseId: `${intersectionId}-pedestrian-phase`,
+    walkSeconds: 8,
+    clearanceSeconds: 12,
+    leadingPedestrianIntervalSeconds: 3
+  };
+}
+
+function getPointAlongRoad(road: RoadSegment, offsetMeters: number): Point2D {
+  if (road.orientation === 'vertical') {
+    return {
+      x: road.center.x,
+      z: road.center.z + offsetMeters
+    };
+  }
+
+  return {
+    x: road.center.x + offsetMeters,
+    z: road.center.z
+  };
 }
 
 function createSidewalkEdges(

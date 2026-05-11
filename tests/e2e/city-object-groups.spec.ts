@@ -170,8 +170,8 @@ test('browser diagnostics expose grouped object counts for debug tools', async (
     ownerDomainGroups: 13,
     districtGroups: 5,
     renderLayerGroups: 6,
-    networkRenderLayerObjects: 958,
-    baselineScenarioObjects: 4854
+    networkRenderLayerObjects: 976,
+    baselineScenarioObjects: 4880
   });
   expect(groupDiagnostics.emptyGroups).toBeGreaterThan(0);
   expect(groupDiagnostics.sliceGroupObjects).toBeGreaterThan(1000);

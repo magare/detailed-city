@@ -19,9 +19,9 @@ test('road markings are generated from road and crossing contracts', () => {
   expect(markingCounts).toEqual({
     'lane-dash': 676,
     'turn-arrow': 4,
-    'zebra-crossing-stripe': 130,
-    'stop-bar': 52,
-    'tactile-paving': 52,
+    'zebra-crossing-stripe': 140,
+    'stop-bar': 56,
+    'tactile-paving': 56,
     'refuge-island': 18
   });
   expect(firstZebra).toMatchObject({
@@ -46,6 +46,16 @@ test('road markings are generated from road and crossing contracts', () => {
     surfaceMaterial: 'raised-concrete',
     assetBindingId: 'binding:road:refuge-island'
   });
+  const firstMidblockStripe = firstTraffic.markings.find(
+    (marking) => marking.id === 'crossing-midblock-road-h-4-0-zebra-stripe-0'
+  );
+  expect(firstMidblockStripe).toMatchObject({
+    parentId: 'crossing-midblock-road-h-4-0',
+    roadId: 'road-h-4',
+    crossingId: 'crossing-midblock-road-h-4-0',
+    markingType: 'zebra-crossing-stripe'
+  });
+  expect(firstMidblockStripe?.intersectionId).toBeUndefined();
   expect(validateTraffic(city, firstTraffic).issues).toEqual([]);
 });
 
