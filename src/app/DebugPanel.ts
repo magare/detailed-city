@@ -111,6 +111,10 @@ export class DebugPanel {
         'Districts',
         `${diagnostics.districtCharacter.districtRules} rules, ${diagnostics.districtCharacter.transitionBuffers} transitions`
       ),
+      createMetric(
+        'Constraints',
+        `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
+      ),
       createMetric('Validation', getStatusLabel(diagnostics.validation.passed, diagnostics.validation.issues.length)),
       createMetric('Geo', `${diagnostics.geospatial.coordinateSystem}, ${coordinatePrecision}m`),
       createMetric(

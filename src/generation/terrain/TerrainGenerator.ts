@@ -1,6 +1,6 @@
 import { CITY_BLUEPRINT } from '../../city/blueprint/cityBlueprint';
-import type { CityBounds, CityConfig, ParkPatch, TreePlanting, Waterway } from '../../types/city';
-import { rectanglePolygon } from '../../utils/geometry';
+import type { CityBounds, CityConfig, ConstraintPlan, ParkPatch, TreePlanting, Waterway } from '../../types/city';
+import { isPointInsidePolygon, rectanglePolygon } from '../../utils/geometry';
 
 export class TerrainGenerator {
   constructor(private readonly config: CityConfig) {}
@@ -101,26 +101,18 @@ export class TerrainGenerator {
     return trees;
   }
 
-  getExcludedBlocks(bounds: CityBounds, parks: ParkPatch[], waterways: Waterway[]): Set<string> {
+  getExcludedBlocks(bounds: CityBounds, constraints: readonly ConstraintPlan[]): Set<string> {
     const excluded = new Set<string>();
+    const exclusionConstraints = constraints.filter(
+      (constraint) =>
+        constraint.prohibitedObjectKinds.includes('parcel') || constraint.prohibitedObjectKinds.includes('building')
+    );
 
     for (let blockX = 0; blockX < this.config.gridSize; blockX += 1) {
       for (let blockZ = 0; blockZ < this.config.gridSize; blockZ += 1) {
         const center = this.getBlockCenter(bounds, blockX, blockZ);
 
-        if (parks.some((park) => isInsideRect(center, park.center, park.size))) {
-          excluded.add(blockKey(blockX, blockZ));
-          continue;
-        }
-
-        if (
-          waterways.some((waterway) =>
-            isInsideRect(center, waterway.center, {
-              x: waterway.length,
-              z: waterway.width + this.config.blockSize * 0.55
-            })
-          )
-        ) {
+        if (exclusionConstraints.some((constraint) => isPointInsidePolygon(center, constraint.boundary))) {
           excluded.add(blockKey(blockX, blockZ));
         }
       }
@@ -139,12 +131,4 @@ export class TerrainGenerator {
 
 export function blockKey(blockX: number, blockZ: number): string {
   return `${blockX}:${blockZ}`;
-}
-
-function isInsideRect(
-  point: { x: number; z: number },
-  center: { x: number; z: number },
-  size: { x: number; z: number }
-): boolean {
-  return Math.abs(point.x - center.x) <= size.x / 2 && Math.abs(point.z - center.z) <= size.z / 2;
 }

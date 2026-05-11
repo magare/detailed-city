@@ -24,8 +24,8 @@ test('LOD policy covers every city object kind and current runtime object', () =
   expect(city.lodPolicy.rules.map((rule) => rule.tier)).toEqual(['lod0', 'lod1', 'lod2', 'lod3', 'lod4']);
   expect(diagnostics.lodCoverage).toMatchObject({
     tierCount: 5,
-    objectPolicyCount: 27,
-    objectsWithPolicy: 4759,
+    objectPolicyCount: 28,
+    objectsWithPolicy: 4757,
     objectsWithoutPolicy: 0,
     objectsWithUnsupportedTier: 0,
     missingPolicyKinds: [],

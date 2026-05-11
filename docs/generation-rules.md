@@ -5,22 +5,23 @@ Generation must produce contract-valid city data first. Rendering consumes that 
 ## Pipeline
 
 1. Validate `CityConfig` and render config, then read `CITY_BLUEPRINT`.
-2. Generate land frame: bounds, districts, blocks, waterways, parks, hazards.
-3. Generate mobility: roads, street profiles, sidewalks, crossings, lanes, curb uses.
-4. Generate parcels and zoning-derived envelopes.
-5. Generate buildings from parcel, zoning, district, and frontage rules.
-6. Generate vertical slice contracts that tag the active corridor and related frontage objects.
-7. Generate active frontage facades from detailed-street building, parcel, road, sidewalk, and entrance contracts.
-8. Generate public realm: trees, lighting, furniture, signs, plazas, waterfront edges.
-9. Generate utilities and service access skeletons.
-10. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
-11. Stamp generated objects with deterministic source metadata.
-12. Validate identifiers, metadata, geometry, graph continuity, zoning, assets, LOD, slice tags, and budgets.
-13. Hand validated objects to mesh builders and scene-layer adapters.
+2. Generate the city frame needed by constraints: bounds, roads, street profiles, sidewalks, crossings, waterways, and parks.
+3. Generate blueprint constraints for setbacks, protected corridors, easements, clearances, no-build zones, hazards, view corridors, waterfront buffers, and emergency access corridors.
+4. Generate blocks, parcels, zoning-derived envelopes, and buildings from district and frontage rules.
+5. Apply prohibitive constraint filters to remove invalid parcels/buildings before downstream slices consume them.
+6. Keep generated parks, waterways, roads, parcels, buildings, and constraints in the object index for validation and diagnostics.
+7. Generate vertical slice contracts that tag the active corridor and related frontage objects.
+8. Generate active frontage facades from detailed-street building, parcel, road, sidewalk, and entrance contracts.
+9. Generate public realm: trees, lighting, furniture, signs, plazas, waterfront edges.
+10. Generate utilities and service access skeletons.
+11. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
+12. Stamp generated objects with deterministic source metadata.
+13. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, slice tags, and budgets.
+14. Hand validated objects to mesh builders and scene-layer adapters.
 
 ## City Intent
 
-City intent belongs in `src/city/blueprint`, not inside individual generators. The first blueprint module is `src/city/blueprint/cityBlueprint.ts`; it owns district rules, use mix, density gradients, transition buffers, style hints, named parks, waterways, and tree species assumptions.
+City intent belongs in `src/city/blueprint`, not inside individual generators. The first blueprint module is `src/city/blueprint/cityBlueprint.ts`; it owns district rules, constraint rules, use mix, density gradients, transition buffers, style hints, named parks, waterways, and tree species assumptions.
 
 ## Determinism
 
@@ -28,6 +29,7 @@ City intent belongs in `src/city/blueprint`, not inside individual generators. T
 - Invalid config must fail before generators run, so bad dimensions, presets, density, or district settings cannot create half-valid city data.
 - Randomness should shape variation inside rule bounds; it should not bypass zoning, access, or validation.
 - Generated IDs should be stable, match the object-kind registry pattern, and be derived from semantic location or parent object where possible.
+- Constraint IDs, required object IDs, and related object IDs must be stable for the same seed/config and must resolve before validation passes.
 - Objects with a registry-required parent must set `parentId` to an object of an allowed parent kind before indexing or validation.
 - Procedural and simulated metadata must derive `sourceId` from generation step plus stable object ID, not wall-clock time or renderer names.
 - Generated coordinates must be finite local x/z meter values inside the configured geospatial frame bounds and tolerance.

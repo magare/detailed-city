@@ -12,6 +12,7 @@ import {
   getMasterPlanDistrictForNormalizedBlock,
   type CityMasterPlan
 } from './master-plan/masterPlan';
+import { CITY_CONSTRAINT_RULES, type ConstraintRule } from './constraints/constraintLayer';
 
 export interface DistrictRule {
   readonly id: DistrictKind;
@@ -46,6 +47,7 @@ export interface CityBlueprint {
   readonly id: string;
   readonly masterPlan: CityMasterPlan;
   readonly districtRules: readonly DistrictRule[];
+  readonly constraintRules: readonly ConstraintRule[];
   readonly publicSpaces: readonly PlannedPublicSpace[];
   readonly waterways: readonly PlannedWaterway[];
   readonly treeSpeciesCycle: readonly ('plane' | 'rain-tree' | 'palm' | 'jacaranda')[];
@@ -54,6 +56,7 @@ export interface CityBlueprint {
 export const CITY_BLUEPRINT: CityBlueprint = {
   id: 'detailed-city-v1',
   masterPlan: CITY_MASTER_PLAN,
+  constraintRules: CITY_CONSTRAINT_RULES,
   districtRules: [
     {
       id: 'downtown',

@@ -223,6 +223,7 @@ export interface CityCsvTableExport {
 
 export interface ProceduralSeedDomainSections {
   readonly districts: GeneratedCity['districts'];
+  readonly constraints: GeneratedCity['constraints'];
   readonly verticalSlices: GeneratedCity['verticalSlices'];
   readonly blocks: GeneratedCity['blocks'];
   readonly roads: GeneratedCity['roads'];
@@ -242,6 +243,7 @@ export interface ProceduralSeedDomainSections {
 
 export interface ProceduralSeedDomainSectionCounts {
   readonly districts: number;
+  readonly constraints: number;
   readonly verticalSlices: number;
   readonly blocks: number;
   readonly roads: number;
@@ -339,6 +341,7 @@ export function createProceduralSeedJsonExport(
     domainSectionCounts: createProceduralSeedDomainSectionCounts(city),
     city: {
       districts: city.districts,
+      constraints: city.constraints,
       verticalSlices: city.verticalSlices,
       blocks: city.blocks,
       roads: city.roads,
@@ -461,6 +464,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'assetCatalog'
     | 'blocks'
     | 'buildings'
+    | 'constraints'
     | 'crossings'
     | 'curbZones'
     | 'districts'
@@ -478,6 +482,7 @@ export function createProceduralSeedDomainSectionCounts(
 ): ProceduralSeedDomainSectionCounts {
   return {
     districts: city.districts.length,
+    constraints: city.constraints.length,
     verticalSlices: city.verticalSlices.length,
     blocks: city.blocks.length,
     roads: city.roads.length,
@@ -509,6 +514,7 @@ export function countProceduralSeedDomainObjects(
 
   return (
     getArrayLength(city, 'districts') +
+    getArrayLength(city, 'constraints') +
     getArrayLength(city, 'verticalSlices') +
     getArrayLength(city, 'blocks') +
     getArrayLength(city, 'roads') +

@@ -2,6 +2,7 @@ import type {
   AssetDefinition,
   AssetFormat,
   CityObjectKind,
+  ConstraintKind,
   GeospatialFrame,
   Point2D,
   Point3D,
@@ -10,12 +11,13 @@ import type {
   ValidationIssue,
   ValidationResult
 } from '../cityContracts';
-import { CITY_LOD_TIERS, DEFAULT_STREET_PROFILES } from '../cityContracts';
+import { CITY_CONSTRAINT_KINDS, CITY_LOD_TIERS, DEFAULT_STREET_PROFILES } from '../cityContracts';
 import { hasCityObject } from '../cityObjectIndex';
 import { CITY_OBJECT_KIND_REGISTRY_ENTRIES, validateCityObjectRegistryIdentity } from '../cityObjectRegistry';
 import { validateCityLodPolicy } from '../lodPolicy';
 import { validateSourceMetadata } from '../sourceMetadata';
 import type { GeneratedCity } from '../../../types/city';
+import { getPolygonBounds, isPointInsidePolygon, polygonsIntersect } from '../../../utils/geometry';
 
 type GeneratedCityForValidation = Pick<
   GeneratedCity,
@@ -24,6 +26,7 @@ type GeneratedCityForValidation = Pick<
   | 'activeFrontages'
   | 'blocks'
   | 'buildings'
+  | 'constraints'
   | 'crossings'
   | 'curbZones'
   | 'districts'
@@ -43,6 +46,7 @@ type GeneratedCityForValidation = Pick<
 >;
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
+type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 
 const REQUIRED_RENDER_BINDING_IDS = [
@@ -1150,6 +1154,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     }
   }
 
+  validateConstraints(city, issues, { parcelsById, roadsById });
+
   const activeFrontageBuildingIds = new Set(city.activeFrontages.map((frontage) => frontage.buildingId));
 
   for (const slice of city.verticalSlices) {
@@ -1393,6 +1399,10 @@ function validateGeospatialFrame(geospatial: GeospatialFrame, issues: Validation
 function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
   for (const district of city.districts) {
     validatePolygon2D(city.geospatial, district.id, 'boundary', district.boundary, issues);
+  }
+
+  for (const constraint of city.constraints) {
+    validatePolygon2D(city.geospatial, constraint.id, 'boundary', constraint.boundary, issues);
   }
 
   for (const block of city.blocks) {
@@ -1676,6 +1686,389 @@ function hasDistrictTransitionBuffer(district: ValidationDistrict, adjacentDistr
   return Array.isArray(district.transitionBuffers)
     ? district.transitionBuffers.some((buffer) => buffer.adjacentDistrictId === adjacentDistrictId)
     : false;
+}
+
+interface ConstraintValidationContext {
+  readonly parcelsById: ReadonlyMap<string, GeneratedCityForValidation['parcels'][number]>;
+  readonly roadsById: ReadonlyMap<string, GeneratedCityForValidation['roads'][number]>;
+}
+
+function validateConstraints(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  context: ConstraintValidationContext
+): void {
+  const knownObjectKinds = new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind));
+
+  for (const constraint of city.constraints) {
+    validateConstraintShapeAndKinds(constraint, issues, knownObjectKinds);
+    validateConstraintReferences(city, constraint, issues);
+    validateConstraintMetrics(constraint, issues);
+    validateConstraintObjectExclusions(city, constraint, issues);
+    validateConstraintSetbacks(city, constraint, issues, context);
+    validateConstraintRoadClearances(constraint, issues, context);
+    validateConstraintHeightLimit(city, constraint, issues);
+  }
+}
+
+function validateConstraintShapeAndKinds(
+  constraint: ValidationConstraint,
+  issues: ValidationIssue[],
+  knownObjectKinds: ReadonlySet<CityObjectKind>
+): void {
+  if (!(CITY_CONSTRAINT_KINDS as readonly string[]).includes(constraint.constraintKind)) {
+    issues.push(
+      createConstraintIssue(
+        constraint,
+        `invalid-constraint-kind-${toIssueIdToken(constraint.constraintKind)}`,
+        'zoning',
+        `Constraint ${constraint.id} uses unknown kind ${constraint.constraintKind}.`,
+        'Use one of the registered constraint kinds before generating the city.'
+      )
+    );
+  }
+
+  if (constraint.boundary.length < 4) {
+    issues.push(
+      createConstraintIssue(
+        constraint,
+        'invalid-boundary',
+        'geometry',
+        `Constraint ${constraint.id} must expose a polygon boundary with at least four points.`,
+        'Regenerate the constraint boundary from a public-space, waterway, road corridor, or city-boundary source.'
+      )
+    );
+  }
+
+  if (constraint.affectedObjectKinds.length === 0) {
+    issues.push(
+      createConstraintIssue(
+        constraint,
+        'missing-affected-kinds',
+        'zoning',
+        `Constraint ${constraint.id} must declare which city object kinds it affects.`,
+        'Add affected object kinds so validators and overlays can explain the constraint surface.'
+      )
+    );
+  }
+
+  for (const objectKind of [...constraint.affectedObjectKinds, ...constraint.prohibitedObjectKinds]) {
+    if (!knownObjectKinds.has(objectKind)) {
+      issues.push(
+        createConstraintIssue(
+          constraint,
+          `unknown-object-kind-${toIssueIdToken(objectKind)}`,
+          'identifier',
+          `Constraint ${constraint.id} references unknown object kind ${objectKind}.`,
+          'Register the object kind or remove it from the constraint rule.'
+        )
+      );
+    }
+  }
+
+  for (const prohibitedObjectKind of constraint.prohibitedObjectKinds) {
+    if (!constraint.affectedObjectKinds.includes(prohibitedObjectKind)) {
+      issues.push(
+        createConstraintIssue(
+          constraint,
+          `prohibited-kind-not-affected-${toIssueIdToken(prohibitedObjectKind)}`,
+          'zoning',
+          `Constraint ${constraint.id} prohibits ${prohibitedObjectKind} without listing it as affected.`,
+          'Include prohibited object kinds in affectedObjectKinds so conflict reporting stays inspectable.'
+        )
+      );
+    }
+  }
+}
+
+function validateConstraintReferences(
+  city: GeneratedCityForValidation,
+  constraint: ValidationConstraint,
+  issues: ValidationIssue[]
+): void {
+  for (const requiredObjectId of constraint.requiredObjectIds) {
+    if (!hasObjectId(city, requiredObjectId)) {
+      issues.push(
+        createConstraintIssue(
+          constraint,
+          `missing-required-reference-${toIssueIdToken(requiredObjectId)}`,
+          'identifier',
+          `Constraint ${constraint.id} requires missing city object ${requiredObjectId}.`,
+          `Create ${requiredObjectId} before generating ${constraint.id}, or remove the stale required reference.`
+        )
+      );
+    }
+  }
+
+  for (const relatedObjectId of constraint.relatedObjectIds) {
+    if (!hasObjectId(city, relatedObjectId)) {
+      issues.push(
+        createConstraintIssue(
+          constraint,
+          `missing-related-reference-${toIssueIdToken(relatedObjectId)}`,
+          'identifier',
+          `Constraint ${constraint.id} relates to missing city object ${relatedObjectId}.`,
+          `Create ${relatedObjectId} before generating ${constraint.id}, or remove the stale related reference.`
+        )
+      );
+    }
+  }
+}
+
+function validateConstraintMetrics(constraint: ValidationConstraint, issues: ValidationIssue[]): void {
+  for (const [metricName, metricValue] of [
+    ['minSetbackMeters', constraint.minSetbackMeters],
+    ['minClearanceMeters', constraint.minClearanceMeters],
+    ['maxHeightMeters', constraint.maxHeightMeters]
+  ] as const) {
+    if (metricValue !== undefined && (!isFiniteNumber(metricValue) || metricValue <= 0)) {
+      issues.push(
+        createConstraintIssue(
+          constraint,
+          `invalid-${metricName}`,
+          'zoning',
+          `Constraint ${constraint.id} must use a positive finite ${metricName} value.`,
+          `Regenerate ${constraint.id}.${metricName} as a positive meter value.`
+        )
+      );
+    }
+  }
+
+  if (constraint.constraintKind === 'setback' && constraint.minSetbackMeters === undefined) {
+    issues.push(
+      createConstraintIssue(
+        constraint,
+        'missing-setback-distance',
+        'zoning',
+        `Setback constraint ${constraint.id} must define minSetbackMeters.`,
+        'Add a minimum setback distance so building footprints can be validated against parcels.'
+      )
+    );
+  }
+
+  if (requiresClearanceMetric(constraint.constraintKind) && constraint.minClearanceMeters === undefined) {
+    issues.push(
+      createConstraintIssue(
+        constraint,
+        'missing-clearance-distance',
+        'zoning',
+        `Clearance constraint ${constraint.id} must define minClearanceMeters.`,
+        'Add a minimum clearance distance so protected road corridors can be validated.'
+      )
+    );
+  }
+}
+
+function validateConstraintObjectExclusions(
+  city: GeneratedCityForValidation,
+  constraint: ValidationConstraint,
+  issues: ValidationIssue[]
+): void {
+  if (constraint.prohibitedObjectKinds.includes('parcel')) {
+    for (const parcel of city.parcels) {
+      if (isPointInsidePolygon(parcel.center, constraint.boundary)) {
+        issues.push(
+          createConstraintConflictIssue(
+            constraint,
+            parcel.id,
+            parcel.center,
+            parcel.boundary,
+            `Parcel ${parcel.id} is inside prohibited constraint ${constraint.id}.`,
+            `Regenerate parcel ${parcel.id} outside ${constraint.name ?? constraint.id}, or change the constraint boundary.`
+          )
+        );
+      }
+    }
+  }
+
+  if (constraint.prohibitedObjectKinds.includes('building')) {
+    for (const building of city.buildings) {
+      if (isPointInsidePolygon(building.center, constraint.boundary)) {
+        issues.push(
+          createConstraintConflictIssue(
+            constraint,
+            building.id,
+            building.center,
+            building.footprint,
+            `Building ${building.id} is inside prohibited constraint ${constraint.id}.`,
+            `Regenerate building ${building.id} outside ${constraint.name ?? constraint.id}, or change the constraint boundary.`
+          )
+        );
+      }
+    }
+  }
+}
+
+function validateConstraintSetbacks(
+  city: GeneratedCityForValidation,
+  constraint: ValidationConstraint,
+  issues: ValidationIssue[],
+  context: ConstraintValidationContext
+): void {
+  if (constraint.minSetbackMeters === undefined) {
+    return;
+  }
+
+  for (const building of city.buildings) {
+    const parcel = context.parcelsById.get(building.parcelId);
+
+    if (!parcel || !isPointInsidePolygon(building.center, constraint.boundary)) {
+      continue;
+    }
+
+    const parcelBounds = getPolygonBounds(parcel.boundary);
+    const buildingBounds = getPolygonBounds(building.footprint);
+    const minSetback = Math.min(
+      buildingBounds.minX - parcelBounds.minX,
+      parcelBounds.maxX - buildingBounds.maxX,
+      buildingBounds.minZ - parcelBounds.minZ,
+      parcelBounds.maxZ - buildingBounds.maxZ
+    );
+
+    if (minSetback < constraint.minSetbackMeters - 0.001) {
+      issues.push(
+        createConstraintConflictIssue(
+          constraint,
+          building.id,
+          building.center,
+          building.footprint,
+          `Building ${building.id} setback ${minSetback.toFixed(2)}m violates ${constraint.id}.`,
+          `Shrink or move ${building.id} so every footprint edge is at least ${constraint.minSetbackMeters.toFixed(2)}m inside parcel ${parcel.id}.`
+        )
+      );
+    }
+  }
+}
+
+function validateConstraintRoadClearances(
+  constraint: ValidationConstraint,
+  issues: ValidationIssue[],
+  context: ConstraintValidationContext
+): void {
+  if (constraint.minClearanceMeters === undefined) {
+    return;
+  }
+
+  for (const roadId of getConstraintRoadIds(constraint, context.roadsById)) {
+    const road = context.roadsById.get(roadId);
+
+    if (!road) {
+      continue;
+    }
+
+    if (road.widthMeters < constraint.minClearanceMeters - 0.001) {
+      issues.push(
+        createConstraintConflictIssue(
+          constraint,
+          road.id,
+          road.center,
+          constraint.boundary,
+          `Road ${road.id} clearance ${road.widthMeters.toFixed(1)}m violates ${constraint.id}.`,
+          `Widen ${road.id} to at least ${constraint.minClearanceMeters.toFixed(1)}m or relax the constraint.`
+        )
+      );
+    }
+
+    if (
+      constraint.constraintKind === 'emergency-access-corridor' &&
+      !road.lanes.some((lane) => lane.allowedModes.includes('emergency'))
+    ) {
+      issues.push(
+        createConstraintConflictIssue(
+          constraint,
+          road.id,
+          road.center,
+          constraint.boundary,
+          `Road ${road.id} has no lane allowing emergency access for ${constraint.id}.`,
+          `Add emergency mode to at least one lane on ${road.id}.`
+        )
+      );
+    }
+  }
+}
+
+function validateConstraintHeightLimit(
+  city: GeneratedCityForValidation,
+  constraint: ValidationConstraint,
+  issues: ValidationIssue[]
+): void {
+  if (constraint.maxHeightMeters === undefined || !constraint.affectedObjectKinds.includes('building')) {
+    return;
+  }
+
+  for (const building of city.buildings) {
+    if (
+      building.heightMeters > constraint.maxHeightMeters + 0.001 &&
+      (isPointInsidePolygon(building.center, constraint.boundary) ||
+        polygonsIntersect(building.footprint, constraint.boundary))
+    ) {
+      issues.push(
+        createConstraintConflictIssue(
+          constraint,
+          building.id,
+          building.center,
+          building.footprint,
+          `Building ${building.id} height ${building.heightMeters.toFixed(1)}m violates ${constraint.id}.`,
+          `Lower ${building.id} to ${constraint.maxHeightMeters.toFixed(1)}m or move it out of the constraint boundary.`
+        )
+      );
+    }
+  }
+}
+
+function getConstraintRoadIds(
+  constraint: ValidationConstraint,
+  roadsById: ReadonlyMap<string, GeneratedCityForValidation['roads'][number]>
+): string[] {
+  return [...new Set([...constraint.requiredObjectIds, ...constraint.relatedObjectIds])].filter((objectId) =>
+    roadsById.has(objectId)
+  );
+}
+
+function requiresClearanceMetric(constraintKind: ConstraintKind): boolean {
+  return (
+    constraintKind === 'clearance' ||
+    constraintKind === 'emergency-access-corridor' ||
+    constraintKind === 'protected-corridor'
+  );
+}
+
+function createConstraintConflictIssue(
+  constraint: ValidationConstraint,
+  targetObjectId: string,
+  affectedPoint: Point2D,
+  affectedBoundary: Polygon2D,
+  message: string,
+  suggestedFix: string
+): ValidationIssue {
+  return {
+    id: `constraint-conflict-${toIssueIdToken(constraint.id)}-${toIssueIdToken(targetObjectId)}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: constraint.id,
+    affectedPoint,
+    affectedBoundary,
+    suggestedFix,
+    message
+  };
+}
+
+function createConstraintIssue(
+  constraint: ValidationConstraint,
+  issueIdSuffix: string,
+  category: ValidationIssue['category'],
+  message: string,
+  suggestedFix: string
+): ValidationIssue {
+  return {
+    id: `constraint-${issueIdSuffix}-${toIssueIdToken(constraint.id)}`,
+    severity: 'error',
+    category,
+    objectId: constraint.id,
+    affectedBoundary: constraint.boundary,
+    suggestedFix,
+    message
+  };
 }
 
 function validatePolyline2D(

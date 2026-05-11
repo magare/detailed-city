@@ -9,6 +9,7 @@ Debug tooling should start early because procedural city systems are hard to ins
 | Seed | Reproduce or regenerate cities. |
 | Grid/block size | Tune city scale and density. |
 | District overlay | Verify blueprint rules and district transitions. |
+| Constraint overlay | Inspect setbacks, no-build zones, clearances, waterfront buffers, and conflict focus geometry. |
 | LOD mode | Force low/medium/high/detail views. |
 | Traffic density | Test agent and performance load. |
 | Prop/tree density | Tune detail and performance tradeoffs. |
@@ -26,6 +27,7 @@ The panel currently exposes:
 - Seed.
 - Active config quality preset, grid size, and traffic density.
 - District character rule count and transition-buffer count.
+- Constraint rule count and no-build rule count.
 - Validation status and issue count.
 - Geospatial frame mode and coordinate precision.
 - Source metadata tagged-object coverage.
@@ -55,7 +57,7 @@ Clicking or hovering a city object should eventually show:
 
 ## Overlays
 
-The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results.
+The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results. Current executable datasets are `districts`, `constraints`, `parcels`, `roads`, `validation-issues`, and `owner-domains`.
 
 Validation issue overlay features now carry focus targets. When a validation issue provides an affected point, affected boundary, or suggested fix, the overlay feature uses that precise geometry and remediation text; otherwise it falls back to the referenced city object geometry.
 

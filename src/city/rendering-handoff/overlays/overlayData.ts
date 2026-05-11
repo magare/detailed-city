@@ -12,7 +12,7 @@ import type {
 import type { CityPlanningLayer } from '../../cityPlan';
 import type { GeneratedCity, GeneratedRuntimeCityObject } from '../../../types/city';
 
-export type CityOverlayId = 'districts' | 'parcels' | 'roads' | 'validation-issues' | 'owner-domains';
+export type CityOverlayId = 'districts' | 'constraints' | 'parcels' | 'roads' | 'validation-issues' | 'owner-domains';
 
 export type CityOverlayGeometry =
   | { readonly type: 'none' }
@@ -54,6 +54,7 @@ export function createCityOverlayDatasets(
 ): readonly CityOverlayDataset[] {
   return [
     createDataset('districts', 'Districts', 'domain-data', createDistrictFeatures(city)),
+    createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('parcels', 'Parcels', 'domain-data', createParcelFeatures(city)),
     createDataset('roads', 'Roads', 'domain-data', createRoadFeatures(city)),
     createDataset('validation-issues', 'Validation Issues', 'validation', createValidationIssueFeatures(city, runtimeObjectIndex)),
@@ -89,6 +90,29 @@ function createDistrictFeatures(city: GeneratedCity): CityOverlayFeature[] {
     metadata: {
       density: district.density,
       primaryUses: district.primaryUses.join(',')
+    }
+  }));
+}
+
+function createConstraintFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.constraints.map((constraint) => ({
+    id: `overlay:constraints:${constraint.id}`,
+    overlayId: 'constraints',
+    objectId: constraint.id,
+    objectKind: constraint.kind,
+    ownerDomain: constraint.ownerDomain,
+    label: constraint.name ?? constraint.id,
+    geometry: { type: 'polygon', points: constraint.boundary },
+    metadata: {
+      constraintKind: constraint.constraintKind,
+      priority: constraint.priority,
+      affectedKinds: constraint.affectedObjectKinds.join(','),
+      prohibitedKinds: constraint.prohibitedObjectKinds.join(','),
+      requiredReferences: constraint.requiredObjectIds.length,
+      relatedReferences: constraint.relatedObjectIds.length,
+      ...(constraint.minSetbackMeters !== undefined ? { minSetbackMeters: constraint.minSetbackMeters } : {}),
+      ...(constraint.minClearanceMeters !== undefined ? { minClearanceMeters: constraint.minClearanceMeters } : {}),
+      ...(constraint.maxHeightMeters !== undefined ? { maxHeightMeters: constraint.maxHeightMeters } : {})
     }
   }));
 }

@@ -13,8 +13,8 @@ test('active frontages are deterministic detailed-street facade objects', () => 
   expect(firstCity.activeFrontages.map((frontage) => frontage.id)).toEqual(
     secondCity.activeFrontages.map((frontage) => frontage.id)
   );
-  expect(firstCity.activeFrontages).toHaveLength(46);
-  expect(firstCity.objectIndex.countsByKind.facade).toBe(46);
+  expect(firstCity.activeFrontages).toHaveLength(45);
+  expect(firstCity.objectIndex.countsByKind.facade).toBe(45);
   expect(firstFrontage).toMatchObject({
     id: 'facade-active-frontage-building-5-1-2-1-road-v-6',
     kind: 'facade',

@@ -48,6 +48,7 @@ export interface CityDiagnostics {
   readonly config: ConfigDiagnostics;
   readonly masterPlan: MasterPlanDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
+  readonly constraintLayer: ConstraintLayerDiagnostics;
   readonly validation: GeneratedCity['validation'];
   readonly validationIssueFocus: {
     readonly issuesWithFocus: number;
@@ -90,6 +91,7 @@ export interface CityDiagnostics {
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
     readonly districtStylePalettes: number;
+    readonly constraints: number;
     readonly districts: number;
     readonly verticalSlices: number;
     readonly blocks: number;
@@ -135,6 +137,14 @@ export interface DistrictCharacterDiagnostics {
   readonly allowedStreetProfiles: readonly string[];
 }
 
+export interface ConstraintLayerDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly noBuildRules: number;
+  readonly clearanceRules: number;
+  readonly prohibitedObjectKinds: readonly string[];
+}
+
 export function createCityDiagnostics(
   city: GeneratedCity,
   traffic: TrafficPlan,
@@ -157,6 +167,7 @@ export function createCityDiagnostics(
   const objectGroups = createCityObjectGroupDiagnostics(objectGroupIndex);
   const masterPlan = createMasterPlanDiagnostics(CITY_BLUEPRINT.masterPlan);
   const districtCharacter = createDistrictCharacterDiagnostics();
+  const constraintLayer = createConstraintLayerDiagnostics(city);
   const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
   const overlays = createCityOverlayDatasets(city, objectIndex);
   const picking = createCityPickingMetadataCatalog(city, traffic, objectIndex);
@@ -176,6 +187,7 @@ export function createCityDiagnostics(
     config,
     masterPlan,
     districtCharacter,
+    constraintLayer,
     validation: city.validation,
     validationIssueFocus: createValidationIssueFocusDiagnostics(city.validation.issues),
     trafficValidation,
@@ -209,6 +221,7 @@ export function createCityDiagnostics(
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
       districtStylePalettes: districtCharacter.stylePalettes.length,
+      constraints: city.constraints.length,
       districts: city.districts.length,
       verticalSlices: city.verticalSlices.length,
       blocks: city.blocks.length,
@@ -281,6 +294,30 @@ function createDistrictCharacterDiagnostics(): DistrictCharacterDiagnostics {
     transitionBuffers,
     stylePalettes: [...stylePalettes].sort(),
     allowedStreetProfiles: [...allowedStreetProfiles].sort()
+  };
+}
+
+function createConstraintLayerDiagnostics(city: GeneratedCity): ConstraintLayerDiagnostics {
+  const byKind: Record<string, number> = {};
+  const prohibitedObjectKinds = new Set<string>();
+
+  for (const constraint of city.constraints) {
+    byKind[constraint.constraintKind] = (byKind[constraint.constraintKind] ?? 0) + 1;
+
+    for (const objectKind of constraint.prohibitedObjectKinds) {
+      prohibitedObjectKinds.add(objectKind);
+    }
+  }
+
+  return {
+    total: city.constraints.length,
+    byKind,
+    noBuildRules: city.constraints.filter((constraint) => constraint.constraintKind === 'no-build-zone').length,
+    clearanceRules: city.constraints.filter(
+      (constraint) =>
+        constraint.constraintKind === 'clearance' || constraint.constraintKind === 'emergency-access-corridor'
+    ).length,
+    prohibitedObjectKinds: [...prohibitedObjectKinds].sort()
   };
 }
 

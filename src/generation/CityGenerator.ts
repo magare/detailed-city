@@ -11,6 +11,8 @@ import type { CityConfig, GeneratedCity } from '../types/city';
 import { SeededRandom } from '../utils/random';
 import { ActiveFrontageGenerator } from './buildings/ActiveFrontageGenerator';
 import { BuildingGenerator } from './buildings/BuildingGenerator';
+import { applyConstraintFilters } from './constraints/applyConstraintFilters';
+import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
@@ -39,8 +41,9 @@ export class CityGenerator {
     const pedestrianNetwork = new PedestrianNetworkGenerator().create(roads, intersections);
     const parks = terrainGenerator.generateParks(bounds);
     const waterways = terrainGenerator.generateWaterways(bounds);
-    const excludedBlocks = terrainGenerator.getExcludedBlocks(bounds, parks, waterways);
-    const landAndBuildings = buildingGenerator.generate(bounds, excludedBlocks);
+    const constraints = new ConstraintGenerator(this.config).create({ bounds, parks, waterways, roads });
+    const excludedBlocks = terrainGenerator.getExcludedBlocks(bounds, constraints);
+    const landAndBuildings = applyConstraintFilters(buildingGenerator.generate(bounds, excludedBlocks), constraints);
     const parkTrees = terrainGenerator.generateTreePlantings(parks);
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
       roads,
@@ -97,6 +100,7 @@ export class CityGenerator {
       performanceBudget: DEFAULT_PERFORMANCE_BUDGET,
       bounds,
       districts: landAndBuildings.districts,
+      constraints,
       blocks: landAndBuildings.blocks,
       verticalSlices: verticalSlicesWithCurbs,
       roads: sliceTagged.roads,

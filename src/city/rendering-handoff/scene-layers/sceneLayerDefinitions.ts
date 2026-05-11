@@ -78,7 +78,7 @@ export function createCitySceneLayerDiagnostics(
     buildings: city.buildings.length + roofDetailCount + city.activeFrontages.length,
     'public-realm': city.parks.length + city.trees.length + city.streetLights.length + city.streetFurniture.length,
     agents: traffic.vehicles.length,
-    overlays: 0
+    overlays: city.verticalSlices.length + city.constraints.length
   };
 
   return CITY_SCENE_LAYER_DEFINITIONS.map((definition) => ({

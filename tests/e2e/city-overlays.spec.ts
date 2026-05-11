@@ -17,13 +17,15 @@ test('debug overlay datasets are generated from domain data', () => {
 
   expect(overlays.map((overlay) => overlay.id)).toEqual([
     'districts',
+    'constraints',
     'parcels',
     'roads',
     'validation-issues',
     'owner-domains'
   ]);
   expect(overlays.find((overlay) => overlay.id === 'districts')?.featureCount).toBe(5);
-  expect(overlays.find((overlay) => overlay.id === 'parcels')?.featureCount).toBe(568);
+  expect(overlays.find((overlay) => overlay.id === 'constraints')?.featureCount).toBe(11);
+  expect(overlays.find((overlay) => overlay.id === 'parcels')?.featureCount).toBe(562);
   expect(overlays.find((overlay) => overlay.id === 'roads')?.featureCount).toBe(26);
   expect(overlays.find((overlay) => overlay.id === 'validation-issues')?.featureCount).toBe(0);
   expect(overlays.find((overlay) => overlay.id === 'owner-domains')?.featureCount).toBe(runtimeIndex.objectIds.length);

@@ -9,6 +9,7 @@ export type CityObjectKind =
   | 'block'
   | 'building'
   | 'civic-anchor'
+  | 'constraint'
   | 'crossing'
   | 'curb-zone'
   | 'district'
@@ -299,6 +300,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2', 'lod3'],
       description: 'Civic anchors render as named building or place markers until dedicated assets exist.'
+    },
+    {
+      objectKind: 'constraint',
+      scope: 'overlay',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'Planning constraints are inspectable overlay contracts that gate land, road, and building validity.'
     },
     {
       objectKind: 'crossing',
@@ -601,6 +609,35 @@ export interface DistrictStyleHints {
   readonly roofline: 'civic-cornice' | 'flat-varied' | 'green-lowrise' | 'mechanical-sawtooth' | 'tower-stepped';
   readonly publicRealmCharacter: string;
   readonly preferredMaterialZones: readonly string[];
+}
+
+export const CITY_CONSTRAINT_KINDS = [
+  'setback',
+  'protected-corridor',
+  'easement',
+  'clearance',
+  'no-build-zone',
+  'hazard-buffer',
+  'view-corridor',
+  'waterfront-buffer',
+  'emergency-access-corridor'
+] as const;
+
+export type ConstraintKind = (typeof CITY_CONSTRAINT_KINDS)[number];
+export type ConstraintPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface ConstraintContract extends CityObjectBase<'constraint'> {
+  readonly constraintKind: ConstraintKind;
+  readonly priority: ConstraintPriority;
+  readonly description: string;
+  readonly boundary: Polygon2D;
+  readonly affectedObjectKinds: readonly CityObjectKind[];
+  readonly prohibitedObjectKinds: readonly CityObjectKind[];
+  readonly requiredObjectIds: readonly CityId[];
+  readonly relatedObjectIds: readonly CityId[];
+  readonly minSetbackMeters?: number;
+  readonly minClearanceMeters?: number;
+  readonly maxHeightMeters?: number;
 }
 
 export interface BlockContract extends CityObjectBase<'block'> {

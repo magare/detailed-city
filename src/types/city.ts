@@ -7,6 +7,7 @@ import type {
   CityObjectIndex,
   CityLodPolicy,
   CityObjectBase,
+  ConstraintContract,
   CurbZoneContract,
   CrossingContract,
   DetailedStreetSliceContract,
@@ -166,6 +167,8 @@ export interface ActiveFrontage extends ActiveFrontageContract {
 
 export interface DetailedStreetSlice extends DetailedStreetSliceContract {}
 
+export interface ConstraintPlan extends ConstraintContract {}
+
 export interface ParkPatch extends CityObjectBase<'park'> {
   center: Point2D;
   size: { x: number; z: number };
@@ -210,6 +213,7 @@ export interface TrafficVehiclePlan extends TrafficVehicleContract {}
 export type GeneratedCityObject =
   | AssetDefinition
   | DetailedStreetSlice
+  | ConstraintPlan
   | DistrictPlan
   | BlockPlan
   | RoadSegment
@@ -243,6 +247,7 @@ export interface GeneratedCity {
   performanceBudget: PerformanceBudget;
   bounds: CityBounds;
   districts: DistrictPlan[];
+  constraints: ConstraintPlan[];
   blocks: BlockPlan[];
   verticalSlices: DetailedStreetSlice[];
   roads: RoadSegment[];

@@ -51,6 +51,7 @@ Validation is a first-class city system. It protects the project from procedural
 - Point3D and height-bearing objects stay inside the configured local ground-plane height datum tolerance.
 - District boundaries, primary uses, use mix totals, height ranges, density gradients, landmark targets, transition buffers, style hints, and allowed street profiles.
 - Adjacent block district transitions have reciprocal district transition buffer rules and validation focus data when they fail.
+- Constraint layer objects validate boundary geometry, affected/prohibited object kinds, required and related object references, positive setback/clearance/height metrics, no-build parcel/building conflicts, road clearance requirements, and height limits when present.
 - Block geometry and district parent relationships.
 - Positive road length, width, widthMeters, lane count, lane widths, sidewalk clear widths, and lane totals that fit road width.
 - Lane and sidewalk parent references back to their road segment.

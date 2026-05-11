@@ -79,6 +79,7 @@ The first detailed street slice is a generated `vertical-slice` object. It recor
 | Object | Minimum data |
 | --- | --- |
 | District | Boundary, density band, primary uses, use mix, height range, density gradient, landmark targets, transition buffers, style hints, allowed street profiles. |
+| Constraint | Constraint kind, priority, boundary, affected/prohibited object kinds, required/related object IDs, and optional setback, clearance, or height limits. |
 | Block | Boundary, district reference, permeability, alley/internal access flags. |
 | Parcel | Boundary, district/block references, frontage road IDs, allowed uses, max height, coverage ratio. |
 | Road segment | Centerline, hierarchy, street profile, width, lane and sidewalk references. |
@@ -112,7 +113,7 @@ The LOD policy also maps every registered `CityObjectKind` to allowed tiers and 
 
 ## Validation Gates
 
-The first executable city validator is `src/city/data-contracts/validation/validateGeneratedCity.ts`. It currently checks duplicate IDs, object-kind registry ID patterns, required/forbidden parent rules, parent-kind compatibility, source metadata completeness, LOD tier policy coverage, asset catalog and render binding integrity, geospatial frame metadata, finite local x/z coordinates, local coordinate bounds/tolerances, height datum bounds, district character rules and transition buffers, district/block relationships, road lane/sidewalk structure, curb and crossing relationships, public-realm furnishing-zone placement, parcel frontage and zoning fields, building parcel fit/coverage/use/height/public entrances, active frontage facade references and storefront metadata, and tree parent references. Runtime traffic and marking output is checked by `src/city/data-contracts/validation/validateTrafficPlan.ts`, including lane-marking and traffic-vehicle registry IDs plus road/lane/route/speed/stop/source metadata and LOD policy compliance. Validators should expand before each new city slice lands.
+The first executable city validator is `src/city/data-contracts/validation/validateGeneratedCity.ts`. It currently checks duplicate IDs, object-kind registry ID patterns, required/forbidden parent rules, parent-kind compatibility, source metadata completeness, LOD tier policy coverage, asset catalog and render binding integrity, geospatial frame metadata, finite local x/z coordinates, local coordinate bounds/tolerances, height datum bounds, district character rules and transition buffers, constraint boundaries/references/conflicts/setbacks/clearances, district/block relationships, road lane/sidewalk structure, curb and crossing relationships, public-realm furnishing-zone placement, parcel frontage and zoning fields, building parcel fit/coverage/use/height/public entrances, active frontage facade references and storefront metadata, and tree parent references. Runtime traffic and marking output is checked by `src/city/data-contracts/validation/validateTrafficPlan.ts`, including lane-marking and traffic-vehicle registry IDs plus road/lane/route/speed/stop/source metadata and LOD policy compliance. Validators should expand before each new city slice lands.
 
 Required gate categories:
 
