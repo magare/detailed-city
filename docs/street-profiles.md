@@ -37,6 +37,7 @@ The executable seed is `DEFAULT_STREET_PROFILES` in `src/city/data-contracts/cit
 - Sidewalk graph nodes must be generated from profile sidewalk zones.
 - Curb allocation must be explicit, especially for loading, transit stops, emergency access, and parking.
 - Street tree, light, sign, and furniture placement should attach to profile zones, not to mesh coordinates.
+- Traffic vehicles should derive speed from `designSpeedKph` and bind to lanes whose direction matches route travel.
 
 ## Validation Rules
 

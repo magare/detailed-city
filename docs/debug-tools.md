@@ -15,18 +15,48 @@ Debug tooling should start early because procedural city systems are hard to ins
 | Validation overlay | Show errors, warnings, and affected object IDs. |
 | Performance overlay | Show frame time, draw calls, triangles, agents, chunk counts. |
 
+Runtime performance data is available through `App.getPerformanceDiagnostics()`. It reports frame timing, renderer draw calls, triangles, active agents, and pass/warn checks against the current performance budget.
+
+## First Runtime Panel
+
+`src/app/DebugPanel.ts` mounts a compact read-only diagnostics panel over the canvas. It reads from generated city diagnostics and `App.getPerformanceDiagnostics()`; it does not mutate renderer state or regenerate the city.
+
+The panel currently exposes:
+
+- Seed.
+- Active config quality preset, grid size, and traffic density.
+- Validation status and issue count.
+- Geospatial frame mode and coordinate precision.
+- Source metadata tagged-object coverage.
+- Traffic vehicle and lane-marking counts.
+- Building and active-frontage counts.
+- Asset definition and render binding counts.
+- Import/export format count and procedural seed export object count.
+- Registered object-kind count.
+- Active overlay IDs.
+- LOD policy tiers and object-kind policy count.
+- Runtime performance budget status, draw calls, and frame timing.
+
+Use `?debugPanel=hidden` when a clean canvas is needed for smoke screenshots or visual inspection.
+
 ## Object Picking
+
+The executable picking path is produced by `src/city/rendering-handoff/picking/pickingMetadata.ts` and attached to render objects while the scene is built. `App.pickCityObjectAtClientPoint(...)` raycasts through the city group and resolves regular meshes plus instanced meshes back to generated city object metadata.
 
 Clicking or hovering a city object should eventually show:
 
 - ID, kind, owner domain, parent ID.
-- District, block, parcel, building references.
+- District, block, parcel, building, road, sidewalk, and slice references where the object carries them.
 - LOD tier and asset binding.
 - Validation issues.
 - Source metadata and confidence.
-- Simulation state if applicable.
+- Simulation state such as vehicle lane, route nodes, speed, stop zones, and incident hooks if applicable.
 
 ## Overlays
+
+The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results.
+
+Validation issue overlay features now carry focus targets. When a validation issue provides an affected point, affected boundary, or suggested fix, the overlay feature uses that precise geometry and remediation text; otherwise it falls back to the referenced city object geometry.
 
 | Overlay | Contents |
 | --- | --- |
@@ -42,5 +72,9 @@ Clicking or hovering a city object should eventually show:
 
 - Debug UI must inspect city data, not scrape Three.js mesh names.
 - Validation overlay must link issues back to object IDs.
-- Performance overlay should be available before Phase 6 scaling work.
+- Validation overlay features should expose focus geometry and suggested remediation whenever validators provide it.
+- Overlay datasets must expose stable IDs, source object IDs, owner domains, feature counts, and geometry where available.
+- Performance diagnostics are visible in the runtime panel before Phase 6 scaling work.
+- Import/export diagnostics should summarize exchange readiness without embedding renderer state in the exported artifact.
+- Config diagnostics should list the active seed, quality preset, density settings, district settings, and render quality fields that produced the current city.
 - Authoring controls should mutate config/blueprint inputs, then regenerate deterministically.

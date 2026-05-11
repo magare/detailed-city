@@ -1,0 +1,245 @@
+import * as THREE from 'three';
+import type {
+  CityId,
+  CityObjectBase,
+  CityObjectIndex,
+  CityObjectKind,
+  LodTier
+} from '../../data-contracts/cityContracts';
+import type { CityPlanningLayer } from '../../cityPlan';
+import type { CitySceneLayerId } from '../scene-layers/sceneLayerDefinitions';
+import type { GeneratedCity, GeneratedRuntimeCityObject, TrafficPlan } from '../../../types/city';
+
+export const CITY_PICKING_USER_DATA_KEY = 'cityPicking';
+
+export interface CityPickingReferences {
+  readonly districtId?: CityId;
+  readonly blockId?: CityId;
+  readonly parcelId?: CityId;
+  readonly buildingId?: CityId;
+  readonly roadId?: CityId;
+  readonly roadSegmentId?: CityId;
+  readonly laneId?: CityId;
+  readonly parkId?: CityId;
+  readonly waterwayId?: CityId;
+  readonly sliceId?: CityId;
+  readonly curbZoneId?: CityId;
+  readonly intersectionId?: CityId;
+  readonly crossingId?: CityId;
+  readonly sidewalkId?: CityId;
+}
+
+export interface CityPickingMetadata {
+  readonly objectId: CityId;
+  readonly kind: CityObjectKind;
+  readonly ownerDomain: CityPlanningLayer;
+  readonly parentId?: CityId;
+  readonly lod: LodTier;
+  readonly label: string;
+  readonly references: CityPickingReferences;
+}
+
+export interface CityPickingCatalog {
+  readonly ownerDomain: 'rendering-handoff';
+  readonly pickableObjects: readonly CityPickingMetadata[];
+  readonly pickableObjectIds: readonly CityId[];
+  readonly metadataByObjectId: Readonly<Record<CityId, CityPickingMetadata>>;
+  readonly countsByKind: Readonly<Partial<Record<CityObjectKind, number>>>;
+}
+
+export interface CityPickResult extends CityPickingMetadata {
+  readonly renderObjectName: string;
+  readonly sceneLayerId?: CitySceneLayerId;
+  readonly instanceId?: number;
+  readonly distance: number;
+}
+
+interface CityPickingUserData {
+  readonly metadata?: CityPickingMetadata;
+  readonly instances?: readonly CityPickingMetadata[];
+}
+
+type PickableObjectSource = Pick<
+  GeneratedCity,
+  'activeFrontages' | 'buildings' | 'parks' | 'roads' | 'streetFurniture' | 'streetLights' | 'trees' | 'waterways'
+>;
+
+export function createCityPickingMetadataCatalog(
+  city: PickableObjectSource,
+  traffic: TrafficPlan,
+  objectIndex?: CityObjectIndex
+): CityPickingCatalog {
+  const pickableObjects: GeneratedRuntimeCityObject[] = [
+    ...city.roads,
+    ...city.buildings,
+    ...city.activeFrontages,
+    ...city.parks,
+    ...city.waterways,
+    ...city.trees,
+    ...city.streetLights,
+    ...city.streetFurniture,
+    ...traffic.markings,
+    ...traffic.vehicles
+  ];
+  const pickableMetadata = pickableObjects.map((object) => createCityPickingMetadata(object, objectIndex));
+  const metadataByObjectId: Record<CityId, CityPickingMetadata> = {};
+  const countsByKind: Partial<Record<CityObjectKind, number>> = {};
+
+  for (const metadata of pickableMetadata) {
+    metadataByObjectId[metadata.objectId] = metadata;
+    countsByKind[metadata.kind] = (countsByKind[metadata.kind] ?? 0) + 1;
+  }
+
+  return {
+    ownerDomain: 'rendering-handoff',
+    pickableObjects: pickableMetadata,
+    pickableObjectIds: pickableMetadata.map((metadata) => metadata.objectId),
+    metadataByObjectId,
+    countsByKind
+  };
+}
+
+export function createCityPickingMetadata(
+  object: CityObjectBase,
+  objectIndex?: CityObjectIndex
+): CityPickingMetadata {
+  return {
+    objectId: object.id,
+    kind: object.kind,
+    ownerDomain: object.ownerDomain,
+    parentId: object.parentId,
+    lod: object.lod,
+    label: object.name ?? object.id,
+    references: createPickingReferences(object, objectIndex)
+  };
+}
+
+export function attachCityPickingMetadata(object: THREE.Object3D, metadata: CityPickingMetadata): void {
+  object.userData[CITY_PICKING_USER_DATA_KEY] = {
+    metadata
+  } satisfies CityPickingUserData;
+}
+
+export function attachCityPickingInstanceMetadata(
+  object: THREE.Object3D,
+  instances: readonly CityPickingMetadata[]
+): void {
+  object.userData[CITY_PICKING_USER_DATA_KEY] = {
+    instances
+  } satisfies CityPickingUserData;
+}
+
+export function resolveCityPickFromIntersections(
+  intersections: readonly THREE.Intersection[]
+): CityPickResult | undefined {
+  for (const intersection of intersections) {
+    const result = resolveCityPickFromIntersection(intersection);
+
+    if (result) {
+      return result;
+    }
+  }
+
+  return undefined;
+}
+
+export function resolveCityPickFromIntersection(intersection: THREE.Intersection): CityPickResult | undefined {
+  const picking = getCityPickingUserData(intersection.object);
+  const metadata =
+    typeof intersection.instanceId === 'number'
+      ? picking?.instances?.[intersection.instanceId] ?? picking?.metadata
+      : picking?.metadata;
+
+  if (!metadata) {
+    return undefined;
+  }
+
+  return {
+    ...metadata,
+    renderObjectName: intersection.object.name,
+    sceneLayerId: getSceneLayerId(intersection.object),
+    instanceId: typeof intersection.instanceId === 'number' ? intersection.instanceId : undefined,
+    distance: intersection.distance
+  };
+}
+
+function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjectIndex): CityPickingReferences {
+  const references: WritableCityPickingReferences = {};
+  const record = object as unknown as Record<string, unknown>;
+
+  copyStringReference(record, references, 'districtId');
+  copyStringReference(record, references, 'blockId');
+  copyStringReference(record, references, 'buildingId');
+  copyStringReference(record, references, 'parcelId');
+  copyStringReference(record, references, 'roadId');
+  copyStringReference(record, references, 'roadSegmentId');
+  copyStringReference(record, references, 'laneId');
+  copyStringReference(record, references, 'parkId');
+  copyStringReference(record, references, 'sliceId');
+  copyStringReference(record, references, 'curbZoneId');
+  copyStringReference(record, references, 'intersectionId');
+  copyStringReference(record, references, 'crossingId');
+  copyStringReference(record, references, 'sidewalkId');
+
+  if (object.kind === 'building') {
+    references.buildingId = object.id;
+    const parcelId = typeof record.parcelId === 'string' ? record.parcelId : undefined;
+    const parcel = parcelId ? objectIndex?.objectsById[parcelId] : undefined;
+
+    if (parcel) {
+      const parcelRecord = parcel as unknown as Record<string, unknown>;
+      references.blockId ??= typeof parcelRecord.blockId === 'string' ? parcelRecord.blockId : undefined;
+      references.districtId ??= typeof parcelRecord.districtId === 'string' ? parcelRecord.districtId : undefined;
+    }
+  }
+
+  if (object.kind === 'road-segment') {
+    references.roadId = object.id;
+  } else if (object.kind === 'park') {
+    references.parkId = object.id;
+  } else if (object.kind === 'waterway') {
+    references.waterwayId = object.id;
+  } else if (
+    (object.kind === 'lane-marking' || object.kind === 'traffic-vehicle') &&
+    !references.roadId &&
+    object.parentId
+  ) {
+    references.roadId = object.parentId;
+  }
+
+  return references;
+}
+
+function getCityPickingUserData(object: THREE.Object3D): CityPickingUserData | undefined {
+  return object.userData[CITY_PICKING_USER_DATA_KEY] as CityPickingUserData | undefined;
+}
+
+function getSceneLayerId(object: THREE.Object3D): CitySceneLayerId | undefined {
+  let current: THREE.Object3D | null = object;
+
+  while (current) {
+    const sceneLayerId = current.userData.sceneLayerId;
+
+    if (typeof sceneLayerId === 'string') {
+      return sceneLayerId as CitySceneLayerId;
+    }
+
+    current = current.parent;
+  }
+
+  return undefined;
+}
+
+function copyStringReference(
+  source: Record<string, unknown>,
+  target: WritableCityPickingReferences,
+  key: keyof CityPickingReferences
+): void {
+  const value = source[key];
+
+  if (typeof value === 'string') {
+    target[key] = value;
+  }
+}
+
+type WritableCityPickingReferences = Partial<Record<keyof CityPickingReferences, CityId>>;

@@ -74,6 +74,7 @@ export class TerrainGenerator {
           kind: 'tree-planting',
           ownerDomain: 'public-realm',
           parentId: park.id,
+          plantingContext: 'park',
           parkId: park.id,
           lod: 'lod2',
           center,

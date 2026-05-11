@@ -30,7 +30,7 @@ The target is a detailed contemporary river/coastal city: realistic enough for p
 ## Density And Detail
 
 - Downtown: highest height variation and facade density.
-- Main streets: storefronts, signs, crosswalks, street trees, benches, bins, lamps.
+- Main streets: active storefront windows, signs, awnings, crosswalks, street trees, benches, bins, lamps, and warm night-window detail.
 - Local streets: calmer prop density, parked cars, residential entrances.
 - Waterfront: strong human-scale detail, seating, lights, railings, open-space activity.
 - Industrial: freight/loading detail, fewer decorative props, service infrastructure.

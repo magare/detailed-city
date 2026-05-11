@@ -38,4 +38,5 @@ docs/                  Architecture notes and expansion roadmap.
 tests/e2e/             Browser smoke tests for WebGL rendering.
 ```
 
-See `docs/city-domain-structure.md` for the full city-planning tree and ownership rules.
+See `docs/city-domain-structure.md` for the full city-planning tree and ownership rules. See
+`docs/city-kanban.md` for the complete implementation Kanban board.

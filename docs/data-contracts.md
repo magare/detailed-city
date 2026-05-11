@@ -1,30 +1,75 @@
 # Data Contracts
 
-This project treats city data as the source of truth and Three.js meshes as a rendering result. The executable contract seed lives in `src/city/data-contracts/cityContracts.ts`.
+This project treats city data as the source of truth and Three.js meshes as a rendering result. The executable contract seed lives in `src/city/data-contracts/cityContracts.ts`, and stable object-kind registry rules live in `src/city/data-contracts/cityObjectRegistry.ts`.
 
 ## Contract Goals
 
 - Every city object has a stable `id`, `kind`, `ownerDomain`, `lod`, and optional `parentId`.
-- Coordinates use meters in the local `x/z` ground plane, with `y` as height.
+- Coordinates use meters in the local `x/z` ground plane, with `y` as local height above the configured datum.
 - Domain objects expose enough semantic data for validation, rendering handoff, picking, debugging, import/export, and simulation.
 - Render-specific data is represented as asset bindings or material zones, not embedded directly in domain objects.
+
+## Config Contracts
+
+`src/config/configSchema.ts` validates the active city and render config before generation. It checks the seed, quality preset, grid/block/road/water dimensions, city/traffic/prop/tree density controls, building height/setback ranges, per-district density/height/lot-split settings, render colors, camera clipping, fog, pixel ratio, shadows, and quality preset consistency.
+
+The active config diagnostics expose schema version, validation status, available quality presets, city density settings, district settings, and render quality fields so debug tooling can list the config that produced the current city.
 
 ## Common Object Fields
 
 | Field | Rule |
 | --- | --- |
-| `id` | Stable across identical seed/config runs. IDs should not encode transient render state. |
+| `id` | Stable across identical seed/config runs and matched against the registry pattern for the object kind. IDs should not encode transient render state. |
 | `kind` | One of the known city object kinds, such as `parcel`, `road-segment`, `tree-planting`, or `building`. |
 | `ownerDomain` | The planning domain responsible for truth: `land`, `mobility`, `public-realm`, `simulation`, etc. |
-| `parentId` | Required when the object cannot stand alone, such as a tree inside a park or a lane inside a road. |
+| `parentId` | Required or forbidden according to the object-kind registry. Parent kind must match the allowed registry rule. |
 | `lod` | Default level of detail needed to render or simulate the object. |
-| `metadata` | Source, confidence, author/license, and update timing for imported or authored data. |
+| `metadata` | Source type, stable source ID, confidence, author/license, attribution, review status, generation step, and source schema version. |
 | `tags` | Small semantic flags useful for filtering and asset binding. |
+
+## Validation Issue Focus
+
+`ValidationIssue` may carry `affectedPoint`, `affectedBoundary`, and `suggestedFix` when a validator can infer where the issue should be inspected and what remediation is likely. Debug overlays prefer this issue-level focus data over broad object geometry, while still falling back to object geometry when a precise point or boundary is unavailable.
+
+## Object Index
+
+Generated city data carries a typed object index built from domain objects, road children, render asset definitions, and runtime diagnostic objects such as lane markings and vehicles. The index stores deterministic object order, ID lookup, duplicate IDs, parent-to-child relationships, and counts by object kind so validators, debug tools, picking, and rendering adapters can resolve IDs without scraping Three.js scene names.
+
+## Object Registry
+
+`cityObjectRegistry.ts` defines the current registry for every `CityObjectKind`. Each entry records:
+
+- Stable ID patterns for the kind.
+- Whether `parentId` is forbidden, optional, or required.
+- Allowed parent object kinds when a parent is present.
+- Query helpers for resolving objects and children by kind from a `CityObjectIndex`.
+
+The validator now enforces registry ID patterns and parent-kind rules for generated city objects and runtime traffic objects. Parcels participate in parent-child lookup through `parentId: blockId`, while buildings remain parented to parcels and road children remain parented to roads.
+
+## Source Metadata
+
+`SourceMetadata` covers `procedural`, `authored`, `imported`, and `simulated` objects. Generated city objects are stamped at the generation boundary with deterministic source IDs derived from their generation step and object ID. Runtime lane markings use procedural metadata, while traffic vehicles use simulated metadata. Asset definitions also carry top-level license/attribution fields plus source metadata so future binary or third-party assets can be reviewed without renderer-only assumptions.
+
+## Import And Export Contracts
+
+`src/city/data-contracts/import-export` defines the exchange contract seed. The supported shapes are local-meter GeoJSON feature collections, CityJSON-style domain objects, OSM-inspired node/way/relation features, glTF/GLB asset binding manifests, CSV tables, and procedural seed JSON.
+
+The first executable export is `procedural-seed-json`. It carries the active seed/config, geospatial frame, bounds, LOD policy, performance budget, generated domain sections, asset catalog, render bindings, stable object IDs/counts, validation result, and deterministic provenance. It intentionally excludes renderer-only and runtime inspection fields such as `objectIndex`, scene layers, overlays, picking catalogs, runtime performance, quality flags, and traffic validation snapshots.
+
+Diagnostics expose import/export readiness as a summary: supported format count, procedural export object count, asset/binding counts, JSON serializability, validation status, and any renderer-only fields detected in the generated artifact.
+
+## Vertical Slice Contracts
+
+The first detailed street slice is a generated `vertical-slice` object. It records the deterministic corridor road, sidewalks, intersections, crossings, sidewalk graph elements, frontage parcels/buildings, and a visual QA camera target so later detailed-street cards can filter by `detailedStreetSliceId` instead of rediscovering the corridor.
 
 ## Geometry Rules
 
 - `Point2D` uses `{ x, z }` in meters.
 - `Point3D` uses `{ x, y, z }` in meters.
+- `GeospatialFrame` declares local axis mapping, origin metadata, coordinate precision, local x/z bounds, height datum, and future import-projection metadata.
+- Current generated coordinates must stay inside the local frame bounds of `-700..700m` on x/z, with `0.01m` horizontal tolerance.
+- Heights must stay inside the local ground-plane datum range of `-5..180m`, with `0.01m` vertical tolerance.
+- Future imported data must be projected into local x/z meters before it can become generated city data.
 - Polygons are simple rings in clockwise or counterclockwise order; validation must reject self-intersections and zero-area polygons.
 - Road centerlines are polylines and widths are explicit, so lanes, sidewalks, curbs, and render ribbons can be derived consistently.
 - Heights are meters above the local ground datum unless a future terrain/elevation contract overrides them.
@@ -37,9 +82,20 @@ This project treats city data as the source of truth and Three.js meshes as a re
 | Block | Boundary, district reference, permeability, alley/internal access flags. |
 | Parcel | Boundary, district/block references, frontage road IDs, allowed uses, max height, coverage ratio. |
 | Road segment | Centerline, hierarchy, street profile, width, lane and sidewalk references. |
-| Building | Parcel reference, footprint, uses, height, floor count, facade grammar, roof grammar, entrances. |
+| Lane marking | Road/crossing/intersection references, marking subtype, center, orientation, size, surface material, and render binding. |
+| Intersection | Center point, connected road IDs, hierarchy mix, and signal/control expectation. |
+| Crossing | Parent intersection, crossed road ID, connected sidewalk IDs, dimensions, and signal state. |
+| Curb zone | Parent sidewalk, road reference, curb use, side, start/end meters, crossing clearance, and slice tag. |
+| Sidewalk graph | Nodes at sidewalk/intersection points and edges for sidewalk travel or crossings. |
+| Vertical slice | Slice kind, corridor road, related object IDs, QA camera target, and slice tags on referenced objects. |
+| Building | Parcel reference, footprint, uses, height, floor count, facade grammar, roof grammar, primary frontage side/road, and public entrance IDs. |
+| Active frontage facade | Detailed-street slice/building/parcel/road/sidewalk references, frontage side, active uses, storefront window/sign/awning/night-window metadata, public entrance IDs, and facade asset bindings. |
 | Public realm object | Parent space/street reference, placement zone, asset binding, LOD tier, maintenance owner. |
+| Street tree | Parent sidewalk, road/slice/curb references, tree pit dimensions, canopy size, and furnishing-zone offset. |
+| Street light | Parent sidewalk, road/slice/curb references, position, height, coverage radius, color temperature, and power circuit placeholder. |
+| Street furniture/sign | Parent sidewalk, road/slice/curb references, furniture subtype, furnishing-zone placement, clearance envelope, asset binding, and sign-face metadata where applicable. |
 | Utility object | Network, capacity/coverage, access point, service area, outage domain. |
+| Traffic vehicle | Parent road, lane ID, ordered route node IDs, spawn/destination nodes, profile speed, route offset, stop-zone behavior, and incident hook IDs. |
 | Agent/simulation object | Spawn point, destination class, route graph, schedule, pooling behavior. |
 
 ## LOD Rules
@@ -52,18 +108,23 @@ This project treats city data as the source of truth and Three.js meshes as a re
 - `lod3`: facade modules, signs, lamps, benches, curbs, storefronts.
 - `lod4`: entrances, interiors, readable signs, fixtures, inspectable metadata.
 
+The LOD policy also maps every registered `CityObjectKind` to allowed tiers and a default tier. This keeps terrain, roads, buildings, facades, public-realm props, traffic agents, utilities, overlays, and assets covered before render-specific distance switching is added.
+
 ## Validation Gates
 
-The first executable validator is `src/city/data-contracts/validation/validateGeneratedCity.ts`. It currently checks duplicate IDs, district/block relationships, road lane/sidewalk structure, parcel frontage and zoning fields, building parcel fit/coverage/use/height, and tree parent references. It should expand before each new city slice lands.
+The first executable city validator is `src/city/data-contracts/validation/validateGeneratedCity.ts`. It currently checks duplicate IDs, object-kind registry ID patterns, required/forbidden parent rules, parent-kind compatibility, source metadata completeness, LOD tier policy coverage, asset catalog and render binding integrity, geospatial frame metadata, finite local x/z coordinates, local coordinate bounds/tolerances, height datum bounds, district/block relationships, road lane/sidewalk structure, curb and crossing relationships, public-realm furnishing-zone placement, parcel frontage and zoning fields, building parcel fit/coverage/use/height/public entrances, active frontage facade references and storefront metadata, and tree parent references. Runtime traffic and marking output is checked by `src/city/data-contracts/validation/validateTrafficPlan.ts`, including lane-marking and traffic-vehicle registry IDs plus road/lane/route/speed/stop/source metadata and LOD policy compliance. Validators should expand before each new city slice lands.
 
 Required gate categories:
 
 | Category | Examples |
 | --- | --- |
 | Identifier | Unique IDs, valid parent references, no duplicate object ownership. |
+| Config | Seed, city/render quality preset, density controls, district settings, dimensions, render colors, clipping, fog, pixel ratio, and shadow flags. |
 | Geometry | Positive dimensions, valid polygons, no parcel/road overlap, no self-intersections. |
 | Graph | Road continuity, sidewalk continuity, crossing links, route graph completeness. |
 | Zoning | Height, use, coverage, frontage, setback, and hazard compliance. |
-| Asset | Every semantic object has a render binding or fallback. |
-| LOD | Every major object has an LOD rule and distance behavior. |
+| Asset | Every semantic object has a valid catalog entry, asset binding, material zone, semantic tag, fallback, and asset reference. |
+| Import/export | Exchange artifacts declare a supported format, use local x/z meters, preserve deterministic counts, and exclude renderer-only transient state. |
+| LOD | Every object kind has allowed/default tiers and every object uses a tier supported by that policy. |
+| Metadata | Source type, source ID, confidence, generation step, review status, license, and attribution where required. |
 | Performance | Chunk object counts and agent counts stay under budget. |

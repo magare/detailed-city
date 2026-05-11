@@ -2,9 +2,10 @@ import {
   DEFAULT_STREET_PROFILES,
   type LaneContract,
   type SidewalkContract,
+  type StreetHierarchy,
   type StreetProfile
 } from '../../city/data-contracts/cityContracts';
-import type { CityBounds, CityConfig, RoadSegment } from '../../types/city';
+import type { CityBounds, CityConfig, IntersectionPlan, RoadSegment } from '../../types/city';
 import { axisAlignedCenterline } from '../../utils/geometry';
 
 export class RoadNetworkGenerator {
@@ -77,6 +78,50 @@ export class RoadNetworkGenerator {
 
     return roads;
   }
+
+  generateIntersections(roads: readonly RoadSegment[]): IntersectionPlan[] {
+    const roadsById = new Map(roads.map((road) => [road.id, road]));
+    const intersections: IntersectionPlan[] = [];
+
+    for (let verticalIndex = 0; verticalIndex <= this.config.gridSize; verticalIndex += 1) {
+      const verticalRoadId = `road-v-${verticalIndex}`;
+      const verticalRoad = roadsById.get(verticalRoadId);
+
+      if (!verticalRoad) {
+        continue;
+      }
+
+      for (let horizontalIndex = 0; horizontalIndex <= this.config.gridSize; horizontalIndex += 1) {
+        const horizontalRoadId = `road-h-${horizontalIndex}`;
+        const horizontalRoad = roadsById.get(horizontalRoadId);
+
+        if (!horizontalRoad) {
+          continue;
+        }
+
+        const hierarchyMix = uniqueHierarchies([verticalRoad.hierarchy, horizontalRoad.hierarchy]);
+
+        intersections.push({
+          id: `intersection-v${verticalIndex}-h${horizontalIndex}`,
+          kind: 'intersection',
+          ownerDomain: 'mobility',
+          lod: 'lod2',
+          center: {
+            x: verticalRoad.center.x,
+            z: horizontalRoad.center.z
+          },
+          connectedRoadIds: [verticalRoadId, horizontalRoadId],
+          hierarchyMix,
+          signalExpectation: getSignalExpectation(hierarchyMix),
+          grid: { x: verticalIndex, z: horizontalIndex },
+          verticalRoadId,
+          horizontalRoadId
+        });
+      }
+    }
+
+    return intersections;
+  }
 }
 
 function getStreetProfile(streetProfileId: string): StreetProfile {
@@ -121,4 +166,20 @@ function getCarriagewayWidth(profile: StreetProfile, fallbackWidth: number): num
   const medianWidth = profile.median ? 2.4 : 0;
 
   return Math.max(fallbackWidth, vehicleWidth + bikeWidth + medianWidth);
+}
+
+function uniqueHierarchies(hierarchies: readonly StreetHierarchy[]): StreetHierarchy[] {
+  return [...new Set(hierarchies)];
+}
+
+function getSignalExpectation(hierarchyMix: readonly StreetHierarchy[]): IntersectionPlan['signalExpectation'] {
+  if (hierarchyMix.includes('arterial') || hierarchyMix.includes('transit-corridor')) {
+    return 'signalized';
+  }
+
+  if (hierarchyMix.includes('promenade') || hierarchyMix.includes('alley')) {
+    return 'uncontrolled';
+  }
+
+  return 'stop-controlled';
 }

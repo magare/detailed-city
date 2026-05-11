@@ -1,6 +1,8 @@
 import * as THREE from 'three';
+import type { CityQualityPreset } from '../types/city';
 
 export interface RenderConfig {
+  qualityPreset: CityQualityPreset;
   antialias: boolean;
   background: THREE.ColorRepresentation;
   fogColor: THREE.ColorRepresentation;
@@ -13,6 +15,7 @@ export interface RenderConfig {
 }
 
 export const renderConfig: RenderConfig = {
+  qualityPreset: 'medium',
   antialias: true,
   background: 0x111820,
   fogColor: 0x9daeb8,

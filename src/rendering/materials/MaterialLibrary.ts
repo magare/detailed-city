@@ -16,6 +16,16 @@ export class MaterialLibrary {
     color: 0xece7d4
   });
 
+  readonly tactilePaving = new THREE.MeshStandardMaterial({
+    color: 0xc9a83a,
+    roughness: 0.86
+  });
+
+  readonly refugeIsland = new THREE.MeshStandardMaterial({
+    color: 0xbdb8aa,
+    roughness: 0.82
+  });
+
   readonly park = new THREE.MeshStandardMaterial({
     color: 0x5c8f45,
     roughness: 0.96
@@ -59,6 +69,84 @@ export class MaterialLibrary {
     opacity: 0.38
   });
 
+  readonly storefrontGlass = new THREE.MeshPhysicalMaterial({
+    color: 0x7fb4c3,
+    roughness: 0.2,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.62,
+    clearcoat: 0.36
+  });
+
+  readonly storefrontAwning = new THREE.MeshStandardMaterial({
+    color: 0x2d7f78,
+    roughness: 0.74
+  });
+
+  readonly storefrontSign = new THREE.MeshStandardMaterial({
+    color: 0xd8b55b,
+    roughness: 0.52,
+    metalness: 0.04
+  });
+
+  readonly entranceDoor = new THREE.MeshStandardMaterial({
+    color: 0x4a3630,
+    roughness: 0.68,
+    metalness: 0.08
+  });
+
+  readonly streetLightPole = new THREE.MeshStandardMaterial({
+    color: 0x3d4346,
+    roughness: 0.72,
+    metalness: 0.34
+  });
+
+  readonly streetLightGlow = new THREE.MeshBasicMaterial({
+    color: 0xffd99a,
+    transparent: true,
+    opacity: 0.72
+  });
+
+  readonly streetFurnitureMetal = new THREE.MeshStandardMaterial({
+    color: 0x46515a,
+    roughness: 0.68,
+    metalness: 0.28
+  });
+
+  readonly streetFurnitureWood = new THREE.MeshStandardMaterial({
+    color: 0x8a6a45,
+    roughness: 0.84
+  });
+
+  readonly streetFurnitureAccent = new THREE.MeshStandardMaterial({
+    color: 0xb84c3f,
+    roughness: 0.72,
+    metalness: 0.05
+  });
+
+  readonly shelterGlass = new THREE.MeshPhysicalMaterial({
+    color: 0x8fb7c4,
+    roughness: 0.18,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.42
+  });
+
+  readonly signPanelWhite = new THREE.MeshStandardMaterial({
+    color: 0xe7e6d8,
+    roughness: 0.52
+  });
+
+  readonly signPanelGreen = new THREE.MeshStandardMaterial({
+    color: 0x2f6f61,
+    roughness: 0.58
+  });
+
+  readonly signPanelBlue = new THREE.MeshStandardMaterial({
+    color: 0x2e6a9e,
+    roughness: 0.55
+  });
+
   readonly vehicleBody = [
     new THREE.MeshStandardMaterial({ color: 0xbc3d36, roughness: 0.54 }),
     new THREE.MeshStandardMaterial({ color: 0xf0c14b, roughness: 0.52 }),
@@ -77,6 +165,8 @@ export class MaterialLibrary {
     this.terrain.dispose();
     this.asphalt.dispose();
     this.lanePaint.dispose();
+    this.tactilePaving.dispose();
+    this.refugeIsland.dispose();
     this.park.dispose();
     this.treeTrunk.dispose();
     this.treeCanopy.dispose();
@@ -84,6 +174,19 @@ export class MaterialLibrary {
     this.building.dispose();
     this.rooftop.dispose();
     this.windowGlow.dispose();
+    this.storefrontGlass.dispose();
+    this.storefrontAwning.dispose();
+    this.storefrontSign.dispose();
+    this.entranceDoor.dispose();
+    this.streetLightPole.dispose();
+    this.streetLightGlow.dispose();
+    this.streetFurnitureMetal.dispose();
+    this.streetFurnitureWood.dispose();
+    this.streetFurnitureAccent.dispose();
+    this.shelterGlass.dispose();
+    this.signPanelWhite.dispose();
+    this.signPanelGreen.dispose();
+    this.signPanelBlue.dispose();
 
     for (const material of this.vehicleBody) {
       material.dispose();

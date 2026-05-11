@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { RenderConfig } from '../config/renderConfig';
+import { applyRendererQuality } from '../systems/performance/QualityManager';
 
 export class SceneBootstrap {
   readonly scene = new THREE.Scene();
@@ -21,12 +22,11 @@ export class SceneBootstrap {
       antialias: config.antialias,
       powerPreference: 'high-performance'
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, config.maxPixelRatio));
     this.renderer.setSize(container.clientWidth, container.clientHeight, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.08;
-    this.renderer.shadowMap.enabled = config.shadows;
+    applyRendererQuality(this.renderer, config);
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
     this.scene.background = new THREE.Color(config.background);

@@ -33,3 +33,123 @@ canvas {
   height: 100%;
   touch-action: none;
 }
+
+.city-debug-panel {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  width: min(320px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: hidden;
+  border: 1px solid rgb(197 207 206 / 28%);
+  border-radius: 8px;
+  background: rgb(13 18 22 / 82%);
+  color: #f1efe6;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 28%);
+  backdrop-filter: blur(8px);
+}
+
+.city-debug-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 8px 6px 10px;
+  border-bottom: 1px solid rgb(197 207 206 / 18%);
+}
+
+.city-debug-panel__title {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.city-debug-panel__toggle {
+  display: grid;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgb(241 239 230 / 28%);
+  border-radius: 6px;
+  background: rgb(241 239 230 / 10%);
+  color: #f1efe6;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.city-debug-panel__toggle:focus-visible {
+  outline: 2px solid #d8b55b;
+  outline-offset: 2px;
+}
+
+.city-debug-panel__body {
+  display: grid;
+  gap: 1px;
+  max-height: calc(100vh - 72px);
+  overflow: auto;
+  padding: 6px;
+}
+
+.city-debug-panel__body[hidden] {
+  display: none;
+}
+
+.city-debug-panel__metric {
+  display: grid;
+  grid-template-columns: minmax(72px, 0.42fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 6%);
+}
+
+.city-debug-panel__label,
+.city-debug-panel__value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.city-debug-panel__label {
+  color: #aebbbd;
+}
+
+.city-debug-panel__value {
+  color: #f7f0d4;
+}
+
+.city-debug-panel.is-collapsed {
+  width: auto;
+}
+
+.city-debug-panel.is-collapsed .city-debug-panel__header {
+  border-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .city-debug-panel {
+    top: auto;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    max-height: 38vh;
+  }
+
+  .city-debug-panel__body {
+    max-height: calc(38vh - 42px);
+  }
+
+  .city-debug-panel__metric {
+    grid-template-columns: minmax(64px, 0.36fr) minmax(0, 1fr);
+  }
+}

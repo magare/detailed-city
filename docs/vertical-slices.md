@@ -23,17 +23,20 @@ Success criteria:
 
 ## Slice 2: Detailed Street
 
+The first executable slice is `slice-detailed-street-road-v-6`, centered on the deterministic `road-v-6` grand-avenue corridor. Generated objects that belong to this slice carry `tags.detailedStreetSliceId`, and the slice contract records a visual QA camera target.
+
 Scope:
 
-- One street profile expanded with sidewalks, crossings, curb zones, streetlights, trees, signs, benches, bins, parked cars, moving vehicles, storefronts.
+- One street profile expanded with sidewalks, crossings, curb zones, streetlights, trees, signs, benches, bins, parked cars, moving vehicles, and active storefront frontages.
 
 Success criteria:
 
 | Test | Expected result |
 | --- | --- |
 | Pedestrians can cross | Crosswalks connect sidewalk graph nodes. |
-| Vehicles obey street profile | Speed, lanes, and stopping behavior follow profile rules. |
+| Vehicles obey street profile | Speed, lanes, route nodes, stopping behavior, and incident hooks follow profile and graph rules. |
 | Props bind to semantics | Lamps, benches, signs, and trees appear in correct zones. |
+| Storefronts face the street | Active-use buildings expose public entrances, signs, awnings, windows, and night-window metadata on the detailed corridor. |
 | LOD works | Far props reduce detail or disappear. |
 | Night mode works | Streetlights, windows, and signs illuminate correctly. |
 

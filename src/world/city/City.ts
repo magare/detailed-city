@@ -1,14 +1,30 @@
 import * as THREE from 'three';
+import { ActiveFrontageMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ActiveFrontageMeshBuilder';
+import { StreetFurnitureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetFurnitureMeshBuilder';
+import { StreetLightMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetLightMeshBuilder';
 import { TrafficMeshBuilder, type TrafficVehicle } from '../../city/rendering-handoff/mesh-builders/TrafficMeshBuilder';
-import { CityGenerator } from '../../generation/CityGenerator';
-import { TrafficLaneGenerator } from '../../generation/traffic/TrafficLaneGenerator';
+import {
+  CITY_SCENE_LAYER_DEFINITIONS,
+  type CitySceneLayerId
+} from '../../city/rendering-handoff/scene-layers/sceneLayerDefinitions';
+import {
+  attachCityPickingInstanceMetadata,
+  attachCityPickingMetadata,
+  createCityPickingMetadataCatalog,
+  resolveCityPickFromIntersections,
+  type CityPickResult,
+  type CityPickingCatalog
+} from '../../city/rendering-handoff/picking/pickingMetadata';
 import { MaterialLibrary } from '../../rendering/materials/MaterialLibrary';
 import type {
   BuildingPlan,
-  CityConfig,
+  ActiveFrontage,
   GeneratedCity,
   ParkPatch,
   RoadSegment,
+  StreetFurniture,
+  StreetLight,
+  TrafficPlan,
   TreePlanting,
   Updatable,
   Waterway
@@ -17,37 +33,24 @@ import { disposeObject3D } from '../../utils/dispose';
 
 export class City implements Updatable {
   readonly group = new THREE.Group();
-  private readonly generated: GeneratedCity;
+  readonly layerGroups: Readonly<Record<CitySceneLayerId, THREE.Group>>;
+  readonly pickingCatalog: CityPickingCatalog;
   private readonly vehicles: TrafficVehicle[] = [];
 
   constructor(
-    config: CityConfig,
+    generated: GeneratedCity,
+    trafficPlan: TrafficPlan,
     private readonly materials: MaterialLibrary
   ) {
     this.group.name = 'DetailedCity';
-    this.generated = new CityGenerator(config).generate();
-    this.build(this.generated);
+    this.layerGroups = this.createLayerGroups();
+    this.pickingCatalog = createCityPickingMetadataCatalog(generated, trafficPlan, generated.objectIndex);
+    this.build(generated, trafficPlan);
   }
 
   update(deltaSeconds: number): void {
     for (const vehicle of this.vehicles) {
-      if (vehicle.axis === 'x') {
-        vehicle.mesh.position.x += vehicle.direction * vehicle.speed * deltaSeconds;
-
-        if (vehicle.mesh.position.x > vehicle.max) {
-          vehicle.mesh.position.x = vehicle.min;
-        } else if (vehicle.mesh.position.x < vehicle.min) {
-          vehicle.mesh.position.x = vehicle.max;
-        }
-      } else {
-        vehicle.mesh.position.z += vehicle.direction * vehicle.speed * deltaSeconds;
-
-        if (vehicle.mesh.position.z > vehicle.max) {
-          vehicle.mesh.position.z = vehicle.min;
-        } else if (vehicle.mesh.position.z < vehicle.min) {
-          vehicle.mesh.position.z = vehicle.max;
-        }
-      }
+      updateTrafficVehicle(vehicle, deltaSeconds);
     }
   }
 
@@ -55,14 +58,21 @@ export class City implements Updatable {
     disposeObject3D(this.group);
   }
 
-  private build(generated: GeneratedCity): void {
+  resolvePickingMetadata(intersections: readonly THREE.Intersection[]): CityPickResult | undefined {
+    return resolveCityPickFromIntersections(intersections);
+  }
+
+  private build(generated: GeneratedCity, trafficPlan: TrafficPlan): void {
     this.addTerrain(generated);
     this.addWaterways(generated.waterways);
     this.addRoads(generated.roads);
     this.addParks(generated.parks);
     this.addTreePlantings(generated.trees);
+    this.addStreetLights(generated.streetLights);
+    this.addStreetFurniture(generated.streetFurniture);
     this.addBuildings(generated.buildings);
-    this.addTraffic(generated.roads);
+    this.addActiveFrontages(generated.activeFrontages);
+    this.addTraffic(trafficPlan);
   }
 
   private addTerrain(generated: GeneratedCity): void {
@@ -73,7 +83,7 @@ export class City implements Updatable {
     const mesh = new THREE.Mesh(geometry, this.materials.terrain);
     mesh.name = 'GroundPlane';
     mesh.receiveShadow = true;
-    this.group.add(mesh);
+    this.layerGroups.terrain.add(mesh);
   }
 
   private addRoads(roads: RoadSegment[]): void {
@@ -86,7 +96,8 @@ export class City implements Updatable {
       mesh.name = road.id;
       mesh.position.set(road.center.x, 0.04, road.center.z);
       mesh.receiveShadow = true;
-      this.group.add(mesh);
+      this.attachPickingMetadata(mesh, road.id);
+      this.layerGroups.networks.add(mesh);
     }
   }
 
@@ -97,7 +108,8 @@ export class City implements Updatable {
       mesh.name = waterway.id;
       mesh.position.set(waterway.center.x, 0.08, waterway.center.z);
       mesh.receiveShadow = true;
-      this.group.add(mesh);
+      this.attachPickingMetadata(mesh, waterway.id);
+      this.layerGroups.terrain.add(mesh);
     }
   }
 
@@ -108,7 +120,8 @@ export class City implements Updatable {
       mesh.name = park.id;
       mesh.position.set(park.center.x, 0.11, park.center.z);
       mesh.receiveShadow = true;
-      this.group.add(mesh);
+      this.attachPickingMetadata(mesh, park.id);
+      this.layerGroups['public-realm'].add(mesh);
     }
   }
 
@@ -125,6 +138,10 @@ export class City implements Updatable {
     buildings.name = 'BuildingInstances';
     buildings.castShadow = true;
     buildings.receiveShadow = true;
+    this.attachInstancePickingMetadata(
+      buildings,
+      buildingPlans.map((building) => building.id)
+    );
 
     buildingPlans.forEach((building, index) => {
       matrix.compose(
@@ -140,7 +157,7 @@ export class City implements Updatable {
     if (buildings.instanceColor) {
       buildings.instanceColor.needsUpdate = true;
     }
-    this.group.add(buildings);
+    this.layerGroups.buildings.add(buildings);
     this.addRooftopDetails(buildingPlans);
   }
 
@@ -173,8 +190,21 @@ export class City implements Updatable {
     roofMesh.name = 'RooftopDetails';
     roofMesh.castShadow = true;
     roofMesh.receiveShadow = true;
+    this.attachInstancePickingMetadata(
+      roofMesh,
+      detailedBuildings.map((building) => building.id)
+    );
     roofMesh.instanceMatrix.needsUpdate = true;
-    this.group.add(roofMesh);
+    this.layerGroups.buildings.add(roofMesh);
+  }
+
+  private addActiveFrontages(activeFrontages: readonly ActiveFrontage[]): void {
+    const activeFrontageGroup = new ActiveFrontageMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(activeFrontages);
+
+    this.layerGroups.buildings.add(activeFrontageGroup);
   }
 
   private addTreePlantings(trees: TreePlanting[]): void {
@@ -211,15 +241,150 @@ export class City implements Updatable {
     canopyMesh.name = 'TreeCanopyInstances';
     trunkMesh.castShadow = true;
     canopyMesh.castShadow = true;
+    this.attachInstancePickingMetadata(
+      trunkMesh,
+      trees.map((tree) => tree.id)
+    );
+    this.attachInstancePickingMetadata(
+      canopyMesh,
+      trees.map((tree) => tree.id)
+    );
     trunkMesh.instanceMatrix.needsUpdate = true;
     canopyMesh.instanceMatrix.needsUpdate = true;
-    this.group.add(trunkMesh, canopyMesh);
+    this.layerGroups['public-realm'].add(trunkMesh, canopyMesh);
   }
 
-  private addTraffic(roads: RoadSegment[]): void {
-    const trafficPlan = new TrafficLaneGenerator().create(roads);
-    const traffic = new TrafficMeshBuilder(this.materials).build(trafficPlan);
+  private addStreetLights(streetLights: readonly StreetLight[]): void {
+    const streetLightGroup = new StreetLightMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(streetLights);
+
+    this.layerGroups['public-realm'].add(streetLightGroup);
+  }
+
+  private addStreetFurniture(streetFurniture: readonly StreetFurniture[]): void {
+    const streetFurnitureGroup = new StreetFurnitureMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(streetFurniture);
+
+    this.layerGroups['public-realm'].add(streetFurnitureGroup);
+  }
+
+  private addTraffic(trafficPlan: TrafficPlan): void {
+    const traffic = new TrafficMeshBuilder(this.materials).build(trafficPlan, this.pickingCatalog.metadataByObjectId);
     this.vehicles.push(...traffic.vehicles);
-    this.group.add(traffic.markings, traffic.vehicleGroup);
+    this.layerGroups.networks.add(traffic.markings);
+    this.layerGroups.agents.add(traffic.vehicleGroup);
+  }
+
+  private attachPickingMetadata(object: THREE.Object3D, objectId: string): void {
+    const metadata = this.pickingCatalog.metadataByObjectId[objectId];
+
+    if (metadata) {
+      attachCityPickingMetadata(object, metadata);
+    }
+  }
+
+  private attachInstancePickingMetadata(object: THREE.Object3D, objectIds: readonly string[]): void {
+    const instances = objectIds.map((objectId) => {
+      const metadata = this.pickingCatalog.metadataByObjectId[objectId];
+
+      if (!metadata) {
+        throw new Error(`Missing picking metadata for ${objectId}.`);
+      }
+
+      return metadata;
+    });
+
+    attachCityPickingInstanceMetadata(object, instances);
+  }
+
+  private createLayerGroups(): Record<CitySceneLayerId, THREE.Group> {
+    const layerGroups = {} as Record<CitySceneLayerId, THREE.Group>;
+
+    for (const definition of CITY_SCENE_LAYER_DEFINITIONS) {
+      const group = new THREE.Group();
+      group.name = `SceneLayer:${definition.id}`;
+      group.visible = definition.defaultVisible;
+      group.userData.sceneLayerId = definition.id;
+      group.userData.sceneLayerName = definition.name;
+      group.userData.ownerDomain = definition.ownerDomain;
+      group.userData.order = definition.order;
+      layerGroups[definition.id] = group;
+      this.group.add(group);
+    }
+
+    return layerGroups;
+  }
+}
+
+function updateTrafficVehicle(vehicle: TrafficVehicle, deltaSeconds: number): void {
+  if (vehicle.stopTimerSeconds > 0) {
+    vehicle.stopTimerSeconds = Math.max(0, vehicle.stopTimerSeconds - deltaSeconds);
+    return;
+  }
+
+  const stopZoneIndex = getUpcomingStopZoneIndex(vehicle);
+
+  if (stopZoneIndex !== undefined) {
+    const stopOffset = vehicle.stopZoneOffsetsMeters[stopZoneIndex];
+    vehicle.routeOffsetMeters = stopOffset - vehicle.direction * 1.8;
+    vehicle.stopTimerSeconds = vehicle.stopDurationSeconds;
+    vehicle.lastStopZoneIndex = stopZoneIndex;
+    applyTrafficVehiclePosition(vehicle);
+    return;
+  }
+
+  const previousStoppedOffset =
+    vehicle.lastStopZoneIndex === undefined ? undefined : vehicle.stopZoneOffsetsMeters[vehicle.lastStopZoneIndex];
+
+  if (
+    previousStoppedOffset !== undefined &&
+    (previousStoppedOffset - vehicle.routeOffsetMeters) * vehicle.direction < -vehicle.stopLookAheadMeters
+  ) {
+    vehicle.lastStopZoneIndex = undefined;
+  }
+
+  vehicle.routeOffsetMeters += vehicle.direction * vehicle.speed * deltaSeconds;
+
+  if (vehicle.routeOffsetMeters > vehicle.max) {
+    vehicle.routeOffsetMeters = vehicle.min;
+    vehicle.lastStopZoneIndex = undefined;
+  } else if (vehicle.routeOffsetMeters < vehicle.min) {
+    vehicle.routeOffsetMeters = vehicle.max;
+    vehicle.lastStopZoneIndex = undefined;
+  }
+
+  applyTrafficVehiclePosition(vehicle);
+}
+
+function getUpcomingStopZoneIndex(vehicle: TrafficVehicle): number | undefined {
+  for (let index = 0; index < vehicle.stopZoneOffsetsMeters.length; index += 1) {
+    if (vehicle.lastStopZoneIndex === index) {
+      continue;
+    }
+
+    const stopOffset = vehicle.stopZoneOffsetsMeters[index];
+    const distanceMeters = (stopOffset - vehicle.routeOffsetMeters) * vehicle.direction;
+
+    if (distanceMeters >= 0 && distanceMeters <= vehicle.stopLookAheadMeters) {
+      return index;
+    }
+  }
+
+  return undefined;
+}
+
+function applyTrafficVehiclePosition(vehicle: TrafficVehicle): void {
+  const routeCoordinate = vehicle.centerCoordinate + vehicle.routeOffsetMeters;
+
+  if (vehicle.axis === 'x') {
+    vehicle.mesh.position.x = routeCoordinate;
+    vehicle.mesh.position.z = vehicle.fixedCoordinate;
+  } else {
+    vehicle.mesh.position.x = vehicle.fixedCoordinate;
+    vehicle.mesh.position.z = routeCoordinate;
   }
 }

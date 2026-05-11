@@ -2,6 +2,8 @@
 
 The city should be planned with performance constraints from the beginning. The executable seed is `DEFAULT_PERFORMANCE_BUDGET` in `src/city/data-contracts/cityContracts.ts`.
 
+The current runtime baseline is captured by `src/systems/performance/PerformanceMonitor.ts`. Static diagnostics expose active-agent budget status, and `App.getPerformanceDiagnostics()` adds frame timing plus renderer draw-call and triangle snapshots after the scene is running.
+
 ## Initial Targets
 
 | Budget | Target |
@@ -39,6 +41,8 @@ Each chunk should eventually report:
 
 ## Quality Presets
 
+The active quality preset is part of both city and render config and is validated before generation starts.
+
 | Preset | Behavior |
 | --- | --- |
 | Low | Fewer agents, lower pixel ratio, no small props past LOD2, reduced shadows. |
@@ -50,5 +54,6 @@ Each chunk should eventually report:
 
 - Build must pass.
 - Smoke test must catch blank WebGL output.
+- Generator property tests must prove same seed/config runs produce stable IDs/counts and invalid generated fixtures fail with expected validation categories.
 - Future benchmark test should measure frame time after a fixed camera path.
 - Console WebGL shader errors should become a failing quality gate once current warnings are understood.

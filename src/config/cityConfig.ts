@@ -2,10 +2,17 @@ import type { CityConfig } from '../types/city';
 
 export const cityConfig: CityConfig = {
   seed: 'detailed-city-v1',
+  qualityPreset: 'medium',
   gridSize: 12,
   blockSize: 36,
   roadWidth: 8,
   waterwayWidth: 28,
+  density: {
+    cityDensity: 0.72,
+    trafficDensity: 0.42,
+    propDensity: 0.68,
+    treeDensity: 0.62
+  },
   building: {
     minHeight: 8,
     maxHeight: 92,

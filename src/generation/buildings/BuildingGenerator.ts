@@ -1,5 +1,5 @@
 import { CITY_BLUEPRINT } from '../../city/blueprint/cityBlueprint';
-import type { LandUse } from '../../city/data-contracts/cityContracts';
+import type { BuildingFrontageSide, LandUse } from '../../city/data-contracts/cityContracts';
 import type {
   BlockPlan,
   BuildingPlan,
@@ -87,11 +87,15 @@ export class BuildingGenerator {
             const buildingId = `building-${blockX}-${blockZ}-${lotX}-${lotZ}`;
             const heightMeters = this.getHeight(district, districtConfig.heightBias);
             const roofStyle = this.getRoofStyle(district, heightMeters);
+            const frontageRoadIds = this.getFrontageRoadIds(blockX, blockZ, lotX, lotZ, split);
+            const primaryFrontageRoadId = frontageRoadIds[0];
+            const publicEntranceIds = [`${buildingId}-entrance-primary`];
 
             parcels.push({
               id,
               kind: 'parcel',
               ownerDomain: 'land',
+              parentId: blockId,
               lod: 'lod1',
               block: { x: blockX, z: blockZ },
               center,
@@ -100,7 +104,7 @@ export class BuildingGenerator {
               district,
               districtId,
               blockId,
-              frontageRoadIds: this.getFrontageRoadIds(blockX, blockZ, lotX, lotZ, split),
+              frontageRoadIds,
               allowedUses: [...allowedUses],
               density: districtConfig.density,
               maxHeightMeters,
@@ -120,7 +124,10 @@ export class BuildingGenerator {
               floorCount: this.getFloorCount(district, heightMeters),
               facadeGrammarId: `${district}-facade-v1`,
               roofGrammarId: `${roofStyle}-roof-v1`,
-              entranceIds: [`${buildingId}-entrance-primary`],
+              primaryFrontageRoadId,
+              primaryFrontageSide: this.getFrontageSide(primaryFrontageRoadId, blockX, blockZ),
+              entranceIds: publicEntranceIds,
+              publicEntranceIds,
               center,
               size: buildingSize,
               district,
@@ -264,6 +271,24 @@ export class BuildingGenerator {
     }
 
     return frontageRoadIds;
+  }
+
+  private getFrontageSide(frontageRoadId: string, blockX: number, blockZ: number): BuildingFrontageSide {
+    const verticalMatch = /^road-v-(\d+)$/.exec(frontageRoadId);
+
+    if (verticalMatch) {
+      const roadIndex = Number(verticalMatch[1]);
+      return roadIndex <= blockX ? 'west' : 'east';
+    }
+
+    const horizontalMatch = /^road-h-(\d+)$/.exec(frontageRoadId);
+
+    if (horizontalMatch) {
+      const roadIndex = Number(horizontalMatch[1]);
+      return roadIndex <= blockZ ? 'south' : 'north';
+    }
+
+    return 'west';
   }
 
   private selectBuildingUses(allowedUses: readonly LandUse[]): LandUse[] {

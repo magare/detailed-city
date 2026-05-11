@@ -10,13 +10,14 @@ The TypeScript seed is `AssetDefinition` in `src/city/data-contracts/cityContrac
 | --- | --- |
 | `id` | Stable semantic asset ID, such as `asset:street-light:modern-single`. |
 | `category` | Building, road, street prop, nature, vehicle, transit, utility, effect, texture, or icon. |
-| `url` | Public Vite path under `public/assets`. |
-| `format` | `glb`, `gltf`, `png`, `jpg`, `webp`, `ktx2`, `hdr`, or `exr`. |
+| `url` | Public Vite path under `public/assets` for binary assets; omitted for procedural primitive fallbacks. |
+| `format` | `glb`, `gltf`, `png`, `jpg`, `webp`, `ktx2`, `hdr`, `exr`, or `procedural`. |
 | `scaleMeters` | Real-world reference scale. |
 | `lodVariants` | Optional high/medium/low/impostor asset IDs. |
-| `tags` | Semantic filters such as `district=waterfront` or `weather=rain`. |
+| `tags` | Semantic filters such as `district=waterfront` or `weather=rain`; executable assets should include `materialZone`, and procedural fallbacks should set `fallback=true`. |
 | `attribution` | Required for third-party assets. |
 | `license` | Required for third-party assets. |
+| `metadata` | Required source metadata with source type, source ID, confidence, review status, license, and generation/import provenance. |
 
 ## Categories
 
@@ -36,10 +37,16 @@ The TypeScript seed is `AssetDefinition` in `src/city/data-contracts/cityContrac
 
 Asset selection should be driven by domain semantics:
 
+- `id` gives each binding a stable diagnostic and validation target.
 - `objectKind` selects the broad binding family.
 - `semanticTag` narrows selection, such as `street-profile=main-street`.
 - `materialZone` maps surfaces to atlases: asphalt, concrete, glass, brick, metal, water, sign, foliage.
 - `fallbackMaterial` and `fallbackGeometry` must exist for every major object kind.
+- Procedural fallback assets are valid catalog entries when no binary asset exists yet.
+
+The validator checks catalog IDs, category, format, meter scale, tags, binary URL presence and extension, top-level attribution/license, LOD variant references, registered object-kind binding targets, semantic tags, material zones, asset IDs, fallback material, and fallback geometry. Missing required fallback coverage is reported as a warning; malformed asset definitions or invalid binding object kinds are errors.
+
+The executable seed currently includes procedural street-prop fallbacks for street lights, benches, bins, bike racks, bollards, bus shelters, kiosks, regulatory signs, street-name signs, and wayfinding signs. Road-marking fallbacks cover lane dashes, zebra crossings, stop bars, turn arrows, tactile paving, and refuge islands. Facade fallbacks cover storefront windows, awnings, signs, entrance doors, and night windows. These fallback assets carry internal procedural license, attribution, and source metadata. Those bindings let validators and diagnostics prove that generated public-realm, mobility, and active-frontage objects have a render path before binary assets exist.
 
 ## Naming
 
@@ -61,5 +68,7 @@ Examples:
 - No raw asset paths inside scene code.
 - Every third-party asset has attribution and license metadata.
 - Every asset has a meter scale and at least one semantic tag.
+- LOD variants reference existing asset IDs.
+- Every render binding targets a registered city object kind and declares semantic tag, material zone, fallback material, and fallback geometry.
 - Large repeated surfaces use atlases before one-off textures.
 - Missing assets render with explicit fallback materials, not invisible objects.

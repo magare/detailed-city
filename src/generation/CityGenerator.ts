@@ -4,12 +4,22 @@ import {
   DEFAULT_PERFORMANCE_BUDGET,
   LOCAL_CITY_FRAME
 } from '../city/data-contracts/cityContracts';
+import { createGeneratedCityObjectIndex } from '../city/data-contracts/generatedCityObjectIndex';
 import { validateGeneratedCity } from '../city/data-contracts/validation/validateGeneratedCity';
+import { DEFAULT_RENDER_ASSET_CATALOG, DEFAULT_RENDER_BINDINGS } from '../city/rendering-handoff/asset-binding/defaultAssetCatalog';
 import type { CityConfig, GeneratedCity } from '../types/city';
 import { SeededRandom } from '../utils/random';
+import { ActiveFrontageGenerator } from './buildings/ActiveFrontageGenerator';
 import { BuildingGenerator } from './buildings/BuildingGenerator';
+import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
+import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
+import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
+import { StreetTreeGenerator } from './public-realm/StreetTreeGenerator';
+import { PedestrianNetworkGenerator } from './roads/PedestrianNetworkGenerator';
 import { RoadNetworkGenerator } from './roads/RoadNetworkGenerator';
+import { applyDetailedStreetSliceTags, DetailedStreetSliceGenerator } from './slices/DetailedStreetSliceGenerator';
 import { TerrainGenerator } from './terrain/TerrainGenerator';
+import { applyGeneratedCitySourceMetadata } from './applySourceMetadata';
 
 export class CityGenerator {
   private readonly random: SeededRandom;
@@ -25,13 +35,62 @@ export class CityGenerator {
 
     const bounds = roadGenerator.getBounds();
     const roads = roadGenerator.generate();
+    const intersections = roadGenerator.generateIntersections(roads);
+    const pedestrianNetwork = new PedestrianNetworkGenerator().create(roads, intersections);
     const parks = terrainGenerator.generateParks(bounds);
     const waterways = terrainGenerator.generateWaterways(bounds);
     const excludedBlocks = terrainGenerator.getExcludedBlocks(bounds, parks, waterways);
     const landAndBuildings = buildingGenerator.generate(bounds, excludedBlocks);
-    const trees = terrainGenerator.generateTreePlantings(parks);
+    const parkTrees = terrainGenerator.generateTreePlantings(parks);
+    const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
+      roads,
+      intersections,
+      crossings: pedestrianNetwork.crossings,
+      sidewalkGraph: pedestrianNetwork.sidewalkGraph,
+      parcels: landAndBuildings.parcels,
+      buildings: landAndBuildings.buildings
+    });
+    const sliceTagged = applyDetailedStreetSliceTags(
+      {
+        roads,
+        intersections,
+        crossings: pedestrianNetwork.crossings,
+        sidewalkGraph: pedestrianNetwork.sidewalkGraph,
+        parcels: landAndBuildings.parcels,
+        buildings: landAndBuildings.buildings
+      },
+      verticalSlices
+    );
+    const curbZones = new CurbZoneGenerator().create({
+      slices: verticalSlices,
+      roads: sliceTagged.roads,
+      intersections: sliceTagged.intersections
+    });
+    const verticalSlicesWithCurbs = attachCurbZoneIdsToSlices(verticalSlices, curbZones);
+    const streetTrees = new StreetTreeGenerator().create({
+      slices: verticalSlicesWithCurbs,
+      roads: sliceTagged.roads,
+      curbZones
+    });
+    const streetLights = new StreetLightGenerator().create({
+      slices: verticalSlicesWithCurbs,
+      roads: sliceTagged.roads,
+      curbZones
+    });
+    const streetFurniture = new StreetFurnitureGenerator().create({
+      slices: verticalSlicesWithCurbs,
+      roads: sliceTagged.roads,
+      curbZones
+    });
+    const activeFrontages = new ActiveFrontageGenerator().create({
+      slices: verticalSlicesWithCurbs,
+      roads: sliceTagged.roads,
+      parcels: sliceTagged.parcels,
+      buildings: sliceTagged.buildings
+    });
+    const trees = [...parkTrees, ...streetTrees];
 
-    const generated: GeneratedCity = {
+    const generatedWithoutMetadata: Omit<GeneratedCity, 'objectIndex' | 'validation'> = {
       schemaVersion: CITY_CONTRACT_SCHEMA_VERSION,
       geospatial: LOCAL_CITY_FRAME,
       lodPolicy: DEFAULT_CITY_LOD_POLICY,
@@ -39,17 +98,27 @@ export class CityGenerator {
       bounds,
       districts: landAndBuildings.districts,
       blocks: landAndBuildings.blocks,
-      roads,
-      parcels: landAndBuildings.parcels,
-      buildings: landAndBuildings.buildings,
+      verticalSlices: verticalSlicesWithCurbs,
+      roads: sliceTagged.roads,
+      intersections: sliceTagged.intersections,
+      crossings: sliceTagged.crossings,
+      curbZones,
+      streetLights,
+      streetFurniture,
+      sidewalkGraph: sliceTagged.sidewalkGraph,
+      parcels: sliceTagged.parcels,
+      buildings: sliceTagged.buildings,
+      activeFrontages,
       parks,
       waterways,
       trees,
-      assetBindings: [],
-      validation: {
-        passed: true,
-        issues: []
-      }
+      assetCatalog: [...DEFAULT_RENDER_ASSET_CATALOG],
+      assetBindings: [...DEFAULT_RENDER_BINDINGS]
+    };
+    const generatedWithoutIndex = applyGeneratedCitySourceMetadata(generatedWithoutMetadata);
+    const generated: Omit<GeneratedCity, 'validation'> = {
+      ...generatedWithoutIndex,
+      objectIndex: createGeneratedCityObjectIndex(generatedWithoutIndex)
     };
 
     return {
