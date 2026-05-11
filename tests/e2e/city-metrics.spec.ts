@@ -49,8 +49,8 @@ test('city metrics are deterministic, indexed, and exposed in diagnostics', () =
     'open-space-access': 21.65,
     'service-coverage': 100,
     traffic: 0.78,
-    energy: 5.62,
-    emissions: 1119.7,
+    energy: 3.68,
+    emissions: 890.78,
     'quality-checks': 100
   });
   expect(overlays.find((overlay) => overlay.id === 'city-metrics')?.featureCount).toBe(8);

@@ -787,6 +787,48 @@ export interface CityMetricContract extends CityObjectBase<'city-metric'> {
   readonly focusPoint: Point2D;
 }
 
+export type BlockFrontageSide = 'west' | 'east' | 'south' | 'north';
+export type BlockFrontageClass = 'primary' | 'secondary' | 'service' | 'waterfront' | 'industrial';
+export type BlockInternalAccessMode = 'none' | 'alley' | 'service-lane' | 'pedestrian-passage';
+
+export interface BlockInternalAccessContract {
+  readonly id: CityId;
+  readonly mode: BlockInternalAccessMode;
+  readonly connectedRoadIds: readonly CityId[];
+  readonly widthMeters: number;
+  readonly centerline: readonly [Point2D, Point2D];
+}
+
+export interface BlockBuildableEnvelopeContract {
+  readonly id: CityId;
+  readonly boundary: Polygon2D;
+  readonly minSetbackMeters: number;
+  readonly maxCoverageRatio: number;
+  readonly parcelFit: 'regular-grid' | 'deep-lots' | 'large-lot';
+}
+
+export interface BlockFrontageContract {
+  readonly side: BlockFrontageSide;
+  readonly roadId: CityId;
+  readonly frontageClass: BlockFrontageClass;
+  readonly lengthMeters: number;
+}
+
+export interface BlockSubdivisionConstraintsContract {
+  readonly preferredLotSplit: number;
+  readonly maxParcelCount: number;
+  readonly minParcelWidthMeters: number;
+  readonly minParcelDepthMeters: number;
+  readonly allowLotMerging: boolean;
+}
+
+export interface BlockPermeabilityMetricsContract {
+  readonly score: number;
+  readonly throughAccessCount: number;
+  readonly frontageContinuityRatio: number;
+  readonly averageParcelFrontageMeters: number;
+}
+
 export interface BlockContract extends CityObjectBase<'block'> {
   readonly boundary: Polygon2D;
   readonly districtId: CityId;
@@ -794,12 +836,22 @@ export interface BlockContract extends CityObjectBase<'block'> {
   readonly wardId: CityId;
   readonly neighborhoodId: CityId;
   readonly permeability: 'low' | 'medium' | 'high';
+  readonly buildableEnvelope: BlockBuildableEnvelopeContract;
+  readonly frontageClasses: readonly BlockFrontageContract[];
+  readonly internalAccess: {
+    readonly mode: BlockInternalAccessMode;
+    readonly accessIds: readonly CityId[];
+  };
+  readonly alleys: readonly BlockInternalAccessContract[];
+  readonly subdivisionConstraints: BlockSubdivisionConstraintsContract;
+  readonly permeabilityMetrics: BlockPermeabilityMetricsContract;
 }
 
 export interface ParcelContract extends CityObjectBase<'parcel'> {
   readonly boundary: Polygon2D;
   readonly districtId: CityId;
   readonly blockId: CityId;
+  readonly blockBuildableEnvelopeId: CityId;
   readonly administrativeBoundaryIds: readonly CityId[];
   readonly wardId: CityId;
   readonly neighborhoodId: CityId;

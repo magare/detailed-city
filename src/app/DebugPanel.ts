@@ -116,6 +116,10 @@ export class DebugPanel {
         `${diagnostics.administrativeBoundaries.total} admin, ${diagnostics.administrativeBoundaries.wards} wards, ${diagnostics.administrativeBoundaries.neighborhoods} neighborhoods`
       ),
       createMetric(
+        'Blocks',
+        `${diagnostics.blockModel.total} blocks, ${diagnostics.blockModel.alleys} access, ${diagnostics.blockModel.averagePermeabilityScore} permeability`
+      ),
+      createMetric(
         'Constraints',
         `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
       ),

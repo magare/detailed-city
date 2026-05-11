@@ -206,6 +206,7 @@ function createParcelFeatures(city: GeneratedCity): CityOverlayFeature[] {
     metadata: {
       district: parcel.district,
       blockId: parcel.blockId,
+      blockBuildableEnvelopeId: parcel.blockBuildableEnvelopeId,
       frontageRoads: parcel.frontageRoadIds.length
     }
   }));

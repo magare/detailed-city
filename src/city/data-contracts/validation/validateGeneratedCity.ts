@@ -680,6 +680,12 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   validateDistrictTransitions(city.blocks, city.districts, issues);
+  const parcelsByBlockId = new Map<string, GeneratedCityForValidation['parcels'][number][]>();
+  for (const parcel of city.parcels) {
+    const blockParcels = parcelsByBlockId.get(parcel.blockId) ?? [];
+    blockParcels.push(parcel);
+    parcelsByBlockId.set(parcel.blockId, blockParcels);
+  }
 
   for (const block of city.blocks) {
     if (!hasObjectId(city, block.districtId) || block.parentId !== block.districtId) {
@@ -701,6 +707,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         message: 'Blocks must have positive dimensions and a valid boundary seed.'
       });
     }
+
+    validateBlockModel(block, parcelsByBlockId.get(block.id) ?? [], roadsById, issues);
   }
 
   for (const streetLight of city.streetLights) {
@@ -1319,6 +1327,204 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
 
 function hasObjectId(city: GeneratedCityForValidation, id: string): boolean {
   return hasCityObject(city.objectIndex, id);
+}
+
+function isPolygonWithinPolygonBounds(inner: Polygon2D, outer: Polygon2D, tolerance = 0.001): boolean {
+  if (inner.length === 0 || outer.length === 0) {
+    return false;
+  }
+
+  const innerBounds = getPolygonBounds(inner);
+  const outerBounds = getPolygonBounds(outer);
+
+  return (
+    innerBounds.minX >= outerBounds.minX - tolerance &&
+    innerBounds.maxX <= outerBounds.maxX + tolerance &&
+    innerBounds.minZ >= outerBounds.minZ - tolerance &&
+    innerBounds.maxZ <= outerBounds.maxZ + tolerance
+  );
+}
+
+function validateBlockModel(
+  block: ValidationBlock,
+  parcels: readonly GeneratedCityForValidation['parcels'][number][],
+  roadsById: ReadonlyMap<string, GeneratedCityForValidation['roads'][number]>,
+  issues: ValidationIssue[]
+): void {
+  if (block.buildableEnvelope.id !== `${block.id}-buildable-envelope`) {
+    issues.push({
+      id: `invalid-block-envelope-id-${block.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: block.id,
+      ...createIssueFocus(block.center, `Set ${block.id}.buildableEnvelope.id to ${block.id}-buildable-envelope.`),
+      message: `Block ${block.id} must expose a stable buildable envelope ID.`
+    });
+  }
+
+  if (
+    block.buildableEnvelope.boundary.length < 4 ||
+    block.buildableEnvelope.minSetbackMeters < 0 ||
+    block.buildableEnvelope.maxCoverageRatio <= 0 ||
+    block.buildableEnvelope.maxCoverageRatio > 1
+  ) {
+    issues.push({
+      id: `invalid-block-envelope-${block.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: block.id,
+      ...createIssueFocus(block.center, 'Regenerate the block buildable envelope with a valid boundary, setback, and coverage ratio.'),
+      message: `Block ${block.id} must expose a valid buildable envelope.`
+    });
+  }
+
+  if (!isPolygonWithinPolygonBounds(block.buildableEnvelope.boundary, block.boundary)) {
+    issues.push({
+      id: `block-envelope-outside-boundary-${block.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: block.id,
+      affectedBoundary: block.buildableEnvelope.boundary,
+      suggestedFix: `Regenerate ${block.id}.buildableEnvelope inside the block boundary.`,
+      message: `Block ${block.id} buildable envelope must stay inside the block boundary.`
+    });
+  }
+
+  const frontageSides = new Set(block.frontageClasses.map((frontage) => frontage.side));
+  if (block.frontageClasses.length !== 4 || frontageSides.size !== 4) {
+    issues.push({
+      id: `invalid-block-frontage-classes-${block.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: block.id,
+      ...createIssueFocus(block.center, 'Generate one west, east, south, and north frontage class for the block.'),
+      message: `Block ${block.id} must expose exactly four side frontage classes.`
+    });
+  }
+
+  for (const frontage of block.frontageClasses) {
+    if (!roadsById.has(frontage.roadId) || frontage.lengthMeters <= 0) {
+      issues.push({
+        id: `invalid-block-frontage-${block.id}-${frontage.side}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: block.id,
+        ...createIssueFocus(block.center, `Attach ${block.id} ${frontage.side} frontage to an existing road with positive length.`),
+        message: `Block ${block.id} frontage ${frontage.side} must reference an existing road and positive length.`
+      });
+    }
+  }
+
+  if (block.internalAccess.mode === 'none' && block.internalAccess.accessIds.length > 0) {
+    issues.push({
+      id: `invalid-block-internal-access-none-${block.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: block.id,
+      ...createIssueFocus(block.center, `Clear internal access IDs for ${block.id} or set an active access mode.`),
+      message: `Block ${block.id} cannot list internal access IDs when mode is none.`
+    });
+  }
+
+  if (block.internalAccess.mode !== 'none' && block.alleys.length === 0) {
+    issues.push({
+      id: `missing-block-internal-access-${block.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: block.id,
+      ...createIssueFocus(block.center, `Generate alley or passage records for ${block.id}.`),
+      message: `Block ${block.id} must expose alley or passage records for its internal access mode.`
+    });
+  }
+
+  const alleyIds = new Set(block.alleys.map((alley) => alley.id));
+  for (const accessId of block.internalAccess.accessIds) {
+    if (!alleyIds.has(accessId)) {
+      issues.push({
+        id: `missing-block-access-reference-${block.id}-${toIssueIdToken(accessId)}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: block.id,
+        ...createIssueFocus(block.center, `Make ${accessId} an alley on ${block.id}, or remove it from internalAccess.accessIds.`),
+        message: `Block ${block.id} references missing internal access ${accessId}.`
+      });
+    }
+  }
+
+  for (const alley of block.alleys) {
+    const hasMissingRoad = alley.connectedRoadIds.some((roadId) => !roadsById.has(roadId));
+    const hasInvalidPoint = alley.centerline.some((point) => !isFiniteNumber(point.x) || !isFiniteNumber(point.z));
+
+    if (alley.widthMeters <= 0 || alley.connectedRoadIds.length < 2 || hasMissingRoad || hasInvalidPoint) {
+      issues.push({
+        id: `invalid-block-alley-${toIssueIdToken(alley.id)}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: block.id,
+        ...createIssueFocus(block.center, `Regenerate ${alley.id} with positive width, finite centerline, and valid road connections.`),
+        message: `Block internal access ${alley.id} must connect at least two existing roads with finite geometry.`
+      });
+    }
+  }
+
+  if (
+    block.subdivisionConstraints.preferredLotSplit <= 0 ||
+    block.subdivisionConstraints.maxParcelCount < parcels.length ||
+    block.subdivisionConstraints.minParcelWidthMeters <= 0 ||
+    block.subdivisionConstraints.minParcelDepthMeters <= 0
+  ) {
+    issues.push({
+      id: `invalid-block-subdivision-${block.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: block.id,
+      ...createIssueFocus(block.center, 'Regenerate block subdivision constraints so generated parcels fit within declared limits.'),
+      message: `Block ${block.id} subdivision constraints must cover generated parcels and positive parcel dimensions.`
+    });
+  }
+
+  if (
+    block.permeabilityMetrics.score < 0 ||
+    block.permeabilityMetrics.score > 1 ||
+    block.permeabilityMetrics.throughAccessCount !== block.alleys.length ||
+    block.permeabilityMetrics.frontageContinuityRatio < 0 ||
+    block.permeabilityMetrics.frontageContinuityRatio > 1 ||
+    block.permeabilityMetrics.averageParcelFrontageMeters <= 0
+  ) {
+    issues.push({
+      id: `invalid-block-permeability-metrics-${block.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: block.id,
+      ...createIssueFocus(block.center, 'Recompute block permeability metrics from frontage and internal access data.'),
+      message: `Block ${block.id} must expose normalized permeability metrics.`
+    });
+  }
+
+  for (const parcel of parcels) {
+    if (parcel.blockBuildableEnvelopeId !== block.buildableEnvelope.id) {
+      issues.push({
+        id: `invalid-parcel-block-envelope-${parcel.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: parcel.id,
+        ...createIssueFocus(parcel.center, `Set ${parcel.id}.blockBuildableEnvelopeId to ${block.buildableEnvelope.id}.`),
+        message: `Parcel ${parcel.id} must reference its parent block buildable envelope.`
+      });
+    }
+
+    if (!isPolygonWithinPolygonBounds(parcel.boundary, block.buildableEnvelope.boundary)) {
+      issues.push({
+        id: `parcel-outside-block-envelope-${parcel.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: parcel.id,
+        affectedBoundary: parcel.boundary,
+        suggestedFix: `Regenerate ${parcel.id} from ${block.id}'s buildable envelope.`,
+        message: `Parcel ${parcel.id} must fit inside parent block ${block.id}'s buildable envelope.`
+      });
+    }
+  }
 }
 
 function validateAdministrativeBoundaries(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {

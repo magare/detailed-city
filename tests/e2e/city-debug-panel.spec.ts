@@ -24,6 +24,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('5 rules, 14 transitions');
   expect(panelText).toContain('Boundaries');
   expect(panelText).toContain('18 admin, 4 wards, 5 neighborhoods');
+  expect(panelText).toContain('Blocks');
   expect(panelText).toContain('Constraints');
   expect(panelText).toContain('11 rules, 3 no-build');
   expect(panelText).toContain('Resilience');

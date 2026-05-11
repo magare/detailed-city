@@ -4,7 +4,13 @@ import {
   getBlueprintDistrictHeightMultiplier,
   getBlueprintDistrictRule
 } from '../../city/blueprint/cityBlueprint';
-import type { BuildingFrontageSide, LandUse } from '../../city/data-contracts/cityContracts';
+import type {
+  BlockFrontageClass,
+  BlockFrontageContract,
+  BlockInternalAccessContract,
+  BuildingFrontageSide,
+  LandUse
+} from '../../city/data-contracts/cityContracts';
 import type {
   BlockPlan,
   BuildingPlan,
@@ -16,7 +22,7 @@ import type {
   RoofStyle
 } from '../../types/city';
 import { SeededRandom } from '../../utils/random';
-import { rectanglePolygon } from '../../utils/geometry';
+import { getPolygonBounds, rectanglePolygon } from '../../utils/geometry';
 import { blockKey } from '../terrain/TerrainGenerator';
 
 export interface GeneratedLandAndBuildings {
@@ -52,28 +58,35 @@ export class BuildingGenerator {
         const maxHeightMeters = this.getDistrictMaxHeight(district);
         const maxCoverageRatio = 0.82;
         const split = districtConfig.lotSplit + (this.random.chance(districtConfig.density * 0.32) ? 1 : 0);
-        const lotSize = this.config.blockSize / split;
+        const blockCenter = this.getBlockCenter(bounds, blockX, blockZ);
+        const blockBoundary = rectanglePolygon(blockCenter, {
+          x: this.config.blockSize,
+          z: this.config.blockSize
+        });
+        const blockModel = this.createBlockModel(blockId, district, blockX, blockZ, split, blockCenter);
+        const envelopeBounds = getPolygonBounds(blockModel.buildableEnvelope.boundary);
+        const lotSize = Math.min(envelopeBounds.maxX - envelopeBounds.minX, envelopeBounds.maxZ - envelopeBounds.minZ) / split;
 
-        blocks.push({
+        const blockPlan: BlockPlan = {
           id: blockId,
           kind: 'block',
           ownerDomain: 'land',
           parentId: districtId,
           lod: 'lod1',
-          boundary: rectanglePolygon(this.getBlockCenter(bounds, blockX, blockZ), {
-            x: this.config.blockSize,
-            z: this.config.blockSize
-          }),
+          boundary: blockBoundary,
           districtId,
           administrativeBoundaryIds: [],
           wardId: '',
           neighborhoodId: '',
           permeability: this.getBlockPermeability(district),
+          ...blockModel,
           grid: { x: blockX, z: blockZ },
-          center: this.getBlockCenter(bounds, blockX, blockZ),
+          center: blockCenter,
           size: { x: this.config.blockSize, z: this.config.blockSize },
           district
-        });
+        };
+
+        blocks.push(blockPlan);
 
         for (let lotX = 0; lotX < split; lotX += 1) {
           for (let lotZ = 0; lotZ < split; lotZ += 1) {
@@ -81,7 +94,7 @@ export class BuildingGenerator {
               continue;
             }
 
-            const center = this.getLotCenter(bounds, blockX, blockZ, lotX, lotZ, lotSize);
+            const center = this.getLotCenter(envelopeBounds, lotX, lotZ, lotSize);
             const parcelSize = { x: lotSize, z: lotSize };
             const maxFootprintSide = Math.sqrt(maxCoverageRatio) * lotSize;
             const buildableSide = Math.min(
@@ -113,6 +126,7 @@ export class BuildingGenerator {
               district,
               districtId,
               blockId,
+              blockBuildableEnvelopeId: blockPlan.buildableEnvelope.id,
               administrativeBoundaryIds: [],
               wardId: '',
               neighborhoodId: '',
@@ -168,19 +182,14 @@ export class BuildingGenerator {
   }
 
   private getLotCenter(
-    bounds: CityBounds,
-    blockX: number,
-    blockZ: number,
+    envelopeBounds: ReturnType<typeof getPolygonBounds>,
     lotX: number,
     lotZ: number,
     lotSize: number
   ): { x: number; z: number } {
-    const blockMinX = -bounds.halfSpan + this.config.roadWidth + blockX * bounds.spacing;
-    const blockMinZ = -bounds.halfSpan + this.config.roadWidth + blockZ * bounds.spacing;
-
     return {
-      x: blockMinX + lotSize / 2 + lotX * lotSize,
-      z: blockMinZ + lotSize / 2 + lotZ * lotSize
+      x: envelopeBounds.minX + lotSize / 2 + lotX * lotSize,
+      z: envelopeBounds.minZ + lotSize / 2 + lotZ * lotSize
     };
   }
 
@@ -340,5 +349,153 @@ export class BuildingGenerator {
     }
 
     return district === 'downtown' || district === 'waterfront' ? 'high' : 'medium';
+  }
+
+  private createBlockModel(
+    blockId: string,
+    district: DistrictKind,
+    blockX: number,
+    blockZ: number,
+    split: number,
+    center: { x: number; z: number }
+  ): Pick<
+    BlockPlan,
+    'buildableEnvelope' | 'frontageClasses' | 'internalAccess' | 'alleys' | 'subdivisionConstraints' | 'permeabilityMetrics'
+  > {
+    const minSetbackMeters = this.getBlockEnvelopeSetback(district);
+    const buildableSize = Math.max(8, this.config.blockSize - minSetbackMeters * 2);
+    const alleys = this.createBlockAlleys(blockId, district, blockX, blockZ, split, center, buildableSize);
+    const averageParcelFrontageMeters = buildableSize / split;
+
+    return {
+      buildableEnvelope: {
+        id: `${blockId}-buildable-envelope`,
+        boundary: rectanglePolygon(center, { x: buildableSize, z: buildableSize }),
+        minSetbackMeters,
+        maxCoverageRatio: 0.82,
+        parcelFit: district === 'industrial' ? 'large-lot' : split <= 2 ? 'deep-lots' : 'regular-grid'
+      },
+      frontageClasses: this.createBlockFrontages(district, blockX, blockZ),
+      internalAccess: {
+        mode: this.getInternalAccessMode(district, split),
+        accessIds: alleys.map((alley) => alley.id)
+      },
+      alleys,
+      subdivisionConstraints: {
+        preferredLotSplit: split,
+        maxParcelCount: split * split,
+        minParcelWidthMeters: Math.max(6, averageParcelFrontageMeters * 0.72),
+        minParcelDepthMeters: Math.max(6, averageParcelFrontageMeters * 0.72),
+        allowLotMerging: district === 'industrial' || district === 'civic'
+      },
+      permeabilityMetrics: {
+        score: this.getBlockPermeabilityScore(district, split, alleys.length),
+        throughAccessCount: alleys.length,
+        frontageContinuityRatio: district === 'industrial' ? 0.62 : district === 'civic' ? 0.74 : 0.86,
+        averageParcelFrontageMeters
+      }
+    };
+  }
+
+  private getBlockEnvelopeSetback(district: DistrictKind): number {
+    if (district === 'downtown') {
+      return 1.5;
+    }
+    if (district === 'industrial') {
+      return 4;
+    }
+    if (district === 'civic') {
+      return 3;
+    }
+    return 2.5;
+  }
+
+  private createBlockFrontages(district: DistrictKind, blockX: number, blockZ: number): BlockFrontageContract[] {
+    return [
+      { side: 'west', roadId: `road-v-${blockX}`, frontageClass: this.getFrontageClass(district, 'west'), lengthMeters: this.config.blockSize },
+      { side: 'east', roadId: `road-v-${blockX + 1}`, frontageClass: this.getFrontageClass(district, 'east'), lengthMeters: this.config.blockSize },
+      { side: 'south', roadId: `road-h-${blockZ}`, frontageClass: this.getFrontageClass(district, 'south'), lengthMeters: this.config.blockSize },
+      { side: 'north', roadId: `road-h-${blockZ + 1}`, frontageClass: this.getFrontageClass(district, 'north'), lengthMeters: this.config.blockSize }
+    ];
+  }
+
+  private getFrontageClass(district: DistrictKind, side: 'west' | 'east' | 'south' | 'north'): BlockFrontageClass {
+    if (district === 'waterfront' && side === 'south') {
+      return 'waterfront';
+    }
+    if (district === 'industrial') {
+      return side === 'east' || side === 'north' ? 'industrial' : 'service';
+    }
+    if (district === 'downtown') {
+      return side === 'west' || side === 'south' ? 'primary' : 'secondary';
+    }
+    if (district === 'civic') {
+      return side === 'south' ? 'primary' : 'secondary';
+    }
+    return side === 'west' || side === 'east' ? 'secondary' : 'primary';
+  }
+
+  private createBlockAlleys(
+    blockId: string,
+    district: DistrictKind,
+    blockX: number,
+    blockZ: number,
+    split: number,
+    center: { x: number; z: number },
+    buildableSize: number
+  ): BlockInternalAccessContract[] {
+    const mode = this.getInternalAccessMode(district, split);
+    if (mode === 'none') {
+      return [];
+    }
+
+    const half = buildableSize / 2;
+    const eastWest: BlockInternalAccessContract = {
+      id: `${blockId}-access-east-west`,
+      mode,
+      connectedRoadIds: [`road-v-${blockX}`, `road-v-${blockX + 1}`],
+      widthMeters: mode === 'service-lane' ? 6 : 4,
+      centerline: [
+        { x: center.x - half, z: center.z },
+        { x: center.x + half, z: center.z }
+      ]
+    };
+
+    if (mode !== 'pedestrian-passage') {
+      return [eastWest];
+    }
+
+    return [
+      eastWest,
+      {
+        id: `${blockId}-access-north-south`,
+        mode,
+        connectedRoadIds: [`road-h-${blockZ}`, `road-h-${blockZ + 1}`],
+        widthMeters: 4,
+        centerline: [
+          { x: center.x, z: center.z - half },
+          { x: center.x, z: center.z + half }
+        ]
+      }
+    ];
+  }
+
+  private getInternalAccessMode(district: DistrictKind, split: number): BlockPlan['internalAccess']['mode'] {
+    if (district === 'industrial') {
+      return 'service-lane';
+    }
+    if (district === 'downtown' || district === 'waterfront') {
+      return split >= 3 ? 'pedestrian-passage' : 'alley';
+    }
+    if (split >= 3) {
+      return 'alley';
+    }
+    return 'none';
+  }
+
+  private getBlockPermeabilityScore(district: DistrictKind, split: number, throughAccessCount: number): number {
+    const base = district === 'industrial' ? 0.32 : district === 'civic' ? 0.58 : 0.64;
+    const score = base + throughAccessCount * 0.12 + Math.max(0, split - 2) * 0.04;
+    return Number(Math.min(0.95, score).toFixed(2));
   }
 }

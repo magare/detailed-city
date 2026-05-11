@@ -48,6 +48,7 @@ export interface CityDiagnostics {
   readonly config: ConfigDiagnostics;
   readonly masterPlan: MasterPlanDiagnostics;
   readonly administrativeBoundaries: AdministrativeBoundaryDiagnostics;
+  readonly blockModel: BlockModelDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
@@ -93,6 +94,10 @@ export interface CityDiagnostics {
     readonly administrativeBoundaries: number;
     readonly wards: number;
     readonly neighborhoods: number;
+    readonly blocksWithInternalAccess: number;
+    readonly blockAlleys: number;
+    readonly blockFrontages: number;
+    readonly blockBuildableEnvelopes: number;
     readonly districtUseMixRules: number;
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
@@ -157,6 +162,16 @@ export interface AdministrativeBoundaryDiagnostics {
   readonly parcelsWithBoundaryMembership: number;
 }
 
+export interface BlockModelDiagnostics {
+  readonly total: number;
+  readonly buildableEnvelopes: number;
+  readonly blocksWithInternalAccess: number;
+  readonly alleys: number;
+  readonly frontageClasses: number;
+  readonly permeability: Readonly<Record<string, number>>;
+  readonly averagePermeabilityScore: number;
+}
+
 export interface ConstraintLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -207,6 +222,7 @@ export function createCityDiagnostics(
   const objectGroups = createCityObjectGroupDiagnostics(objectGroupIndex);
   const masterPlan = createMasterPlanDiagnostics(CITY_BLUEPRINT.masterPlan);
   const administrativeBoundaries = createAdministrativeBoundaryDiagnostics(city);
+  const blockModel = createBlockModelDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
@@ -230,6 +246,7 @@ export function createCityDiagnostics(
     config,
     masterPlan,
     administrativeBoundaries,
+    blockModel,
     districtCharacter,
     cityMetrics,
     constraintLayer,
@@ -266,6 +283,10 @@ export function createCityDiagnostics(
       administrativeBoundaries: city.administrativeBoundaries.length,
       wards: city.administrativeBoundaries.filter((boundary) => boundary.boundaryKind === 'ward').length,
       neighborhoods: city.administrativeBoundaries.filter((boundary) => boundary.boundaryKind === 'neighborhood').length,
+      blocksWithInternalAccess: blockModel.blocksWithInternalAccess,
+      blockAlleys: blockModel.alleys,
+      blockFrontages: blockModel.frontageClasses,
+      blockBuildableEnvelopes: blockModel.buildableEnvelopes,
       districtUseMixRules: districtCharacter.useMixRules,
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
@@ -365,6 +386,26 @@ function createAdministrativeBoundaryDiagnostics(city: GeneratedCity): Administr
     jurisdictionOverlays: byKind['jurisdiction-overlay'] ?? 0,
     blocksWithBoundaryMembership: city.blocks.filter((block) => block.administrativeBoundaryIds.length > 0).length,
     parcelsWithBoundaryMembership: city.parcels.filter((parcel) => parcel.administrativeBoundaryIds.length > 0).length
+  };
+}
+
+function createBlockModelDiagnostics(city: GeneratedCity): BlockModelDiagnostics {
+  const permeability: Record<string, number> = {};
+  let scoreTotal = 0;
+
+  for (const block of city.blocks) {
+    permeability[block.permeability] = (permeability[block.permeability] ?? 0) + 1;
+    scoreTotal += block.permeabilityMetrics.score;
+  }
+
+  return {
+    total: city.blocks.length,
+    buildableEnvelopes: city.blocks.filter((block) => block.buildableEnvelope.boundary.length >= 4).length,
+    blocksWithInternalAccess: city.blocks.filter((block) => block.internalAccess.mode !== 'none').length,
+    alleys: city.blocks.reduce((sum, block) => sum + block.alleys.length, 0),
+    frontageClasses: city.blocks.reduce((sum, block) => sum + block.frontageClasses.length, 0),
+    permeability,
+    averagePermeabilityScore: Number((scoreTotal / Math.max(1, city.blocks.length)).toFixed(2))
   };
 }
 
