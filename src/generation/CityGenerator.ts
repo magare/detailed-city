@@ -127,6 +127,7 @@ export class CityGenerator {
       bounds,
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildings.districts,
+      zoningDistricts: landAndBuildings.zoningDistricts,
       cityMetrics,
       constraints,
       resilienceGoals,

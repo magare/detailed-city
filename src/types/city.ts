@@ -33,7 +33,8 @@ import type {
   StreetHierarchy,
   ParcelContract,
   TrafficVehicleContract,
-  ValidationResult
+  ValidationResult,
+  ZoningDistrictContract
 } from '../city/data-contracts/cityContracts';
 
 export const CITY_DISTRICT_KINDS = ['downtown', 'residential', 'industrial', 'waterfront', 'civic'] as const;
@@ -137,6 +138,8 @@ export interface DistrictPlan extends DistrictContract {
 
 export interface AdministrativeBoundaryPlan extends AdministrativeBoundaryContract {}
 
+export interface ZoningDistrictPlan extends ZoningDistrictContract {}
+
 export interface BlockPlan extends BlockContract {
   grid: { x: number; z: number };
   center: Point2D;
@@ -227,6 +230,7 @@ export type GeneratedCityObject =
   | ConstraintPlan
   | ResilienceGoalPlan
   | DistrictPlan
+  | ZoningDistrictPlan
   | BlockPlan
   | RoadSegment
   | IntersectionPlan
@@ -260,6 +264,7 @@ export interface GeneratedCity {
   bounds: CityBounds;
   administrativeBoundaries: AdministrativeBoundaryPlan[];
   districts: DistrictPlan[];
+  zoningDistricts: ZoningDistrictPlan[];
   constraints: ConstraintPlan[];
   resilienceGoals: ResilienceGoalPlan[];
   cityMetrics: CityMetricPlan[];

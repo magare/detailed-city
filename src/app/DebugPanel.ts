@@ -124,6 +124,10 @@ export class DebugPanel {
         `${diagnostics.parcelModel.total} parcels, ${diagnostics.parcelModel.buildableEnvelopes} envelopes, ${diagnostics.parcelModel.primaryFrontageParcels} primary`
       ),
       createMetric(
+        'Zoning',
+        `${diagnostics.zoningModel.total} districts, ${diagnostics.zoningModel.formBasedDistricts} form, ${diagnostics.zoningModel.parcelsWithZoning} parcels`
+      ),
+      createMetric(
         'Constraints',
         `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
       ),

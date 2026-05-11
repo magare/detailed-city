@@ -50,6 +50,7 @@ export interface CityDiagnostics {
   readonly administrativeBoundaries: AdministrativeBoundaryDiagnostics;
   readonly blockModel: BlockModelDiagnostics;
   readonly parcelModel: ParcelModelDiagnostics;
+  readonly zoningModel: ZoningModelDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
@@ -102,6 +103,9 @@ export interface CityDiagnostics {
     readonly parcelBuildableEnvelopes: number;
     readonly parcelsWithConstraints: number;
     readonly primaryFrontageParcels: number;
+    readonly zoningDistricts: number;
+    readonly zoningFormBasedDistricts: number;
+    readonly parcelsWithZoning: number;
     readonly districtUseMixRules: number;
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
@@ -185,6 +189,17 @@ export interface ParcelModelDiagnostics {
   readonly developmentStatuses: Readonly<Record<string, number>>;
 }
 
+export interface ZoningModelDiagnostics {
+  readonly total: number;
+  readonly formBasedDistricts: number;
+  readonly parcelsWithZoning: number;
+  readonly allowedUseRules: number;
+  readonly maxHeightMeters: number;
+  readonly maxFloorAreaRatio: number;
+  readonly frontageRuleCounts: Readonly<Record<string, number>>;
+  readonly zoningCodes: readonly string[];
+}
+
 export interface ConstraintLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -237,6 +252,7 @@ export function createCityDiagnostics(
   const administrativeBoundaries = createAdministrativeBoundaryDiagnostics(city);
   const blockModel = createBlockModelDiagnostics(city);
   const parcelModel = createParcelModelDiagnostics(city);
+  const zoningModel = createZoningModelDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
@@ -262,6 +278,7 @@ export function createCityDiagnostics(
     administrativeBoundaries,
     blockModel,
     parcelModel,
+    zoningModel,
     districtCharacter,
     cityMetrics,
     constraintLayer,
@@ -305,6 +322,9 @@ export function createCityDiagnostics(
       parcelBuildableEnvelopes: parcelModel.buildableEnvelopes,
       parcelsWithConstraints: parcelModel.parcelsWithConstraints,
       primaryFrontageParcels: parcelModel.primaryFrontageParcels,
+      zoningDistricts: zoningModel.total,
+      zoningFormBasedDistricts: zoningModel.formBasedDistricts,
+      parcelsWithZoning: zoningModel.parcelsWithZoning,
       districtUseMixRules: districtCharacter.useMixRules,
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
@@ -445,6 +465,34 @@ function createParcelModelDiagnostics(city: GeneratedCity): ParcelModelDiagnosti
     ).length,
     averageBuildableAreaSqM: Number((buildableAreaTotal / Math.max(1, city.parcels.length)).toFixed(2)),
     developmentStatuses
+  };
+}
+
+function createZoningModelDiagnostics(city: GeneratedCity): ZoningModelDiagnostics {
+  const frontageRuleCounts: Record<string, number> = {};
+  let allowedUseRules = 0;
+  let maxHeightMeters = 0;
+  let maxFloorAreaRatio = 0;
+
+  for (const zoning of city.zoningDistricts) {
+    allowedUseRules += zoning.controls.allowedUses.length;
+    maxHeightMeters = Math.max(maxHeightMeters, zoning.controls.maxHeightMeters);
+    maxFloorAreaRatio = Math.max(maxFloorAreaRatio, zoning.controls.maxFloorAreaRatio);
+    const frontageRule = zoning.controls.frontageRules.requiredPriority;
+    frontageRuleCounts[frontageRule] = (frontageRuleCounts[frontageRule] ?? 0) + 1;
+  }
+
+  const zoningIds = new Set(city.zoningDistricts.map((zoning) => zoning.id));
+
+  return {
+    total: city.zoningDistricts.length,
+    formBasedDistricts: city.zoningDistricts.filter((zoning) => zoning.zoningKind === 'form-based').length,
+    parcelsWithZoning: city.parcels.filter((parcel) => zoningIds.has(parcel.zoningDistrictId)).length,
+    allowedUseRules,
+    maxHeightMeters,
+    maxFloorAreaRatio,
+    frontageRuleCounts,
+    zoningCodes: city.zoningDistricts.map((zoning) => zoning.zoningCode).sort()
   };
 }
 

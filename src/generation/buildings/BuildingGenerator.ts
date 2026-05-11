@@ -12,6 +12,7 @@ import type {
   LandUse,
   ParcelFitContract,
   ParcelFrontagePriorityContract,
+  ParcelZoningControlsContract,
   ParcelSetbackContract
 } from '../../city/data-contracts/cityContracts';
 import type {
@@ -22,7 +23,8 @@ import type {
   DistrictKind,
   DistrictPlan,
   Parcel,
-  RoofStyle
+  RoofStyle,
+  ZoningDistrictPlan
 } from '../../types/city';
 import { SeededRandom } from '../../utils/random';
 import { getPolygonBounds, rectanglePolygon } from '../../utils/geometry';
@@ -30,6 +32,7 @@ import { blockKey } from '../terrain/TerrainGenerator';
 
 export interface GeneratedLandAndBuildings {
   districts: DistrictPlan[];
+  zoningDistricts: ZoningDistrictPlan[];
   blocks: BlockPlan[];
   parcels: Parcel[];
   buildings: BuildingPlan[];
@@ -67,9 +70,10 @@ export class BuildingGenerator {
         const normalizedBlock = this.getNormalizedBlock(blockX, blockZ);
         const blockId = `block-${blockX}-${blockZ}`;
         const districtId = `district-${district}`;
-        const allowedUses = this.getAllowedUses(district);
-        const maxHeightMeters = this.getDistrictMaxHeight(district);
-        const maxCoverageRatio = 0.82;
+        const zoning = this.createZoningControls(district);
+        const allowedUses = zoning.allowedUses;
+        const maxHeightMeters = zoning.maxHeightMeters;
+        const maxCoverageRatio = zoning.maxCoverageRatio;
         const split = districtConfig.lotSplit + (this.random.chance(districtConfig.density * 0.32) ? 1 : 0);
         const blockCenter = this.getBlockCenter(bounds, blockX, blockZ);
         const blockBoundary = rectanglePolygon(blockCenter, {
@@ -149,6 +153,8 @@ export class BuildingGenerator {
               districtId,
               blockId,
               blockBuildableEnvelopeId: blockPlan.buildableEnvelope.id,
+              zoningDistrictId: zoning.zoningDistrictId,
+              zoning,
               ...parcelModel,
               administrativeBoundaryIds: [],
               wardId: '',
@@ -167,6 +173,7 @@ export class BuildingGenerator {
               parentId: id,
               lod: 'lod1',
               parcelId: id,
+              zoningDistrictId: zoning.zoningDistrictId,
               footprint: rectanglePolygon(parcelModel.fit.preferredBuildingCenter, buildingSize),
               uses: this.selectBuildingUses(allowedUses),
               heightMeters,
@@ -187,8 +194,11 @@ export class BuildingGenerator {
       }
     }
 
+    const districts = this.generateDistricts(blocks);
+
     return {
-      districts: this.generateDistricts(blocks),
+      districts,
+      zoningDistricts: this.generateZoningDistricts(districts, blocks, parcels),
       blocks,
       parcels,
       buildings
@@ -310,6 +320,107 @@ export class BuildingGenerator {
       .useMix.filter((mix) => mix.share > 0)
       .sort((left, right) => right.share - left.share)
       .map((mix) => mix.use);
+  }
+
+  private createZoningControls(district: DistrictKind): ParcelZoningControlsContract {
+    const rule = getBlueprintDistrictRule(district);
+    const maxFloorAreaRatio = this.getMaxFloorAreaRatio(district);
+
+    return {
+      zoningDistrictId: `zoning-district-${district}`,
+      zoningCode: this.getZoningCode(district),
+      zoningKind: district === 'downtown' || district === 'waterfront' ? 'form-based' : 'base',
+      allowedUses: this.getAllowedUses(district),
+      maxHeightMeters: this.getDistrictMaxHeight(district),
+      maxFloorAreaRatio,
+      maxCoverageRatio: 0.82,
+      minimumSetbacks: this.getParcelSetbacks(district, 1),
+      bufferMeters: this.getZoningBufferMeters(district),
+      frontageRules: {
+        requiredPriority: 'any',
+        activeUsesAllowed: ['downtown', 'waterfront', 'residential'].includes(district),
+        activeFrontageRequiredOnPrimary: district === 'downtown' || district === 'waterfront'
+      },
+      density: {
+        densityBand: rule.densityBand,
+        targetFloorAreaRatio: maxFloorAreaRatio,
+        targetDwellingUnitsPerHectare: district === 'residential' ? 180 : district === 'waterfront' ? 120 : 0,
+        targetJobsPerHectare: district === 'downtown' ? 520 : district === 'industrial' ? 180 : district === 'civic' ? 140 : 60
+      },
+      formRules: {
+        massing:
+          district === 'downtown'
+            ? 'tower'
+            : district === 'waterfront'
+              ? 'mid-rise'
+              : district === 'civic'
+                ? 'campus'
+                : district === 'industrial'
+                  ? 'industrial-shed'
+                  : 'neighborhood-block',
+        streetWallRequired: district === 'downtown' || district === 'waterfront',
+        stepbackAboveMeters: district === 'downtown' ? 48 : district === 'waterfront' ? 32 : undefined
+      }
+    };
+  }
+
+  private generateZoningDistricts(
+    districts: readonly DistrictPlan[],
+    blocks: readonly BlockPlan[],
+    parcels: readonly Parcel[]
+  ): ZoningDistrictPlan[] {
+    return districts.map((district) => {
+      const controls = this.createZoningControls(district.district);
+
+      return {
+        id: controls.zoningDistrictId,
+        kind: 'zoning-district',
+        ownerDomain: 'land',
+        parentId: district.id,
+        name: `${district.name} Zoning`,
+        lod: 'lod0',
+        districtId: district.id,
+        boundary: district.boundary,
+        zoningCode: controls.zoningCode,
+        zoningKind: controls.zoningKind,
+        controls,
+        blockIds: blocks.filter((block) => block.districtId === district.id).map((block) => block.id),
+        parcelIds: parcels.filter((parcel) => parcel.districtId === district.id).map((parcel) => parcel.id),
+        overlayConstraintIds: []
+      };
+    });
+  }
+
+  private getZoningCode(district: DistrictKind): string {
+    if (district === 'downtown') {
+      return 'FB-CBD-8';
+    }
+    if (district === 'waterfront') {
+      return 'FB-WF-5';
+    }
+    if (district === 'industrial') {
+      return 'I-MX-2';
+    }
+    if (district === 'civic') {
+      return 'CIV-3';
+    }
+    return 'N-MX-3';
+  }
+
+  private getZoningBufferMeters(district: DistrictKind): number {
+    if (district === 'industrial') {
+      return 6;
+    }
+    if (district === 'waterfront') {
+      return 5;
+    }
+    if (district === 'civic') {
+      return 3;
+    }
+    if (district === 'residential') {
+      return 2;
+    }
+    return 0;
   }
 
   private getFrontageRoadIds(blockX: number, blockZ: number, lotX: number, lotZ: number, split: number): string[] {
@@ -437,18 +548,18 @@ export class BuildingGenerator {
 
   private getMaxFloorAreaRatio(district: DistrictKind): number {
     if (district === 'downtown') {
-      return 8;
+      return 18;
     }
     if (district === 'waterfront') {
-      return 5;
+      return 12;
     }
     if (district === 'civic') {
-      return 3.5;
+      return 8;
     }
     if (district === 'industrial') {
-      return 2.2;
+      return 6;
     }
-    return 2.8;
+    return 7;
   }
 
   private createParcelFrontagePriority(

@@ -53,6 +53,7 @@ type GeneratedCityForValidation = Pick<
   | 'trees'
   | 'verticalSlices'
   | 'waterways'
+  | 'zoningDistricts'
 >;
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
@@ -61,6 +62,7 @@ type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][number];
+type ValidationZoningDistrict = GeneratedCityForValidation['zoningDistricts'][number];
 
 const REQUIRED_RENDER_BINDING_IDS = [
   'binding:terrain:ground',
@@ -177,6 +179,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateRenderBindings(city.assetCatalog, city.assetBindings, issues);
   validateAdministrativeBoundaries(city, issues);
   validateCityMetrics(city, issues);
+  validateZoningDistricts(city, issues);
 
   for (const road of city.roads) {
     if (road.length <= 0 || road.width <= 0 || road.laneCount <= 0 || road.widthMeters <= 0) {
@@ -1007,6 +1010,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
 
   const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
   const blocksById = new Map(city.blocks.map((block) => [block.id, block]));
+  const zoningById = new Map(city.zoningDistricts.map((zoning) => [zoning.id, zoning]));
 
   for (const parcel of city.parcels) {
     if (!hasObjectId(city, parcel.districtId) || !hasObjectId(city, parcel.blockId)) {
@@ -1067,6 +1071,20 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
+    const zoning = zoningById.get(parcel.zoningDistrictId);
+    if (!zoning) {
+      issues.push({
+        id: `missing-parcel-zoning-${parcel.id}-${toIssueIdToken(parcel.zoningDistrictId)}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: parcel.id,
+        ...createIssueFocus(parcel.center, `Assign ${parcel.id} to an existing zoning district.`),
+        message: `Parcel ${parcel.id} references missing zoning district ${parcel.zoningDistrictId}.`
+      });
+    } else {
+      validateParcelZoning(parcel, zoning, issues);
+    }
+
     validateParcelModel(parcel, blocksById.get(parcel.blockId), city.constraints, roadsById, issues);
   }
 
@@ -1094,6 +1112,16 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
+    if (building.zoningDistrictId !== parcel.zoningDistrictId || !zoningById.has(building.zoningDistrictId)) {
+      issues.push({
+        id: `invalid-building-zoning-${building.id}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: building.id,
+        message: `Building ${building.id} must resolve the same zoning district as parcel ${parcel.id}.`
+      });
+    }
+
     if (building.size.x > parcel.size.x || building.size.z > parcel.size.z) {
       issues.push({
         id: `building-over-parcel-${building.id}`,
@@ -1117,23 +1145,36 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     }
 
     const coverageRatio = (building.size.x * building.size.z) / (parcel.size.x * parcel.size.z);
-    if (coverageRatio > parcel.maxCoverageRatio + 0.001) {
+    const maxCoverageRatio = Math.min(parcel.maxCoverageRatio, parcel.zoning.maxCoverageRatio);
+    if (coverageRatio > maxCoverageRatio + 0.001) {
       issues.push({
         id: `coverage-over-zoning-${building.id}`,
         severity: 'error',
         category: 'zoning',
         objectId: building.id,
-        message: `Building coverage ${coverageRatio.toFixed(2)} exceeds parcel max coverage ${parcel.maxCoverageRatio.toFixed(2)}.`
+        message: `Building coverage ${coverageRatio.toFixed(2)} exceeds parcel max coverage ${maxCoverageRatio.toFixed(2)}.`
       });
     }
 
-    if (building.heightMeters > parcel.maxHeightMeters) {
+    const floorAreaRatio = (building.size.x * building.size.z * building.floorCount) / (parcel.size.x * parcel.size.z);
+    if (floorAreaRatio > parcel.zoning.maxFloorAreaRatio + 0.001) {
+      issues.push({
+        id: `floor-area-ratio-over-zoning-${building.id}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: building.id,
+        message: `Building FAR ${floorAreaRatio.toFixed(2)} exceeds parcel zoning FAR ${parcel.zoning.maxFloorAreaRatio.toFixed(2)}.`
+      });
+    }
+
+    const maxHeightMeters = Math.min(parcel.maxHeightMeters, parcel.zoning.maxHeightMeters);
+    if (building.heightMeters > maxHeightMeters) {
       issues.push({
         id: `height-over-zoning-${building.id}`,
         severity: 'warning',
         category: 'zoning',
         objectId: building.id,
-        message: `Building height ${building.heightMeters.toFixed(1)}m exceeds max height ${parcel.maxHeightMeters.toFixed(1)}m.`
+        message: `Building height ${building.heightMeters.toFixed(1)}m exceeds max height ${maxHeightMeters.toFixed(1)}m.`
       });
     }
 
@@ -1180,7 +1221,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     }
 
     for (const use of building.uses) {
-      if (!parcel.allowedUses.includes(use)) {
+      if (!parcel.allowedUses.includes(use) || !parcel.zoning.allowedUses.includes(use)) {
         issues.push({
           id: `use-over-zoning-${building.id}-${use}`,
           severity: 'error',
@@ -1702,6 +1743,164 @@ function validateParcelModel(
       });
     }
   }
+}
+
+function validateZoningDistricts(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const districtsById = new Map(city.districts.map((district) => [district.id, district]));
+  const blocksById = new Map(city.blocks.map((block) => [block.id, block]));
+  const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
+  const constraintsById = new Map(city.constraints.map((constraint) => [constraint.id, constraint]));
+
+  for (const zoning of city.zoningDistricts) {
+    if (!districtsById.has(zoning.districtId) || zoning.parentId !== zoning.districtId) {
+      issues.push({
+        id: `invalid-zoning-district-parent-${zoning.id}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: zoning.id,
+        message: `Zoning district ${zoning.id} must be parented to existing district ${zoning.districtId}.`
+      });
+    }
+
+    if (zoning.boundary.length < 4) {
+      issues.push({
+        id: `invalid-zoning-boundary-${zoning.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: zoning.id,
+        message: `Zoning district ${zoning.id} must expose a polygon boundary.`
+      });
+    }
+
+    validateZoningControls(zoning.id, zoning.controls, issues, zoning);
+
+    for (const blockId of zoning.blockIds) {
+      const block = blocksById.get(blockId);
+      if (!block || block.districtId !== zoning.districtId) {
+        issues.push({
+          id: `invalid-zoning-block-reference-${zoning.id}-${toIssueIdToken(blockId)}`,
+          severity: 'error',
+          category: 'zoning',
+          objectId: zoning.id,
+          message: `Zoning district ${zoning.id} references block ${blockId} outside its district.`
+        });
+      }
+    }
+
+    for (const parcelId of zoning.parcelIds) {
+      const parcel = parcelsById.get(parcelId);
+      if (!parcel || parcel.zoningDistrictId !== zoning.id) {
+        issues.push({
+          id: `invalid-zoning-parcel-reference-${zoning.id}-${toIssueIdToken(parcelId)}`,
+          severity: 'error',
+          category: 'zoning',
+          objectId: zoning.id,
+          message: `Zoning district ${zoning.id} references parcel ${parcelId} that does not point back to the zoning district.`
+        });
+      }
+    }
+
+    for (const constraintId of zoning.overlayConstraintIds) {
+      if (!constraintsById.has(constraintId)) {
+        issues.push({
+          id: `invalid-zoning-overlay-constraint-${zoning.id}-${toIssueIdToken(constraintId)}`,
+          severity: 'error',
+          category: 'zoning',
+          objectId: zoning.id,
+          message: `Zoning district ${zoning.id} references missing overlay constraint ${constraintId}.`
+        });
+      }
+    }
+  }
+}
+
+function validateParcelZoning(
+  parcel: GeneratedCityForValidation['parcels'][number],
+  zoning: ValidationZoningDistrict,
+  issues: ValidationIssue[]
+): void {
+  validateZoningControls(parcel.id, parcel.zoning, issues, zoning);
+
+  if (
+    parcel.zoning.zoningDistrictId !== zoning.id ||
+    parcel.zoning.zoningCode !== zoning.zoningCode ||
+    parcel.zoning.maxHeightMeters !== parcel.maxHeightMeters ||
+    parcel.zoning.maxCoverageRatio !== parcel.maxCoverageRatio ||
+    parcel.zoning.maxFloorAreaRatio !== parcel.developmentRights.maxFloorAreaRatio ||
+    !sameStringSet(parcel.zoning.allowedUses, parcel.allowedUses)
+  ) {
+    issues.push({
+      id: `parcel-zoning-mismatch-${parcel.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Synchronize ${parcel.id} zoning controls with ${zoning.id}.`),
+      message: `Parcel ${parcel.id} must carry a zoning snapshot that matches ${zoning.id}.`
+    });
+  }
+
+  if (parcel.zoning.bufferMeters > Math.max(parcel.size.x, parcel.size.z)) {
+    issues.push({
+      id: `zoning-buffer-over-parcel-${parcel.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Reduce ${parcel.id} zoning buffer or merge the lot before building.`),
+      message: `Parcel ${parcel.id} zoning buffer leaves no buildable depth.`
+    });
+  }
+
+  const requiredPriority = parcel.zoning.frontageRules.requiredPriority;
+  if (
+    requiredPriority !== 'any' &&
+    !parcel.frontagePriority.some((frontage) => frontage.priority === requiredPriority)
+  ) {
+    issues.push({
+      id: `zoning-frontage-priority-missing-${parcel.id}-${requiredPriority}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: parcel.id,
+      ...createIssueFocus(parcel.center, `Assign ${parcel.id} a ${requiredPriority} frontage or relax the zoning frontage rule.`),
+      message: `Parcel ${parcel.id} does not satisfy required ${requiredPriority} zoning frontage.`
+    });
+  }
+}
+
+function validateZoningControls(
+  objectId: string,
+  controls: ValidationZoningDistrict['controls'],
+  issues: ValidationIssue[],
+  zoning: ValidationZoningDistrict
+): void {
+  const setbackValues = [
+    controls.minimumSetbacks.frontMeters,
+    controls.minimumSetbacks.sideMeters,
+    controls.minimumSetbacks.rearMeters
+  ];
+
+  if (
+    controls.zoningDistrictId !== zoning.id ||
+    controls.allowedUses.length === 0 ||
+    controls.maxHeightMeters <= 0 ||
+    controls.maxFloorAreaRatio <= 0 ||
+    controls.maxCoverageRatio <= 0 ||
+    controls.maxCoverageRatio > 1 ||
+    controls.bufferMeters < 0 ||
+    controls.density.targetFloorAreaRatio <= 0 ||
+    setbackValues.some((value) => value < 0 || !Number.isFinite(value))
+  ) {
+    issues.push({
+      id: `invalid-zoning-controls-${toIssueIdToken(objectId)}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId,
+      message: `Zoning controls for ${objectId} must define allowed uses, height, FAR, coverage, setbacks, buffers, and density targets.`
+    });
+  }
+}
+
+function sameStringSet(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value) => right.includes(value));
 }
 
 function validateAdministrativeBoundaries(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {

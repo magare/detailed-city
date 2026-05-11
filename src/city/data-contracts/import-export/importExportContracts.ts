@@ -224,6 +224,7 @@ export interface CityCsvTableExport {
 export interface ProceduralSeedDomainSections {
   readonly administrativeBoundaries: GeneratedCity['administrativeBoundaries'];
   readonly districts: GeneratedCity['districts'];
+  readonly zoningDistricts: GeneratedCity['zoningDistricts'];
   readonly cityMetrics: GeneratedCity['cityMetrics'];
   readonly constraints: GeneratedCity['constraints'];
   readonly resilienceGoals: GeneratedCity['resilienceGoals'];
@@ -247,6 +248,7 @@ export interface ProceduralSeedDomainSections {
 export interface ProceduralSeedDomainSectionCounts {
   readonly administrativeBoundaries: number;
   readonly districts: number;
+  readonly zoningDistricts: number;
   readonly cityMetrics: number;
   readonly constraints: number;
   readonly resilienceGoals: number;
@@ -348,6 +350,7 @@ export function createProceduralSeedJsonExport(
     city: {
       administrativeBoundaries: city.administrativeBoundaries,
       districts: city.districts,
+      zoningDistricts: city.zoningDistricts,
       cityMetrics: city.cityMetrics,
       constraints: city.constraints,
       resilienceGoals: city.resilienceGoals,
@@ -480,6 +483,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'crossings'
     | 'curbZones'
     | 'districts'
+    | 'zoningDistricts'
     | 'intersections'
     | 'parcels'
     | 'parks'
@@ -495,6 +499,7 @@ export function createProceduralSeedDomainSectionCounts(
   return {
     administrativeBoundaries: city.administrativeBoundaries.length,
     districts: city.districts.length,
+    zoningDistricts: city.zoningDistricts.length,
     cityMetrics: city.cityMetrics.length,
     constraints: city.constraints.length,
     resilienceGoals: city.resilienceGoals.length,
@@ -530,6 +535,7 @@ export function countProceduralSeedDomainObjects(
   return (
     getArrayLength(city, 'administrativeBoundaries') +
     getArrayLength(city, 'districts') +
+    getArrayLength(city, 'zoningDistricts') +
     getArrayLength(city, 'cityMetrics') +
     getArrayLength(city, 'constraints') +
     getArrayLength(city, 'resilienceGoals') +

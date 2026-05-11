@@ -20,17 +20,24 @@ export function applyConstraintFilters(
     }
   }
 
+  const parcels = land.parcels
+    .filter((parcel) => !blockedParcelIds.has(parcel.id))
+    .map((parcel) => ({
+      ...parcel,
+      parcelConstraintIds: constraints
+        .filter((constraint) => isPointInsidePolygon(parcel.center, constraint.boundary))
+        .map((constraint) => constraint.id)
+        .sort()
+    }));
+  const parcelIds = new Set(parcels.map((parcel) => parcel.id));
+
   return {
     ...land,
-    parcels: land.parcels
-      .filter((parcel) => !blockedParcelIds.has(parcel.id))
-      .map((parcel) => ({
-        ...parcel,
-        parcelConstraintIds: constraints
-          .filter((constraint) => isPointInsidePolygon(parcel.center, constraint.boundary))
-          .map((constraint) => constraint.id)
-          .sort()
-      })),
+    zoningDistricts: land.zoningDistricts.map((zoning) => ({
+      ...zoning,
+      parcelIds: zoning.parcelIds.filter((parcelId) => parcelIds.has(parcelId))
+    })),
+    parcels,
     buildings: land.buildings.filter(
       (building) =>
         !blockedParcelIds.has(building.parcelId) &&

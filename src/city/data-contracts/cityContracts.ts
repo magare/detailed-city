@@ -35,7 +35,8 @@ export type CityObjectKind =
   | 'utility-edge'
   | 'utility-node'
   | 'vertical-slice'
-  | 'waterway';
+  | 'waterway'
+  | 'zoning-district';
 
 export type LandUse =
   | 'civic'
@@ -296,6 +297,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1'],
       description: 'Blocks are coarse land units used for city massing and overlays.'
+    },
+    {
+      objectKind: 'zoning-district',
+      scope: 'land',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'Zoning districts define allowed uses, height, FAR, coverage, buffers, frontage rules, and form controls for parcels and buildings.'
     },
     {
       objectKind: 'building',
@@ -868,6 +876,51 @@ export interface ParcelFitContract {
   readonly canFitBuilding: boolean;
 }
 
+export type ZoningDistrictKind = 'base' | 'overlay' | 'form-based';
+
+export interface ZoningFrontageRuleContract {
+  readonly requiredPriority: 'any' | 'primary' | 'secondary' | 'service';
+  readonly activeUsesAllowed: boolean;
+  readonly activeFrontageRequiredOnPrimary: boolean;
+}
+
+export interface ZoningDensityControlsContract {
+  readonly densityBand: 'low' | 'medium' | 'high' | 'super-tall';
+  readonly targetFloorAreaRatio: number;
+  readonly targetDwellingUnitsPerHectare: number;
+  readonly targetJobsPerHectare: number;
+}
+
+export interface ParcelZoningControlsContract {
+  readonly zoningDistrictId: CityId;
+  readonly zoningCode: string;
+  readonly zoningKind: ZoningDistrictKind;
+  readonly allowedUses: readonly LandUse[];
+  readonly maxHeightMeters: number;
+  readonly maxFloorAreaRatio: number;
+  readonly maxCoverageRatio: number;
+  readonly minimumSetbacks: ParcelSetbackContract;
+  readonly bufferMeters: number;
+  readonly frontageRules: ZoningFrontageRuleContract;
+  readonly density: ZoningDensityControlsContract;
+  readonly formRules: {
+    readonly massing: 'tower' | 'mid-rise' | 'campus' | 'industrial-shed' | 'neighborhood-block';
+    readonly streetWallRequired: boolean;
+    readonly stepbackAboveMeters?: number;
+  };
+}
+
+export interface ZoningDistrictContract extends CityObjectBase<'zoning-district'> {
+  readonly districtId: CityId;
+  readonly boundary: Polygon2D;
+  readonly zoningCode: string;
+  readonly zoningKind: ZoningDistrictKind;
+  readonly controls: ParcelZoningControlsContract;
+  readonly blockIds: readonly CityId[];
+  readonly parcelIds: readonly CityId[];
+  readonly overlayConstraintIds: readonly CityId[];
+}
+
 export interface BlockContract extends CityObjectBase<'block'> {
   readonly boundary: Polygon2D;
   readonly districtId: CityId;
@@ -891,6 +944,8 @@ export interface ParcelContract extends CityObjectBase<'parcel'> {
   readonly districtId: CityId;
   readonly blockId: CityId;
   readonly blockBuildableEnvelopeId: CityId;
+  readonly zoningDistrictId: CityId;
+  readonly zoning: ParcelZoningControlsContract;
   readonly setbacks: ParcelSetbackContract;
   readonly lotSplit: ParcelLotSplitContract;
   readonly developmentRights: ParcelDevelopmentRightsContract;
@@ -996,6 +1051,7 @@ export type BuildingFrontageSide = 'north' | 'east' | 'south' | 'west';
 
 export interface BuildingContract extends CityObjectBase<'building'> {
   readonly parcelId: CityId;
+  readonly zoningDistrictId: CityId;
   readonly footprint: Polygon2D;
   readonly uses: readonly LandUse[];
   readonly heightMeters: number;

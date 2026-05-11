@@ -15,6 +15,7 @@ import type { GeneratedCity, GeneratedRuntimeCityObject } from '../../../types/c
 export type CityOverlayId =
   | 'administrative-boundaries'
   | 'districts'
+  | 'zoning'
   | 'city-metrics'
   | 'constraints'
   | 'resilience-goals'
@@ -64,6 +65,7 @@ export function createCityOverlayDatasets(
   return [
     createDataset('administrative-boundaries', 'Administrative Boundaries', 'domain-data', createAdministrativeBoundaryFeatures(city)),
     createDataset('districts', 'Districts', 'domain-data', createDistrictFeatures(city)),
+    createDataset('zoning', 'Zoning', 'domain-data', createZoningFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
@@ -123,6 +125,30 @@ function createDistrictFeatures(city: GeneratedCity): CityOverlayFeature[] {
     metadata: {
       density: district.density,
       primaryUses: district.primaryUses.join(',')
+    }
+  }));
+}
+
+function createZoningFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.zoningDistricts.map((zoning) => ({
+    id: `overlay:zoning:${zoning.id}`,
+    overlayId: 'zoning',
+    objectId: zoning.id,
+    objectKind: zoning.kind,
+    ownerDomain: zoning.ownerDomain,
+    label: zoning.name ?? zoning.id,
+    geometry: { type: 'polygon', points: zoning.boundary },
+    metadata: {
+      zoningCode: zoning.zoningCode,
+      zoningKind: zoning.zoningKind,
+      allowedUses: zoning.controls.allowedUses.join(','),
+      maxHeightMeters: zoning.controls.maxHeightMeters,
+      maxFloorAreaRatio: zoning.controls.maxFloorAreaRatio,
+      maxCoverageRatio: zoning.controls.maxCoverageRatio,
+      bufferMeters: zoning.controls.bufferMeters,
+      frontagePriority: zoning.controls.frontageRules.requiredPriority,
+      blocks: zoning.blockIds.length,
+      parcels: zoning.parcelIds.length
     }
   }));
 }
@@ -207,6 +233,8 @@ function createParcelFeatures(city: GeneratedCity): CityOverlayFeature[] {
       district: parcel.district,
       blockId: parcel.blockId,
       blockBuildableEnvelopeId: parcel.blockBuildableEnvelopeId,
+      zoningDistrictId: parcel.zoningDistrictId,
+      zoningCode: parcel.zoning.zoningCode,
       parcelBuildableEnvelopeId: parcel.fit.buildableEnvelopeId,
       frontageRoads: parcel.frontageRoadIds.length,
       primaryFrontageRoad: parcel.frontagePriority[0]?.roadId ?? '',

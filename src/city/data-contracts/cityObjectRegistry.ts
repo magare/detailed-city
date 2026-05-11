@@ -100,7 +100,8 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('utility-edge', ['utility-edge-<slug>'], [exact(String.raw`utility-edge-${NAMED_ID}`)], optional(['utility-node'])),
   entry('utility-node', ['utility-node-<slug>'], [exact(String.raw`utility-node-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'road-segment'])),
   entry('vertical-slice', ['slice-detailed-street-<road-id>'], [exact(String.raw`slice-detailed-street-${ROAD_ID}`)], required(['road-segment'])),
-  entry('waterway', ['<waterway-slug>'], [exact(NAMED_ID)], none())
+  entry('waterway', ['<waterway-slug>'], [exact(NAMED_ID)], none()),
+  entry('zoning-district', ['zoning-district-<district-slug>'], [exact(String.raw`zoning-district-${NAMED_ID}`)], required(['district']))
 ] as const satisfies readonly CityObjectKindRegistryEntry[];
 
 type RegisteredCityObjectKind = (typeof CITY_OBJECT_KIND_REGISTRY_ENTRIES)[number]['kind'];

@@ -46,7 +46,7 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'overlays',
     name: 'Overlays Render Layer',
-    objectKinds: ['administrative-boundary', 'city-metric', 'constraint', 'resilience-goal', 'vertical-slice'] as const
+    objectKinds: ['administrative-boundary', 'city-metric', 'constraint', 'resilience-goal', 'vertical-slice', 'zoning-district'] as const
   }
 ] as const;
 
@@ -113,6 +113,10 @@ function createDistrictGroups(city: GeneratedCity): CityObjectGroupDefinition[] 
 
   for (const block of city.blocks) {
     objectIdsByDistrictId.get(block.districtId)?.push(block.id);
+  }
+
+  for (const zoning of city.zoningDistricts) {
+    objectIdsByDistrictId.get(zoning.districtId)?.push(zoning.id);
   }
 
   for (const parcel of city.parcels) {

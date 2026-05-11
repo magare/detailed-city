@@ -11,6 +11,7 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
       withProceduralMetadata(boundary, 'land-administrative-boundaries')
     ),
     districts: city.districts.map((district) => withProceduralMetadata(district, 'terrain-districts')),
+    zoningDistricts: city.zoningDistricts.map((zoning) => withProceduralMetadata(zoning, 'land-zoning')),
     cityMetrics: city.cityMetrics.map((metric) => withProceduralMetadata(metric, 'blueprint-city-metrics')),
     constraints: city.constraints.map((constraint) => withProceduralMetadata(constraint, 'blueprint-constraints')),
     resilienceGoals: city.resilienceGoals.map((goal) => withProceduralMetadata(goal, 'blueprint-resilience-goals')),

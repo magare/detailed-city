@@ -36,7 +36,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('4831/4831 tagged');
+  expect(panelText).toContain('4836/4836 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 932 markings');
   expect(panelText).toContain('City');
@@ -44,18 +44,18 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Assets');
   expect(panelText).toContain('30 assets, 30 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 3892 objects');
+  expect(panelText).toContain('6 formats, 3897 objects');
   expect(panelText).toContain('Registry');
-  expect(panelText).toContain('31 kinds');
+  expect(panelText).toContain('32 kinds');
   expect(panelText).toContain('Groups');
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
   expect(panelText).toContain(
-    '9: administrative-boundaries, districts, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
+    '10: administrative-boundaries, districts, zoning, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
   );
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');
-  expect(panelText).toContain('31 policies');
+  expect(panelText).toContain('32 policies');
   expect(panelText).toContain('Performance');
   expect(panelText).toContain('Frame');
   await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');

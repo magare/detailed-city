@@ -31,12 +31,14 @@ type GeneratedCityObjectSource = Pick<
   | 'trees'
   | 'verticalSlices'
   | 'waterways'
+  | 'zoningDistricts'
 >;
 
 export function listGeneratedCityObjects(city: GeneratedCityObjectSource): GeneratedCityObject[] {
   return [
     ...city.administrativeBoundaries,
     ...city.districts,
+    ...city.zoningDistricts,
     ...city.cityMetrics,
     ...city.constraints,
     ...city.resilienceGoals,

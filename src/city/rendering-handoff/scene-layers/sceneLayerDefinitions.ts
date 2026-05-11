@@ -83,7 +83,8 @@ export function createCitySceneLayerDiagnostics(
       city.verticalSlices.length +
       city.cityMetrics.length +
       city.constraints.length +
-      city.resilienceGoals.length
+      city.resilienceGoals.length +
+      city.zoningDistricts.length
   };
 
   return CITY_SCENE_LAYER_DEFINITIONS.map((definition) => ({
