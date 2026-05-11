@@ -51,6 +51,7 @@ export interface CityDiagnostics {
   readonly blockModel: BlockModelDiagnostics;
   readonly parcelModel: ParcelModelDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
+  readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
@@ -106,6 +107,12 @@ export interface CityDiagnostics {
     readonly zoningDistricts: number;
     readonly zoningFormBasedDistricts: number;
     readonly parcelsWithZoning: number;
+    readonly waterwayEdgeSegments: number;
+    readonly waterwayChannels: number;
+    readonly waterwayCrossings: number;
+    readonly waterwayCulverts: number;
+    readonly waterwayDocks: number;
+    readonly waterwayOutfalls: number;
     readonly districtUseMixRules: number;
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
@@ -200,6 +207,19 @@ export interface ZoningModelDiagnostics {
   readonly zoningCodes: readonly string[];
 }
 
+export interface WaterwayNetworkDiagnostics {
+  readonly total: number;
+  readonly edgeSegments: number;
+  readonly continuousEdgeWaterways: number;
+  readonly channels: number;
+  readonly crossings: number;
+  readonly bridges: number;
+  readonly culverts: number;
+  readonly docks: number;
+  readonly outfalls: number;
+  readonly navigableChannels: number;
+}
+
 export interface ConstraintLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -253,6 +273,7 @@ export function createCityDiagnostics(
   const blockModel = createBlockModelDiagnostics(city);
   const parcelModel = createParcelModelDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
+  const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
@@ -279,6 +300,7 @@ export function createCityDiagnostics(
     blockModel,
     parcelModel,
     zoningModel,
+    waterwayNetwork,
     districtCharacter,
     cityMetrics,
     constraintLayer,
@@ -325,6 +347,12 @@ export function createCityDiagnostics(
       zoningDistricts: zoningModel.total,
       zoningFormBasedDistricts: zoningModel.formBasedDistricts,
       parcelsWithZoning: zoningModel.parcelsWithZoning,
+      waterwayEdgeSegments: waterwayNetwork.edgeSegments,
+      waterwayChannels: waterwayNetwork.channels,
+      waterwayCrossings: waterwayNetwork.crossings,
+      waterwayCulverts: waterwayNetwork.culverts,
+      waterwayDocks: waterwayNetwork.docks,
+      waterwayOutfalls: waterwayNetwork.outfalls,
       districtUseMixRules: districtCharacter.useMixRules,
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
@@ -494,6 +522,59 @@ function createZoningModelDiagnostics(city: GeneratedCity): ZoningModelDiagnosti
     frontageRuleCounts,
     zoningCodes: city.zoningDistricts.map((zoning) => zoning.zoningCode).sort()
   };
+}
+
+function createWaterwayNetworkDiagnostics(city: GeneratedCity): WaterwayNetworkDiagnostics {
+  return {
+    total: city.waterways.length,
+    edgeSegments: city.waterways.reduce((sum, waterway) => sum + waterway.edgeSegments.length, 0),
+    continuousEdgeWaterways: city.waterways.filter(hasContinuousWaterEdges).length,
+    channels: city.waterways.reduce((sum, waterway) => sum + waterway.channels.length, 0),
+    crossings: city.waterways.reduce((sum, waterway) => sum + waterway.crossingRefs.length, 0),
+    bridges: city.waterways.reduce(
+      (sum, waterway) => sum + waterway.crossingRefs.filter((crossing) => crossing.crossingKind === 'bridge').length,
+      0
+    ),
+    culverts: city.waterways.reduce((sum, waterway) => sum + waterway.culverts.length, 0),
+    docks: city.waterways.reduce((sum, waterway) => sum + waterway.docks.length, 0),
+    outfalls: city.waterways.reduce((sum, waterway) => sum + waterway.outfalls.length, 0),
+    navigableChannels: city.waterways.reduce(
+      (sum, waterway) => sum + waterway.channels.filter((channel) => channel.navigable).length,
+      0
+    )
+  };
+}
+
+function hasContinuousWaterEdges(waterway: GeneratedCity['waterways'][number]): boolean {
+  return (['north', 'south'] as const).every((side) => {
+    const sideSegments = waterway.edgeSegments.filter((segment) => segment.side === side);
+
+    if (sideSegments.length === 0) {
+      return false;
+    }
+
+    const segmentIds = new Set(sideSegments.map((segment) => segment.id));
+    const visited = new Set<string>();
+    const queue = [sideSegments[0].id];
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      const segment = sideSegments.find((candidate) => candidate.id === currentId);
+
+      if (!segment || visited.has(currentId)) {
+        continue;
+      }
+
+      visited.add(currentId);
+      for (const connectedSegmentId of segment.connectedSegmentIds) {
+        if (segmentIds.has(connectedSegmentId) && !visited.has(connectedSegmentId)) {
+          queue.push(connectedSegmentId);
+        }
+      }
+    }
+
+    return visited.size === sideSegments.length;
+  });
 }
 
 function createConstraintLayerDiagnostics(city: GeneratedCity): ConstraintLayerDiagnostics {

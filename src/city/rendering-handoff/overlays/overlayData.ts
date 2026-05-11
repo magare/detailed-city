@@ -16,6 +16,7 @@ export type CityOverlayId =
   | 'administrative-boundaries'
   | 'districts'
   | 'zoning'
+  | 'waterways'
   | 'city-metrics'
   | 'constraints'
   | 'resilience-goals'
@@ -66,6 +67,7 @@ export function createCityOverlayDatasets(
     createDataset('administrative-boundaries', 'Administrative Boundaries', 'domain-data', createAdministrativeBoundaryFeatures(city)),
     createDataset('districts', 'Districts', 'domain-data', createDistrictFeatures(city)),
     createDataset('zoning', 'Zoning', 'domain-data', createZoningFeatures(city)),
+    createDataset('waterways', 'Waterways', 'domain-data', createWaterwayFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
@@ -151,6 +153,129 @@ function createZoningFeatures(city: GeneratedCity): CityOverlayFeature[] {
       parcels: zoning.parcelIds.length
     }
   }));
+}
+
+function createWaterwayFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.waterways.flatMap((waterway) => [
+    {
+      id: `overlay:waterways:${waterway.id}`,
+      overlayId: 'waterways' as const,
+      objectId: waterway.id,
+      objectKind: waterway.kind,
+      ownerDomain: waterway.ownerDomain,
+      label: waterway.name ?? waterway.id,
+      geometry: { type: 'polygon' as const, points: waterway.boundary },
+      metadata: {
+        waterwayKind: waterway.waterwayKind,
+        lengthMeters: waterway.length,
+        widthMeters: waterway.width,
+        edgeSegments: waterway.edgeSegments.length,
+        channels: waterway.channels.length,
+        crossings: waterway.crossingRefs.length,
+        culverts: waterway.culverts.length,
+        docks: waterway.docks.length,
+        outfalls: waterway.outfalls.length
+      }
+    },
+    ...waterway.edgeSegments.map((edgeSegment) => ({
+      id: `overlay:waterways:${edgeSegment.id}`,
+      overlayId: 'waterways' as const,
+      objectId: waterway.id,
+      objectKind: waterway.kind,
+      ownerDomain: waterway.ownerDomain,
+      label: edgeSegment.id,
+      geometry: { type: 'polyline' as const, points: edgeSegment.centerline },
+      metadata: {
+        component: 'edge',
+        side: edgeSegment.side,
+        edgeKind: edgeSegment.edgeKind,
+        lengthMeters: edgeSegment.lengthMeters,
+        publicAccess: edgeSegment.publicAccess,
+        connectedSegments: edgeSegment.connectedSegmentIds.length,
+        districts: edgeSegment.districtIds.join(',')
+      }
+    })),
+    ...waterway.channels.map((channel) => ({
+      id: `overlay:waterways:${channel.id}`,
+      overlayId: 'waterways' as const,
+      objectId: waterway.id,
+      objectKind: waterway.kind,
+      ownerDomain: waterway.ownerDomain,
+      label: channel.id,
+      geometry: { type: 'polyline' as const, points: channel.centerline },
+      metadata: {
+        component: 'channel',
+        channelKind: channel.channelKind,
+        widthMeters: channel.widthMeters,
+        navigable: channel.navigable,
+        connectedEdges: channel.connectsToEdgeSegmentIds.length
+      }
+    })),
+    ...waterway.crossingRefs.map((crossing) => ({
+      id: `overlay:waterways:${crossing.id}`,
+      overlayId: 'waterways' as const,
+      objectId: waterway.id,
+      objectKind: waterway.kind,
+      ownerDomain: waterway.ownerDomain,
+      label: crossing.id,
+      geometry: { type: 'point' as const, point: crossing.center },
+      metadata: {
+        component: 'crossing',
+        crossingKind: crossing.crossingKind,
+        roadId: crossing.roadId,
+        clearanceMeters: crossing.clearanceMeters,
+        edgeSegments: crossing.edgeSegmentIds.join(',')
+      }
+    })),
+    ...waterway.culverts.map((culvert) => ({
+      id: `overlay:waterways:${culvert.id}`,
+      overlayId: 'waterways' as const,
+      objectId: waterway.id,
+      objectKind: waterway.kind,
+      ownerDomain: waterway.ownerDomain,
+      label: culvert.id,
+      geometry: { type: 'point' as const, point: culvert.center },
+      metadata: {
+        component: 'culvert',
+        roadId: culvert.roadId,
+        diameterMeters: culvert.diameterMeters,
+        outfalls: culvert.outfallIds.join(',')
+      }
+    })),
+    ...waterway.docks.map((dock) => ({
+      id: `overlay:waterways:${dock.id}`,
+      overlayId: 'waterways' as const,
+      objectId: waterway.id,
+      objectKind: waterway.kind,
+      ownerDomain: waterway.ownerDomain,
+      label: dock.id,
+      geometry: { type: 'point' as const, point: dock.center },
+      metadata: {
+        component: 'dock',
+        dockUse: dock.use,
+        edgeSegmentId: dock.edgeSegmentId,
+        lengthMeters: dock.lengthMeters,
+        widthMeters: dock.widthMeters,
+        accessRoadId: dock.accessRoadId ?? ''
+      }
+    })),
+    ...waterway.outfalls.map((outfall) => ({
+      id: `overlay:waterways:${outfall.id}`,
+      overlayId: 'waterways' as const,
+      objectId: waterway.id,
+      objectKind: waterway.kind,
+      ownerDomain: waterway.ownerDomain,
+      label: outfall.id,
+      geometry: { type: 'point' as const, point: outfall.center },
+      metadata: {
+        component: 'outfall',
+        source: outfall.source,
+        edgeSegmentId: outfall.edgeSegmentId,
+        receivingWaterwayId: outfall.receivingWaterwayId,
+        diameterMeters: outfall.diameterMeters
+      }
+    }))
+  ]);
 }
 
 function createCityMetricFeatures(city: GeneratedCity): CityOverlayFeature[] {

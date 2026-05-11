@@ -5,7 +5,8 @@ import type {
   DistrictStyleHints,
   DistrictTransitionBuffer,
   DistrictUseMixRule,
-  LandUse
+  LandUse,
+  WaterwayKind
 } from '../data-contracts/cityContracts';
 import {
   CITY_MASTER_PLAN,
@@ -41,8 +42,13 @@ export interface PlannedPublicSpace {
 export interface PlannedWaterway {
   readonly id: string;
   readonly name: string;
+  readonly waterwayKind: WaterwayKind;
   readonly centerBySpan: { readonly x: number; readonly z: number };
   readonly lengthBySpan: number;
+  readonly edgeCharacter: {
+    readonly north: 'promenade' | 'quay' | 'ecological-bank' | 'service-edge';
+    readonly south: 'promenade' | 'quay' | 'ecological-bank' | 'service-edge';
+  };
 }
 
 export interface CityBlueprint {
@@ -295,8 +301,13 @@ export const CITY_BLUEPRINT: CityBlueprint = {
     {
       id: 'south-river',
       name: 'South River',
+      waterwayKind: 'river',
       centerBySpan: { x: 0, z: -0.28 },
-      lengthBySpan: 1.16
+      lengthBySpan: 1.16,
+      edgeCharacter: {
+        north: 'promenade',
+        south: 'ecological-bank'
+      }
     }
   ],
   treeSpeciesCycle: ['plane', 'rain-tree', 'jacaranda', 'palm']

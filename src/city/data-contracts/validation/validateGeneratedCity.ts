@@ -62,6 +62,7 @@ type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][number];
+type ValidationWaterway = GeneratedCityForValidation['waterways'][number];
 type ValidationZoningDistrict = GeneratedCityForValidation['zoningDistricts'][number];
 
 const REQUIRED_RENDER_BINDING_IDS = [
@@ -180,6 +181,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateAdministrativeBoundaries(city, issues);
   validateCityMetrics(city, issues);
   validateZoningDistricts(city, issues);
+  validateWaterways(city, issues);
 
   for (const road of city.roads) {
     if (road.length <= 0 || road.width <= 0 || road.laneCount <= 0 || road.widthMeters <= 0) {
@@ -2236,6 +2238,24 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
   for (const waterway of city.waterways) {
     validatePoint2D(city.geospatial, waterway.id, 'center', waterway.center, issues);
     validatePolygon2D(city.geospatial, waterway.id, 'boundary', waterway.boundary, issues);
+    for (const edgeSegment of waterway.edgeSegments) {
+      validatePolyline2D(city.geospatial, waterway.id, `${edgeSegment.id}-centerline`, edgeSegment.centerline, issues);
+    }
+    for (const channel of waterway.channels) {
+      validatePolyline2D(city.geospatial, waterway.id, `${channel.id}-centerline`, channel.centerline, issues);
+    }
+    for (const crossing of waterway.crossingRefs) {
+      validatePoint2D(city.geospatial, waterway.id, `${crossing.id}-center`, crossing.center, issues);
+    }
+    for (const culvert of waterway.culverts) {
+      validatePoint2D(city.geospatial, waterway.id, `${culvert.id}-center`, culvert.center, issues);
+    }
+    for (const dock of waterway.docks) {
+      validatePoint2D(city.geospatial, waterway.id, `${dock.id}-center`, dock.center, issues);
+    }
+    for (const outfall of waterway.outfalls) {
+      validatePoint2D(city.geospatial, waterway.id, `${outfall.id}-center`, outfall.center, issues);
+    }
   }
 
   for (const tree of city.trees) {
@@ -2845,6 +2865,251 @@ function validateCityMetrics(city: GeneratedCityForValidation, issues: Validatio
       });
     }
   }
+}
+
+function validateWaterways(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const waterwayIds = new Set(city.waterways.map((waterway) => waterway.id));
+
+  for (const waterway of city.waterways) {
+    const edgeSegmentIds = new Set<string>();
+
+    if (waterway.length <= 0 || waterway.width <= 0) {
+      issues.push(createWaterwayIssue(waterway, 'invalid-dimensions', 'Waterways must have positive length and width.'));
+    }
+
+    if (waterway.edgeSegments.length === 0) {
+      issues.push(createWaterwayIssue(waterway, 'missing-edge-segments', 'Waterways must expose edge segments for continuity checks.'));
+    }
+
+    for (const edgeSegment of waterway.edgeSegments) {
+      if (edgeSegmentIds.has(edgeSegment.id)) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `duplicate-edge-${toIssueIdToken(edgeSegment.id)}`,
+            `Waterway edge segment ${edgeSegment.id} is duplicated.`
+          )
+        );
+      }
+      edgeSegmentIds.add(edgeSegment.id);
+
+      if (edgeSegment.lengthMeters <= 0 || edgeSegment.centerline.length < 2) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `invalid-edge-${toIssueIdToken(edgeSegment.id)}`,
+            `Waterway edge segment ${edgeSegment.id} must have positive length and a centerline.`
+          )
+        );
+      }
+
+      for (const connectedSegmentId of edgeSegment.connectedSegmentIds) {
+        if (!waterway.edgeSegments.some((candidate) => candidate.id === connectedSegmentId)) {
+          issues.push(
+            createWaterwayIssue(
+              waterway,
+              `missing-edge-connection-${toIssueIdToken(edgeSegment.id)}-${toIssueIdToken(connectedSegmentId)}`,
+              `Waterway edge segment ${edgeSegment.id} references missing connected segment ${connectedSegmentId}.`
+            )
+          );
+        }
+      }
+
+      for (const districtId of edgeSegment.districtIds) {
+        if (!hasObjectId(city, districtId)) {
+          issues.push(
+            createWaterwayIssue(
+              waterway,
+              `missing-edge-district-${toIssueIdToken(edgeSegment.id)}-${toIssueIdToken(districtId)}`,
+              `Waterway edge segment ${edgeSegment.id} references missing district ${districtId}.`
+            )
+          );
+        }
+      }
+    }
+
+    for (const side of ['north', 'south'] as const) {
+      if (!isWaterwayEdgeSideConnected(waterway, side)) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `disconnected-${side}-edge`,
+            `Waterway ${waterway.id} must have a continuous ${side} edge segment chain.`
+          )
+        );
+      }
+    }
+
+    for (const channel of waterway.channels) {
+      if (channel.widthMeters <= 0 || channel.centerline.length < 2) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `invalid-channel-${toIssueIdToken(channel.id)}`,
+            `Waterway channel ${channel.id} must have positive width and a centerline.`
+          )
+        );
+      }
+
+      for (const edgeSegmentId of channel.connectsToEdgeSegmentIds) {
+        validateWaterwayEdgeReference(waterway, edgeSegmentIds, channel.id, edgeSegmentId, 'channel', issues);
+      }
+    }
+
+    for (const crossing of waterway.crossingRefs) {
+      if (!hasObjectId(city, crossing.roadId)) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `missing-crossing-road-${toIssueIdToken(crossing.id)}-${toIssueIdToken(crossing.roadId)}`,
+            `Waterway crossing ${crossing.id} references missing road ${crossing.roadId}.`
+          )
+        );
+      }
+      if (crossing.clearanceMeters <= 0) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `invalid-crossing-clearance-${toIssueIdToken(crossing.id)}`,
+            `Waterway crossing ${crossing.id} must have positive clearance.`
+          )
+        );
+      }
+      for (const edgeSegmentId of crossing.edgeSegmentIds) {
+        validateWaterwayEdgeReference(waterway, edgeSegmentIds, crossing.id, edgeSegmentId, 'crossing', issues);
+      }
+    }
+
+    for (const culvert of waterway.culverts) {
+      if (!hasObjectId(city, culvert.roadId)) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `missing-culvert-road-${toIssueIdToken(culvert.id)}-${toIssueIdToken(culvert.roadId)}`,
+            `Waterway culvert ${culvert.id} references missing road ${culvert.roadId}.`
+          )
+        );
+      }
+      if (culvert.diameterMeters <= 0) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `invalid-culvert-diameter-${toIssueIdToken(culvert.id)}`,
+            `Waterway culvert ${culvert.id} must have positive diameter.`
+          )
+        );
+      }
+      validateWaterwayEdgeReference(waterway, edgeSegmentIds, culvert.id, culvert.inletEdgeSegmentId, 'culvert', issues);
+      validateWaterwayEdgeReference(waterway, edgeSegmentIds, culvert.id, culvert.outletEdgeSegmentId, 'culvert', issues);
+      for (const outfallId of culvert.outfallIds) {
+        if (!waterway.outfalls.some((outfall) => outfall.id === outfallId)) {
+          issues.push(
+            createWaterwayIssue(
+              waterway,
+              `missing-culvert-outfall-${toIssueIdToken(culvert.id)}-${toIssueIdToken(outfallId)}`,
+              `Waterway culvert ${culvert.id} references missing outfall ${outfallId}.`
+            )
+          );
+        }
+      }
+    }
+
+    for (const dock of waterway.docks) {
+      validateWaterwayEdgeReference(waterway, edgeSegmentIds, dock.id, dock.edgeSegmentId, 'dock', issues);
+      if (dock.lengthMeters <= 0 || dock.widthMeters <= 0) {
+        issues.push(createWaterwayIssue(waterway, `invalid-dock-${toIssueIdToken(dock.id)}`, `Waterway dock ${dock.id} must have positive dimensions.`));
+      }
+      if (dock.accessRoadId && !hasObjectId(city, dock.accessRoadId)) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `missing-dock-road-${toIssueIdToken(dock.id)}-${toIssueIdToken(dock.accessRoadId)}`,
+            `Waterway dock ${dock.id} references missing access road ${dock.accessRoadId}.`
+          )
+        );
+      }
+    }
+
+    for (const outfall of waterway.outfalls) {
+      validateWaterwayEdgeReference(waterway, edgeSegmentIds, outfall.id, outfall.edgeSegmentId, 'outfall', issues);
+      if (!waterwayIds.has(outfall.receivingWaterwayId)) {
+        issues.push(
+          createWaterwayIssue(
+            waterway,
+            `missing-outfall-waterway-${toIssueIdToken(outfall.id)}-${toIssueIdToken(outfall.receivingWaterwayId)}`,
+            `Waterway outfall ${outfall.id} references missing receiving waterway ${outfall.receivingWaterwayId}.`
+          )
+        );
+      }
+      if (outfall.diameterMeters <= 0) {
+        issues.push(createWaterwayIssue(waterway, `invalid-outfall-${toIssueIdToken(outfall.id)}`, `Waterway outfall ${outfall.id} must have positive diameter.`));
+      }
+    }
+  }
+}
+
+function validateWaterwayEdgeReference(
+  waterway: ValidationWaterway,
+  edgeSegmentIds: ReadonlySet<string>,
+  componentId: string,
+  edgeSegmentId: string,
+  componentKind: string,
+  issues: ValidationIssue[]
+): void {
+  if (!edgeSegmentIds.has(edgeSegmentId)) {
+    issues.push(
+      createWaterwayIssue(
+        waterway,
+        `missing-${componentKind}-edge-${toIssueIdToken(componentId)}-${toIssueIdToken(edgeSegmentId)}`,
+        `Waterway ${componentKind} ${componentId} references missing edge segment ${edgeSegmentId}.`
+      )
+    );
+  }
+}
+
+function isWaterwayEdgeSideConnected(waterway: ValidationWaterway, side: 'north' | 'south'): boolean {
+  const sideSegments = waterway.edgeSegments.filter((segment) => segment.side === side);
+
+  if (sideSegments.length === 0) {
+    return false;
+  }
+
+  const sideSegmentIds = new Set(sideSegments.map((segment) => segment.id));
+  const visited = new Set<string>();
+  const queue = [sideSegments[0].id];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    const segment = sideSegments.find((candidate) => candidate.id === currentId);
+
+    if (!segment || visited.has(currentId)) {
+      continue;
+    }
+
+    visited.add(currentId);
+    for (const connectedSegmentId of segment.connectedSegmentIds) {
+      if (sideSegmentIds.has(connectedSegmentId) && !visited.has(connectedSegmentId)) {
+        queue.push(connectedSegmentId);
+      }
+    }
+  }
+
+  return visited.size === sideSegments.length;
+}
+
+function createWaterwayIssue(
+  waterway: ValidationWaterway,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `waterway-${issueIdSuffix}-${toIssueIdToken(waterway.id)}`,
+    severity: 'error',
+    category: 'land',
+    objectId: waterway.id,
+    ...createIssueFocus(waterway.center, `Regenerate ${waterway.id} waterway edges, crossings, docks, culverts, and outfalls from current road and land data.`),
+    message
+  };
 }
 
 function validateCityMetricShape(metric: ValidationCityMetric, issues: ValidationIssue[]): void {

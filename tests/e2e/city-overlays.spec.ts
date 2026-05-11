@@ -19,6 +19,7 @@ test('debug overlay datasets are generated from domain data', () => {
     'administrative-boundaries',
     'districts',
     'zoning',
+    'waterways',
     'city-metrics',
     'constraints',
     'resilience-goals',
@@ -30,6 +31,7 @@ test('debug overlay datasets are generated from domain data', () => {
   expect(overlays.find((overlay) => overlay.id === 'administrative-boundaries')?.featureCount).toBe(18);
   expect(overlays.find((overlay) => overlay.id === 'districts')?.featureCount).toBe(5);
   expect(overlays.find((overlay) => overlay.id === 'zoning')?.featureCount).toBe(5);
+  expect(overlays.find((overlay) => overlay.id === 'waterways')?.featureCount).toBe(40);
   expect(overlays.find((overlay) => overlay.id === 'city-metrics')?.featureCount).toBe(8);
   expect(overlays.find((overlay) => overlay.id === 'constraints')?.featureCount).toBe(11);
   expect(overlays.find((overlay) => overlay.id === 'resilience-goals')?.featureCount).toBe(7);

@@ -43,7 +43,7 @@ export class CityGenerator {
     const intersections = roadGenerator.generateIntersections(roads);
     const pedestrianNetwork = new PedestrianNetworkGenerator().create(roads, intersections);
     const parks = terrainGenerator.generateParks(bounds);
-    const waterways = terrainGenerator.generateWaterways(bounds);
+    const waterways = terrainGenerator.generateWaterways(bounds, roads);
     const constraints = new ConstraintGenerator(this.config).create({ bounds, parks, waterways, roads });
     const excludedBlocks = terrainGenerator.getExcludedBlocks(bounds, constraints);
     const landAndBuildings = applyConstraintFilters(buildingGenerator.generate(bounds, excludedBlocks), constraints);

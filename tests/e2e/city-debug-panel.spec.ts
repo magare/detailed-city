@@ -51,7 +51,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
   expect(panelText).toContain(
-    '10: administrative-boundaries, districts, zoning, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
+    '11: administrative-boundaries, districts, zoning, waterways, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
   );
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');

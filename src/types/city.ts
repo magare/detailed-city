@@ -34,6 +34,7 @@ import type {
   ParcelContract,
   TrafficVehicleContract,
   ValidationResult,
+  WaterwayContract,
   ZoningDistrictContract
 } from '../city/data-contracts/cityContracts';
 
@@ -187,12 +188,7 @@ export interface ParkPatch extends CityObjectBase<'park'> {
   boundary: Polygon2D;
 }
 
-export interface Waterway extends CityObjectBase<'waterway'> {
-  center: Point2D;
-  length: number;
-  width: number;
-  boundary: Polygon2D;
-}
+export interface Waterway extends WaterwayContract {}
 
 export interface TreePlanting extends CityObjectBase<'tree-planting'> {
   plantingContext: 'park' | 'street';

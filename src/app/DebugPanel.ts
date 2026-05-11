@@ -128,6 +128,10 @@ export class DebugPanel {
         `${diagnostics.zoningModel.total} districts, ${diagnostics.zoningModel.formBasedDistricts} form, ${diagnostics.zoningModel.parcelsWithZoning} parcels`
       ),
       createMetric(
+        'Water',
+        `${diagnostics.waterwayNetwork.edgeSegments} edges, ${diagnostics.waterwayNetwork.crossings} crossings, ${diagnostics.waterwayNetwork.outfalls} outfalls`
+      ),
+      createMetric(
         'Constraints',
         `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
       ),

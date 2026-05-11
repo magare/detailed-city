@@ -674,6 +674,88 @@ export interface AdministrativeBoundaryContract extends CityObjectBase<'administ
   readonly jurisdictionLevel: 'city' | 'district' | 'ward' | 'service' | 'ownership' | 'overlay';
 }
 
+export type WaterwayKind = 'river' | 'canal' | 'channel';
+export type WaterwayEdgeSide = 'north' | 'south' | 'east' | 'west';
+export type WaterwayEdgeKind = 'promenade' | 'quay' | 'ecological-bank' | 'service-edge';
+export type WaterwayCrossingKind = 'bridge' | 'culvert';
+export type WaterwayChannelKind = 'main-channel' | 'canal' | 'drainage-channel';
+export type WaterwayDockUse = 'ferry' | 'service' | 'recreation';
+export type WaterwayOutfallSource = 'stormwater' | 'treated-water' | 'overflow';
+
+export interface WaterwayEdgeSegmentContract {
+  readonly id: CityId;
+  readonly side: WaterwayEdgeSide;
+  readonly edgeKind: WaterwayEdgeKind;
+  readonly centerline: readonly [Point2D, Point2D];
+  readonly lengthMeters: number;
+  readonly connectedSegmentIds: readonly CityId[];
+  readonly publicAccess: boolean;
+  readonly districtIds: readonly CityId[];
+}
+
+export interface WaterwayChannelContract {
+  readonly id: CityId;
+  readonly channelKind: WaterwayChannelKind;
+  readonly centerline: readonly [Point2D, Point2D];
+  readonly widthMeters: number;
+  readonly connectsToEdgeSegmentIds: readonly CityId[];
+  readonly navigable: boolean;
+}
+
+export interface WaterwayCrossingRefContract {
+  readonly id: CityId;
+  readonly crossingKind: WaterwayCrossingKind;
+  readonly roadId: CityId;
+  readonly center: Point2D;
+  readonly edgeSegmentIds: readonly [CityId, CityId];
+  readonly clearanceMeters: number;
+}
+
+export interface WaterwayCulvertContract {
+  readonly id: CityId;
+  readonly roadId: CityId;
+  readonly center: Point2D;
+  readonly inletEdgeSegmentId: CityId;
+  readonly outletEdgeSegmentId: CityId;
+  readonly diameterMeters: number;
+  readonly outfallIds: readonly CityId[];
+}
+
+export interface WaterwayDockContract {
+  readonly id: CityId;
+  readonly edgeSegmentId: CityId;
+  readonly center: Point2D;
+  readonly use: WaterwayDockUse;
+  readonly lengthMeters: number;
+  readonly widthMeters: number;
+  readonly accessRoadId?: CityId;
+}
+
+export interface WaterwayOutfallContract {
+  readonly id: CityId;
+  readonly edgeSegmentId: CityId;
+  readonly center: Point2D;
+  readonly source: WaterwayOutfallSource;
+  readonly receivingWaterwayId: CityId;
+  readonly diameterMeters: number;
+}
+
+export interface WaterwayContract extends CityObjectBase<'waterway'> {
+  readonly waterwayKind: WaterwayKind;
+  readonly center: Point2D;
+  readonly length: number;
+  readonly width: number;
+  readonly boundary: Polygon2D;
+  readonly flowDirection: 'eastbound' | 'westbound' | 'northbound' | 'southbound';
+  readonly edgeSegments: readonly WaterwayEdgeSegmentContract[];
+  readonly channels: readonly WaterwayChannelContract[];
+  readonly crossingRefs: readonly WaterwayCrossingRefContract[];
+  readonly culverts: readonly WaterwayCulvertContract[];
+  readonly docks: readonly WaterwayDockContract[];
+  readonly outfalls: readonly WaterwayOutfallContract[];
+  readonly connectedWaterwayIds: readonly CityId[];
+}
+
 export const CITY_CONSTRAINT_KINDS = [
   'setback',
   'protected-corridor',
