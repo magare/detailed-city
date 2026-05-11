@@ -1191,12 +1191,50 @@ export interface RoadSegmentContract extends CityObjectBase<'road-segment'> {
 }
 
 export type IntersectionControlExpectation = 'signalized' | 'stop-controlled' | 'uncontrolled';
+export type IntersectionControlType = 'traffic-signal' | 'all-way-stop' | 'minor-stop' | 'yield' | 'uncontrolled';
+export type IntersectionApproachControl = 'signal' | 'stop' | 'yield' | 'uncontrolled';
+export type IntersectionApproachPriority = 'major' | 'minor' | 'shared';
+export type TurnMovement = 'left' | 'through' | 'right';
+export type ConflictPointKind = 'vehicle-vehicle' | 'vehicle-pedestrian' | 'bike-vehicle';
+export type ConflictPointSeverity = 'low' | 'medium' | 'high';
+
+export interface IntersectionApproachRule {
+  readonly roadId: CityId;
+  readonly control: IntersectionApproachControl;
+  readonly priority: IntersectionApproachPriority;
+}
+
+export interface IntersectionTurnConstraint {
+  readonly fromRoadId: CityId;
+  readonly toRoadId: CityId;
+  readonly allowedMovements: readonly TurnMovement[];
+}
+
+export interface IntersectionConflictPoint {
+  readonly id: CityId;
+  readonly point: Point2D;
+  readonly conflictKind: ConflictPointKind;
+  readonly severity: ConflictPointSeverity;
+}
+
+export interface IntersectionVisibilitySplay {
+  readonly roadId: CityId;
+  readonly distanceMeters: number;
+  readonly clearSightTriangleMeters: number;
+}
 
 export interface IntersectionContract extends CityObjectBase<'intersection'> {
   readonly center: Point2D;
   readonly connectedRoadIds: readonly CityId[];
   readonly hierarchyMix: readonly StreetHierarchy[];
   readonly signalExpectation: IntersectionControlExpectation;
+  readonly controlType: IntersectionControlType;
+  readonly approachRules: readonly IntersectionApproachRule[];
+  readonly turnConstraints: readonly IntersectionTurnConstraint[];
+  readonly conflictPoints: readonly IntersectionConflictPoint[];
+  readonly visibilitySplays: readonly IntersectionVisibilitySplay[];
+  readonly cornerRadiusMeters: number;
+  readonly raisedJunction: boolean;
 }
 
 export interface CrossingContract extends CityObjectBase<'crossing'> {

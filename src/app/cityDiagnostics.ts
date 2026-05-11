@@ -52,6 +52,7 @@ export interface CityDiagnostics {
   readonly parcelModel: ParcelModelDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
+  readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly waterfrontModel: WaterfrontModelDiagnostics;
   readonly hazardLayer: HazardLayerDiagnostics;
@@ -113,6 +114,9 @@ export interface CityDiagnostics {
     readonly roadHierarchyKinds: number;
     readonly namedRoadCorridors: number;
     readonly transitEligibleRoads: number;
+    readonly signalizedIntersections: number;
+    readonly raisedJunctions: number;
+    readonly intersectionConflictPoints: number;
     readonly waterwayEdgeSegments: number;
     readonly waterwayChannels: number;
     readonly waterwayCrossings: number;
@@ -232,6 +236,18 @@ export interface RoadNetworkDiagnostics {
   readonly totalRightOfWayMeters: number;
 }
 
+export interface IntersectionBehaviorDiagnostics {
+  readonly total: number;
+  readonly byControlType: Readonly<Record<string, number>>;
+  readonly signalized: number;
+  readonly stopControlled: number;
+  readonly yieldControlled: number;
+  readonly raisedJunctions: number;
+  readonly conflictPoints: number;
+  readonly turnConstraints: number;
+  readonly averageCornerRadiusMeters: number;
+}
+
 export interface WaterwayNetworkDiagnostics {
   readonly total: number;
   readonly edgeSegments: number;
@@ -322,6 +338,7 @@ export function createCityDiagnostics(
   const parcelModel = createParcelModelDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
+  const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
   const hazardLayer = createHazardLayerDiagnostics(city);
@@ -352,6 +369,7 @@ export function createCityDiagnostics(
     parcelModel,
     zoningModel,
     roadNetwork,
+    intersectionBehavior,
     waterwayNetwork,
     waterfrontModel,
     hazardLayer,
@@ -404,6 +422,9 @@ export function createCityDiagnostics(
       roadHierarchyKinds: roadNetwork.hierarchyKinds,
       namedRoadCorridors: roadNetwork.namedCorridors.length,
       transitEligibleRoads: roadNetwork.transitEligibleRoads,
+      signalizedIntersections: intersectionBehavior.signalized,
+      raisedJunctions: intersectionBehavior.raisedJunctions,
+      intersectionConflictPoints: intersectionBehavior.conflictPoints,
       waterwayEdgeSegments: waterwayNetwork.edgeSegments,
       waterwayChannels: waterwayNetwork.channels,
       waterwayCrossings: waterwayNetwork.crossings,
@@ -613,6 +634,28 @@ function createRoadNetworkDiagnostics(city: GeneratedCity): RoadNetworkDiagnosti
     transitEligibleRoads: city.roads.filter((road) => road.transitEligible).length,
     averageDesignSpeedKph: Number((speedTotal / Math.max(1, city.roads.length)).toFixed(1)),
     totalRightOfWayMeters: Number(totalRightOfWayMeters.toFixed(1))
+  };
+}
+
+function createIntersectionBehaviorDiagnostics(city: GeneratedCity): IntersectionBehaviorDiagnostics {
+  const byControlType: Record<string, number> = {};
+  let cornerRadiusTotal = 0;
+
+  for (const intersection of city.intersections) {
+    byControlType[intersection.controlType] = (byControlType[intersection.controlType] ?? 0) + 1;
+    cornerRadiusTotal += intersection.cornerRadiusMeters;
+  }
+
+  return {
+    total: city.intersections.length,
+    byControlType,
+    signalized: byControlType['traffic-signal'] ?? 0,
+    stopControlled: (byControlType['all-way-stop'] ?? 0) + (byControlType['minor-stop'] ?? 0),
+    yieldControlled: byControlType.yield ?? 0,
+    raisedJunctions: city.intersections.filter((intersection) => intersection.raisedJunction).length,
+    conflictPoints: city.intersections.reduce((sum, intersection) => sum + intersection.conflictPoints.length, 0),
+    turnConstraints: city.intersections.reduce((sum, intersection) => sum + intersection.turnConstraints.length, 0),
+    averageCornerRadiusMeters: Number((cornerRadiusTotal / Math.max(1, city.intersections.length)).toFixed(1))
   };
 }
 

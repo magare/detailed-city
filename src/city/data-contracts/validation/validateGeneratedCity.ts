@@ -6,6 +6,7 @@ import type {
   ConstraintKind,
   GeospatialFrame,
   HazardMitigationKind,
+  IntersectionControlType,
   Point2D,
   Point3D,
   Polygon2D,
@@ -313,6 +314,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     }
   }
 
+  const roadsById = new Map(city.roads.map((road) => [road.id, road]));
   for (const intersection of city.intersections) {
     if (!isFiniteNumber(intersection.center.x) || !isFiniteNumber(intersection.center.z)) {
       issues.push({
@@ -355,6 +357,125 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       }
     }
 
+    if (!isSignalExpectationCompatible(intersection.signalExpectation, intersection.controlType)) {
+      issues.push({
+        id: `intersection-control-mismatch-${intersection.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: intersection.id,
+        ...createIssueFocus(intersection.center, 'Regenerate intersection behavior from connected road hierarchy.'),
+        message: `Intersection ${intersection.id} control type must match its signal expectation.`
+      });
+    }
+
+    const approachRoadIds = new Set(intersection.approachRules.map((rule) => rule.roadId));
+    for (const roadId of intersection.connectedRoadIds) {
+      if (!approachRoadIds.has(roadId)) {
+        issues.push({
+          id: `missing-intersection-approach-rule-${intersection.id}-${roadId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: intersection.id,
+          ...createIssueFocus(intersection.center, 'Create one approach rule for every connected road.'),
+          message: `Intersection ${intersection.id} is missing an approach rule for ${roadId}.`
+        });
+      }
+    }
+
+    for (const rule of intersection.approachRules) {
+      if (!intersection.connectedRoadIds.includes(rule.roadId) || !isApproachControlCompatible(intersection.controlType, rule.control)) {
+        issues.push({
+          id: `invalid-intersection-approach-rule-${intersection.id}-${rule.roadId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: intersection.id,
+          ...createIssueFocus(intersection.center, 'Align approach controls with the intersection control type and connected roads.'),
+          message: `Intersection ${intersection.id} has an invalid approach rule for ${rule.roadId}.`
+        });
+      }
+    }
+
+    if (intersection.turnConstraints.length === 0 || intersection.conflictPoints.length === 0) {
+      issues.push({
+        id: `missing-intersection-behavior-${intersection.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: intersection.id,
+        ...createIssueFocus(intersection.center, 'Generate turn constraints and conflict points for this intersection.'),
+        message: `Intersection ${intersection.id} must expose turn constraints and conflict points.`
+      });
+    }
+
+    for (const turnConstraint of intersection.turnConstraints) {
+      if (
+        !intersection.connectedRoadIds.includes(turnConstraint.fromRoadId) ||
+        !intersection.connectedRoadIds.includes(turnConstraint.toRoadId) ||
+        turnConstraint.fromRoadId === turnConstraint.toRoadId ||
+        turnConstraint.allowedMovements.length === 0
+      ) {
+        issues.push({
+          id: `invalid-intersection-turn-constraint-${intersection.id}-${turnConstraint.fromRoadId}-${turnConstraint.toRoadId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: intersection.id,
+          ...createIssueFocus(intersection.center, 'Reference connected roads and at least one allowed turn movement.'),
+          message: `Intersection ${intersection.id} has an invalid turn constraint.`
+        });
+      }
+    }
+
+    for (const conflictPoint of intersection.conflictPoints) {
+      if (!conflictPoint.id || !isFiniteNumber(conflictPoint.point.x) || !isFiniteNumber(conflictPoint.point.z)) {
+        issues.push({
+          id: `invalid-intersection-conflict-point-${intersection.id}-${conflictPoint.id || 'missing'}`,
+          severity: 'error',
+          category: 'geometry',
+          objectId: intersection.id,
+          ...createIssueFocus(intersection.center, 'Generate stable conflict point IDs and finite local coordinates.'),
+          message: `Intersection ${intersection.id} has an invalid conflict point.`
+        });
+      }
+    }
+
+    const visibilityRoadIds = new Set(intersection.visibilitySplays.map((splay) => splay.roadId));
+    for (const roadId of intersection.connectedRoadIds) {
+      if (!visibilityRoadIds.has(roadId)) {
+        issues.push({
+          id: `missing-intersection-visibility-splay-${intersection.id}-${roadId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: intersection.id,
+          ...createIssueFocus(intersection.center, 'Generate visibility splays for every connected approach.'),
+          message: `Intersection ${intersection.id} is missing visibility data for ${roadId}.`
+        });
+      }
+    }
+
+    for (const splay of intersection.visibilitySplays) {
+      const road = roadsById.get(splay.roadId);
+      if (!road || splay.distanceMeters <= 0 || splay.clearSightTriangleMeters <= 0) {
+        issues.push({
+          id: `invalid-intersection-visibility-splay-${intersection.id}-${splay.roadId}`,
+          severity: 'error',
+          category: 'geometry',
+          objectId: intersection.id,
+          ...createIssueFocus(intersection.center, 'Use a connected road and positive sight-distance dimensions.'),
+          message: `Intersection ${intersection.id} has invalid visibility splay data.`
+        });
+      }
+    }
+
+    if (intersection.cornerRadiusMeters <= 0) {
+      issues.push({
+        id: `invalid-intersection-corner-radius-${intersection.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: intersection.id,
+        ...createIssueFocus(intersection.center, 'Assign a positive corner radius from the street hierarchy mix.'),
+        message: `Intersection ${intersection.id} must have a positive corner radius.`
+      });
+    }
+
     if (intersection.hierarchyMix.length === 0) {
       issues.push({
         id: `missing-intersection-hierarchy-${intersection.id}`,
@@ -368,7 +489,6 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   const intersectionsById = new Map(city.intersections.map((intersection) => [intersection.id, intersection]));
-  const roadsById = new Map(city.roads.map((road) => [road.id, road]));
   const slicesById = new Map(city.verticalSlices.map((slice) => [slice.id, slice]));
   const curbZonesById = new Map(city.curbZones.map((curbZone) => [curbZone.id, curbZone]));
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
@@ -4334,6 +4454,38 @@ function createIssueFocus(
   suggestedFix: string
 ): Pick<ValidationIssue, 'affectedPoint' | 'suggestedFix'> {
   return affectedPoint ? { affectedPoint, suggestedFix } : { suggestedFix };
+}
+
+function isSignalExpectationCompatible(
+  signalExpectation: GeneratedCity['intersections'][number]['signalExpectation'],
+  controlType: IntersectionControlType
+): boolean {
+  switch (signalExpectation) {
+    case 'signalized':
+      return controlType === 'traffic-signal';
+    case 'stop-controlled':
+      return controlType === 'all-way-stop' || controlType === 'minor-stop';
+    case 'uncontrolled':
+      return controlType === 'uncontrolled' || controlType === 'yield';
+  }
+}
+
+function isApproachControlCompatible(
+  controlType: IntersectionControlType,
+  approachControl: GeneratedCity['intersections'][number]['approachRules'][number]['control']
+): boolean {
+  switch (controlType) {
+    case 'traffic-signal':
+      return approachControl === 'signal';
+    case 'all-way-stop':
+      return approachControl === 'stop';
+    case 'minor-stop':
+      return approachControl === 'stop' || approachControl === 'uncontrolled';
+    case 'yield':
+      return approachControl === 'yield' || approachControl === 'uncontrolled';
+    case 'uncontrolled':
+      return approachControl === 'uncontrolled';
+  }
 }
 
 function getObjectAffectedPoint(object: unknown): Point2D | undefined {

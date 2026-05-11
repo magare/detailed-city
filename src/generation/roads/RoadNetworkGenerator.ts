@@ -1,6 +1,9 @@
 import {
   DEFAULT_STREET_PROFILES,
   type CityId,
+  type ConflictPointSeverity,
+  type IntersectionApproachPriority,
+  type IntersectionControlType,
   type LaneContract,
   type SidewalkContract,
   type StreetHierarchy,
@@ -109,6 +112,14 @@ export class RoadNetworkGenerator {
         }
 
         const hierarchyMix = uniqueHierarchies([verticalRoad.hierarchy, horizontalRoad.hierarchy]);
+        const signalExpectation = getSignalExpectation(hierarchyMix);
+        const behavior = createIntersectionBehavior({
+          id: `intersection-v${verticalIndex}-h${horizontalIndex}`,
+          verticalRoad,
+          horizontalRoad,
+          hierarchyMix,
+          signalExpectation
+        });
 
         intersections.push({
           id: `intersection-v${verticalIndex}-h${horizontalIndex}`,
@@ -121,7 +132,8 @@ export class RoadNetworkGenerator {
           },
           connectedRoadIds: [verticalRoadId, horizontalRoadId],
           hierarchyMix,
-          signalExpectation: getSignalExpectation(hierarchyMix),
+          signalExpectation,
+          ...behavior,
           grid: { x: verticalIndex, z: horizontalIndex },
           verticalRoadId,
           horizontalRoadId
@@ -130,6 +142,200 @@ export class RoadNetworkGenerator {
     }
 
     return intersections;
+  }
+}
+
+type IntersectionBehaviorInput = {
+  readonly id: CityId;
+  readonly verticalRoad: RoadSegment;
+  readonly horizontalRoad: RoadSegment;
+  readonly hierarchyMix: readonly StreetHierarchy[];
+  readonly signalExpectation: IntersectionPlan['signalExpectation'];
+};
+
+type IntersectionBehavior = Pick<
+  IntersectionPlan,
+  | 'controlType'
+  | 'approachRules'
+  | 'turnConstraints'
+  | 'conflictPoints'
+  | 'visibilitySplays'
+  | 'cornerRadiusMeters'
+  | 'raisedJunction'
+>;
+
+function createIntersectionBehavior(input: IntersectionBehaviorInput): IntersectionBehavior {
+  const { id, verticalRoad, horizontalRoad, hierarchyMix, signalExpectation } = input;
+  const controlType = getControlType(signalExpectation, verticalRoad, horizontalRoad);
+  const center = { x: verticalRoad.center.x, z: horizontalRoad.center.z };
+  const cornerRadiusMeters = getCornerRadiusMeters(hierarchyMix);
+
+  return {
+    controlType,
+    approachRules: [createApproachRule(verticalRoad, controlType, horizontalRoad), createApproachRule(horizontalRoad, controlType, verticalRoad)],
+    turnConstraints: createTurnConstraints(verticalRoad, horizontalRoad),
+    conflictPoints: createConflictPoints(id, center, hierarchyMix),
+    visibilitySplays: [verticalRoad, horizontalRoad].map((road) => ({
+      roadId: road.id,
+      distanceMeters: roundMeters(Math.max(18, road.designSpeedKph * 1.25)),
+      clearSightTriangleMeters: roundMeters(Math.max(6, road.designSpeedKph * 0.32))
+    })),
+    cornerRadiusMeters,
+    raisedJunction: shouldUseRaisedJunction(controlType, hierarchyMix)
+  };
+}
+
+function getControlType(
+  signalExpectation: IntersectionPlan['signalExpectation'],
+  verticalRoad: RoadSegment,
+  horizontalRoad: RoadSegment
+): IntersectionControlType {
+  if (signalExpectation === 'signalized') {
+    return 'traffic-signal';
+  }
+
+  if (signalExpectation === 'uncontrolled') {
+    return verticalRoad.hierarchy === 'promenade' || horizontalRoad.hierarchy === 'promenade' ? 'yield' : 'uncontrolled';
+  }
+
+  return verticalRoad.hierarchy === horizontalRoad.hierarchy ? 'all-way-stop' : 'minor-stop';
+}
+
+function createApproachRule(
+  road: RoadSegment,
+  controlType: IntersectionControlType,
+  pairedRoad: RoadSegment
+): IntersectionPlan['approachRules'][number] {
+  if (controlType === 'traffic-signal') {
+    return { roadId: road.id, control: 'signal', priority: getApproachPriority(road, pairedRoad) };
+  }
+
+  if (controlType === 'all-way-stop') {
+    return { roadId: road.id, control: 'stop', priority: 'shared' };
+  }
+
+  if (controlType === 'minor-stop') {
+    const priority = getApproachPriority(road, pairedRoad);
+    return { roadId: road.id, control: priority === 'minor' ? 'stop' : 'uncontrolled', priority };
+  }
+
+  if (controlType === 'yield') {
+    return { roadId: road.id, control: road.hierarchy === 'promenade' ? 'uncontrolled' : 'yield', priority: getApproachPriority(road, pairedRoad) };
+  }
+
+  return { roadId: road.id, control: 'uncontrolled', priority: getApproachPriority(road, pairedRoad) };
+}
+
+function getApproachPriority(road: RoadSegment, pairedRoad: RoadSegment): IntersectionApproachPriority {
+  const roadPriority = getHierarchyPriority(road.hierarchy);
+  const pairedPriority = getHierarchyPriority(pairedRoad.hierarchy);
+
+  if (roadPriority === pairedPriority) {
+    return 'shared';
+  }
+
+  return roadPriority > pairedPriority ? 'major' : 'minor';
+}
+
+function createTurnConstraints(
+  verticalRoad: RoadSegment,
+  horizontalRoad: RoadSegment
+): IntersectionPlan['turnConstraints'] {
+  return [
+    createTurnConstraint(verticalRoad, horizontalRoad),
+    createTurnConstraint(horizontalRoad, verticalRoad)
+  ];
+}
+
+function createTurnConstraint(fromRoad: RoadSegment, toRoad: RoadSegment): IntersectionPlan['turnConstraints'][number] {
+  const hasCalmStreet = fromRoad.hierarchy === 'alley' || fromRoad.hierarchy === 'promenade';
+  const allowedMovements = hasCalmStreet ? (['through', 'right'] as const) : (['left', 'through', 'right'] as const);
+
+  return {
+    fromRoadId: fromRoad.id,
+    toRoadId: toRoad.id,
+    allowedMovements
+  };
+}
+
+function createConflictPoints(
+  intersectionId: CityId,
+  center: { readonly x: number; readonly z: number },
+  hierarchyMix: readonly StreetHierarchy[]
+): IntersectionPlan['conflictPoints'] {
+  const severity = getConflictSeverity(hierarchyMix);
+
+  return [
+    {
+      id: `${intersectionId}-conflict-vehicle`,
+      point: center,
+      conflictKind: 'vehicle-vehicle',
+      severity
+    },
+    {
+      id: `${intersectionId}-conflict-crossing-v`,
+      point: { x: center.x, z: roundMeters(center.z - 2.4) },
+      conflictKind: 'vehicle-pedestrian',
+      severity
+    },
+    {
+      id: `${intersectionId}-conflict-crossing-h`,
+      point: { x: roundMeters(center.x + 2.4), z: center.z },
+      conflictKind: 'vehicle-pedestrian',
+      severity
+    }
+  ];
+}
+
+function getConflictSeverity(hierarchyMix: readonly StreetHierarchy[]): ConflictPointSeverity {
+  if (hierarchyMix.includes('arterial') || hierarchyMix.includes('transit-corridor')) {
+    return 'high';
+  }
+
+  if (hierarchyMix.includes('collector')) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
+function getCornerRadiusMeters(hierarchyMix: readonly StreetHierarchy[]): number {
+  return Math.max(...hierarchyMix.map((hierarchy) => getHierarchyCornerRadiusMeters(hierarchy)));
+}
+
+function getHierarchyCornerRadiusMeters(hierarchy: StreetHierarchy): number {
+  switch (hierarchy) {
+    case 'arterial':
+    case 'transit-corridor':
+      return 9;
+    case 'collector':
+      return 6;
+    case 'local':
+      return 4.5;
+    case 'alley':
+      return 3;
+    case 'promenade':
+      return 2.5;
+  }
+}
+
+function shouldUseRaisedJunction(controlType: IntersectionControlType, hierarchyMix: readonly StreetHierarchy[]): boolean {
+  return controlType !== 'traffic-signal' && (hierarchyMix.includes('local') || hierarchyMix.includes('promenade'));
+}
+
+function getHierarchyPriority(hierarchy: StreetHierarchy): number {
+  switch (hierarchy) {
+    case 'transit-corridor':
+    case 'arterial':
+      return 5;
+    case 'collector':
+      return 4;
+    case 'local':
+      return 3;
+    case 'promenade':
+      return 2;
+    case 'alley':
+      return 1;
   }
 }
 
@@ -266,6 +472,10 @@ function getCarriagewayWidth(profile: StreetProfile, fallbackWidth: number): num
   const medianWidth = profile.median ? 2.4 : 0;
 
   return Math.max(fallbackWidth, vehicleWidth + bikeWidth + medianWidth);
+}
+
+function roundMeters(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function uniqueHierarchies(hierarchies: readonly StreetHierarchy[]): StreetHierarchy[] {

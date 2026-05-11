@@ -166,6 +166,10 @@ export class DebugPanel {
         `${diagnostics.roadNetwork.hierarchyKinds} hierarchies, ${diagnostics.roadNetwork.namedCorridors.length} corridors, ${diagnostics.roadNetwork.transitEligibleRoads} transit`
       ),
       createMetric(
+        'Junctions',
+        `${diagnostics.intersectionBehavior.signalized} signal, ${diagnostics.intersectionBehavior.stopControlled} stop, ${diagnostics.intersectionBehavior.raisedJunctions} raised`
+      ),
+      createMetric(
         'City',
         `${diagnostics.objectCounts.buildings} buildings, ${diagnostics.objectCounts.activeFrontages} frontages`
       ),
