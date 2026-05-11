@@ -5,6 +5,7 @@ export const CITY_CONTRACT_SCHEMA_VERSION = 'city-contracts-v1';
 export type CityId = string;
 
 export type CityObjectKind =
+  | 'administrative-boundary'
   | 'asset'
   | 'block'
   | 'building'
@@ -275,6 +276,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
     }
   ],
   objectPolicies: [
+    {
+      objectKind: 'administrative-boundary',
+      scope: 'land',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'Administrative boundaries define city limits, wards, neighborhoods, service areas, ownership zones, and jurisdiction overlays.'
+    },
     {
       objectKind: 'asset',
       scope: 'asset',
@@ -627,6 +635,37 @@ export interface DistrictStyleHints {
   readonly preferredMaterialZones: readonly string[];
 }
 
+export const CITY_ADMINISTRATIVE_BOUNDARY_KINDS = [
+  'city-limit',
+  'ward',
+  'neighborhood',
+  'service-area',
+  'ownership-zone',
+  'jurisdiction-overlay'
+] as const;
+
+export type AdministrativeBoundaryKind = (typeof CITY_ADMINISTRATIVE_BOUNDARY_KINDS)[number];
+export type AdministrativeBoundaryAuthority =
+  | 'city-government'
+  | 'planning-department'
+  | 'public-works'
+  | 'parks-department'
+  | 'port-authority'
+  | 'private-owner';
+
+export interface AdministrativeBoundaryContract extends CityObjectBase<'administrative-boundary'> {
+  readonly boundaryKind: AdministrativeBoundaryKind;
+  readonly authority: AdministrativeBoundaryAuthority;
+  readonly boundary: Polygon2D;
+  readonly center: Point2D;
+  readonly districtIds: readonly CityId[];
+  readonly blockIds: readonly CityId[];
+  readonly parcelIds: readonly CityId[];
+  readonly serviceTypes: readonly ('emergency' | 'parks' | 'planning' | 'public-works' | 'utilities')[];
+  readonly ownershipClass: 'public' | 'private' | 'mixed';
+  readonly jurisdictionLevel: 'city' | 'district' | 'ward' | 'service' | 'ownership' | 'overlay';
+}
+
 export const CITY_CONSTRAINT_KINDS = [
   'setback',
   'protected-corridor',
@@ -751,6 +790,9 @@ export interface CityMetricContract extends CityObjectBase<'city-metric'> {
 export interface BlockContract extends CityObjectBase<'block'> {
   readonly boundary: Polygon2D;
   readonly districtId: CityId;
+  readonly administrativeBoundaryIds: readonly CityId[];
+  readonly wardId: CityId;
+  readonly neighborhoodId: CityId;
   readonly permeability: 'low' | 'medium' | 'high';
 }
 
@@ -758,6 +800,9 @@ export interface ParcelContract extends CityObjectBase<'parcel'> {
   readonly boundary: Polygon2D;
   readonly districtId: CityId;
   readonly blockId: CityId;
+  readonly administrativeBoundaryIds: readonly CityId[];
+  readonly wardId: CityId;
+  readonly neighborhoodId: CityId;
   readonly frontageRoadIds: readonly CityId[];
   readonly allowedUses: readonly LandUse[];
   readonly maxHeightMeters: number;
@@ -1088,6 +1133,7 @@ export interface ValidationIssue {
     | 'geometry'
     | 'identifier'
     | 'import-export'
+    | 'land'
     | 'lod'
     | 'metadata'
     | 'metrics'

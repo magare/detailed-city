@@ -7,6 +7,9 @@ type GeneratedCityWithoutValidation = Omit<GeneratedCity, 'objectIndex' | 'valid
 export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValidation): GeneratedCityWithoutValidation {
   return {
     ...city,
+    administrativeBoundaries: city.administrativeBoundaries.map((boundary) =>
+      withProceduralMetadata(boundary, 'land-administrative-boundaries')
+    ),
     districts: city.districts.map((district) => withProceduralMetadata(district, 'terrain-districts')),
     cityMetrics: city.cityMetrics.map((metric) => withProceduralMetadata(metric, 'blueprint-city-metrics')),
     constraints: city.constraints.map((constraint) => withProceduralMetadata(constraint, 'blueprint-constraints')),

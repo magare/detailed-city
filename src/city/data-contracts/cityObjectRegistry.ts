@@ -43,8 +43,15 @@ const CROSSING_ID = String.raw`crossing-${INTERSECTION_ID}-${ROAD_ID}`;
 const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|regulatory-sign|street-name-sign|wayfinding-sign)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
+const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
+  entry(
+    'administrative-boundary',
+    ['administrative-boundary-<boundary-kind>-<slug>'],
+    [exact(String.raw`administrative-boundary-${ADMIN_BOUNDARY_KIND}(?:-${NAMED_ID})?`)],
+    optional(['administrative-boundary'])
+  ),
   entry('asset', ['asset:<category>:<semantic-name>:primitive'], [exact(String.raw`asset:${NAMED_ID}(?::${NAMED_ID})+:primitive`)], none()),
   entry('block', ['block-<grid-x>-<grid-z>'], [exact(String.raw`block-\d+-\d+`)], required(['district'])),
   entry('building', ['building-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(BUILDING_ID)], required(['parcel'])),

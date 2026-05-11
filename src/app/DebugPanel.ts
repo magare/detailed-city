@@ -112,6 +112,10 @@ export class DebugPanel {
         `${diagnostics.districtCharacter.districtRules} rules, ${diagnostics.districtCharacter.transitionBuffers} transitions`
       ),
       createMetric(
+        'Boundaries',
+        `${diagnostics.administrativeBoundaries.total} admin, ${diagnostics.administrativeBoundaries.wards} wards, ${diagnostics.administrativeBoundaries.neighborhoods} neighborhoods`
+      ),
+      createMetric(
         'Constraints',
         `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
       ),

@@ -13,6 +13,7 @@ import type { CityPlanningLayer } from '../../cityPlan';
 import type { GeneratedCity, GeneratedRuntimeCityObject } from '../../../types/city';
 
 export type CityOverlayId =
+  | 'administrative-boundaries'
   | 'districts'
   | 'city-metrics'
   | 'constraints'
@@ -61,6 +62,7 @@ export function createCityOverlayDatasets(
   runtimeObjectIndex: CityObjectIndex<GeneratedRuntimeCityObject>
 ): readonly CityOverlayDataset[] {
   return [
+    createDataset('administrative-boundaries', 'Administrative Boundaries', 'domain-data', createAdministrativeBoundaryFeatures(city)),
     createDataset('districts', 'Districts', 'domain-data', createDistrictFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
@@ -86,6 +88,27 @@ function createDataset(
     featureCount: features.length,
     features
   };
+}
+
+function createAdministrativeBoundaryFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.administrativeBoundaries.map((boundary) => ({
+    id: `overlay:administrative-boundaries:${boundary.id}`,
+    overlayId: 'administrative-boundaries',
+    objectId: boundary.id,
+    objectKind: boundary.kind,
+    ownerDomain: boundary.ownerDomain,
+    label: boundary.name ?? boundary.id,
+    geometry: { type: 'polygon', points: boundary.boundary },
+    metadata: {
+      boundaryKind: boundary.boundaryKind,
+      authority: boundary.authority,
+      jurisdictionLevel: boundary.jurisdictionLevel,
+      ownershipClass: boundary.ownershipClass,
+      blocks: boundary.blockIds.length,
+      parcels: boundary.parcelIds.length,
+      services: boundary.serviceTypes.join(',')
+    }
+  }));
 }
 
 function createDistrictFeatures(city: GeneratedCity): CityOverlayFeature[] {

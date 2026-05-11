@@ -222,6 +222,7 @@ export interface CityCsvTableExport {
 }
 
 export interface ProceduralSeedDomainSections {
+  readonly administrativeBoundaries: GeneratedCity['administrativeBoundaries'];
   readonly districts: GeneratedCity['districts'];
   readonly cityMetrics: GeneratedCity['cityMetrics'];
   readonly constraints: GeneratedCity['constraints'];
@@ -244,6 +245,7 @@ export interface ProceduralSeedDomainSections {
 }
 
 export interface ProceduralSeedDomainSectionCounts {
+  readonly administrativeBoundaries: number;
   readonly districts: number;
   readonly cityMetrics: number;
   readonly constraints: number;
@@ -344,6 +346,7 @@ export function createProceduralSeedJsonExport(
     objectIds: objects.map((object) => object.id),
     domainSectionCounts: createProceduralSeedDomainSectionCounts(city),
     city: {
+      administrativeBoundaries: city.administrativeBoundaries,
       districts: city.districts,
       cityMetrics: city.cityMetrics,
       constraints: city.constraints,
@@ -466,6 +469,7 @@ export function createProceduralSeedDomainSectionCounts(
   city: Pick<
     GeneratedCity,
     | 'activeFrontages'
+    | 'administrativeBoundaries'
     | 'assetBindings'
     | 'assetCatalog'
     | 'blocks'
@@ -489,6 +493,7 @@ export function createProceduralSeedDomainSectionCounts(
   >
 ): ProceduralSeedDomainSectionCounts {
   return {
+    administrativeBoundaries: city.administrativeBoundaries.length,
     districts: city.districts.length,
     cityMetrics: city.cityMetrics.length,
     constraints: city.constraints.length,
@@ -523,6 +528,7 @@ export function countProceduralSeedDomainObjects(
   const assets = artifact.assets;
 
   return (
+    getArrayLength(city, 'administrativeBoundaries') +
     getArrayLength(city, 'districts') +
     getArrayLength(city, 'cityMetrics') +
     getArrayLength(city, 'constraints') +

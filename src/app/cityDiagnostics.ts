@@ -47,6 +47,7 @@ export interface CityDiagnostics {
   readonly schemaVersion: string;
   readonly config: ConfigDiagnostics;
   readonly masterPlan: MasterPlanDiagnostics;
+  readonly administrativeBoundaries: AdministrativeBoundaryDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
@@ -89,6 +90,9 @@ export interface CityDiagnostics {
     readonly masterPlanCenters: number;
     readonly masterPlanProtectedOpenSpaces: number;
     readonly masterPlanGrowthBoundaries: number;
+    readonly administrativeBoundaries: number;
+    readonly wards: number;
+    readonly neighborhoods: number;
     readonly districtUseMixRules: number;
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
@@ -141,6 +145,18 @@ export interface DistrictCharacterDiagnostics {
   readonly allowedStreetProfiles: readonly string[];
 }
 
+export interface AdministrativeBoundaryDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly wards: number;
+  readonly neighborhoods: number;
+  readonly serviceAreas: number;
+  readonly ownershipZones: number;
+  readonly jurisdictionOverlays: number;
+  readonly blocksWithBoundaryMembership: number;
+  readonly parcelsWithBoundaryMembership: number;
+}
+
 export interface ConstraintLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -190,6 +206,7 @@ export function createCityDiagnostics(
   ]);
   const objectGroups = createCityObjectGroupDiagnostics(objectGroupIndex);
   const masterPlan = createMasterPlanDiagnostics(CITY_BLUEPRINT.masterPlan);
+  const administrativeBoundaries = createAdministrativeBoundaryDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
@@ -212,6 +229,7 @@ export function createCityDiagnostics(
     schemaVersion: city.schemaVersion,
     config,
     masterPlan,
+    administrativeBoundaries,
     districtCharacter,
     cityMetrics,
     constraintLayer,
@@ -245,6 +263,9 @@ export function createCityDiagnostics(
       masterPlanCenters: masterPlan.centers.total,
       masterPlanProtectedOpenSpaces: masterPlan.protectedOpenSpaces.total,
       masterPlanGrowthBoundaries: masterPlan.growthBoundaries.total,
+      administrativeBoundaries: city.administrativeBoundaries.length,
+      wards: city.administrativeBoundaries.filter((boundary) => boundary.boundaryKind === 'ward').length,
+      neighborhoods: city.administrativeBoundaries.filter((boundary) => boundary.boundaryKind === 'neighborhood').length,
       districtUseMixRules: districtCharacter.useMixRules,
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
@@ -324,6 +345,26 @@ function createDistrictCharacterDiagnostics(): DistrictCharacterDiagnostics {
     transitionBuffers,
     stylePalettes: [...stylePalettes].sort(),
     allowedStreetProfiles: [...allowedStreetProfiles].sort()
+  };
+}
+
+function createAdministrativeBoundaryDiagnostics(city: GeneratedCity): AdministrativeBoundaryDiagnostics {
+  const byKind: Record<string, number> = {};
+
+  for (const boundary of city.administrativeBoundaries) {
+    byKind[boundary.boundaryKind] = (byKind[boundary.boundaryKind] ?? 0) + 1;
+  }
+
+  return {
+    total: city.administrativeBoundaries.length,
+    byKind,
+    wards: byKind.ward ?? 0,
+    neighborhoods: byKind.neighborhood ?? 0,
+    serviceAreas: byKind['service-area'] ?? 0,
+    ownershipZones: byKind['ownership-zone'] ?? 0,
+    jurisdictionOverlays: byKind['jurisdiction-overlay'] ?? 0,
+    blocksWithBoundaryMembership: city.blocks.filter((block) => block.administrativeBoundaryIds.length > 0).length,
+    parcelsWithBoundaryMembership: city.parcels.filter((parcel) => parcel.administrativeBoundaryIds.length > 0).length
   };
 }
 

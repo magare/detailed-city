@@ -50,6 +50,7 @@ test('constraint layer is deterministic, indexed, and visible in overlays', () =
   }
 
   expect(overlays.map((overlay) => overlay.id)).toEqual([
+    'administrative-boundaries',
     'districts',
     'city-metrics',
     'constraints',

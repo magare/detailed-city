@@ -14,6 +14,7 @@ import { BuildingGenerator } from './buildings/BuildingGenerator';
 import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
+import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
@@ -46,6 +47,12 @@ export class CityGenerator {
     const constraints = new ConstraintGenerator(this.config).create({ bounds, parks, waterways, roads });
     const excludedBlocks = terrainGenerator.getExcludedBlocks(bounds, constraints);
     const landAndBuildings = applyConstraintFilters(buildingGenerator.generate(bounds, excludedBlocks), constraints);
+    const administrativeLand = new AdministrativeBoundaryGenerator().create({
+      bounds,
+      districts: landAndBuildings.districts,
+      blocks: landAndBuildings.blocks,
+      parcels: landAndBuildings.parcels
+    });
     const resilienceGoals = new ResilienceGoalGenerator(this.config).create({
       bounds,
       parks,
@@ -58,7 +65,7 @@ export class CityGenerator {
       intersections,
       crossings: pedestrianNetwork.crossings,
       sidewalkGraph: pedestrianNetwork.sidewalkGraph,
-      parcels: landAndBuildings.parcels,
+      parcels: administrativeLand.parcels,
       buildings: landAndBuildings.buildings
     });
     const sliceTagged = applyDetailedStreetSliceTags(
@@ -67,7 +74,7 @@ export class CityGenerator {
         intersections,
         crossings: pedestrianNetwork.crossings,
         sidewalkGraph: pedestrianNetwork.sidewalkGraph,
-        parcels: landAndBuildings.parcels,
+        parcels: administrativeLand.parcels,
         buildings: landAndBuildings.buildings
       },
       verticalSlices
@@ -118,11 +125,12 @@ export class CityGenerator {
       lodPolicy: DEFAULT_CITY_LOD_POLICY,
       performanceBudget: DEFAULT_PERFORMANCE_BUDGET,
       bounds,
+      administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildings.districts,
       cityMetrics,
       constraints,
       resilienceGoals,
-      blocks: landAndBuildings.blocks,
+      blocks: administrativeLand.blocks,
       verticalSlices: verticalSlicesWithCurbs,
       roads: sliceTagged.roads,
       intersections: sliceTagged.intersections,

@@ -12,6 +12,7 @@ import type {
   ValidationResult
 } from '../cityContracts';
 import {
+  CITY_ADMINISTRATIVE_BOUNDARY_KINDS,
   CITY_CONSTRAINT_KINDS,
   CITY_LOD_TIERS,
   CITY_METRIC_KINDS,
@@ -30,6 +31,7 @@ type GeneratedCityForValidation = Pick<
   | 'assetBindings'
   | 'assetCatalog'
   | 'activeFrontages'
+  | 'administrativeBoundaries'
   | 'blocks'
   | 'buildings'
   | 'cityMetrics'
@@ -54,6 +56,7 @@ type GeneratedCityForValidation = Pick<
 >;
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
+type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
@@ -172,6 +175,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateGeneratedCoordinates(city, issues);
   validateAssetCatalog(city.assetCatalog, issues);
   validateRenderBindings(city.assetCatalog, city.assetBindings, issues);
+  validateAdministrativeBoundaries(city, issues);
   validateCityMetrics(city, issues);
 
   for (const road of city.roads) {
@@ -1317,6 +1321,167 @@ function hasObjectId(city: GeneratedCityForValidation, id: string): boolean {
   return hasCityObject(city.objectIndex, id);
 }
 
+function validateAdministrativeBoundaries(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const boundaryKinds = new Set<ValidationAdministrativeBoundary['boundaryKind']>();
+  const boundariesById = new Map(city.administrativeBoundaries.map((boundary) => [boundary.id, boundary]));
+
+  for (const boundary of city.administrativeBoundaries) {
+    boundaryKinds.add(boundary.boundaryKind);
+
+    if (!(CITY_ADMINISTRATIVE_BOUNDARY_KINDS as readonly string[]).includes(boundary.boundaryKind)) {
+      issues.push(createAdministrativeBoundaryIssue(boundary, 'invalid-kind', `Administrative boundary ${boundary.id} has unknown kind ${boundary.boundaryKind}.`));
+    }
+
+    if (boundary.boundary.length < 4) {
+      issues.push(createAdministrativeBoundaryIssue(boundary, 'invalid-boundary', `Administrative boundary ${boundary.id} must expose a polygon boundary with at least four points.`));
+    }
+
+    if (!Number.isFinite(boundary.center.x) || !Number.isFinite(boundary.center.z)) {
+      issues.push(createAdministrativeBoundaryIssue(boundary, 'invalid-center', `Administrative boundary ${boundary.id} must expose a finite center point.`));
+    }
+
+    if (boundary.boundaryKind !== 'city-limit' && !boundary.parentId) {
+      issues.push(createAdministrativeBoundaryIssue(boundary, 'missing-parent', `Administrative boundary ${boundary.id} must be parented to the city limit or a containing boundary.`));
+    }
+
+    for (const districtId of boundary.districtIds) {
+      const district = city.objectIndex.objectsById[districtId];
+
+      if (!district || district.kind !== 'district') {
+        issues.push(createAdministrativeBoundaryIssue(boundary, `missing-district-${toIssueIdToken(districtId)}`, `Administrative boundary ${boundary.id} references missing district ${districtId}.`));
+      }
+    }
+
+    for (const blockId of boundary.blockIds) {
+      const block = city.objectIndex.objectsById[blockId];
+
+      if (!block || block.kind !== 'block') {
+        issues.push(createAdministrativeBoundaryIssue(boundary, `missing-block-${toIssueIdToken(blockId)}`, `Administrative boundary ${boundary.id} references missing block ${blockId}.`));
+      }
+    }
+
+    for (const parcelId of boundary.parcelIds) {
+      const parcel = city.objectIndex.objectsById[parcelId];
+
+      if (!parcel || parcel.kind !== 'parcel') {
+        issues.push(createAdministrativeBoundaryIssue(boundary, `missing-parcel-${toIssueIdToken(parcelId)}`, `Administrative boundary ${boundary.id} references missing parcel ${parcelId}.`));
+      }
+    }
+  }
+
+  for (const requiredKind of CITY_ADMINISTRATIVE_BOUNDARY_KINDS) {
+    if (!boundaryKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-administrative-boundary-${requiredKind}`,
+        severity: 'error',
+        category: 'land',
+        objectId: `administrative-boundary-${requiredKind}`,
+        message: `Administrative boundary kind ${requiredKind} must exist.`
+      });
+    }
+  }
+
+  for (const block of city.blocks) {
+    validateLandObjectBoundaryMembership(block, block.center, boundariesById, issues);
+  }
+
+  for (const parcel of city.parcels) {
+    validateLandObjectBoundaryMembership(parcel, parcel.center, boundariesById, issues);
+  }
+}
+
+function validateLandObjectBoundaryMembership(
+  object: ValidationBlock | GeneratedCityForValidation['parcels'][number],
+  point: Point2D,
+  boundariesById: ReadonlyMap<string, ValidationAdministrativeBoundary>,
+  issues: ValidationIssue[]
+): void {
+  if (object.administrativeBoundaryIds.length === 0) {
+    issues.push({
+      id: `missing-administrative-boundaries-${object.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: object.id,
+      affectedPoint: point,
+      suggestedFix: `Assign ${object.id} to city-limit, ward, neighborhood, and applicable service or jurisdiction boundaries.`,
+      message: `${object.kind} ${object.id} must belong to at least one administrative boundary.`
+    });
+  }
+
+  validateRequiredBoundaryReference(object, point, boundariesById, object.wardId, 'ward', issues);
+  validateRequiredBoundaryReference(object, point, boundariesById, object.neighborhoodId, 'neighborhood', issues);
+
+  for (const boundaryId of object.administrativeBoundaryIds) {
+    const boundary = boundariesById.get(boundaryId);
+
+    if (!boundary) {
+      issues.push({
+        id: `missing-administrative-boundary-reference-${toIssueIdToken(boundaryId)}-${object.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: object.id,
+        affectedPoint: point,
+        suggestedFix: `Remove ${boundaryId} from ${object.id} or generate the referenced administrative boundary.`,
+        message: `${object.kind} ${object.id} references missing administrative boundary ${boundaryId}.`
+      });
+      continue;
+    }
+
+    if (!isPointInsidePolygon(point, boundary.boundary)) {
+      issues.push({
+        id: `administrative-boundary-membership-outside-${toIssueIdToken(boundaryId)}-${object.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: object.id,
+        affectedPoint: point,
+        affectedBoundary: boundary.boundary,
+        suggestedFix: `Recompute administrative memberships for ${object.id} from its center point.`,
+        message: `${object.kind} ${object.id} is assigned to ${boundaryId} but its center is outside the boundary.`
+      });
+    }
+  }
+}
+
+function validateRequiredBoundaryReference(
+  object: ValidationBlock | GeneratedCityForValidation['parcels'][number],
+  point: Point2D,
+  boundariesById: ReadonlyMap<string, ValidationAdministrativeBoundary>,
+  boundaryId: string,
+  boundaryKind: ValidationAdministrativeBoundary['boundaryKind'],
+  issues: ValidationIssue[]
+): void {
+  const boundary = boundariesById.get(boundaryId);
+
+  if (!boundary || boundary.boundaryKind !== boundaryKind || !object.administrativeBoundaryIds.includes(boundaryId)) {
+    issues.push({
+      id: `invalid-${boundaryKind}-membership-${object.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: object.id,
+      affectedPoint: point,
+      suggestedFix: `Regenerate ${object.id} ${boundaryKind} membership from administrative boundary overlays.`,
+      message: `${object.kind} ${object.id} must reference an existing ${boundaryKind} in administrativeBoundaryIds.`
+    });
+  }
+}
+
+function createAdministrativeBoundaryIssue(
+  boundary: ValidationAdministrativeBoundary,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `administrative-boundary-${issueIdSuffix}-${toIssueIdToken(boundary.id)}`,
+    severity: 'error',
+    category: 'land',
+    objectId: boundary.id,
+    affectedPoint: boundary.center,
+    affectedBoundary: boundary.boundary,
+    suggestedFix: `Regenerate ${boundary.id} from deterministic land administrative boundary rules.`,
+    message
+  };
+}
+
 function validateGeospatialFrame(geospatial: GeospatialFrame, issues: ValidationIssue[]): void {
   if (geospatial.unit !== 'meter' || geospatial.coordinateSystem !== 'local-xz') {
     issues.push({
@@ -1411,6 +1576,11 @@ function validateGeospatialFrame(geospatial: GeospatialFrame, issues: Validation
 function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
   for (const district of city.districts) {
     validatePolygon2D(city.geospatial, district.id, 'boundary', district.boundary, issues);
+  }
+
+  for (const administrativeBoundary of city.administrativeBoundaries) {
+    validatePoint2D(city.geospatial, administrativeBoundary.id, 'center', administrativeBoundary.center, issues);
+    validatePolygon2D(city.geospatial, administrativeBoundary.id, 'boundary', administrativeBoundary.boundary, issues);
   }
 
   for (const constraint of city.constraints) {

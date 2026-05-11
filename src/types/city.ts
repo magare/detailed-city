@@ -1,6 +1,7 @@
 import type {
   AssetDefinition,
   ActiveFrontageContract,
+  AdministrativeBoundaryContract,
   BuildingContract,
   BuildingFrontageSide,
   BlockContract,
@@ -134,6 +135,8 @@ export interface DistrictPlan extends DistrictContract {
   district: DistrictKind;
 }
 
+export interface AdministrativeBoundaryPlan extends AdministrativeBoundaryContract {}
+
 export interface BlockPlan extends BlockContract {
   grid: { x: number; z: number };
   center: Point2D;
@@ -218,6 +221,7 @@ export interface TrafficVehiclePlan extends TrafficVehicleContract {}
 
 export type GeneratedCityObject =
   | AssetDefinition
+  | AdministrativeBoundaryPlan
   | DetailedStreetSlice
   | CityMetricPlan
   | ConstraintPlan
@@ -254,6 +258,7 @@ export interface GeneratedCity {
   lodPolicy: CityLodPolicy;
   performanceBudget: PerformanceBudget;
   bounds: CityBounds;
+  administrativeBoundaries: AdministrativeBoundaryPlan[];
   districts: DistrictPlan[];
   constraints: ConstraintPlan[];
   resilienceGoals: ResilienceGoalPlan[];
