@@ -16,6 +16,8 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('detailed-city-v1');
   expect(panelText).toContain('Config');
   expect(panelText).toContain('medium, grid 12, traffic 0.42');
+  expect(panelText).toContain('Master Plan');
+  expect(panelText).toContain('4 centers, 3 open spaces, 3 boundaries');
   expect(panelText).toContain('Validation');
   expect(panelText).toContain('pass, 0 issues');
   expect(panelText).toContain('Geo');

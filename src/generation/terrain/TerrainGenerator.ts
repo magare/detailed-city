@@ -7,8 +7,15 @@ export class TerrainGenerator {
 
   generateParks(bounds: CityBounds): ParkPatch[] {
     const block = this.config.blockSize;
+    const publicSpacesById = new Map(CITY_BLUEPRINT.publicSpaces.map((space) => [space.id, space]));
 
-    return CITY_BLUEPRINT.publicSpaces.map((space) => {
+    return CITY_BLUEPRINT.masterPlan.protectedOpenSpaces.flatMap((protectedSpace) => {
+      const space = publicSpacesById.get(protectedSpace.publicSpaceId);
+
+      if (!space) {
+        return [];
+      }
+
       const center = {
         x: bounds.spacing * space.centerBySpacing.x,
         z: bounds.spacing * space.centerBySpacing.z
@@ -18,16 +25,22 @@ export class TerrainGenerator {
         z: block * space.sizeByBlock.z
       };
 
-      return {
-        id: space.id,
-        kind: 'park',
-        ownerDomain: 'public-realm',
-        name: space.name,
-        lod: 'lod1',
-        center,
-        size,
-        boundary: rectanglePolygon(center, size)
-      };
+      return [
+        {
+          id: space.id,
+          kind: 'park',
+          ownerDomain: 'public-realm',
+          name: space.name,
+          lod: 'lod1',
+          tags: {
+            masterPlanProtectedOpenSpaceId: protectedSpace.id,
+            protectionPolicy: protectedSpace.protectionPolicy
+          },
+          center,
+          size,
+          boundary: rectanglePolygon(center, size)
+        }
+      ];
     });
   }
 

@@ -103,6 +103,10 @@ export class DebugPanel {
         'Config',
         `${diagnostics.config.city.qualityPreset}, grid ${diagnostics.config.city.gridSize}, traffic ${diagnostics.config.city.density.trafficDensity}`
       ),
+      createMetric(
+        'Master Plan',
+        `${diagnostics.masterPlan.centers.total} centers, ${diagnostics.masterPlan.protectedOpenSpaces.total} open spaces, ${diagnostics.masterPlan.growthBoundaries.total} boundaries`
+      ),
       createMetric('Validation', getStatusLabel(diagnostics.validation.passed, diagnostics.validation.issues.length)),
       createMetric('Geo', `${diagnostics.geospatial.coordinateSystem}, ${coordinatePrecision}m`),
       createMetric(

@@ -1,4 +1,4 @@
-import { CITY_BLUEPRINT } from '../../city/blueprint/cityBlueprint';
+import { CITY_BLUEPRINT, getBlueprintDistrictForNormalizedBlock } from '../../city/blueprint/cityBlueprint';
 import type { BuildingFrontageSide, LandUse } from '../../city/data-contracts/cityContracts';
 import type {
   BlockPlan,
@@ -149,7 +149,7 @@ export class BuildingGenerator {
   private getDistrict(blockX: number, blockZ: number): DistrictKind {
     const gridMax = Math.max(this.config.gridSize - 1, 1);
     const normalized = { x: blockX / gridMax, z: blockZ / gridMax };
-    return CITY_BLUEPRINT.districtRules.find((rule) => rule.matches(normalized))?.id ?? 'residential';
+    return getBlueprintDistrictForNormalizedBlock(normalized);
   }
 
   private getLotCenter(

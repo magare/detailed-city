@@ -1,6 +1,11 @@
 import type { RenderConfig } from '../config/renderConfig';
 import { cityConfig as defaultCityConfig } from '../config/cityConfig';
 import { createConfigDiagnostics, type ConfigDiagnostics } from '../config/configSchema';
+import { CITY_BLUEPRINT } from '../city/blueprint/cityBlueprint';
+import {
+  createMasterPlanDiagnostics,
+  type MasterPlanDiagnostics
+} from '../city/blueprint/master-plan/masterPlan';
 import type { CityObjectIndex, SourceType } from '../city/data-contracts/cityContracts';
 import { createGeneratedRuntimeObjectIndex } from '../city/data-contracts/generatedCityObjectIndex';
 import { createGeneratedCityObjectGroupIndex } from '../city/data-contracts/generatedCityObjectGroups';
@@ -41,6 +46,7 @@ import type { CityConfig, GeneratedCity, GeneratedRuntimeCityObject, TrafficPlan
 export interface CityDiagnostics {
   readonly schemaVersion: string;
   readonly config: ConfigDiagnostics;
+  readonly masterPlan: MasterPlanDiagnostics;
   readonly validation: GeneratedCity['validation'];
   readonly validationIssueFocus: {
     readonly issuesWithFocus: number;
@@ -76,6 +82,9 @@ export interface CityDiagnostics {
     readonly pickableObjects: number;
     readonly assetDefinitions: number;
     readonly renderBindings: number;
+    readonly masterPlanCenters: number;
+    readonly masterPlanProtectedOpenSpaces: number;
+    readonly masterPlanGrowthBoundaries: number;
     readonly districts: number;
     readonly verticalSlices: number;
     readonly blocks: number;
@@ -132,6 +141,7 @@ export function createCityDiagnostics(
     ...trafficValidation.issues
   ]);
   const objectGroups = createCityObjectGroupDiagnostics(objectGroupIndex);
+  const masterPlan = createMasterPlanDiagnostics(CITY_BLUEPRINT.masterPlan);
   const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
   const overlays = createCityOverlayDatasets(city, objectIndex);
   const picking = createCityPickingMetadataCatalog(city, traffic, objectIndex);
@@ -149,6 +159,7 @@ export function createCityDiagnostics(
   return {
     schemaVersion: city.schemaVersion,
     config,
+    masterPlan,
     validation: city.validation,
     validationIssueFocus: createValidationIssueFocusDiagnostics(city.validation.issues),
     trafficValidation,
@@ -175,6 +186,9 @@ export function createCityDiagnostics(
       pickableObjects: picking.pickableObjects.length,
       assetDefinitions: city.assetCatalog.length,
       renderBindings: city.assetBindings.length,
+      masterPlanCenters: masterPlan.centers.total,
+      masterPlanProtectedOpenSpaces: masterPlan.protectedOpenSpaces.total,
+      masterPlanGrowthBoundaries: masterPlan.growthBoundaries.total,
       districts: city.districts.length,
       verticalSlices: city.verticalSlices.length,
       blocks: city.blocks.length,

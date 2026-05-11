@@ -1,5 +1,10 @@
 import type { DistrictKind } from '../../types/city';
 import type { LandUse } from '../data-contracts/cityContracts';
+import {
+  CITY_MASTER_PLAN,
+  getMasterPlanDistrictForNormalizedBlock,
+  type CityMasterPlan
+} from './master-plan/masterPlan';
 
 export interface DistrictRule {
   readonly id: DistrictKind;
@@ -26,6 +31,7 @@ export interface PlannedWaterway {
 
 export interface CityBlueprint {
   readonly id: string;
+  readonly masterPlan: CityMasterPlan;
   readonly districtRules: readonly DistrictRule[];
   readonly publicSpaces: readonly PlannedPublicSpace[];
   readonly waterways: readonly PlannedWaterway[];
@@ -34,6 +40,7 @@ export interface CityBlueprint {
 
 export const CITY_BLUEPRINT: CityBlueprint = {
   id: 'detailed-city-v1',
+  masterPlan: CITY_MASTER_PLAN,
   districtRules: [
     {
       id: 'downtown',
@@ -106,3 +113,9 @@ export const CITY_BLUEPRINT: CityBlueprint = {
   ],
   treeSpeciesCycle: ['plane', 'rain-tree', 'jacaranda', 'palm']
 };
+
+export function getBlueprintDistrictForNormalizedBlock(normalizedBlock: { readonly x: number; readonly z: number }): DistrictKind {
+  const fallbackDistrict = CITY_BLUEPRINT.districtRules.find((rule) => rule.matches(normalizedBlock))?.id ?? 'residential';
+
+  return getMasterPlanDistrictForNormalizedBlock(CITY_BLUEPRINT.masterPlan, normalizedBlock, fallbackDistrict);
+}
