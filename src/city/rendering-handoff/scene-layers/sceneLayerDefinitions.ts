@@ -88,6 +88,7 @@ export function createCitySceneLayerDiagnostics(
       city.verticalSlices.length +
       city.cityMetrics.length +
       city.constraints.length +
+      city.hazardZones.length +
       city.resilienceGoals.length +
       city.zoningDistricts.length
   };

@@ -18,6 +18,7 @@ export type CityOverlayId =
   | 'zoning'
   | 'waterways'
   | 'waterfront'
+  | 'hazards'
   | 'city-metrics'
   | 'constraints'
   | 'resilience-goals'
@@ -70,6 +71,7 @@ export function createCityOverlayDatasets(
     createDataset('zoning', 'Zoning', 'domain-data', createZoningFeatures(city)),
     createDataset('waterways', 'Waterways', 'domain-data', createWaterwayFeatures(city)),
     createDataset('waterfront', 'Waterfront', 'domain-data', createWaterfrontFeatures(city)),
+    createDataset('hazards', 'Hazards', 'domain-data', createHazardFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
@@ -301,6 +303,32 @@ function createWaterfrontFeatures(city: GeneratedCity): CityOverlayFeature[] {
       materialHint: edge.materialHint,
       lengthMeters: edge.lengthMeters,
       widthMeters: edge.widthMeters
+    }
+  }));
+}
+
+function createHazardFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.hazardZones.map((hazard) => ({
+    id: `overlay:hazards:${hazard.id}`,
+    overlayId: 'hazards',
+    objectId: hazard.id,
+    objectKind: hazard.kind,
+    ownerDomain: hazard.ownerDomain,
+    label: hazard.name ?? hazard.id,
+    geometry: { type: 'polygon', points: hazard.boundary },
+    severity: hazard.severity === 'critical' || hazard.severity === 'high' ? 'warning' : 'info',
+    category: 'land',
+    metadata: {
+      hazardKind: hazard.hazardKind,
+      hazardSeverity: hazard.severity,
+      affectedKinds: hazard.affectedObjectKinds.join(','),
+      prohibitedKinds: hazard.prohibitedObjectKinds.join(','),
+      mitigationKinds: hazard.mitigationKinds.join(','),
+      relatedConstraints: hazard.relatedConstraintIds.length,
+      relatedWaterways: hazard.relatedWaterwayIds.length,
+      relatedZoningDistricts: hazard.relatedZoningDistrictIds.length,
+      relatedRoads: hazard.relatedRoadIds.length,
+      requiresMitigation: hazard.requiresMitigation
     }
   }));
 }

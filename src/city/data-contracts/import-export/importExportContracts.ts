@@ -227,6 +227,7 @@ export interface ProceduralSeedDomainSections {
   readonly zoningDistricts: GeneratedCity['zoningDistricts'];
   readonly cityMetrics: GeneratedCity['cityMetrics'];
   readonly constraints: GeneratedCity['constraints'];
+  readonly hazardZones: GeneratedCity['hazardZones'];
   readonly resilienceGoals: GeneratedCity['resilienceGoals'];
   readonly verticalSlices: GeneratedCity['verticalSlices'];
   readonly blocks: GeneratedCity['blocks'];
@@ -252,6 +253,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly zoningDistricts: number;
   readonly cityMetrics: number;
   readonly constraints: number;
+  readonly hazardZones: number;
   readonly resilienceGoals: number;
   readonly verticalSlices: number;
   readonly blocks: number;
@@ -355,6 +357,7 @@ export function createProceduralSeedJsonExport(
       zoningDistricts: city.zoningDistricts,
       cityMetrics: city.cityMetrics,
       constraints: city.constraints,
+      hazardZones: city.hazardZones,
       resilienceGoals: city.resilienceGoals,
       verticalSlices: city.verticalSlices,
       blocks: city.blocks,
@@ -482,6 +485,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'buildings'
     | 'cityMetrics'
     | 'constraints'
+    | 'hazardZones'
     | 'resilienceGoals'
     | 'crossings'
     | 'curbZones'
@@ -506,6 +510,7 @@ export function createProceduralSeedDomainSectionCounts(
     zoningDistricts: city.zoningDistricts.length,
     cityMetrics: city.cityMetrics.length,
     constraints: city.constraints.length,
+    hazardZones: city.hazardZones.length,
     resilienceGoals: city.resilienceGoals.length,
     verticalSlices: city.verticalSlices.length,
     blocks: city.blocks.length,
@@ -543,6 +548,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'zoningDistricts') +
     getArrayLength(city, 'cityMetrics') +
     getArrayLength(city, 'constraints') +
+    getArrayLength(city, 'hazardZones') +
     getArrayLength(city, 'resilienceGoals') +
     getArrayLength(city, 'verticalSlices') +
     getArrayLength(city, 'blocks') +

@@ -15,6 +15,7 @@ import type {
   DetailedStreetSliceContract,
   DistrictContract,
   GeospatialFrame,
+  HazardZoneContract,
   IntersectionContract,
   LandUse,
   LaneContract,
@@ -179,6 +180,8 @@ export interface DetailedStreetSlice extends DetailedStreetSliceContract {}
 
 export interface ConstraintPlan extends ConstraintContract {}
 
+export interface HazardZonePlan extends HazardZoneContract {}
+
 export interface ResilienceGoalPlan extends ResilienceGoalContract {}
 
 export interface CityMetricPlan extends CityMetricContract {}
@@ -227,6 +230,7 @@ export type GeneratedCityObject =
   | DetailedStreetSlice
   | CityMetricPlan
   | ConstraintPlan
+  | HazardZonePlan
   | ResilienceGoalPlan
   | DistrictPlan
   | ZoningDistrictPlan
@@ -266,6 +270,7 @@ export interface GeneratedCity {
   districts: DistrictPlan[];
   zoningDistricts: ZoningDistrictPlan[];
   constraints: ConstraintPlan[];
+  hazardZones: HazardZonePlan[];
   resilienceGoals: ResilienceGoalPlan[];
   cityMetrics: CityMetricPlan[];
   blocks: BlockPlan[];

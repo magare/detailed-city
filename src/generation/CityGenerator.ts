@@ -15,6 +15,7 @@ import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
 import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
+import { HazardZoneGenerator } from './land/HazardZoneGenerator';
 import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
@@ -64,6 +65,13 @@ export class CityGenerator {
       waterways,
       roads,
       parks
+    });
+    const hazardZones = new HazardZoneGenerator().create({
+      bounds,
+      constraints,
+      roads,
+      waterways,
+      zoningDistricts: landAndBuildings.zoningDistricts
     });
     const parkTrees = terrainGenerator.generateTreePlantings(parks);
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
@@ -136,6 +144,7 @@ export class CityGenerator {
       zoningDistricts: landAndBuildings.zoningDistricts,
       cityMetrics,
       constraints,
+      hazardZones,
       resilienceGoals,
       blocks: administrativeLand.blocks,
       verticalSlices: verticalSlicesWithCurbs,

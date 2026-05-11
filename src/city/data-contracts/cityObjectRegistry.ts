@@ -44,6 +44,7 @@ const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|regulatory-sign|street-name-sign|wayfinding-sign)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
 const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
+const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|landslide-risk|restricted-area)`;
 const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
@@ -69,6 +70,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('district', ['district-<district-slug>'], [exact(String.raw`district-${NAMED_ID}`)], none()),
   entry('economy-anchor', ['economy-anchor-<slug>'], [exact(String.raw`economy-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
   entry('facade', ['facade-active-frontage-<building-id>-<road-id>'], [exact(String.raw`facade-active-frontage-${BUILDING_ID}-${ROAD_ID}`)], required(['building'])),
+  entry('hazard-zone', ['hazard-zone-<hazard-kind>-<slug>'], [exact(String.raw`hazard-zone-${HAZARD_ZONE_KIND}-${NAMED_ID}`)], none()),
   entry('intersection', ['intersection-v<vertical-index>-h<horizontal-index>'], [exact(INTERSECTION_ID)], none()),
   entry('lane', ['<road-id>-lane-<index>'], [exact(String.raw`${ROAD_ID}-lane-\d+`)], required(['road-segment'])),
   entry(

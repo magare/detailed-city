@@ -46,7 +46,15 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'overlays',
     name: 'Overlays Render Layer',
-    objectKinds: ['administrative-boundary', 'city-metric', 'constraint', 'resilience-goal', 'vertical-slice', 'zoning-district'] as const
+    objectKinds: [
+      'administrative-boundary',
+      'city-metric',
+      'constraint',
+      'hazard-zone',
+      'resilience-goal',
+      'vertical-slice',
+      'zoning-district'
+    ] as const
   }
 ] as const;
 

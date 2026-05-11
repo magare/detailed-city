@@ -27,6 +27,8 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Blocks');
   expect(panelText).toContain('Constraints');
   expect(panelText).toContain('11 rules, 3 no-build');
+  expect(panelText).toContain('Hazards');
+  expect(panelText).toContain('6 zones, 1 critical, 2 no-build');
   expect(panelText).toContain('Resilience');
   expect(panelText).toContain('7 goals, 3 shelters');
   expect(panelText).toContain('Metrics');
@@ -36,7 +38,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('4848/4848 tagged');
+  expect(panelText).toContain('4854/4854 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 932 markings');
   expect(panelText).toContain('City');
@@ -44,18 +46,18 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Assets');
   expect(panelText).toContain('31 assets, 31 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 3909 objects');
+  expect(panelText).toContain('6 formats, 3915 objects');
   expect(panelText).toContain('Registry');
-  expect(panelText).toContain('33 kinds');
+  expect(panelText).toContain('34 kinds');
   expect(panelText).toContain('Groups');
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
   expect(panelText).toContain(
-    '12: administrative-boundaries, districts, zoning, waterways, waterfront, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
+    '13: administrative-boundaries, districts, zoning, waterways, waterfront, hazards, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
   );
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');
-  expect(panelText).toContain('33 policies');
+  expect(panelText).toContain('34 policies');
   expect(panelText).toContain('Performance');
   expect(panelText).toContain('Frame');
   await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');

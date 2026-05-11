@@ -53,6 +53,7 @@ export interface CityDiagnostics {
   readonly zoningModel: ZoningModelDiagnostics;
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly waterfrontModel: WaterfrontModelDiagnostics;
+  readonly hazardLayer: HazardLayerDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
@@ -118,6 +119,10 @@ export interface CityDiagnostics {
     readonly waterfrontPublicAccessEdges: number;
     readonly waterfrontFloodProtectionEdges: number;
     readonly waterfrontPiers: number;
+    readonly hazardZones: number;
+    readonly criticalHazards: number;
+    readonly noBuildHazards: number;
+    readonly mitigationHazards: number;
     readonly districtUseMixRules: number;
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
@@ -236,6 +241,18 @@ export interface WaterfrontModelDiagnostics {
   readonly materialHints: readonly string[];
 }
 
+export interface HazardLayerDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly bySeverity: Readonly<Record<string, number>>;
+  readonly criticalHazards: number;
+  readonly noBuildHazards: number;
+  readonly mitigationRequiredHazards: number;
+  readonly relatedWaterwayHazards: number;
+  readonly relatedZoningHazards: number;
+  readonly mitigationKinds: readonly string[];
+}
+
 export interface ConstraintLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -291,6 +308,7 @@ export function createCityDiagnostics(
   const zoningModel = createZoningModelDiagnostics(city);
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
+  const hazardLayer = createHazardLayerDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
@@ -319,6 +337,7 @@ export function createCityDiagnostics(
     zoningModel,
     waterwayNetwork,
     waterfrontModel,
+    hazardLayer,
     districtCharacter,
     cityMetrics,
     constraintLayer,
@@ -375,6 +394,10 @@ export function createCityDiagnostics(
       waterfrontPublicAccessEdges: waterfrontModel.publicAccessEdges,
       waterfrontFloodProtectionEdges: waterfrontModel.floodProtectionEdges,
       waterfrontPiers: waterfrontModel.piers,
+      hazardZones: hazardLayer.total,
+      criticalHazards: hazardLayer.criticalHazards,
+      noBuildHazards: hazardLayer.noBuildHazards,
+      mitigationHazards: hazardLayer.mitigationRequiredHazards,
       districtUseMixRules: districtCharacter.useMixRules,
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
@@ -615,6 +638,33 @@ function createWaterfrontModelDiagnostics(city: GeneratedCity): WaterfrontModelD
     floodProtectionEdges: city.waterfrontEdges.filter((edge) => edge.floodProtection.kind !== 'none').length,
     piers: city.waterfrontEdges.filter((edge) => edge.waterfrontKind === 'pier').length,
     materialHints: [...new Set(city.waterfrontEdges.map((edge) => edge.materialHint))].sort()
+  };
+}
+
+function createHazardLayerDiagnostics(city: GeneratedCity): HazardLayerDiagnostics {
+  const byKind: Record<string, number> = {};
+  const bySeverity: Record<string, number> = {};
+  const mitigationKinds = new Set<string>();
+
+  for (const hazard of city.hazardZones) {
+    byKind[hazard.hazardKind] = (byKind[hazard.hazardKind] ?? 0) + 1;
+    bySeverity[hazard.severity] = (bySeverity[hazard.severity] ?? 0) + 1;
+
+    for (const mitigationKind of hazard.mitigationKinds) {
+      mitigationKinds.add(mitigationKind);
+    }
+  }
+
+  return {
+    total: city.hazardZones.length,
+    byKind,
+    bySeverity,
+    criticalHazards: city.hazardZones.filter((hazard) => hazard.severity === 'critical').length,
+    noBuildHazards: city.hazardZones.filter((hazard) => hazard.prohibitedObjectKinds.length > 0).length,
+    mitigationRequiredHazards: city.hazardZones.filter((hazard) => hazard.requiresMitigation).length,
+    relatedWaterwayHazards: city.hazardZones.filter((hazard) => hazard.relatedWaterwayIds.length > 0).length,
+    relatedZoningHazards: city.hazardZones.filter((hazard) => hazard.relatedZoningDistrictIds.length > 0).length,
+    mitigationKinds: [...mitigationKinds].sort()
   };
 }
 

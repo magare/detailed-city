@@ -136,6 +136,10 @@ export class DebugPanel {
         `${diagnostics.waterfrontModel.total} edges, ${diagnostics.waterfrontModel.publicAccessEdges} public, ${diagnostics.waterfrontModel.piers} piers`
       ),
       createMetric(
+        'Hazards',
+        `${diagnostics.hazardLayer.total} zones, ${diagnostics.hazardLayer.criticalHazards} critical, ${diagnostics.hazardLayer.noBuildHazards} no-build`
+      ),
+      createMetric(
         'Constraints',
         `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
       ),

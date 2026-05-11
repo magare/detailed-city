@@ -67,6 +67,7 @@ test('procedural seed export is deterministic JSON without renderer-only fields'
   expect(firstExport.domainSectionCounts).toMatchObject({
     districts: 5,
     constraints: 11,
+    hazardZones: 6,
     roads: 26,
     lanes: 72,
     sidewalks: 52,

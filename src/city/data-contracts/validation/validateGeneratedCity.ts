@@ -1,9 +1,11 @@
 import type {
   AssetDefinition,
   AssetFormat,
+  CityId,
   CityObjectKind,
   ConstraintKind,
   GeospatialFrame,
+  HazardMitigationKind,
   Point2D,
   Point3D,
   Polygon2D,
@@ -14,6 +16,7 @@ import type {
 import {
   CITY_ADMINISTRATIVE_BOUNDARY_KINDS,
   CITY_CONSTRAINT_KINDS,
+  CITY_HAZARD_ZONE_KINDS,
   CITY_LOD_TIERS,
   CITY_METRIC_KINDS,
   CITY_RESILIENCE_GOAL_KINDS,
@@ -40,6 +43,7 @@ type GeneratedCityForValidation = Pick<
   | 'curbZones'
   | 'districts'
   | 'geospatial'
+  | 'hazardZones'
   | 'intersections'
   | 'lodPolicy'
   | 'objectIndex'
@@ -62,6 +66,7 @@ type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrati
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
+type ValidationHazardZone = GeneratedCityForValidation['hazardZones'][number];
 type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][number];
 type ValidationWaterfrontEdge = GeneratedCityForValidation['waterfrontEdges'][number];
 type ValidationWaterway = GeneratedCityForValidation['waterways'][number];
@@ -187,6 +192,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateZoningDistricts(city, issues);
   validateWaterways(city, issues);
   validateWaterfrontEdges(city, issues);
+  validateHazardZones(city, issues);
 
   for (const road of city.roads) {
     if (road.length <= 0 || road.width <= 0 || road.laneCount <= 0 || road.widthMeters <= 0) {
@@ -1241,6 +1247,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   validateConstraints(city, issues, { parcelsById, roadsById });
+  validateHazardZoneConflicts(city, issues);
   validateResilienceGoals(city, issues, { roadsById });
 
   const activeFrontageBuildingIds = new Set(city.activeFrontages.map((frontage) => frontage.buildingId));
@@ -2282,6 +2289,11 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
     }
   }
 
+  for (const hazardZone of city.hazardZones) {
+    validatePoint2D(city.geospatial, hazardZone.id, 'focusPoint', hazardZone.focusPoint, issues);
+    validatePolygon2D(city.geospatial, hazardZone.id, 'boundary', hazardZone.boundary, issues);
+  }
+
   for (const tree of city.trees) {
     validatePoint2D(city.geospatial, tree.id, 'center', tree.center, issues);
     validateHeightValue(city.geospatial, tree.id, 'height', tree.height, issues);
@@ -3271,6 +3283,171 @@ function createWaterfrontIssue(
       edge.center,
       `Regenerate ${edge.id} from current waterway edge, dock, public realm, and road references.`
     ),
+    message
+  };
+}
+
+const VALID_HAZARD_MITIGATION_KINDS = [
+  'access-control',
+  'cooling-canopy',
+  'flood-proofing',
+  'remediation',
+  'setback',
+  'slope-stabilization'
+] as const satisfies readonly HazardMitigationKind[];
+
+function validateHazardZones(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const knownObjectKinds = new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind));
+
+  for (const hazard of city.hazardZones) {
+    if (!(CITY_HAZARD_ZONE_KINDS as readonly string[]).includes(hazard.hazardKind)) {
+      issues.push(createHazardIssue(hazard, 'invalid-kind', `Hazard zone ${hazard.id} uses unknown kind ${hazard.hazardKind}.`));
+    }
+
+    if (hazard.boundary.length < 4) {
+      issues.push(createHazardIssue(hazard, 'invalid-boundary', `Hazard zone ${hazard.id} must expose a polygon boundary with at least four points.`));
+    }
+
+    if (hazard.affectedObjectKinds.length === 0) {
+      issues.push(createHazardIssue(hazard, 'missing-affected-kinds', `Hazard zone ${hazard.id} must declare affected object kinds.`));
+    }
+
+    for (const objectKind of [...hazard.affectedObjectKinds, ...hazard.prohibitedObjectKinds]) {
+      if (!knownObjectKinds.has(objectKind)) {
+        issues.push(
+          createHazardIssue(
+            hazard,
+            `unknown-object-kind-${toIssueIdToken(objectKind)}`,
+            `Hazard zone ${hazard.id} references unknown object kind ${objectKind}.`
+          )
+        );
+      }
+    }
+
+    for (const prohibitedObjectKind of hazard.prohibitedObjectKinds) {
+      if (!hazard.affectedObjectKinds.includes(prohibitedObjectKind)) {
+        issues.push(
+          createHazardIssue(
+            hazard,
+            `unaffected-prohibited-kind-${toIssueIdToken(prohibitedObjectKind)}`,
+            `Hazard zone ${hazard.id} prohibits ${prohibitedObjectKind} without listing it as affected.`
+          )
+        );
+      }
+    }
+
+    for (const mitigationKind of hazard.mitigationKinds) {
+      if (!(VALID_HAZARD_MITIGATION_KINDS as readonly string[]).includes(mitigationKind)) {
+        issues.push(
+          createHazardIssue(
+            hazard,
+            `invalid-mitigation-${toIssueIdToken(mitigationKind)}`,
+            `Hazard zone ${hazard.id} uses unknown mitigation ${mitigationKind}.`
+          )
+        );
+      }
+    }
+
+    if (hazard.requiresMitigation && hazard.mitigationKinds.length === 0) {
+      issues.push(createHazardIssue(hazard, 'missing-mitigation', `Hazard zone ${hazard.id} requires mitigation but lists no mitigation kinds.`));
+    }
+
+    validateHazardReferences(city, hazard, issues);
+  }
+}
+
+function validateHazardReferences(
+  city: GeneratedCityForValidation,
+  hazard: ValidationHazardZone,
+  issues: ValidationIssue[]
+): void {
+  for (const constraintId of hazard.relatedConstraintIds) {
+    validateHazardReference(city, hazard, constraintId, 'constraint', issues);
+  }
+
+  for (const waterwayId of hazard.relatedWaterwayIds) {
+    validateHazardReference(city, hazard, waterwayId, 'waterway', issues);
+  }
+
+  for (const zoningDistrictId of hazard.relatedZoningDistrictIds) {
+    validateHazardReference(city, hazard, zoningDistrictId, 'zoning-district', issues);
+  }
+
+  for (const roadId of hazard.relatedRoadIds) {
+    validateHazardReference(city, hazard, roadId, 'road-segment', issues);
+  }
+}
+
+function validateHazardReference(
+  city: GeneratedCityForValidation,
+  hazard: ValidationHazardZone,
+  objectId: CityId,
+  expectedKind: CityObjectKind,
+  issues: ValidationIssue[]
+): void {
+  const object = city.objectIndex.objectsById[objectId];
+
+  if (!object || object.kind !== expectedKind) {
+    issues.push(
+      createHazardIssue(
+        hazard,
+        `missing-${expectedKind}-${toIssueIdToken(objectId)}`,
+        `Hazard zone ${hazard.id} references missing ${expectedKind} ${objectId}.`
+      )
+    );
+  }
+}
+
+function validateHazardZoneConflicts(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  for (const hazard of city.hazardZones) {
+    if (hazard.prohibitedObjectKinds.includes('parcel')) {
+      for (const parcel of city.parcels) {
+        if (isPointInsidePolygon(parcel.center, hazard.boundary)) {
+          issues.push(createHazardConflictIssue(hazard, parcel.id, parcel.center, parcel.boundary));
+        }
+      }
+    }
+
+    if (hazard.prohibitedObjectKinds.includes('building')) {
+      for (const building of city.buildings) {
+        if (isPointInsidePolygon(building.center, hazard.boundary) || polygonsIntersect(building.footprint, hazard.boundary)) {
+          issues.push(createHazardConflictIssue(hazard, building.id, building.center, building.footprint));
+        }
+      }
+    }
+  }
+}
+
+function createHazardConflictIssue(
+  hazard: ValidationHazardZone,
+  targetObjectId: CityId,
+  affectedPoint: Point2D,
+  affectedBoundary: Polygon2D
+): ValidationIssue {
+  return {
+    id: `hazard-conflict-${toIssueIdToken(hazard.id)}-${toIssueIdToken(targetObjectId)}`,
+    severity: 'error',
+    category: 'land',
+    objectId: hazard.id,
+    affectedPoint,
+    affectedBoundary,
+    suggestedFix: `Move ${targetObjectId} outside ${hazard.name ?? hazard.id}, reduce the hazard boundary, or remove ${targetObjectId}'s kind from prohibitedObjectKinds.`,
+    message: `${targetObjectId} is inside prohibited hazard zone ${hazard.id}.`
+  };
+}
+
+function createHazardIssue(
+  hazard: ValidationHazardZone,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `hazard-${issueIdSuffix}-${toIssueIdToken(hazard.id)}`,
+    severity: 'error',
+    category: 'land',
+    objectId: hazard.id,
+    affectedBoundary: hazard.boundary,
+    ...createIssueFocus(hazard.focusPoint, `Regenerate ${hazard.id} from current land, zoning, waterway, and constraint data.`),
     message
   };
 }

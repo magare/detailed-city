@@ -41,6 +41,7 @@ test('scene layer diagnostics are deterministic and match current city data', ()
       city.verticalSlices.length +
       city.cityMetrics.length +
       city.constraints.length +
+      city.hazardZones.length +
       city.resilienceGoals.length +
       city.zoningDistricts.length
   );

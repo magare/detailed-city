@@ -17,6 +17,7 @@ export type CityObjectKind =
   | 'district'
   | 'economy-anchor'
   | 'facade'
+  | 'hazard-zone'
   | 'intersection'
   | 'lane'
   | 'lane-marking'
@@ -333,6 +334,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod0',
       allowedTiers: ['lod0'],
       description: 'Planning constraints are inspectable overlay contracts that gate land, road, and building validity.'
+    },
+    {
+      objectKind: 'hazard-zone',
+      scope: 'overlay',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'Hazard zones describe flood, slope, heat, restricted, and contamination risk surfaces consumed by land validation.'
     },
     {
       objectKind: 'resilience-goal',
@@ -818,6 +826,40 @@ export interface ConstraintContract extends CityObjectBase<'constraint'> {
   readonly minSetbackMeters?: number;
   readonly minClearanceMeters?: number;
   readonly maxHeightMeters?: number;
+}
+
+export const CITY_HAZARD_ZONE_KINDS = [
+  'contamination',
+  'flood-plain',
+  'heat-exposure',
+  'landslide-risk',
+  'restricted-area'
+] as const;
+
+export type HazardZoneKind = (typeof CITY_HAZARD_ZONE_KINDS)[number];
+export type HazardSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type HazardMitigationKind =
+  | 'access-control'
+  | 'cooling-canopy'
+  | 'flood-proofing'
+  | 'remediation'
+  | 'setback'
+  | 'slope-stabilization';
+
+export interface HazardZoneContract extends CityObjectBase<'hazard-zone'> {
+  readonly hazardKind: HazardZoneKind;
+  readonly severity: HazardSeverity;
+  readonly description: string;
+  readonly boundary: Polygon2D;
+  readonly focusPoint: Point2D;
+  readonly affectedObjectKinds: readonly CityObjectKind[];
+  readonly prohibitedObjectKinds: readonly CityObjectKind[];
+  readonly mitigationKinds: readonly HazardMitigationKind[];
+  readonly relatedConstraintIds: readonly CityId[];
+  readonly relatedWaterwayIds: readonly CityId[];
+  readonly relatedZoningDistrictIds: readonly CityId[];
+  readonly relatedRoadIds: readonly CityId[];
+  readonly requiresMitigation: boolean;
 }
 
 export const CITY_RESILIENCE_GOAL_KINDS = [
