@@ -29,6 +29,7 @@ import type {
   SidewalkGraphEdgeContract,
   SidewalkGraphNodeContract,
   SidewalkContract,
+  SoilGeologyZoneContract,
   StreetFurnitureContract,
   StreetLightContract,
   StreetHierarchy,
@@ -197,6 +198,8 @@ export interface CityMetricPlan extends CityMetricContract {}
 
 export interface TopographyZonePlan extends TopographyZoneContract {}
 
+export interface SoilGeologyZonePlan extends SoilGeologyZoneContract {}
+
 export interface ParkPatch extends CityObjectBase<'park'> {
   center: Point2D;
   size: { x: number; z: number };
@@ -245,6 +248,7 @@ export type GeneratedCityObject =
   | ConstraintPlan
   | HazardZonePlan
   | TopographyZonePlan
+  | SoilGeologyZonePlan
   | ResilienceGoalPlan
   | DistrictPlan
   | ZoningDistrictPlan
@@ -289,6 +293,7 @@ export interface GeneratedCity {
   resilienceGoals: ResilienceGoalPlan[];
   cityMetrics: CityMetricPlan[];
   topographyZones: TopographyZonePlan[];
+  soilGeologyZones: SoilGeologyZonePlan[];
   blocks: BlockPlan[];
   verticalSlices: DetailedStreetSlice[];
   roads: RoadSegment[];

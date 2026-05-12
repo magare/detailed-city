@@ -57,13 +57,13 @@ Clicking or hovering a city object should eventually show:
 
 ## Overlays
 
-The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results. Current executable datasets include administrative boundaries, districts, zoning, waterways, waterfront, hazards, city metrics, constraints, resilience goals, parcels, roads, validation issues, and owner domains.
+The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results. Current executable datasets include administrative boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil/geology, city metrics, constraints, resilience goals, parcels, roads, validation issues, and owner domains.
 
 Validation issue overlay features now carry focus targets. When a validation issue provides an affected point, affected boundary, or suggested fix, the overlay feature uses that precise geometry and remediation text; otherwise it falls back to the referenced city object geometry.
 
 | Overlay | Contents |
 | --- | --- |
-| Land | Boundaries, blocks, parcels, zoning, hazards, water. |
+| Land | Boundaries, blocks, parcels, zoning, hazards, topography, soil/geology, water. |
 | Mobility | Road hierarchy, lanes, sidewalks, crossings, route graphs. |
 | Utilities | Power, water, wastewater, stormwater, telecom, service access. |
 | Public realm | Trees, lighting, furniture, signs, parks, plazas. |

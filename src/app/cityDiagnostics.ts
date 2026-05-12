@@ -75,6 +75,7 @@ export interface CityDiagnostics {
   readonly waterfrontModel: WaterfrontModelDiagnostics;
   readonly hazardLayer: HazardLayerDiagnostics;
   readonly topography: TopographyDiagnostics;
+  readonly soilGeology: SoilGeologyDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
@@ -155,6 +156,12 @@ export interface CityDiagnostics {
     readonly noBuildHazards: number;
     readonly mitigationHazards: number;
     readonly topographyZones: number;
+    readonly soilGeologyZones: number;
+    readonly contaminatedSoilZones: number;
+    readonly poorDrainageSoilZones: number;
+    readonly highRiskSoilZones: number;
+    readonly buildingsWithSoilGeology: number;
+    readonly parcelsWithSoilGeology: number;
     readonly roadsWithGroundProfiles: number;
     readonly buildingsWithGroundProfiles: number;
     readonly districtUseMixRules: number;
@@ -469,6 +476,23 @@ export interface TopographyDiagnostics {
   readonly buildingsWithGroundProfiles: number;
 }
 
+export interface SoilGeologyDiagnostics {
+  readonly total: number;
+  readonly bySoilKind: Readonly<Record<string, number>>;
+  readonly byFoundationSuitability: Readonly<Record<string, number>>;
+  readonly tunnelDifficultyKinds: readonly string[];
+  readonly drainageAssumptions: readonly string[];
+  readonly contaminatedZones: number;
+  readonly remediationRequiredZones: number;
+  readonly poorDrainageZones: number;
+  readonly highRiskZones: number;
+  readonly averageBearingCapacityKpa: number;
+  readonly zonesWithTopographyRefs: number;
+  readonly zonesWithHazardRefs: number;
+  readonly parcelsWithSoilGeology: number;
+  readonly buildingsWithSoilGeology: number;
+}
+
 export interface ConstraintLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -538,6 +562,7 @@ export function createCityDiagnostics(
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
   const hazardLayer = createHazardLayerDiagnostics(city);
   const topography = createTopographyDiagnostics(city);
+  const soilGeology = createSoilGeologyDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
@@ -579,6 +604,7 @@ export function createCityDiagnostics(
     waterfrontModel,
     hazardLayer,
     topography,
+    soilGeology,
     districtCharacter,
     cityMetrics,
     constraintLayer,
@@ -650,6 +676,12 @@ export function createCityDiagnostics(
       noBuildHazards: hazardLayer.noBuildHazards,
       mitigationHazards: hazardLayer.mitigationRequiredHazards,
       topographyZones: topography.total,
+      soilGeologyZones: soilGeology.total,
+      contaminatedSoilZones: soilGeology.contaminatedZones,
+      poorDrainageSoilZones: soilGeology.poorDrainageZones,
+      highRiskSoilZones: soilGeology.highRiskZones,
+      buildingsWithSoilGeology: soilGeology.buildingsWithSoilGeology,
+      parcelsWithSoilGeology: soilGeology.parcelsWithSoilGeology,
       roadsWithGroundProfiles: topography.roadsWithGroundProfiles,
       buildingsWithGroundProfiles: topography.buildingsWithGroundProfiles,
       districtUseMixRules: districtCharacter.useMixRules,
@@ -1370,6 +1402,41 @@ function createTopographyDiagnostics(city: GeneratedCity): TopographyDiagnostics
     ).length,
     roadsWithGroundProfiles: city.roads.filter((road) => road.groundProfile).length,
     buildingsWithGroundProfiles: city.buildings.filter((building) => building.groundElevationMeters !== undefined).length
+  };
+}
+
+function createSoilGeologyDiagnostics(city: GeneratedCity): SoilGeologyDiagnostics {
+  const bySoilKind: Record<string, number> = {};
+  const byFoundationSuitability: Record<string, number> = {};
+  const tunnelDifficultyKinds = new Set<string>();
+  const drainageAssumptions = new Set<string>();
+  let bearingCapacityTotal = 0;
+
+  for (const zone of city.soilGeologyZones) {
+    bySoilKind[zone.soilKind] = (bySoilKind[zone.soilKind] ?? 0) + 1;
+    byFoundationSuitability[zone.foundationSuitability] = (byFoundationSuitability[zone.foundationSuitability] ?? 0) + 1;
+    tunnelDifficultyKinds.add(zone.tunnelDifficulty);
+    drainageAssumptions.add(zone.drainageAssumption);
+    bearingCapacityTotal += zone.bearingCapacityKpa;
+  }
+
+  return {
+    total: city.soilGeologyZones.length,
+    bySoilKind,
+    byFoundationSuitability,
+    tunnelDifficultyKinds: [...tunnelDifficultyKinds].sort(),
+    drainageAssumptions: [...drainageAssumptions].sort(),
+    contaminatedZones: city.soilGeologyZones.filter((zone) => zone.contamination.status !== 'clean').length,
+    remediationRequiredZones: city.soilGeologyZones.filter((zone) => zone.contamination.remediationRequired).length,
+    poorDrainageZones: city.soilGeologyZones.filter(
+      (zone) => zone.drainageAssumption === 'poor-drainage' || zone.drainageAssumption === 'dewatering-required'
+    ).length,
+    highRiskZones: city.soilGeologyZones.filter((zone) => zone.groundRisk.overall === 'high' || zone.groundRisk.overall === 'critical').length,
+    averageBearingCapacityKpa: Number((bearingCapacityTotal / Math.max(1, city.soilGeologyZones.length)).toFixed(1)),
+    zonesWithTopographyRefs: city.soilGeologyZones.filter((zone) => zone.topographyZoneIds.length > 0).length,
+    zonesWithHazardRefs: city.soilGeologyZones.filter((zone) => zone.hazardZoneIds.length > 0).length,
+    parcelsWithSoilGeology: city.parcels.filter((parcel) => parcel.soilGeologyZoneIds?.length).length,
+    buildingsWithSoilGeology: city.buildings.filter((building) => building.soilGeologyZoneIds?.length).length
   };
 }
 

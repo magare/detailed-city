@@ -48,6 +48,7 @@ const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|o
 const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|landslide-risk|restricted-area)`;
 const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
 const TOPOGRAPHY_ZONE_KIND = String.raw`(?:elevation-band|slope-area|retaining-condition|buildability-area)`;
+const SOIL_GEOLOGY_KIND = String.raw`(?:alluvial-silt|engineered-fill|shallow-bedrock|sandy-loam|contaminated-fill|waterfront-clay)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -114,6 +115,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     'topography-zone',
     ['topography-zone-<zone-kind>-<index>'],
     [exact(String.raw`topography-zone-${TOPOGRAPHY_ZONE_KIND}-\d+`)],
+    none()
+  ),
+  entry(
+    'soil-geology-zone',
+    ['soil-geology-zone-<soil-kind>-<district-slug>'],
+    [exact(String.raw`soil-geology-zone-${SOIL_GEOLOGY_KIND}-${NAMED_ID}`)],
     none()
   ),
   entry('traffic-vehicle', ['traffic-vehicle-<index>'], [exact(String.raw`traffic-vehicle-\d+`)], required(['road-segment'])),

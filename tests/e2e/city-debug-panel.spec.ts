@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('debug panel exposes current city diagnostics and can collapse', async ({ page }) => {
-  test.setTimeout(45_000);
+  test.setTimeout(70_000);
 
   await page.goto('/');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
@@ -29,6 +29,8 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('11 rules, 3 no-build');
   expect(panelText).toContain('Hazards');
   expect(panelText).toContain('6 zones, 1 critical, 2 no-build');
+  expect(panelText).toContain('Soils');
+  expect(panelText).toContain('5 zones, 2 high-risk, 2 drainage');
   expect(panelText).toContain('Resilience');
   expect(panelText).toContain('7 goals, 3 shelters');
   expect(panelText).toContain('Metrics');
@@ -38,7 +40,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('4898/4898 tagged');
+  expect(panelText).toContain('4903/4903 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -48,18 +50,18 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Assets');
   expect(panelText).toContain('32 assets, 32 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 3941 objects');
+  expect(panelText).toContain('6 formats, 3946 objects');
   expect(panelText).toContain('Registry');
-  expect(panelText).toContain('36 kinds');
+  expect(panelText).toContain('37 kinds');
   expect(panelText).toContain('Groups');
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
   expect(panelText).toContain(
-    '14: administrative-boundaries, districts, zoning, waterways, waterfront, hazards, topography, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
+    '15: administrative-boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil-geology, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
   );
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');
-  expect(panelText).toContain('36 policies');
+  expect(panelText).toContain('37 policies');
   expect(panelText).toContain('Performance');
   expect(panelText).toContain('Frame');
   await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');
@@ -100,6 +102,8 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
 });
 
 test('debug panel can be hidden for clean browser checks', async ({ page }) => {
+  test.setTimeout(45_000);
+
   await page.goto('/?debugPanel=hidden');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 

@@ -57,6 +57,7 @@ Generated districts must copy their blueprint character rules into the district 
 - Parcels must sit inside blocks, carry district/block references, set `parentId` to their block, and expose frontage.
 - Excluded land such as water, parks, protected corridors, and hazards must be applied before buildings.
 - Parcel size, coverage, setbacks, and max height come from district/zoning rules.
+- Soil/geology zones are generated from district, topography, hazard, and waterway context, then referenced by parcels and buildings for foundation, drainage, tunnel, and contamination queries.
 
 ## Mobility Rules
 

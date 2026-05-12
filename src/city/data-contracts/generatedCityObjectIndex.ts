@@ -27,6 +27,7 @@ type GeneratedCityObjectSource = Pick<
   | 'resilienceGoals'
   | 'roads'
   | 'sidewalkGraph'
+  | 'soilGeologyZones'
   | 'streetFurniture'
   | 'streetLights'
   | 'trafficCalmingDevices'
@@ -47,6 +48,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.constraints,
     ...city.hazardZones,
     ...city.topographyZones,
+    ...city.soilGeologyZones,
     ...city.resilienceGoals,
     ...city.verticalSlices,
     ...city.blocks,

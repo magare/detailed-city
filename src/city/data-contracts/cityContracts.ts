@@ -29,6 +29,7 @@ export type CityObjectKind =
   | 'sidewalk'
   | 'sidewalk-graph-edge'
   | 'sidewalk-graph-node'
+  | 'soil-geology-zone'
   | 'street-furniture'
   | 'street-light'
   | 'topography-zone'
@@ -455,6 +456,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2'],
       description: 'Sidewalk graph nodes anchor pedestrian routing at network detail.'
+    },
+    {
+      objectKind: 'soil-geology-zone',
+      scope: 'terrain',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0', 'lod1'],
+      description: 'Soil and geology zones define foundation suitability, tunnel difficulty, drainage assumptions, contamination hints, and ground risk.'
     },
     {
       objectKind: 'street-furniture',
@@ -1148,6 +1156,7 @@ export interface ParcelContract extends CityObjectBase<'parcel'> {
   readonly allowedUses: readonly LandUse[];
   readonly maxHeightMeters: number;
   readonly maxCoverageRatio: number;
+  readonly soilGeologyZoneIds?: readonly CityId[];
 }
 
 export interface LaneContract extends CityObjectBase<'lane'> {
@@ -1256,6 +1265,54 @@ export interface TopographyZoneContract extends CityObjectBase<'topography-zone'
   readonly gradeLimitPercent: number;
   readonly relatedRoadIds: readonly CityId[];
   readonly relatedBuildingIds: readonly CityId[];
+}
+
+export type SoilGeologyKind =
+  | 'alluvial-silt'
+  | 'engineered-fill'
+  | 'shallow-bedrock'
+  | 'sandy-loam'
+  | 'contaminated-fill'
+  | 'waterfront-clay';
+
+export type FoundationSuitability =
+  | 'shallow-spread'
+  | 'mat-foundation'
+  | 'pile-foundation'
+  | 'restricted-remediation';
+
+export type TunnelDifficulty = 'low' | 'medium' | 'high' | 'restricted';
+export type DrainageAssumption = 'free-draining' | 'moderate-infiltration' | 'poor-drainage' | 'dewatering-required';
+export type SoilContaminationStatus = 'clean' | 'watch' | 'contaminated';
+export type GroundRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface SoilGeologyZoneContract extends CityObjectBase<'soil-geology-zone'> {
+  readonly soilKind: SoilGeologyKind;
+  readonly center: Point2D;
+  readonly boundary: Polygon2D;
+  readonly districtIds: readonly CityId[];
+  readonly topographyZoneIds: readonly CityId[];
+  readonly hazardZoneIds: readonly CityId[];
+  readonly parcelIds: readonly CityId[];
+  readonly buildingIds: readonly CityId[];
+  readonly foundationSuitability: FoundationSuitability;
+  readonly bearingCapacityKpa: number;
+  readonly settlementRisk: GroundRiskLevel;
+  readonly tunnelDifficulty: TunnelDifficulty;
+  readonly drainageAssumption: DrainageAssumption;
+  readonly permeabilityMillimetersPerHour: number;
+  readonly groundwaterDepthMeters: number;
+  readonly contamination: {
+    readonly status: SoilContaminationStatus;
+    readonly hazardZoneIds: readonly CityId[];
+    readonly remediationRequired: boolean;
+  };
+  readonly groundRisk: {
+    readonly overall: GroundRiskLevel;
+    readonly flood: GroundRiskLevel;
+    readonly slope: GroundRiskLevel;
+    readonly liquefaction: GroundRiskLevel;
+  };
 }
 
 export type IntersectionControlExpectation = 'signalized' | 'stop-controlled' | 'uncontrolled';
@@ -1657,6 +1714,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly maxFootprintGradePercent?: number;
   readonly topographyZoneIds?: readonly CityId[];
   readonly buildabilityFromLandform?: LandformBuildability;
+  readonly soilGeologyZoneIds?: readonly CityId[];
 }
 
 export type ActiveFrontageUse = Extract<LandUse, 'hospitality' | 'mixed-use' | 'retail'>;

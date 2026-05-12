@@ -16,6 +16,7 @@ import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
 import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
 import { HazardZoneGenerator } from './land/HazardZoneGenerator';
+import { SoilGeologyGenerator } from './land/SoilGeologyGenerator';
 import { TopographyGenerator } from './land/TopographyGenerator';
 import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
@@ -85,14 +86,23 @@ export class CityGenerator {
       waterways,
       zoningDistricts: landAndBuildingsWithTopography.zoningDistricts
     });
+    const soilGeology = new SoilGeologyGenerator().create({
+      bounds,
+      districts: landAndBuildingsWithTopography.districts,
+      parcels: administrativeLand.parcels,
+      buildings: landAndBuildingsWithTopography.buildings,
+      topographyZones: topography.topographyZones,
+      hazardZones,
+      waterways
+    });
     const parkTrees = terrainGenerator.generateTreePlantings(parks);
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
       roads: roadsWithTopography,
       intersections,
       crossings: pedestrianNetwork.crossings,
       sidewalkGraph: pedestrianNetwork.sidewalkGraph,
-      parcels: administrativeLand.parcels,
-      buildings: landAndBuildingsWithTopography.buildings
+      parcels: soilGeology.parcels,
+      buildings: soilGeology.buildings
     });
     const sliceTagged = applyDetailedStreetSliceTags(
       {
@@ -100,8 +110,8 @@ export class CityGenerator {
         intersections,
         crossings: pedestrianNetwork.crossings,
         sidewalkGraph: pedestrianNetwork.sidewalkGraph,
-        parcels: administrativeLand.parcels,
-        buildings: landAndBuildingsWithTopography.buildings
+        parcels: soilGeology.parcels,
+        buildings: soilGeology.buildings
       },
       verticalSlices
     );
@@ -165,6 +175,7 @@ export class CityGenerator {
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,
+      soilGeologyZones: soilGeology.soilGeologyZones,
       resilienceGoals,
       blocks: administrativeLand.blocks,
       verticalSlices: verticalSlicesWithCurbs,

@@ -16,6 +16,7 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     constraints: city.constraints.map((constraint) => withProceduralMetadata(constraint, 'blueprint-constraints')),
     hazardZones: city.hazardZones.map((hazard) => withProceduralMetadata(hazard, 'land-hazards')),
     topographyZones: city.topographyZones.map((zone) => withProceduralMetadata(zone, 'land-topography')),
+    soilGeologyZones: city.soilGeologyZones.map((zone) => withProceduralMetadata(zone, 'land-soil-geology')),
     resilienceGoals: city.resilienceGoals.map((goal) => withProceduralMetadata(goal, 'blueprint-resilience-goals')),
     blocks: city.blocks.map((block) => withProceduralMetadata(block, 'building-blocks')),
     verticalSlices: city.verticalSlices.map((slice) => withProceduralMetadata(slice, 'detailed-street-slices')),

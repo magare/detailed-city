@@ -229,6 +229,7 @@ export interface ProceduralSeedDomainSections {
   readonly constraints: GeneratedCity['constraints'];
   readonly hazardZones: GeneratedCity['hazardZones'];
   readonly topographyZones: GeneratedCity['topographyZones'];
+  readonly soilGeologyZones: GeneratedCity['soilGeologyZones'];
   readonly resilienceGoals: GeneratedCity['resilienceGoals'];
   readonly verticalSlices: GeneratedCity['verticalSlices'];
   readonly blocks: GeneratedCity['blocks'];
@@ -257,6 +258,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly constraints: number;
   readonly hazardZones: number;
   readonly topographyZones: number;
+  readonly soilGeologyZones: number;
   readonly resilienceGoals: number;
   readonly verticalSlices: number;
   readonly blocks: number;
@@ -363,6 +365,7 @@ export function createProceduralSeedJsonExport(
       constraints: city.constraints,
       hazardZones: city.hazardZones,
       topographyZones: city.topographyZones,
+      soilGeologyZones: city.soilGeologyZones,
       resilienceGoals: city.resilienceGoals,
       verticalSlices: city.verticalSlices,
       blocks: city.blocks,
@@ -493,6 +496,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'constraints'
     | 'hazardZones'
     | 'topographyZones'
+    | 'soilGeologyZones'
     | 'resilienceGoals'
     | 'crossings'
     | 'curbZones'
@@ -520,6 +524,7 @@ export function createProceduralSeedDomainSectionCounts(
     constraints: city.constraints.length,
     hazardZones: city.hazardZones.length,
     topographyZones: city.topographyZones.length,
+    soilGeologyZones: city.soilGeologyZones.length,
     resilienceGoals: city.resilienceGoals.length,
     verticalSlices: city.verticalSlices.length,
     blocks: city.blocks.length,
@@ -560,6 +565,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'constraints') +
     getArrayLength(city, 'hazardZones') +
     getArrayLength(city, 'topographyZones') +
+    getArrayLength(city, 'soilGeologyZones') +
     getArrayLength(city, 'resilienceGoals') +
     getArrayLength(city, 'verticalSlices') +
     getArrayLength(city, 'blocks') +

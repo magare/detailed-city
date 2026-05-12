@@ -140,6 +140,10 @@ export class DebugPanel {
         `${diagnostics.hazardLayer.total} zones, ${diagnostics.hazardLayer.criticalHazards} critical, ${diagnostics.hazardLayer.noBuildHazards} no-build`
       ),
       createMetric(
+        'Soils',
+        `${diagnostics.soilGeology.total} zones, ${diagnostics.soilGeology.highRiskZones} high-risk, ${diagnostics.soilGeology.poorDrainageZones} drainage`
+      ),
+      createMetric(
         'Constraints',
         `${diagnostics.constraintLayer.total} rules, ${diagnostics.constraintLayer.noBuildRules} no-build`
       ),

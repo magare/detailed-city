@@ -82,6 +82,7 @@ The first detailed street slice is a generated `vertical-slice` object. It recor
 | Constraint | Constraint kind, priority, boundary, affected/prohibited object kinds, required/related object IDs, and optional setback, clearance, or height limits. |
 | Block | Boundary, district reference, permeability, alley/internal access flags. |
 | Parcel | Boundary, district/block references, frontage road IDs, allowed uses, max height, coverage ratio. |
+| Soil/geology zone | Boundary, district/topography/hazard references, foundation suitability, bearing capacity, settlement risk, tunnel difficulty, drainage assumptions, groundwater, contamination hints, and ground-risk metadata. |
 | Road segment | Centerline, hierarchy, street profile, width, lane and sidewalk references. |
 | Lane marking | Road/crossing/intersection references, marking subtype, center, orientation, size, surface material, and render binding. |
 | Intersection | Center point, connected road IDs, hierarchy mix, and signal/control expectation. |

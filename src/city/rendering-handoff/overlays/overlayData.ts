@@ -20,6 +20,7 @@ export type CityOverlayId =
   | 'waterfront'
   | 'hazards'
   | 'topography'
+  | 'soil-geology'
   | 'city-metrics'
   | 'constraints'
   | 'resilience-goals'
@@ -74,6 +75,7 @@ export function createCityOverlayDatasets(
     createDataset('waterfront', 'Waterfront', 'domain-data', createWaterfrontFeatures(city)),
     createDataset('hazards', 'Hazards', 'domain-data', createHazardFeatures(city)),
     createDataset('topography', 'Topography', 'domain-data', createTopographyFeatures(city)),
+    createDataset('soil-geology', 'Soil Geology', 'domain-data', createSoilGeologyFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
@@ -303,6 +305,35 @@ function createTopographyFeatures(city: GeneratedCity): CityOverlayFeature[] {
       retainingCondition: zone.retainingCondition,
       roads: zone.relatedRoadIds.length,
       buildings: zone.relatedBuildingIds.length
+    }
+  }));
+}
+
+function createSoilGeologyFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.soilGeologyZones.map((zone) => ({
+    id: `overlay:soil-geology:${zone.id}`,
+    overlayId: 'soil-geology',
+    objectId: zone.id,
+    objectKind: zone.kind,
+    ownerDomain: zone.ownerDomain,
+    label: zone.name ?? zone.id,
+    geometry: { type: 'polygon', points: zone.boundary },
+    severity: zone.groundRisk.overall === 'high' || zone.groundRisk.overall === 'critical' ? 'warning' : 'info',
+    category: 'land',
+    metadata: {
+      soilKind: zone.soilKind,
+      foundationSuitability: zone.foundationSuitability,
+      bearingCapacityKpa: zone.bearingCapacityKpa,
+      settlementRisk: zone.settlementRisk,
+      tunnelDifficulty: zone.tunnelDifficulty,
+      drainageAssumption: zone.drainageAssumption,
+      contaminationStatus: zone.contamination.status,
+      groundRisk: zone.groundRisk.overall,
+      districts: zone.districtIds.length,
+      topographyRefs: zone.topographyZoneIds.length,
+      hazardRefs: zone.hazardZoneIds.length,
+      parcels: zone.parcelIds.length,
+      buildings: zone.buildingIds.length
     }
   }));
 }

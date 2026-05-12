@@ -23,6 +23,7 @@ import type {
   Point3D,
   Polygon2D,
   RenderBinding,
+  SoilGeologyKind,
   StreetProfile,
   TravelMode,
   ValidationIssue,
@@ -67,6 +68,7 @@ type GeneratedCityForValidation = Pick<
   | 'resilienceGoals'
   | 'roads'
   | 'sidewalkGraph'
+  | 'soilGeologyZones'
   | 'streetFurniture'
   | 'streetLights'
   | 'topographyZones'
@@ -87,6 +89,7 @@ type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationHazardZone = GeneratedCityForValidation['hazardZones'][number];
 type ValidationTopographyZone = GeneratedCityForValidation['topographyZones'][number];
+type ValidationSoilGeologyZone = GeneratedCityForValidation['soilGeologyZones'][number];
 type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][number];
 type ValidationCrossing = GeneratedCityForValidation['crossings'][number];
 type ValidationIntersection = GeneratedCityForValidation['intersections'][number];
@@ -232,6 +235,18 @@ const BUILDING_ROOF_MATERIAL_ZONES = [
   'metal',
   'terrace'
 ] as const satisfies readonly BuildingRoofMaterialZone[];
+const SOIL_GEOLOGY_KINDS = [
+  'alluvial-silt',
+  'engineered-fill',
+  'shallow-bedrock',
+  'sandy-loam',
+  'contaminated-fill',
+  'waterfront-clay'
+] as const satisfies readonly SoilGeologyKind[];
+const FOUNDATION_SUITABILITY_KINDS = ['shallow-spread', 'mat-foundation', 'pile-foundation', 'restricted-remediation'] as const;
+const TUNNEL_DIFFICULTY_KINDS = ['low', 'medium', 'high', 'restricted'] as const;
+const DRAINAGE_ASSUMPTION_KINDS = ['free-draining', 'moderate-infiltration', 'poor-drainage', 'dewatering-required'] as const;
+const GROUND_RISK_LEVELS = ['low', 'medium', 'high', 'critical'] as const;
 const CROSSING_LOCATIONS = ['intersection', 'midblock'] as const;
 const CROSSWALK_TYPES = ['zebra', 'continental', 'raised-table'] as const;
 const CROSSING_PRIORITIES = ['signal-protected', 'pedestrian-priority', 'yield-controlled', 'uncontrolled'] as const;
@@ -311,6 +326,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateWaterfrontEdges(city, issues);
   validateHazardZones(city, issues);
   validateTopographyZones(city, issues);
+  validateSoilGeologyZones(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
   );
@@ -1972,6 +1988,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   validateBuildingTopography(city, issues);
+  validateBuildingSoilGeology(city, issues);
 
   validateConstraints(city, issues, { parcelsById, roadsById });
   validateHazardZoneConflicts(city, issues);
@@ -2880,6 +2897,108 @@ function validateTopographyZones(city: GeneratedCityForValidation, issues: Valid
   }
 }
 
+function validateSoilGeologyZones(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const districtIds = new Set(city.districts.map((district) => district.id));
+  const topographyZoneIds = new Set(city.topographyZones.map((zone) => zone.id));
+  const hazardZoneIds = new Set(city.hazardZones.map((hazard) => hazard.id));
+  const parcelIds = new Set(city.parcels.map((parcel) => parcel.id));
+  const buildingIds = new Set(city.buildings.map((building) => building.id));
+
+  if (city.soilGeologyZones.length === 0) {
+    issues.push({
+      id: 'missing-soil-geology-zones',
+      severity: 'error',
+      category: 'land',
+      message: 'Generated city must include soil and geology zones before foundation, tunnel, drainage, and hazard checks can query ground conditions.'
+    });
+  }
+
+  for (const zone of city.soilGeologyZones) {
+    if (!(SOIL_GEOLOGY_KINDS as readonly string[]).includes(zone.soilKind)) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-soil-kind', `Soil geology zone ${zone.id} uses unknown soil kind ${zone.soilKind}.`));
+    }
+
+    if (zone.boundary.length < 4) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-boundary', `Soil geology zone ${zone.id} must expose a polygon boundary.`));
+    }
+
+    if (zone.districtIds.length === 0 || zone.districtIds.some((districtId) => !districtIds.has(districtId))) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-district-reference', `Soil geology zone ${zone.id} must reference existing districts.`));
+    }
+
+    if (zone.topographyZoneIds.length === 0 || zone.topographyZoneIds.some((zoneId) => !topographyZoneIds.has(zoneId))) {
+      issues.push(
+        createSoilGeologyIssue(zone, 'invalid-topography-reference', `Soil geology zone ${zone.id} must reference existing topography zones.`)
+      );
+    }
+
+    if (zone.hazardZoneIds.some((hazardId) => !hazardZoneIds.has(hazardId))) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-hazard-reference', `Soil geology zone ${zone.id} references missing hazard zones.`));
+    }
+
+    if (zone.parcelIds.some((parcelId) => !parcelIds.has(parcelId))) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-parcel-reference', `Soil geology zone ${zone.id} references missing parcels.`));
+    }
+
+    if (zone.buildingIds.some((buildingId) => !buildingIds.has(buildingId))) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-building-reference', `Soil geology zone ${zone.id} references missing buildings.`));
+    }
+
+    if (!(FOUNDATION_SUITABILITY_KINDS as readonly string[]).includes(zone.foundationSuitability)) {
+      issues.push(
+        createSoilGeologyIssue(zone, 'invalid-foundation-suitability', `Soil geology zone ${zone.id} has invalid foundation suitability.`)
+      );
+    }
+
+    if (!(TUNNEL_DIFFICULTY_KINDS as readonly string[]).includes(zone.tunnelDifficulty)) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-tunnel-difficulty', `Soil geology zone ${zone.id} has invalid tunnel difficulty.`));
+    }
+
+    if (!(DRAINAGE_ASSUMPTION_KINDS as readonly string[]).includes(zone.drainageAssumption)) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-drainage-assumption', `Soil geology zone ${zone.id} has invalid drainage assumptions.`));
+    }
+
+    if (
+      !isFiniteNumber(zone.bearingCapacityKpa) ||
+      zone.bearingCapacityKpa < 50 ||
+      zone.bearingCapacityKpa > 800 ||
+      !isFiniteNumber(zone.permeabilityMillimetersPerHour) ||
+      zone.permeabilityMillimetersPerHour < 0 ||
+      zone.permeabilityMillimetersPerHour > 250 ||
+      !isFiniteNumber(zone.groundwaterDepthMeters) ||
+      zone.groundwaterDepthMeters < 0 ||
+      zone.groundwaterDepthMeters > 80
+    ) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-ground-metrics', `Soil geology zone ${zone.id} has invalid ground metrics.`));
+    }
+
+    const riskLevels = [
+      zone.settlementRisk,
+      zone.groundRisk.overall,
+      zone.groundRisk.flood,
+      zone.groundRisk.slope,
+      zone.groundRisk.liquefaction
+    ];
+    if (riskLevels.some((level) => !(GROUND_RISK_LEVELS as readonly string[]).includes(level))) {
+      issues.push(createSoilGeologyIssue(zone, 'invalid-risk-level', `Soil geology zone ${zone.id} has invalid ground-risk metadata.`));
+    }
+
+    const contaminationHazardIds = city.hazardZones
+      .filter((hazard) => hazard.hazardKind === 'contamination')
+      .map((hazard) => hazard.id);
+    const hasContaminationHazard = zone.contamination.hazardZoneIds.some((hazardId) => contaminationHazardIds.includes(hazardId));
+    if (
+      zone.contamination.hazardZoneIds.some((hazardId) => !hazardZoneIds.has(hazardId)) ||
+      (zone.contamination.status !== 'clean' && !hasContaminationHazard) ||
+      (zone.contamination.remediationRequired && zone.foundationSuitability !== 'restricted-remediation')
+    ) {
+      issues.push(
+        createSoilGeologyIssue(zone, 'invalid-contamination-hint', `Soil geology zone ${zone.id} has inconsistent contamination metadata.`)
+      );
+    }
+  }
+}
+
 function validateRoadGroundProfile(
   road: ValidationRoad,
   topographyZones: readonly ValidationTopographyZone[],
@@ -2997,6 +3116,36 @@ function validateBuildingTopography(city: GeneratedCityForValidation, issues: Va
         objectId: building.id,
         ...createIssueFocus(building.center, 'Reference existing topography zones from each building ground profile.'),
         message: `Building ${building.id} must reference existing topography zones.`
+      });
+    }
+  }
+}
+
+function validateBuildingSoilGeology(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const soilGeologyZoneIds = new Set(city.soilGeologyZones.map((zone) => zone.id));
+
+  for (const parcel of city.parcels) {
+    if (!parcel.soilGeologyZoneIds?.length || parcel.soilGeologyZoneIds.some((zoneId) => !soilGeologyZoneIds.has(zoneId))) {
+      issues.push({
+        id: `invalid-parcel-soil-geology-zone-reference-${parcel.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: parcel.id,
+        ...createIssueFocus(parcel.center, 'Attach each parcel to an existing soil geology zone for foundation and drainage queries.'),
+        message: `Parcel ${parcel.id} must reference existing soil geology zones.`
+      });
+    }
+  }
+
+  for (const building of city.buildings) {
+    if (!building.soilGeologyZoneIds?.length || building.soilGeologyZoneIds.some((zoneId) => !soilGeologyZoneIds.has(zoneId))) {
+      issues.push({
+        id: `invalid-building-soil-geology-zone-reference-${building.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Attach each building to an existing soil geology zone for foundation suitability queries.'),
+        message: `Building ${building.id} must reference existing soil geology zones.`
       });
     }
   }
@@ -3726,6 +3875,19 @@ function createTopographyIssue(zone: ValidationTopographyZone, suffix: string, m
   };
 }
 
+function createSoilGeologyIssue(zone: ValidationSoilGeologyZone, suffix: string, message: string): ValidationIssue {
+  return {
+    id: `soil-geology-${suffix}-${toIssueIdToken(zone.id)}`,
+    severity: 'error',
+    category: 'land',
+    objectId: zone.id,
+    affectedPoint: zone.center,
+    affectedBoundary: zone.boundary,
+    suggestedFix: `Regenerate ${zone.id} from deterministic land soil and geology rules.`,
+    message
+  };
+}
+
 function validateGeospatialFrame(geospatial: GeospatialFrame, issues: ValidationIssue[]): void {
   if (geospatial.unit !== 'meter' || geospatial.coordinateSystem !== 'local-xz') {
     issues.push({
@@ -3940,6 +4102,11 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
   for (const hazardZone of city.hazardZones) {
     validatePoint2D(city.geospatial, hazardZone.id, 'focusPoint', hazardZone.focusPoint, issues);
     validatePolygon2D(city.geospatial, hazardZone.id, 'boundary', hazardZone.boundary, issues);
+  }
+
+  for (const soilGeologyZone of city.soilGeologyZones) {
+    validatePoint2D(city.geospatial, soilGeologyZone.id, 'center', soilGeologyZone.center, issues);
+    validatePolygon2D(city.geospatial, soilGeologyZone.id, 'boundary', soilGeologyZone.boundary, issues);
   }
 
   for (const tree of city.trees) {

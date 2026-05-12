@@ -57,6 +57,7 @@ test('constraint layer is deterministic, indexed, and visible in overlays', () =
     'waterfront',
     'hazards',
     'topography',
+    'soil-geology',
     'city-metrics',
     'constraints',
     'resilience-goals',
