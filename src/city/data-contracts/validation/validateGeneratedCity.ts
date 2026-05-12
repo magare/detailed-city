@@ -1,6 +1,9 @@
 import type {
   AssetDefinition,
   AssetFormat,
+  BuildingEntranceStrategy,
+  BuildingServiceAccessProfile,
+  BuildingTypologyKind,
   CityId,
   CityObjectKind,
   ConstraintKind,
@@ -68,6 +71,7 @@ type GeneratedCityForValidation = Pick<
 >;
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
+type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
@@ -135,6 +139,32 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
 const ASSET_FORMATS = ['glb', 'gltf', 'png', 'jpg', 'webp', 'ktx2', 'hdr', 'exr', 'procedural'] as const satisfies readonly AssetFormat[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
+const BUILDING_TYPOLOGY_KINDS = [
+  'residential',
+  'office',
+  'civic',
+  'industrial',
+  'mixed-use',
+  'retail',
+  'hospitality',
+  'warehouse',
+  'utility',
+  'special-use'
+] as const satisfies readonly BuildingTypologyKind[];
+const BUILDING_ENTRANCE_STRATEGIES = [
+  'public-lobby',
+  'storefront',
+  'campus-entry',
+  'service-yard',
+  'utility-access'
+] as const satisfies readonly BuildingEntranceStrategy[];
+const BUILDING_SERVICE_ACCESS_PROFILES = [
+  'curb-loading',
+  'internal-service',
+  'yard-loading',
+  'public-service',
+  'utility-only'
+] as const satisfies readonly BuildingServiceAccessProfile[];
 const CROSSING_LOCATIONS = ['intersection', 'midblock'] as const;
 const CROSSWALK_TYPES = ['zebra', 'continental', 'raised-table'] as const;
 const CROSSING_PRIORITIES = ['signal-protected', 'pedestrian-priority', 'yield-controlled', 'uncontrolled'] as const;
@@ -1866,6 +1896,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         });
       }
     }
+
+    validateBuildingTypology(building, issues);
   }
 
   validateBuildingTopography(city, issues);
@@ -2881,6 +2913,102 @@ function validateBuildingTopography(city: GeneratedCityForValidation, issues: Va
         message: `Building ${building.id} must reference existing topography zones.`
       });
     }
+  }
+}
+
+function validateBuildingTypology(building: ValidationBuilding, issues: ValidationIssue[]): void {
+  const typology = building.typology;
+
+  if (!typology) {
+    issues.push({
+      id: `missing-building-typology-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, `Assign ${building.id} a typology derived from its zoning and primary use.`),
+      message: `Building ${building.id} must carry a typology contract.`
+    });
+    return;
+  }
+
+  if (
+    !typology.typologyId ||
+    !BUILDING_TYPOLOGY_KINDS.includes(typology.kind) ||
+    typology.typologyId !== `building-typology-${typology.kind}`
+  ) {
+    issues.push({
+      id: `invalid-building-typology-kind-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Use a registered building typology kind and stable building-typology-* id.'),
+      message: `Building ${building.id} has an invalid typology kind or id.`
+    });
+  }
+
+  if (!building.uses.includes(typology.primaryUse) || typology.defaultUses.some((use) => !building.uses.includes(use))) {
+    issues.push({
+      id: `invalid-building-typology-uses-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Regenerate typology defaults from the building uses selected by zoning.'),
+      message: `Building ${building.id} typology uses must match the generated building uses.`
+    });
+  }
+
+  const [minHeightMeters, maxHeightMeters] = typology.heightRangeMeters;
+  if (
+    minHeightMeters <= 0 ||
+    maxHeightMeters < minHeightMeters ||
+    building.heightMeters < minHeightMeters - 0.001 ||
+    building.heightMeters > maxHeightMeters + 0.001
+  ) {
+    issues.push({
+      id: `building-height-outside-typology-${building.id}`,
+      severity: 'warning',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Select a typology height range that contains the generated building height.'),
+      message: `Building ${building.id} height must fit its ${typology.kind} typology range.`
+    });
+  }
+
+  if (typology.typicalFloorHeightMeters <= 0) {
+    issues.push({
+      id: `invalid-building-typology-floor-height-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Use a positive typical floor height for typology-derived floor counts.'),
+      message: `Building ${building.id} typology must define a positive typical floor height.`
+    });
+  }
+
+  if (building.facadeGrammarId !== typology.facadeGrammarId || building.roofGrammarId !== typology.roofGrammarId) {
+    issues.push({
+      id: `building-grammar-mismatch-typology-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Use typology facade and roof grammar IDs on the building contract.'),
+      message: `Building ${building.id} facade and roof grammar IDs must come from its typology defaults.`
+    });
+  }
+
+  if (
+    !BUILDING_ENTRANCE_STRATEGIES.includes(typology.entranceStrategy) ||
+    !BUILDING_SERVICE_ACCESS_PROFILES.includes(typology.serviceAccess) ||
+    !typology.scheduleProfileId
+  ) {
+    issues.push({
+      id: `invalid-building-typology-defaults-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Set typology entrance, service, and schedule defaults from the typology rule table.'),
+      message: `Building ${building.id} typology must define entrance, service, and schedule defaults.`
+    });
   }
 }
 

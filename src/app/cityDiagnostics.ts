@@ -6,7 +6,7 @@ import {
   createMasterPlanDiagnostics,
   type MasterPlanDiagnostics
 } from '../city/blueprint/master-plan/masterPlan';
-import type { CityObjectIndex, SourceType } from '../city/data-contracts/cityContracts';
+import type { BuildingTypologyKind, CityObjectIndex, SourceType } from '../city/data-contracts/cityContracts';
 import { createGeneratedRuntimeObjectIndex } from '../city/data-contracts/generatedCityObjectIndex';
 import { createGeneratedCityObjectGroupIndex } from '../city/data-contracts/generatedCityObjectGroups';
 import {
@@ -51,6 +51,7 @@ export interface CityDiagnostics {
   readonly blockModel: BlockModelDiagnostics;
   readonly parcelModel: ParcelModelDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
+  readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
@@ -172,6 +173,8 @@ export interface CityDiagnostics {
     readonly sidewalks: number;
     readonly parcels: number;
     readonly buildings: number;
+    readonly buildingTypologyKinds: number;
+    readonly buildingsWithTypology: number;
     readonly activeFrontages: number;
     readonly parks: number;
     readonly waterways: number;
@@ -244,6 +247,16 @@ export interface ZoningModelDiagnostics {
   readonly maxFloorAreaRatio: number;
   readonly frontageRuleCounts: Readonly<Record<string, number>>;
   readonly zoningCodes: readonly string[];
+}
+
+export interface BuildingTypologyDiagnostics {
+  readonly total: number;
+  readonly buildingsWithTypology: number;
+  readonly typologyKinds: number;
+  readonly byKind: Readonly<Partial<Record<BuildingTypologyKind, number>>>;
+  readonly storefrontEntrances: number;
+  readonly yardLoadingBuildings: number;
+  readonly scheduleProfiles: readonly string[];
 }
 
 export interface RoadNetworkDiagnostics {
@@ -419,6 +432,7 @@ export function createCityDiagnostics(
   const blockModel = createBlockModelDiagnostics(city);
   const parcelModel = createParcelModelDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
+  const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
@@ -455,6 +469,7 @@ export function createCityDiagnostics(
     blockModel,
     parcelModel,
     zoningModel,
+    buildingTypologies,
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
@@ -567,6 +582,8 @@ export function createCityDiagnostics(
       sidewalks: objectIndex.countsByKind.sidewalk ?? 0,
       parcels: city.parcels.length,
       buildings: city.buildings.length,
+      buildingTypologyKinds: buildingTypologies.typologyKinds,
+      buildingsWithTypology: buildingTypologies.buildingsWithTypology,
       activeFrontages: city.activeFrontages.length,
       parks: city.parks.length,
       waterways: city.waterways.length,
@@ -715,6 +732,43 @@ function createZoningModelDiagnostics(city: GeneratedCity): ZoningModelDiagnosti
     maxFloorAreaRatio,
     frontageRuleCounts,
     zoningCodes: city.zoningDistricts.map((zoning) => zoning.zoningCode).sort()
+  };
+}
+
+function createBuildingTypologyDiagnostics(city: GeneratedCity): BuildingTypologyDiagnostics {
+  const byKind: Partial<Record<BuildingTypologyKind, number>> = {};
+  const scheduleProfiles = new Set<string>();
+  let buildingsWithTypology = 0;
+  let storefrontEntrances = 0;
+  let yardLoadingBuildings = 0;
+
+  for (const building of city.buildings) {
+    const typology = building.typology;
+
+    if (!typology) {
+      continue;
+    }
+
+    buildingsWithTypology += 1;
+    byKind[typology.kind] = (byKind[typology.kind] ?? 0) + 1;
+    scheduleProfiles.add(typology.scheduleProfileId);
+
+    if (typology.entranceStrategy === 'storefront') {
+      storefrontEntrances += 1;
+    }
+    if (typology.serviceAccess === 'yard-loading') {
+      yardLoadingBuildings += 1;
+    }
+  }
+
+  return {
+    total: city.buildings.length,
+    buildingsWithTypology,
+    typologyKinds: Object.keys(byKind).length,
+    byKind,
+    storefrontEntrances,
+    yardLoadingBuildings,
+    scheduleProfiles: [...scheduleProfiles].sort()
   };
 }
 

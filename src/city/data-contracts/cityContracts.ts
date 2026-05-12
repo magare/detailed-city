@@ -1364,6 +1364,36 @@ export interface SidewalkGraphEdgeContract extends CityObjectBase<'sidewalk-grap
 
 export type BuildingFrontageSide = 'north' | 'east' | 'south' | 'west';
 
+export type BuildingTypologyKind =
+  | 'residential'
+  | 'office'
+  | 'civic'
+  | 'industrial'
+  | 'mixed-use'
+  | 'retail'
+  | 'hospitality'
+  | 'warehouse'
+  | 'utility'
+  | 'special-use';
+
+export type BuildingEntranceStrategy = 'public-lobby' | 'storefront' | 'campus-entry' | 'service-yard' | 'utility-access';
+
+export type BuildingServiceAccessProfile = 'curb-loading' | 'internal-service' | 'yard-loading' | 'public-service' | 'utility-only';
+
+export interface BuildingTypologyContract {
+  readonly typologyId: string;
+  readonly kind: BuildingTypologyKind;
+  readonly primaryUse: LandUse;
+  readonly defaultUses: readonly LandUse[];
+  readonly heightRangeMeters: readonly [number, number];
+  readonly typicalFloorHeightMeters: number;
+  readonly facadeGrammarId: string;
+  readonly roofGrammarId: string;
+  readonly entranceStrategy: BuildingEntranceStrategy;
+  readonly serviceAccess: BuildingServiceAccessProfile;
+  readonly scheduleProfileId: string;
+}
+
 export interface BuildingContract extends CityObjectBase<'building'> {
   readonly parcelId: CityId;
   readonly zoningDistrictId: CityId;
@@ -1371,6 +1401,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly uses: readonly LandUse[];
   readonly heightMeters: number;
   readonly floorCount: number;
+  readonly typology: BuildingTypologyContract;
   readonly facadeGrammarId: string;
   readonly roofGrammarId: string;
   readonly primaryFrontageRoadId: CityId;

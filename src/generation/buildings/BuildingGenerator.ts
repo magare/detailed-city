@@ -9,6 +9,8 @@ import type {
   BlockFrontageContract,
   BlockInternalAccessContract,
   BuildingFrontageSide,
+  BuildingTypologyContract,
+  BuildingTypologyKind,
   LandUse,
   ParcelFitContract,
   ParcelFrontagePriorityContract,
@@ -120,6 +122,8 @@ export class BuildingGenerator {
             const frontageRoadIds = this.getFrontageRoadIds(blockX, blockZ, lotX, lotZ, split);
             const primaryFrontageRoadId = frontageRoadIds[0];
             const publicEntranceIds = [`${buildingId}-entrance-primary`];
+            const buildingUses = this.selectBuildingUses(allowedUses);
+            const typology = this.createBuildingTypology(district, buildingUses, roofStyle);
             const parcelModel = this.createParcelModel({
               id,
               district,
@@ -175,11 +179,12 @@ export class BuildingGenerator {
               parcelId: id,
               zoningDistrictId: zoning.zoningDistrictId,
               footprint: rectanglePolygon(parcelModel.fit.preferredBuildingCenter, buildingSize),
-              uses: this.selectBuildingUses(allowedUses),
+              uses: buildingUses,
               heightMeters,
-              floorCount: this.getFloorCount(district, heightMeters),
-              facadeGrammarId: `${district}-facade-v1`,
-              roofGrammarId: `${roofStyle}-roof-v1`,
+              floorCount: this.getFloorCount(heightMeters, typology),
+              typology,
+              facadeGrammarId: typology.facadeGrammarId,
+              roofGrammarId: typology.roofGrammarId,
               primaryFrontageRoadId,
               primaryFrontageSide: this.getFrontageSide(primaryFrontageRoadId, blockX, blockZ),
               entranceIds: publicEntranceIds,
@@ -604,9 +609,148 @@ export class BuildingGenerator {
     return [allowedUses.find((use) => use !== 'open-space') ?? allowedUses[0] ?? 'residential'];
   }
 
-  private getFloorCount(district: DistrictKind, heightMeters: number): number {
-    const floorHeight = district === 'industrial' ? 4.5 : 3.4;
-    return Math.max(1, Math.round(heightMeters / floorHeight));
+  private createBuildingTypology(
+    district: DistrictKind,
+    uses: readonly LandUse[],
+    roofStyle: RoofStyle
+  ): BuildingTypologyContract {
+    const primaryUse = uses[0] ?? 'residential';
+    const kind = this.getBuildingTypologyKind(district, uses);
+    const typicalFloorHeightMeters = this.getTypologyFloorHeight(kind);
+    const entranceStrategy = this.getTypologyEntranceStrategy(kind);
+
+    return {
+      typologyId: `building-typology-${kind}`,
+      kind,
+      primaryUse,
+      defaultUses: [...uses],
+      heightRangeMeters: this.getTypologyHeightRange(kind, district),
+      typicalFloorHeightMeters,
+      facadeGrammarId: this.getTypologyFacadeGrammarId(kind, district),
+      roofGrammarId: this.getTypologyRoofGrammarId(kind, roofStyle),
+      entranceStrategy,
+      serviceAccess: this.getTypologyServiceAccess(kind),
+      scheduleProfileId: `schedule:${kind}:baseline`
+    };
+  }
+
+  private getBuildingTypologyKind(district: DistrictKind, uses: readonly LandUse[]): BuildingTypologyKind {
+    if (uses.includes('mixed-use')) {
+      return 'mixed-use';
+    }
+    if (uses.includes('hospitality')) {
+      return 'hospitality';
+    }
+    if (uses.includes('retail')) {
+      return 'retail';
+    }
+    if (uses.includes('office')) {
+      return 'office';
+    }
+    if (uses.includes('civic') || uses.includes('education')) {
+      return 'civic';
+    }
+    if (uses.includes('utility')) {
+      return 'utility';
+    }
+    if (uses.includes('industrial')) {
+      return district === 'industrial' ? 'industrial' : 'warehouse';
+    }
+    if (uses.includes('residential')) {
+      return 'residential';
+    }
+    return 'special-use';
+  }
+
+  private getTypologyHeightRange(kind: BuildingTypologyKind, district: DistrictKind): readonly [number, number] {
+    const districtRange = this.getDistrictHeightRange(district);
+    const typologyRange: Record<BuildingTypologyKind, readonly [number, number]> = {
+      residential: [8, 42],
+      office: [18, 92],
+      civic: [8, 48],
+      industrial: [7, 28],
+      'mixed-use': [12, 72],
+      retail: [5, 24],
+      hospitality: [12, 58],
+      warehouse: [7, 24],
+      utility: [4, 22],
+      'special-use': [6, 50]
+    };
+    const [typologyMin, typologyMax] = typologyRange[kind];
+
+    return [Math.min(districtRange[0], typologyMin), Math.max(districtRange[1], typologyMax)];
+  }
+
+  private getTypologyFloorHeight(kind: BuildingTypologyKind): number {
+    if (kind === 'industrial' || kind === 'warehouse' || kind === 'utility') {
+      return 4.5;
+    }
+    if (kind === 'retail' || kind === 'hospitality' || kind === 'civic') {
+      return 3.8;
+    }
+    if (kind === 'office' || kind === 'mixed-use') {
+      return 3.6;
+    }
+    return 3.2;
+  }
+
+  private getTypologyFacadeGrammarId(kind: BuildingTypologyKind, district: DistrictKind): string {
+    if (kind === 'mixed-use' || kind === 'retail' || kind === 'hospitality') {
+      return `${district}-active-frontage-facade-v1`;
+    }
+    if (kind === 'industrial' || kind === 'warehouse') {
+      return 'industrial-large-bay-facade-v1';
+    }
+    if (kind === 'civic') {
+      return 'civic-formal-facade-v1';
+    }
+    return `${district}-facade-v1`;
+  }
+
+  private getTypologyRoofGrammarId(kind: BuildingTypologyKind, roofStyle: RoofStyle): string {
+    if (kind === 'industrial' || kind === 'warehouse') {
+      return 'mechanical-sawtooth-roof-v1';
+    }
+    if (kind === 'civic') {
+      return 'civic-cornice-roof-v1';
+    }
+    return `${roofStyle}-roof-v1`;
+  }
+
+  private getTypologyEntranceStrategy(kind: BuildingTypologyKind): BuildingTypologyContract['entranceStrategy'] {
+    if (kind === 'mixed-use' || kind === 'retail' || kind === 'hospitality') {
+      return 'storefront';
+    }
+    if (kind === 'industrial' || kind === 'warehouse') {
+      return 'service-yard';
+    }
+    if (kind === 'civic') {
+      return 'campus-entry';
+    }
+    if (kind === 'utility') {
+      return 'utility-access';
+    }
+    return 'public-lobby';
+  }
+
+  private getTypologyServiceAccess(kind: BuildingTypologyKind): BuildingTypologyContract['serviceAccess'] {
+    if (kind === 'industrial' || kind === 'warehouse') {
+      return 'yard-loading';
+    }
+    if (kind === 'mixed-use' || kind === 'retail' || kind === 'hospitality') {
+      return 'curb-loading';
+    }
+    if (kind === 'utility') {
+      return 'utility-only';
+    }
+    if (kind === 'civic') {
+      return 'public-service';
+    }
+    return 'internal-service';
+  }
+
+  private getFloorCount(heightMeters: number, typology: BuildingTypologyContract): number {
+    return Math.max(1, Math.round(heightMeters / typology.typicalFloorHeightMeters));
   }
 
   private getBlockPermeability(district: DistrictKind): BlockPlan['permeability'] {

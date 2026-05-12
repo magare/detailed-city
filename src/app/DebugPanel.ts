@@ -190,6 +190,10 @@ export class DebugPanel {
         `${diagnostics.objectCounts.buildings} buildings, ${diagnostics.objectCounts.activeFrontages} frontages`
       ),
       createMetric(
+        'Typologies',
+        `${diagnostics.buildingTypologies.typologyKinds} kinds, ${diagnostics.buildingTypologies.storefrontEntrances} storefront, ${diagnostics.buildingTypologies.yardLoadingBuildings} yard`
+      ),
+      createMetric(
         'Assets',
         `${diagnostics.assetBindingDiagnostics.assetDefinitions} assets, ${diagnostics.assetBindingDiagnostics.renderBindings} bindings`
       ),
