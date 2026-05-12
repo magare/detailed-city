@@ -68,6 +68,7 @@ type GeneratedCityForValidation = Pick<
   | 'parcels'
   | 'parks'
   | 'parkFeatures'
+  | 'plazaZones'
   | 'resilienceGoals'
   | 'roads'
   | 'sidewalkGraph'
@@ -91,6 +92,7 @@ type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'][number];
 type ValidationPark = GeneratedCityForValidation['parks'][number];
 type ValidationParkFeature = GeneratedCityForValidation['parkFeatures'][number];
+type ValidationPlazaZone = GeneratedCityForValidation['plazaZones'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationHazardZone = GeneratedCityForValidation['hazardZones'][number];
@@ -116,6 +118,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:park-feature:seating',
   'binding:park-feature:water-feature',
   'binding:park-feature:shade',
+  'binding:plaza:zone',
   'binding:building:massing',
   'binding:building:roof-detail',
   'binding:tree:trunk',
@@ -151,6 +154,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'waterway',
   'park',
   'park-feature',
+  'plaza-zone',
   'building',
   'facade',
   'tree-planting',
@@ -2044,6 +2048,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   validateParkExpansion(city, issues, assetBindingsById);
+  validatePlazaModel(city, issues, assetBindingsById);
 
   for (const tree of city.trees) {
     if (tree.plantingContext === 'park' && (!tree.parkId || !hasObjectId(city, tree.parkId) || tree.parentId !== tree.parkId)) {
@@ -3309,6 +3314,179 @@ function createParkIssue(park: ValidationPark, issueIdSuffix: string, message: s
   };
 }
 
+function validatePlazaModel(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const zonesByPlazaId = new Map<string, ValidationPlazaZone[]>();
+
+  for (const zone of city.plazaZones) {
+    const zones = zonesByPlazaId.get(zone.plazaId) ?? [];
+    zones.push(zone);
+    zonesByPlazaId.set(zone.plazaId, zones);
+    validatePlazaZone(city, zone, issues, assetBindingsById);
+  }
+
+  const civicPlazaZones = zonesByPlazaId.get('civic-plaza') ?? [];
+  const civicPlaza = city.parks.find((park) => park.id === 'civic-plaza');
+  const civicZoneKinds = new Set(civicPlazaZones.map((zone) => zone.zoneKind));
+
+  if (civicPlaza && civicPlazaZones.length === 0) {
+    issues.push(createPlazaIssue(civicPlaza, 'missing-zones', 'Civic Plaza must expose semantic plaza zones.'));
+  }
+
+  for (const requiredKind of ['hardscape', 'event', 'active-edge', 'seating', 'shade', 'paving'] as const) {
+    if (civicPlaza && !civicZoneKinds.has(requiredKind)) {
+      issues.push(createPlazaIssue(civicPlaza, `missing-${requiredKind}`, `Civic Plaza must include a ${requiredKind} zone.`));
+    }
+  }
+
+  if (civicPlaza && !civicPlazaZones.some((zone) => zone.eventCapacityPeople >= 40)) {
+    issues.push(createPlazaIssue(civicPlaza, 'missing-event-capacity', 'Civic Plaza must include usable event capacity.'));
+  }
+}
+
+function validatePlazaZone(
+  city: GeneratedCityForValidation,
+  zone: ValidationPlazaZone,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const plaza = city.parks.find((candidate) => candidate.id === zone.plazaId);
+
+  if (!plaza || zone.parentId !== zone.plazaId) {
+    issues.push({
+      id: `plaza-zone-missing-parent-${zone.id}`,
+      severity: 'error',
+      category: 'identifier',
+      objectId: zone.id,
+      message: `Plaza zone ${zone.id} must reference parent plaza ${zone.plazaId}.`
+    });
+    return;
+  }
+
+  if (!isPointInsidePolygon(zone.center, plaza.boundary)) {
+    issues.push({
+      id: `plaza-zone-outside-plaza-${zone.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: zone.id,
+      affectedPoint: zone.center,
+      affectedBoundary: plaza.boundary,
+      suggestedFix: 'Regenerate plaza zones from the protected civic plaza boundary.',
+      message: `Plaza zone ${zone.id} center must remain inside parent plaza ${plaza.id}.`
+    });
+  }
+
+  if (zone.size.x <= 0 || zone.size.z <= 0 || zone.capacityPeople <= 0 || zone.shadeCoveragePercent < 0 || zone.shadeCoveragePercent > 100) {
+    issues.push({
+      id: `plaza-zone-invalid-metrics-${zone.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: zone.id,
+      message: `Plaza zone ${zone.id} must have positive dimensions/capacity and bounded shade coverage.`
+    });
+  }
+
+  if (zone.connectedSidewalkIds.length === 0) {
+    issues.push({
+      id: `plaza-zone-missing-sidewalk-access-${zone.id}`,
+      severity: 'error',
+      category: 'graph',
+      objectId: zone.id,
+      message: `Plaza zone ${zone.id} must connect to at least one sidewalk.`
+    });
+  }
+
+  for (const sidewalkId of zone.connectedSidewalkIds) {
+    const sidewalk = city.objectIndex.objectsById[sidewalkId];
+
+    if (!sidewalk || sidewalk.kind !== 'sidewalk') {
+      issues.push({
+        id: `plaza-zone-missing-sidewalk-${zone.id}-${sidewalkId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: zone.id,
+        message: `Plaza zone ${zone.id} references missing sidewalk ${sidewalkId}.`
+      });
+    }
+  }
+
+  for (const frontageId of zone.activeFrontageIds) {
+    const activeFrontage = city.objectIndex.objectsById[frontageId];
+
+    if (!activeFrontage || activeFrontage.kind !== 'facade') {
+      issues.push({
+        id: `plaza-zone-missing-active-frontage-${zone.id}-${frontageId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: zone.id,
+        message: `Plaza zone ${zone.id} references missing active frontage ${frontageId}.`
+      });
+    }
+  }
+
+  if ((zone.zoneKind === 'active-edge' || zone.zoneKind === 'event') && zone.activeFrontageIds.length === 0) {
+    issues.push({
+      id: `plaza-zone-missing-active-edge-${zone.id}`,
+      severity: 'error',
+      category: 'graph',
+      objectId: zone.id,
+      message: `Plaza zone ${zone.id} must link to active frontage context.`
+    });
+  }
+
+  if (zone.zoneKind === 'event' && zone.eventCapacityPeople <= 0) {
+    issues.push({
+      id: `plaza-zone-missing-event-capacity-${zone.id}`,
+      severity: 'error',
+      category: 'graph',
+      objectId: zone.id,
+      message: `Event plaza zone ${zone.id} must expose event capacity.`
+    });
+  }
+
+  for (const featureId of zone.parkFeatureIds) {
+    const feature = city.objectIndex.objectsById[featureId];
+
+    if (!feature || feature.kind !== 'park-feature') {
+      issues.push({
+        id: `plaza-zone-missing-park-feature-${zone.id}-${featureId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: zone.id,
+        message: `Plaza zone ${zone.id} references missing park feature ${featureId}.`
+      });
+    }
+  }
+
+  const binding = assetBindingsById.get(zone.assetBindingId);
+
+  if (!binding || binding.objectKind !== 'plaza-zone') {
+    issues.push({
+      id: `plaza-zone-missing-binding-${zone.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: zone.id,
+      message: `Plaza zone ${zone.id} must reference a plaza-zone render binding.`
+    });
+  }
+}
+
+function createPlazaIssue(plaza: ValidationPark, issueIdSuffix: string, message: string): ValidationIssue {
+  return {
+    id: `plaza-${issueIdSuffix}-${plaza.id}`,
+    severity: 'error',
+    category: 'graph',
+    objectId: plaza.id,
+    affectedPoint: plaza.center,
+    affectedBoundary: plaza.boundary,
+    suggestedFix: 'Regenerate plaza zones from the civic plaza public-realm rules.',
+    message
+  };
+}
+
 function validateDevelopmentPhases(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
   if (city.developmentPhases.length === 0) {
     issues.push({
@@ -4394,6 +4572,11 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
   for (const feature of city.parkFeatures) {
     validatePoint2D(city.geospatial, feature.id, 'center', feature.center, issues);
     validatePolygon2D(city.geospatial, feature.id, 'boundary', feature.boundary, issues);
+  }
+
+  for (const plazaZone of city.plazaZones) {
+    validatePoint2D(city.geospatial, plazaZone.id, 'center', plazaZone.center, issues);
+    validatePolygon2D(city.geospatial, plazaZone.id, 'boundary', plazaZone.boundary, issues);
   }
 
   for (const waterway of city.waterways) {

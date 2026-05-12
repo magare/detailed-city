@@ -21,6 +21,7 @@ import { TopographyGenerator } from './land/TopographyGenerator';
 import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
+import { PlazaGenerator } from './public-realm/PlazaGenerator';
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
 import { StreetTreeGenerator } from './public-realm/StreetTreeGenerator';
@@ -154,6 +155,11 @@ export class CityGenerator {
       parcels: sliceTagged.parcels,
       buildings: sliceTagged.buildings
     });
+    const plazaZones = new PlazaGenerator().create({
+      parks: parksWithFeatures,
+      parkFeatures,
+      activeFrontages
+    });
     const trees = [...parkTrees, ...streetTrees];
     const cityMetrics = new CityMetricGenerator(this.config).create({
       bounds,
@@ -198,6 +204,7 @@ export class CityGenerator {
       activeFrontages,
       parks: parksWithFeatures,
       parkFeatures,
+      plazaZones,
       waterways,
       waterfrontEdges,
       trees,

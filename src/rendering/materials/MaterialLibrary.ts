@@ -37,6 +37,12 @@ export class MaterialLibrary {
     roughness: 0.96
   });
 
+  readonly plazaHardscape = new THREE.MeshStandardMaterial({
+    color: 0xc8c0ad,
+    roughness: 0.8,
+    metalness: 0.03
+  });
+
   readonly treeTrunk = new THREE.MeshStandardMaterial({
     color: 0x5b3a26,
     roughness: 0.95
@@ -211,6 +217,7 @@ export class MaterialLibrary {
     this.refugeIsland.dispose();
     this.trafficCalming.dispose();
     this.park.dispose();
+    this.plazaHardscape.dispose();
     this.treeTrunk.dispose();
     this.treeCanopy.dispose();
     this.water.dispose();

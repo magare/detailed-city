@@ -42,7 +42,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('4937/4937 tagged');
+  expect(panelText).toContain('4944/4944 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -50,13 +50,15 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('12 devices, 2 curb, 15kph min');
   expect(panelText).toContain('Parks');
   expect(panelText).toContain('24 features, 6 paths, 3 connected');
+  expect(panelText).toContain('Plaza');
+  expect(panelText).toContain('6 zones, 255 event cap, 1 active edge');
   expect(panelText).toContain('583 buildings, 44 frontages');
   expect(panelText).toContain('Assets');
-  expect(panelText).toContain('39 assets, 39 bindings');
+  expect(panelText).toContain('40 assets, 40 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 3980 objects');
+  expect(panelText).toContain('6 formats, 3987 objects');
   expect(panelText).toContain('Registry');
-  expect(panelText).toContain('39 kinds');
+  expect(panelText).toContain('40 kinds');
   expect(panelText).toContain('Groups');
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
@@ -65,7 +67,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   );
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');
-  expect(panelText).toContain('39 policies');
+  expect(panelText).toContain('40 policies');
   expect(panelText).toContain('Performance');
   expect(panelText).toContain('Frame');
   await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');

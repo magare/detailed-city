@@ -160,6 +160,10 @@ export class DebugPanel {
         `${diagnostics.parkExpansion.totalFeatures} features, ${diagnostics.parkExpansion.pathFeatures} paths, ${diagnostics.parkExpansion.connectedParks} connected`
       ),
       createMetric(
+        'Plaza',
+        `${diagnostics.plazaModel.totalZones} zones, ${diagnostics.plazaModel.eventCapacityPeople} event cap, ${diagnostics.plazaModel.activeEdges} active edge`
+      ),
+      createMetric(
         'Metrics',
         `${diagnostics.cityMetrics.total} metrics, ${diagnostics.cityMetrics.passing} pass, ${diagnostics.cityMetrics.warnings} warn`
       ),

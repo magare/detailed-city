@@ -247,6 +247,7 @@ export interface ProceduralSeedDomainSections {
   readonly activeFrontages: GeneratedCity['activeFrontages'];
   readonly parks: GeneratedCity['parks'];
   readonly parkFeatures: GeneratedCity['parkFeatures'];
+  readonly plazaZones: GeneratedCity['plazaZones'];
   readonly waterways: GeneratedCity['waterways'];
   readonly waterfrontEdges: GeneratedCity['waterfrontEdges'];
   readonly trees: GeneratedCity['trees'];
@@ -281,6 +282,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly activeFrontages: number;
   readonly parks: number;
   readonly parkFeatures: number;
+  readonly plazaZones: number;
   readonly waterways: number;
   readonly waterfrontEdges: number;
   readonly trees: number;
@@ -387,6 +389,7 @@ export function createProceduralSeedJsonExport(
       activeFrontages: city.activeFrontages,
       parks: city.parks,
       parkFeatures: city.parkFeatures,
+      plazaZones: city.plazaZones,
       waterways: city.waterways,
       waterfrontEdges: city.waterfrontEdges,
       trees: city.trees
@@ -514,6 +517,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'parcels'
     | 'parks'
     | 'parkFeatures'
+    | 'plazaZones'
     | 'roads'
     | 'sidewalkGraph'
     | 'streetFurniture'
@@ -553,6 +557,7 @@ export function createProceduralSeedDomainSectionCounts(
     activeFrontages: city.activeFrontages.length,
     parks: city.parks.length,
     parkFeatures: city.parkFeatures.length,
+    plazaZones: city.plazaZones.length,
     waterways: city.waterways.length,
     waterfrontEdges: city.waterfrontEdges.length,
     trees: city.trees.length,
@@ -596,6 +601,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'activeFrontages') +
     getArrayLength(city, 'parks') +
     getArrayLength(city, 'parkFeatures') +
+    getArrayLength(city, 'plazaZones') +
     getArrayLength(city, 'waterways') +
     getArrayLength(city, 'waterfrontEdges') +
     getArrayLength(city, 'trees') +

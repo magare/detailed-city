@@ -20,11 +20,11 @@ test('asset binding diagnostics expose current fallback coverage', () => {
   expect(city.validation.issues.filter((issue) => issue.category === 'asset')).toEqual([]);
   expect(city.validation.issues.filter((issue) => issue.category === 'metadata')).toEqual([]);
   expect(diagnostics.assetBindingDiagnostics).toMatchObject({
-    assetDefinitions: 39,
-    renderBindings: 39,
-    bindingsWithAssets: 39,
+    assetDefinitions: 40,
+    renderBindings: 40,
+    bindingsWithAssets: 40,
     bindingsMissingAssets: 0,
-    bindingsWithFallbacks: 39,
+    bindingsWithFallbacks: 40,
     bindingsMissingFallbacks: 0,
     unboundAssetDefinitions: 0
   });
@@ -34,6 +34,7 @@ test('asset binding diagnostics expose current fallback coverage', () => {
       'facade',
       'lane-marking',
       'park-feature',
+      'plaza-zone',
       'road-segment',
       'street-furniture',
       'street-light',

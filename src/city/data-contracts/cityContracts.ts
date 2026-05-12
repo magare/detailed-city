@@ -25,6 +25,7 @@ export type CityObjectKind =
   | 'parcel'
   | 'park'
   | 'park-feature'
+  | 'plaza-zone'
   | 'resilience-goal'
   | 'road-segment'
   | 'sensor'
@@ -157,6 +158,32 @@ export interface ParkFeatureContract extends CityObjectBase<'park-feature'> {
   readonly connectedSidewalkIds: readonly CityId[];
   readonly capacityPeople?: number;
   readonly shadeTreeIds: readonly CityId[];
+  readonly assetBindingId: CityId;
+}
+
+export type PlazaZoneKind = 'active-edge' | 'event' | 'hardscape' | 'paving' | 'seating' | 'shade';
+export type PlazaPavingTier = 'primary' | 'secondary' | 'accent';
+export type PlazaGatheringBehavior = 'circulation' | 'linger' | 'programmed-event' | 'threshold';
+export type PlazaZoneSurface = 'stone-paver' | 'permeable-paver' | 'timber' | 'shade-canopy';
+
+export interface PlazaZoneContract extends CityObjectBase<'plaza-zone'> {
+  readonly plazaId: CityId;
+  readonly zoneKind: PlazaZoneKind;
+  readonly center: Point2D;
+  readonly size: {
+    readonly x: number;
+    readonly z: number;
+  };
+  readonly boundary: Polygon2D;
+  readonly surface: PlazaZoneSurface;
+  readonly pavingTier: PlazaPavingTier;
+  readonly gatheringBehavior: PlazaGatheringBehavior;
+  readonly connectedSidewalkIds: readonly CityId[];
+  readonly activeFrontageIds: readonly CityId[];
+  readonly parkFeatureIds: readonly CityId[];
+  readonly capacityPeople: number;
+  readonly eventCapacityPeople: number;
+  readonly shadeCoveragePercent: number;
   readonly assetBindingId: CityId;
 }
 
@@ -495,6 +522,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod1', 'lod2', 'lod3'],
       description: 'Park features describe paths, lawns, planting, sports, seating, water, and shade zones inside park boundaries.'
+    },
+    {
+      objectKind: 'plaza-zone',
+      scope: 'public-realm-prop',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod1', 'lod2', 'lod3'],
+      description: 'Plaza zones describe hardscape, seating, active edges, shade, event areas, and paving hierarchy.'
     },
     {
       objectKind: 'road-segment',

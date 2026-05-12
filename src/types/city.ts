@@ -22,6 +22,7 @@ import type {
   LaneContract,
   LaneMarkingContract,
   ParkFeatureContract,
+  PlazaZoneContract,
   PerformanceBudget,
   Point2D,
   Polygon2D,
@@ -215,6 +216,8 @@ export interface ParkPatch extends CityObjectBase<'park'> {
 
 export interface ParkFeature extends ParkFeatureContract {}
 
+export interface PlazaZone extends PlazaZoneContract {}
+
 export interface Waterway extends WaterwayContract {}
 
 export interface WaterfrontEdge extends WaterfrontEdgeContract {}
@@ -279,6 +282,7 @@ export type GeneratedCityObject =
   | ActiveFrontage
   | ParkPatch
   | ParkFeature
+  | PlazaZone
   | Waterway
   | WaterfrontEdge
   | TreePlanting;
@@ -321,6 +325,7 @@ export interface GeneratedCity {
   activeFrontages: ActiveFrontage[];
   parks: ParkPatch[];
   parkFeatures: ParkFeature[];
+  plazaZones: PlazaZone[];
   waterways: Waterway[];
   waterfrontEdges: WaterfrontEdge[];
   trees: TreePlanting[];

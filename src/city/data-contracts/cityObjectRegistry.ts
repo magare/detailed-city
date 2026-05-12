@@ -51,6 +51,7 @@ const TOPOGRAPHY_ZONE_KIND = String.raw`(?:elevation-band|slope-area|retaining-c
 const SOIL_GEOLOGY_KIND = String.raw`(?:alluvial-silt|engineered-fill|shallow-bedrock|sandy-loam|contaminated-fill|waterfront-clay)`;
 const DEVELOPMENT_PHASE_KIND = String.raw`(?:baseline|future-expansion|temporary-condition)`;
 const PARK_FEATURE_KIND = String.raw`(?:lawn|path|planting|sports|seating|water-feature|shade)`;
+const PLAZA_ZONE_KIND = String.raw`(?:active-edge|event|hardscape|paving|seating|shade)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -105,6 +106,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     'park-feature',
     ['park-feature-<park-id>-<feature-kind>-<index>'],
     [exact(String.raw`park-feature-${NAMED_ID}-${PARK_FEATURE_KIND}-\d+`)],
+    required(['park'])
+  ),
+  entry(
+    'plaza-zone',
+    ['plaza-zone-<plaza-id>-<zone-kind>-<index>'],
+    [exact(String.raw`plaza-zone-${NAMED_ID}-${PLAZA_ZONE_KIND}-\d+`)],
     required(['park'])
   ),
   entry('resilience-goal', ['resilience-goal-<slug>'], [exact(String.raw`resilience-goal-${NAMED_ID}`)], none()),

@@ -66,6 +66,7 @@ type PickableObjectSource = Pick<
   | 'buildings'
   | 'parks'
   | 'parkFeatures'
+  | 'plazaZones'
   | 'roads'
   | 'streetFurniture'
   | 'streetLights'
@@ -86,6 +87,7 @@ export function createCityPickingMetadataCatalog(
     ...city.activeFrontages,
     ...city.parks,
     ...city.parkFeatures,
+    ...city.plazaZones,
     ...city.waterways,
     ...city.waterfrontEdges,
     ...city.trees,
@@ -211,6 +213,8 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.roadId = object.id;
   } else if (object.kind === 'park') {
     references.parkId = object.id;
+  } else if (object.kind === 'plaza-zone') {
+    references.parkId = typeof record.plazaId === 'string' ? record.plazaId : object.parentId;
   } else if (object.kind === 'waterway') {
     references.waterwayId = object.id;
   } else if (object.kind === 'waterfront-edge') {

@@ -80,6 +80,7 @@ export interface CityDiagnostics {
   readonly cityMetrics: CityMetricDiagnostics;
   readonly developmentPhasing: DevelopmentPhasingDiagnostics;
   readonly parkExpansion: ParkExpansionDiagnostics;
+  readonly plazaModel: PlazaModelDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
   readonly resilienceGoals: ResilienceGoalDiagnostics;
   readonly validation: GeneratedCity['validation'];
@@ -179,6 +180,10 @@ export interface CityDiagnostics {
     readonly parkPaths: number;
     readonly parkProgramZones: number;
     readonly parkSidewalkConnections: number;
+    readonly plazaZones: number;
+    readonly plazaEventCapacity: number;
+    readonly plazaActiveEdges: number;
+    readonly plazaLinkedFrontages: number;
     readonly constraints: number;
     readonly resilienceGoals: number;
     readonly districts: number;
@@ -548,6 +553,17 @@ export interface ParkExpansionDiagnostics {
   readonly byProgram: Readonly<Record<string, number>>;
 }
 
+export interface PlazaModelDiagnostics {
+  readonly totalZones: number;
+  readonly eventZones: number;
+  readonly activeEdges: number;
+  readonly linkedActiveFrontages: number;
+  readonly eventCapacityPeople: number;
+  readonly connectedSidewalks: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly byPavingTier: Readonly<Record<string, number>>;
+}
+
 export interface ResilienceGoalDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -604,6 +620,7 @@ export function createCityDiagnostics(
   const cityMetrics = createCityMetricDiagnostics(city);
   const developmentPhasing = createDevelopmentPhasingDiagnostics(city);
   const parkExpansion = createParkExpansionDiagnostics(city);
+  const plazaModel = createPlazaModelDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
   const resilienceGoals = createResilienceGoalDiagnostics(city);
   const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
@@ -648,6 +665,7 @@ export function createCityDiagnostics(
     cityMetrics,
     developmentPhasing,
     parkExpansion,
+    plazaModel,
     constraintLayer,
     resilienceGoals,
     validation: city.validation,
@@ -738,6 +756,10 @@ export function createCityDiagnostics(
       parkPaths: parkExpansion.pathFeatures,
       parkProgramZones: parkExpansion.programZones,
       parkSidewalkConnections: parkExpansion.sidewalkConnections,
+      plazaZones: plazaModel.totalZones,
+      plazaEventCapacity: plazaModel.eventCapacityPeople,
+      plazaActiveEdges: plazaModel.activeEdges,
+      plazaLinkedFrontages: plazaModel.linkedActiveFrontages,
       constraints: city.constraints.length,
       resilienceGoals: city.resilienceGoals.length,
       districts: city.districts.length,
@@ -1605,6 +1627,37 @@ function createParkExpansionDiagnostics(city: GeneratedCity): ParkExpansionDiagn
     sidewalkConnections: sidewalkConnections.size,
     byKind,
     byProgram
+  };
+}
+
+function createPlazaModelDiagnostics(city: GeneratedCity): PlazaModelDiagnostics {
+  const byKind: Record<string, number> = {};
+  const byPavingTier: Record<string, number> = {};
+  const activeFrontages = new Set<string>();
+  const connectedSidewalks = new Set<string>();
+
+  for (const zone of city.plazaZones) {
+    byKind[zone.zoneKind] = (byKind[zone.zoneKind] ?? 0) + 1;
+    byPavingTier[zone.pavingTier] = (byPavingTier[zone.pavingTier] ?? 0) + 1;
+
+    for (const frontageId of zone.activeFrontageIds) {
+      activeFrontages.add(frontageId);
+    }
+
+    for (const sidewalkId of zone.connectedSidewalkIds) {
+      connectedSidewalks.add(`${zone.plazaId}:${sidewalkId}`);
+    }
+  }
+
+  return {
+    totalZones: city.plazaZones.length,
+    eventZones: city.plazaZones.filter((zone) => zone.zoneKind === 'event').length,
+    activeEdges: city.plazaZones.filter((zone) => zone.zoneKind === 'active-edge').length,
+    linkedActiveFrontages: activeFrontages.size,
+    eventCapacityPeople: city.plazaZones.reduce((sum, zone) => sum + zone.eventCapacityPeople, 0),
+    connectedSidewalks: connectedSidewalks.size,
+    byKind,
+    byPavingTier
   };
 }
 
