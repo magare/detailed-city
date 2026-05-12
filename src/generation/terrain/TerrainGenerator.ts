@@ -1,4 +1,5 @@
 import { CITY_BLUEPRINT } from '../../city/blueprint/cityBlueprint';
+import type { TreeSpecies } from '../../city/data-contracts/cityContracts';
 import type {
   CityBounds,
   CityConfig,
@@ -174,6 +175,7 @@ export class TerrainGenerator {
           z: park.center.z + Math.sin(angle) * radius * park.size.z * 0.42
         };
         const species = CITY_BLUEPRINT.treeSpeciesCycle[index % CITY_BLUEPRINT.treeSpeciesCycle.length];
+        const traits = createParkTreeTraits(species);
 
         trees.push({
           id: `${park.id}-tree-${index}`,
@@ -181,12 +183,21 @@ export class TerrainGenerator {
           ownerDomain: 'public-realm',
           parentId: park.id,
           plantingContext: 'park',
+          plantingForm: 'park-grove',
           parkId: park.id,
           lod: 'lod2',
           center,
           species,
-          height: species === 'palm' ? 6.8 : 6.2,
-          canopyDiameter: species === 'palm' ? 3.2 : 4.2
+          height: traits.height,
+          canopyDiameter: traits.canopyDiameter,
+          canopyClass: traits.canopyClass,
+          canopySpreadMeters: traits.canopyDiameter,
+          soilVolumeCubicMeters: traits.soilVolumeCubicMeters,
+          seasonalColor: traits.seasonalColor,
+          greenCorridorId: `green-corridor-${park.id}`,
+          greenCorridorRole: park.id === 'riverside-green' ? 'waterfront-cooling' : park.id === 'civic-plaza' ? 'civic-canopy' : 'park-grove',
+          heatMitigationScore: traits.heatMitigationScore,
+          ecologyScore: traits.ecologyScore
         });
       }
     }
@@ -338,6 +349,62 @@ function offsetPoint(
   return {
     x: center.x + size.x * offset.x,
     z: center.z + size.z * offset.z
+  };
+}
+
+function createParkTreeTraits(species: TreeSpecies): {
+  readonly height: number;
+  readonly canopyDiameter: number;
+  readonly canopyClass: TreePlanting['canopyClass'];
+  readonly soilVolumeCubicMeters: number;
+  readonly seasonalColor: TreePlanting['seasonalColor'];
+  readonly heatMitigationScore: number;
+  readonly ecologyScore: number;
+} {
+  if (species === 'palm') {
+    return {
+      height: 6.8,
+      canopyDiameter: 3.4,
+      canopyClass: 'palm',
+      soilVolumeCubicMeters: 14,
+      seasonalColor: 'evergreen',
+      heatMitigationScore: 0.52,
+      ecologyScore: 0.46
+    };
+  }
+
+  if (species === 'rain-tree') {
+    return {
+      height: 7.8,
+      canopyDiameter: 6.4,
+      canopyClass: 'broad',
+      soilVolumeCubicMeters: 24,
+      seasonalColor: 'summer-green',
+      heatMitigationScore: 0.92,
+      ecologyScore: 0.86
+    };
+  }
+
+  if (species === 'jacaranda') {
+    return {
+      height: 6.9,
+      canopyDiameter: 5.1,
+      canopyClass: 'medium',
+      soilVolumeCubicMeters: 20,
+      seasonalColor: 'spring-purple',
+      heatMitigationScore: 0.73,
+      ecologyScore: 0.78
+    };
+  }
+
+  return {
+    height: 7.1,
+    canopyDiameter: 5.4,
+    canopyClass: 'medium',
+    soilVolumeCubicMeters: 21,
+    seasonalColor: 'autumn-gold',
+    heatMitigationScore: 0.77,
+    ecologyScore: 0.72
   };
 }
 

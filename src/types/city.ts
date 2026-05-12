@@ -16,6 +16,7 @@ import type {
   DetailedStreetSliceContract,
   DistrictContract,
   GeospatialFrame,
+  GreenCorridorRole,
   HazardZoneContract,
   IntersectionContract,
   LandUse,
@@ -38,6 +39,10 @@ import type {
   StreetHierarchy,
   ParcelContract,
   TopographyZoneContract,
+  TreeCanopyClass,
+  TreePlantingForm,
+  TreeSeasonalColor,
+  TreeSpecies,
   TrafficVehicleContract,
   TrafficCalmingDeviceContract,
   ValidationResult,
@@ -224,15 +229,24 @@ export interface WaterfrontEdge extends WaterfrontEdgeContract {}
 
 export interface TreePlanting extends CityObjectBase<'tree-planting'> {
   plantingContext: 'park' | 'street';
+  plantingForm: TreePlantingForm;
   parkId?: string;
   sliceId?: string;
   roadId?: string;
   sidewalkId?: string;
   curbZoneId?: string;
   center: Point2D;
-  species: 'plane' | 'rain-tree' | 'palm' | 'jacaranda';
+  species: TreeSpecies;
   height: number;
   canopyDiameter: number;
+  canopyClass: TreeCanopyClass;
+  canopySpreadMeters: number;
+  soilVolumeCubicMeters: number;
+  seasonalColor: TreeSeasonalColor;
+  greenCorridorId: string;
+  greenCorridorRole: GreenCorridorRole;
+  heatMitigationScore: number;
+  ecologyScore: number;
   treePit?: {
     widthMeters: number;
     lengthMeters: number;

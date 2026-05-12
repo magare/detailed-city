@@ -165,6 +165,11 @@ export type PlazaZoneKind = 'active-edge' | 'event' | 'hardscape' | 'paving' | '
 export type PlazaPavingTier = 'primary' | 'secondary' | 'accent';
 export type PlazaGatheringBehavior = 'circulation' | 'linger' | 'programmed-event' | 'threshold';
 export type PlazaZoneSurface = 'stone-paver' | 'permeable-paver' | 'timber' | 'shade-canopy';
+export type TreeSpecies = 'plane' | 'rain-tree' | 'palm' | 'jacaranda';
+export type TreePlantingForm = 'street-tree' | 'park-grove' | 'raised-planter';
+export type TreeCanopyClass = 'narrow' | 'medium' | 'broad' | 'palm';
+export type TreeSeasonalColor = 'evergreen' | 'spring-purple' | 'summer-green' | 'autumn-gold';
+export type GreenCorridorRole = 'shade-corridor' | 'park-grove' | 'waterfront-cooling' | 'civic-canopy';
 
 export interface PlazaZoneContract extends CityObjectBase<'plaza-zone'> {
   readonly plazaId: CityId;

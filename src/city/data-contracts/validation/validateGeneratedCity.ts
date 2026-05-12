@@ -2068,7 +2068,9 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       const sidewalkFurnishingZone =
         sidewalk && sidewalk.kind === 'sidewalk' ? sidewalk.furnishingZoneMeters : undefined;
 
-      if (!tree.sliceId || !slicesById.has(tree.sliceId)) {
+      const isDetailedStreetTree = tree.curbZoneId !== undefined || tree.tags?.detailedStreetSliceId !== undefined;
+
+      if (isDetailedStreetTree && (!tree.sliceId || !slicesById.has(tree.sliceId))) {
         issues.push({
           id: `missing-street-tree-slice-${tree.id}`,
           severity: 'error',
@@ -2108,7 +2110,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         });
       }
 
-      if (!curbZone || curbZone.curbUse === 'no-stopping') {
+      if (tree.curbZoneId && (!curbZone || curbZone.curbUse === 'no-stopping')) {
         issues.push({
           id: `invalid-street-tree-curb-zone-${tree.id}`,
           severity: 'error',
@@ -2143,7 +2145,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         });
       }
 
-      if (tree.tags?.detailedStreetSliceId !== tree.sliceId) {
+      if (isDetailedStreetTree && tree.tags?.detailedStreetSliceId !== tree.sliceId) {
         issues.push({
           id: `missing-street-tree-slice-tag-${tree.id}`,
           severity: 'error',
@@ -2153,6 +2155,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         });
       }
     }
+
+    validatePlantingModel(tree, issues);
   }
 
   return {
@@ -2163,6 +2167,58 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
 
 function hasObjectId(city: GeneratedCityForValidation, id: string): boolean {
   return hasCityObject(city.objectIndex, id);
+}
+
+function validatePlantingModel(tree: GeneratedCityForValidation['trees'][number], issues: ValidationIssue[]): void {
+  if (!['street-tree', 'park-grove', 'raised-planter'].includes(tree.plantingForm)) {
+    issues.push({
+      id: `invalid-tree-planting-form-${tree.id}`,
+      severity: 'error',
+      category: 'config',
+      objectId: tree.id,
+      message: `Tree ${tree.id} must declare a supported planting form.`
+    });
+  }
+
+  if (tree.canopyDiameter <= 0 || tree.canopySpreadMeters <= 0 || Math.abs(tree.canopySpreadMeters - tree.canopyDiameter) > 0.001) {
+    issues.push({
+      id: `invalid-tree-canopy-${tree.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: tree.id,
+      message: `Tree ${tree.id} must expose positive canopy diameter and matching canopy spread.`
+    });
+  }
+
+  if (tree.soilVolumeCubicMeters <= 0) {
+    issues.push({
+      id: `invalid-tree-soil-volume-${tree.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: tree.id,
+      message: `Tree ${tree.id} must expose positive soil volume.`
+    });
+  }
+
+  if (!tree.greenCorridorId || !tree.greenCorridorRole) {
+    issues.push({
+      id: `missing-tree-green-corridor-${tree.id}`,
+      severity: 'error',
+      category: 'graph',
+      objectId: tree.id,
+      message: `Tree ${tree.id} must link to a green corridor.`
+    });
+  }
+
+  if (tree.heatMitigationScore < 0 || tree.heatMitigationScore > 1 || tree.ecologyScore < 0 || tree.ecologyScore > 1) {
+    issues.push({
+      id: `invalid-tree-ecology-scores-${tree.id}`,
+      severity: 'error',
+      category: 'config',
+      objectId: tree.id,
+      message: `Tree ${tree.id} heat and ecology scores must be normalized.`
+    });
+  }
 }
 
 function isPolygonWithinPolygonBounds(inner: Polygon2D, outer: Polygon2D, tolerance = 0.001): boolean {

@@ -164,6 +164,10 @@ export class DebugPanel {
         `${diagnostics.plazaModel.totalZones} zones, ${diagnostics.plazaModel.eventCapacityPeople} event cap, ${diagnostics.plazaModel.activeEdges} active edge`
       ),
       createMetric(
+        'Planting',
+        `${diagnostics.plantingModel.totalTrees} trees, ${diagnostics.plantingModel.greenCorridors} corridors, ${diagnostics.plantingModel.canopyAreaSquareMeters}m2 canopy`
+      ),
+      createMetric(
         'Metrics',
         `${diagnostics.cityMetrics.total} metrics, ${diagnostics.cityMetrics.passing} pass, ${diagnostics.cityMetrics.warnings} warn`
       ),

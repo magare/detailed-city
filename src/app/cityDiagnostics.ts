@@ -81,6 +81,7 @@ export interface CityDiagnostics {
   readonly developmentPhasing: DevelopmentPhasingDiagnostics;
   readonly parkExpansion: ParkExpansionDiagnostics;
   readonly plazaModel: PlazaModelDiagnostics;
+  readonly plantingModel: PlantingModelDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
   readonly resilienceGoals: ResilienceGoalDiagnostics;
   readonly validation: GeneratedCity['validation'];
@@ -238,6 +239,10 @@ export interface CityDiagnostics {
     readonly trees: number;
     readonly parkTrees: number;
     readonly streetTrees: number;
+    readonly planterTrees: number;
+    readonly greenCorridors: number;
+    readonly treeCanopyAreaSquareMeters: number;
+    readonly treeSoilVolumeCubicMeters: number;
     readonly streetLights: number;
     readonly streetFurniture: number;
     readonly laneMarkings: number;
@@ -564,6 +569,21 @@ export interface PlazaModelDiagnostics {
   readonly byPavingTier: Readonly<Record<string, number>>;
 }
 
+export interface PlantingModelDiagnostics {
+  readonly totalTrees: number;
+  readonly streetTrees: number;
+  readonly parkTrees: number;
+  readonly planterTrees: number;
+  readonly greenCorridors: number;
+  readonly canopyAreaSquareMeters: number;
+  readonly soilVolumeCubicMeters: number;
+  readonly averageHeatMitigationScore: number;
+  readonly averageEcologyScore: number;
+  readonly bySpecies: Readonly<Record<string, number>>;
+  readonly bySeasonalColor: Readonly<Record<string, number>>;
+  readonly byCorridorRole: Readonly<Record<string, number>>;
+}
+
 export interface ResilienceGoalDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -621,6 +641,7 @@ export function createCityDiagnostics(
   const developmentPhasing = createDevelopmentPhasingDiagnostics(city);
   const parkExpansion = createParkExpansionDiagnostics(city);
   const plazaModel = createPlazaModelDiagnostics(city);
+  const plantingModel = createPlantingModelDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
   const resilienceGoals = createResilienceGoalDiagnostics(city);
   const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
@@ -666,6 +687,7 @@ export function createCityDiagnostics(
     developmentPhasing,
     parkExpansion,
     plazaModel,
+    plantingModel,
     constraintLayer,
     resilienceGoals,
     validation: city.validation,
@@ -814,6 +836,10 @@ export function createCityDiagnostics(
       trees: city.trees.length,
       parkTrees: city.trees.filter((tree) => tree.plantingContext === 'park').length,
       streetTrees: city.trees.filter((tree) => tree.plantingContext === 'street').length,
+      planterTrees: plantingModel.planterTrees,
+      greenCorridors: plantingModel.greenCorridors,
+      treeCanopyAreaSquareMeters: plantingModel.canopyAreaSquareMeters,
+      treeSoilVolumeCubicMeters: plantingModel.soilVolumeCubicMeters,
       streetLights: city.streetLights.length,
       streetFurniture: city.streetFurniture.length,
       laneMarkings: objectIndex.countsByKind['lane-marking'] ?? 0,
@@ -1658,6 +1684,49 @@ function createPlazaModelDiagnostics(city: GeneratedCity): PlazaModelDiagnostics
     connectedSidewalks: connectedSidewalks.size,
     byKind,
     byPavingTier
+  };
+}
+
+function createPlantingModelDiagnostics(city: GeneratedCity): PlantingModelDiagnostics {
+  const bySpecies: Record<string, number> = {};
+  const bySeasonalColor: Record<string, number> = {};
+  const byCorridorRole: Record<string, number> = {};
+  const greenCorridors = new Set<string>();
+
+  for (const tree of city.trees) {
+    bySpecies[tree.species] = (bySpecies[tree.species] ?? 0) + 1;
+    bySeasonalColor[tree.seasonalColor] = (bySeasonalColor[tree.seasonalColor] ?? 0) + 1;
+    byCorridorRole[tree.greenCorridorRole] = (byCorridorRole[tree.greenCorridorRole] ?? 0) + 1;
+    greenCorridors.add(tree.greenCorridorId);
+  }
+
+  const canopyAreaSquareMeters = Math.round(
+    city.trees.reduce((sum, tree) => {
+      const radius = tree.canopySpreadMeters / 2;
+      return sum + Math.PI * radius * radius;
+    }, 0)
+  );
+  const soilVolumeCubicMeters = Math.round(city.trees.reduce((sum, tree) => sum + tree.soilVolumeCubicMeters, 0));
+  const averageHeatMitigationScore = city.trees.length === 0
+    ? 0
+    : Math.round((city.trees.reduce((sum, tree) => sum + tree.heatMitigationScore, 0) / city.trees.length) * 100) / 100;
+  const averageEcologyScore = city.trees.length === 0
+    ? 0
+    : Math.round((city.trees.reduce((sum, tree) => sum + tree.ecologyScore, 0) / city.trees.length) * 100) / 100;
+
+  return {
+    totalTrees: city.trees.length,
+    streetTrees: city.trees.filter((tree) => tree.plantingContext === 'street').length,
+    parkTrees: city.trees.filter((tree) => tree.plantingContext === 'park').length,
+    planterTrees: city.trees.filter((tree) => tree.plantingForm === 'raised-planter').length,
+    greenCorridors: greenCorridors.size,
+    canopyAreaSquareMeters,
+    soilVolumeCubicMeters,
+    averageHeatMitigationScore,
+    averageEcologyScore,
+    bySpecies,
+    bySeasonalColor,
+    byCorridorRole
   };
 }
 

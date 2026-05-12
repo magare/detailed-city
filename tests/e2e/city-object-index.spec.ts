@@ -21,7 +21,7 @@ test('generated city object index is deterministic and resolves road children', 
   expect(firstCity.objectIndex.countsByKind['vertical-slice']).toBe(1);
   expect(firstCity.objectIndex.countsByKind['city-metric']).toBe(8);
   expect(firstCity.objectIndex.countsByKind['curb-zone']).toBe(50);
-  expect(firstCity.objectIndex.countsByKind['tree-planting']).toBe(53);
+  expect(firstCity.objectIndex.countsByKind['tree-planting']).toBe(145);
   expect(firstCity.objectIndex.countsByKind['street-light']).toBe(12);
   expect(firstCity.objectIndex.countsByKind['street-furniture']).toBe(58);
   expect(firstCity.objectIndex.countsByKind.facade).toBe(44);

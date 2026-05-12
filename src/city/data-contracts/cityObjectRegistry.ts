@@ -151,7 +151,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     [exact(String.raw`traffic-calming-${ROAD_ID}-${TRAFFIC_CALMING_KIND}-\d+`)],
     required(['road-segment'])
   ),
-  entry('tree-planting', ['<park-id>-tree-<index>', 'street-tree-<road-id>-<side>-<index>'], [exact(String.raw`${NAMED_ID}-tree-\d+`), exact(String.raw`street-tree-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)], required(['park', 'sidewalk'])),
+  entry('tree-planting', ['<park-id>-tree-<index>', 'street-tree-<road-id>-<side>-<index>', 'citywide-tree-<road-id>-<side>-<index>'], [exact(String.raw`${NAMED_ID}-tree-\d+`), exact(String.raw`street-tree-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`), exact(String.raw`citywide-tree-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)], required(['park', 'sidewalk'])),
   entry('utility-edge', ['utility-edge-<slug>'], [exact(String.raw`utility-edge-${NAMED_ID}`)], optional(['utility-node'])),
   entry('utility-node', ['utility-node-<slug>'], [exact(String.raw`utility-node-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'road-segment'])),
   entry('vertical-slice', ['slice-detailed-street-<road-id>'], [exact(String.raw`slice-detailed-street-${ROAD_ID}`)], required(['road-segment'])),
