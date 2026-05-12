@@ -152,6 +152,10 @@ export class DebugPanel {
         `${diagnostics.resilienceGoals.total} goals, ${diagnostics.resilienceGoals.shelterCandidates} shelters`
       ),
       createMetric(
+        'Phasing',
+        `${diagnostics.developmentPhasing.total} phases, ${diagnostics.developmentPhasing.active} active, ${diagnostics.developmentPhasing.closureRoads} closures`
+      ),
+      createMetric(
         'Metrics',
         `${diagnostics.cityMetrics.total} metrics, ${diagnostics.cityMetrics.passing} pass, ${diagnostics.cityMetrics.warnings} warn`
       ),

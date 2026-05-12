@@ -49,6 +49,7 @@ const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|l
 const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
 const TOPOGRAPHY_ZONE_KIND = String.raw`(?:elevation-band|slope-area|retaining-condition|buildability-area)`;
 const SOIL_GEOLOGY_KIND = String.raw`(?:alluvial-silt|engineered-fill|shallow-bedrock|sandy-loam|contaminated-fill|waterfront-clay)`;
+const DEVELOPMENT_PHASE_KIND = String.raw`(?:baseline|future-expansion|temporary-condition)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -74,6 +75,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ['curb-zone-<road-id>-<side>-intersection-<index>-no-stopping', 'curb-zone-<road-id>-<side>-segment-<index>-<use>'],
     [exact(String.raw`curb-zone-${ROAD_ID}-${SIDEWALK_SIDE}-(?:intersection-\d+-no-stopping|segment-\d+-${CURB_USE})`)],
     required(['sidewalk'])
+  ),
+  entry(
+    'development-phase',
+    ['development-phase-<phase-kind>-<slug>'],
+    [exact(String.raw`development-phase-${DEVELOPMENT_PHASE_KIND}-${NAMED_ID}`)],
+    none()
   ),
   entry('district', ['district-<district-slug>'], [exact(String.raw`district-${NAMED_ID}`)], none()),
   entry('economy-anchor', ['economy-anchor-<slug>'], [exact(String.raw`economy-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),

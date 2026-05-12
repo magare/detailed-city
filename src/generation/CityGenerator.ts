@@ -20,6 +20,7 @@ import { SoilGeologyGenerator } from './land/SoilGeologyGenerator';
 import { TopographyGenerator } from './land/TopographyGenerator';
 import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
+import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
 import { StreetTreeGenerator } from './public-realm/StreetTreeGenerator';
@@ -95,6 +96,7 @@ export class CityGenerator {
       hazardZones,
       waterways
     });
+    const developmentPhases = new PhasingGenerator().create({ bounds });
     const parkTrees = terrainGenerator.generateTreePlantings(parks);
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
       roads: roadsWithTopography,
@@ -172,6 +174,7 @@ export class CityGenerator {
       districts: landAndBuildingsWithTopography.districts,
       zoningDistricts: landAndBuildingsWithTopography.zoningDistricts,
       cityMetrics,
+      developmentPhases,
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,

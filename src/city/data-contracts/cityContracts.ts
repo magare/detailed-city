@@ -14,6 +14,7 @@ export type CityObjectKind =
   | 'constraint'
   | 'crossing'
   | 'curb-zone'
+  | 'development-phase'
   | 'district'
   | 'economy-anchor'
   | 'facade'
@@ -98,6 +99,30 @@ export interface CityObjectBase<Kind extends CityObjectKind = CityObjectKind> {
   readonly lod: LodTier;
   readonly tags?: Readonly<Record<string, string | number | boolean>>;
   readonly metadata?: SourceMetadata;
+}
+
+export type DevelopmentPhaseKind = 'baseline' | 'future-expansion' | 'temporary-condition';
+export type DevelopmentPhaseStatus = 'active' | 'planned' | 'temporary' | 'completed';
+
+export interface DevelopmentPhaseContract extends CityObjectBase<'development-phase'> {
+  readonly phaseKind: DevelopmentPhaseKind;
+  readonly status: DevelopmentPhaseStatus;
+  readonly sequence: number;
+  readonly startYear: number;
+  readonly targetYear: number;
+  readonly focusPoint: Point2D;
+  readonly boundary: Polygon2D;
+  readonly description: string;
+  readonly unlocksAfterPhaseIds: readonly CityId[];
+  readonly unlocksObjectIds: readonly CityId[];
+  readonly temporaryRoadIds: readonly CityId[];
+  readonly temporaryParkIds: readonly CityId[];
+  readonly closureRoadIds: readonly CityId[];
+  readonly masterPlanGrowthBoundaryIds: readonly CityId[];
+  readonly operationsHooks: {
+    readonly closureIds: readonly CityId[];
+    readonly simulationScenarioIds: readonly CityId[];
+  };
 }
 
 export interface CityObjectIndex<ObjectType extends CityObjectBase = CityObjectBase> {
@@ -330,6 +355,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod0',
       allowedTiers: ['lod0'],
       description: 'City metrics are blueprint-owned computed scorecards for walkability, density, services, traffic, energy, emissions, and quality.'
+    },
+    {
+      objectKind: 'development-phase',
+      scope: 'overlay',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0', 'lod1'],
+      description: 'Development phases expose construction staging, temporary closures, future expansion areas, and unlock order for operations and simulation.'
     },
     {
       objectKind: 'constraint',

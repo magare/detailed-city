@@ -9,6 +9,7 @@ import type {
   CityObjectIndex,
   CityLodPolicy,
   CityObjectBase,
+  DevelopmentPhaseContract,
   ConstraintContract,
   CurbZoneContract,
   CrossingContract,
@@ -200,6 +201,8 @@ export interface TopographyZonePlan extends TopographyZoneContract {}
 
 export interface SoilGeologyZonePlan extends SoilGeologyZoneContract {}
 
+export interface DevelopmentPhasePlan extends DevelopmentPhaseContract {}
+
 export interface ParkPatch extends CityObjectBase<'park'> {
   center: Point2D;
   size: { x: number; z: number };
@@ -245,6 +248,7 @@ export type GeneratedCityObject =
   | AdministrativeBoundaryPlan
   | DetailedStreetSlice
   | CityMetricPlan
+  | DevelopmentPhasePlan
   | ConstraintPlan
   | HazardZonePlan
   | TopographyZonePlan
@@ -292,6 +296,7 @@ export interface GeneratedCity {
   hazardZones: HazardZonePlan[];
   resilienceGoals: ResilienceGoalPlan[];
   cityMetrics: CityMetricPlan[];
+  developmentPhases: DevelopmentPhasePlan[];
   topographyZones: TopographyZonePlan[];
   soilGeologyZones: SoilGeologyZonePlan[];
   blocks: BlockPlan[];

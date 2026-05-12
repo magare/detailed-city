@@ -16,6 +16,7 @@ type GeneratedCityObjectSource = Pick<
   | 'blocks'
   | 'buildings'
   | 'cityMetrics'
+  | 'developmentPhases'
   | 'constraints'
   | 'crossings'
   | 'curbZones'
@@ -45,6 +46,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.districts,
     ...city.zoningDistricts,
     ...city.cityMetrics,
+    ...city.developmentPhases,
     ...city.constraints,
     ...city.hazardZones,
     ...city.topographyZones,

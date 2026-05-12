@@ -226,6 +226,7 @@ export interface ProceduralSeedDomainSections {
   readonly districts: GeneratedCity['districts'];
   readonly zoningDistricts: GeneratedCity['zoningDistricts'];
   readonly cityMetrics: GeneratedCity['cityMetrics'];
+  readonly developmentPhases: GeneratedCity['developmentPhases'];
   readonly constraints: GeneratedCity['constraints'];
   readonly hazardZones: GeneratedCity['hazardZones'];
   readonly topographyZones: GeneratedCity['topographyZones'];
@@ -255,6 +256,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly districts: number;
   readonly zoningDistricts: number;
   readonly cityMetrics: number;
+  readonly developmentPhases: number;
   readonly constraints: number;
   readonly hazardZones: number;
   readonly topographyZones: number;
@@ -362,6 +364,7 @@ export function createProceduralSeedJsonExport(
       districts: city.districts,
       zoningDistricts: city.zoningDistricts,
       cityMetrics: city.cityMetrics,
+      developmentPhases: city.developmentPhases,
       constraints: city.constraints,
       hazardZones: city.hazardZones,
       topographyZones: city.topographyZones,
@@ -493,6 +496,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'blocks'
     | 'buildings'
     | 'cityMetrics'
+    | 'developmentPhases'
     | 'constraints'
     | 'hazardZones'
     | 'topographyZones'
@@ -521,6 +525,7 @@ export function createProceduralSeedDomainSectionCounts(
     districts: city.districts.length,
     zoningDistricts: city.zoningDistricts.length,
     cityMetrics: city.cityMetrics.length,
+    developmentPhases: city.developmentPhases.length,
     constraints: city.constraints.length,
     hazardZones: city.hazardZones.length,
     topographyZones: city.topographyZones.length,
@@ -562,6 +567,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'districts') +
     getArrayLength(city, 'zoningDistricts') +
     getArrayLength(city, 'cityMetrics') +
+    getArrayLength(city, 'developmentPhases') +
     getArrayLength(city, 'constraints') +
     getArrayLength(city, 'hazardZones') +
     getArrayLength(city, 'topographyZones') +

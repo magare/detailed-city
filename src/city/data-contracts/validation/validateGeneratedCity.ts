@@ -43,6 +43,7 @@ import { CITY_OBJECT_KIND_REGISTRY_ENTRIES, validateCityObjectRegistryIdentity }
 import { validateCityLodPolicy } from '../lodPolicy';
 import { validateSourceMetadata } from '../sourceMetadata';
 import type { GeneratedCity } from '../../../types/city';
+import { CITY_BLUEPRINT } from '../../blueprint/cityBlueprint';
 import { getPolygonBounds, isPointInsidePolygon, polygonsIntersect } from '../../../utils/geometry';
 
 type GeneratedCityForValidation = Pick<
@@ -54,6 +55,7 @@ type GeneratedCityForValidation = Pick<
   | 'blocks'
   | 'buildings'
   | 'cityMetrics'
+  | 'developmentPhases'
   | 'constraints'
   | 'crossings'
   | 'curbZones'
@@ -85,6 +87,7 @@ type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
 type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
+type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationHazardZone = GeneratedCityForValidation['hazardZones'][number];
@@ -327,6 +330,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateHazardZones(city, issues);
   validateTopographyZones(city, issues);
   validateSoilGeologyZones(city, issues);
+  validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
   );
@@ -3151,6 +3155,177 @@ function validateBuildingSoilGeology(city: GeneratedCityForValidation, issues: V
   }
 }
 
+function validateDevelopmentPhases(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  if (city.developmentPhases.length === 0) {
+    issues.push({
+      id: 'development-phase-missing',
+      severity: 'error',
+      category: 'metadata',
+      message: 'Generated city must expose at least one development phase for operations and simulation staging.'
+    });
+    return;
+  }
+
+  const sequenceIds = new Map<number, string>();
+  const masterPlanGrowthBoundaryIds = new Set(CITY_BLUEPRINT.masterPlan.growthBoundaries.map((boundary) => boundary.id));
+  let activePhases = 0;
+
+  for (const phase of city.developmentPhases) {
+    if (phase.status === 'active') {
+      activePhases += 1;
+    }
+
+    if (!Number.isInteger(phase.sequence) || phase.sequence < 0) {
+      issues.push(createDevelopmentPhaseIssue(phase, 'invalid-sequence', 'Development phase sequence must be a non-negative integer.'));
+    } else if (sequenceIds.has(phase.sequence)) {
+      issues.push(
+        createDevelopmentPhaseIssue(
+          phase,
+          `duplicate-sequence-${phase.sequence}`,
+          `Development phase sequence ${phase.sequence} is already used by ${sequenceIds.get(phase.sequence)}.`
+        )
+      );
+    } else {
+      sequenceIds.set(phase.sequence, phase.id);
+    }
+
+    if (phase.targetYear < phase.startYear) {
+      issues.push(createDevelopmentPhaseIssue(phase, 'invalid-year-range', 'Development phase target year must not precede its start year.'));
+    }
+
+    for (const dependencyId of phase.unlocksAfterPhaseIds) {
+      const dependency = city.developmentPhases.find((candidate) => candidate.id === dependencyId);
+
+      if (!dependency) {
+        issues.push(
+          createDevelopmentPhaseIssue(
+            phase,
+            `missing-unlock-dependency-${dependencyId}`,
+            `Development phase ${phase.id} references missing dependency phase ${dependencyId}.`
+          )
+        );
+      } else if (dependency.sequence >= phase.sequence) {
+        issues.push(
+          createDevelopmentPhaseIssue(
+            phase,
+            `invalid-unlock-order-${dependencyId}`,
+            `Development phase ${phase.id} must unlock after an earlier phase; ${dependencyId} is not earlier.`
+          )
+        );
+      }
+    }
+
+    validateDevelopmentPhaseObjectReferences(city, phase, phase.unlocksObjectIds, undefined, 'unlock-object', issues);
+    validateDevelopmentPhaseObjectReferences(city, phase, phase.temporaryRoadIds, 'road-segment', 'temporary-road', issues);
+    validateDevelopmentPhaseObjectReferences(city, phase, phase.closureRoadIds, 'road-segment', 'closure-road', issues);
+    validateDevelopmentPhaseObjectReferences(city, phase, phase.temporaryParkIds, 'park', 'temporary-park', issues);
+
+    for (const boundaryId of phase.masterPlanGrowthBoundaryIds) {
+      if (!masterPlanGrowthBoundaryIds.has(boundaryId)) {
+        issues.push(
+          createDevelopmentPhaseIssue(
+            phase,
+            `missing-growth-boundary-${boundaryId}`,
+            `Development phase ${phase.id} references missing master-plan growth boundary ${boundaryId}.`
+          )
+        );
+      }
+    }
+
+    if (
+      phase.phaseKind === 'temporary-condition' &&
+      phase.temporaryRoadIds.length + phase.temporaryParkIds.length + phase.closureRoadIds.length === 0
+    ) {
+      issues.push(
+        createDevelopmentPhaseIssue(
+          phase,
+          'missing-temporary-assets',
+          'Temporary-condition phase must expose temporary roads, temporary parks, or closure roads.'
+        )
+      );
+    }
+
+    if (phase.phaseKind === 'future-expansion' && phase.masterPlanGrowthBoundaryIds.length === 0) {
+      issues.push(
+        createDevelopmentPhaseIssue(
+          phase,
+          'missing-growth-boundary-reference',
+          'Future-expansion phase must reference at least one master-plan growth boundary.'
+        )
+      );
+    }
+  }
+
+  if (activePhases !== 1) {
+    issues.push({
+      id: 'development-phase-invalid-active-count',
+      severity: 'error',
+      category: 'metadata',
+      message: `Generated city must expose exactly one active development phase, found ${activePhases}.`
+    });
+  }
+
+  if (!sequenceIds.has(0)) {
+    issues.push({
+      id: 'development-phase-missing-sequence-zero',
+      severity: 'error',
+      category: 'metadata',
+      message: 'Development phases must include sequence 0 as the baseline phase.'
+    });
+  }
+}
+
+function validateDevelopmentPhaseObjectReferences(
+  city: GeneratedCityForValidation,
+  phase: ValidationDevelopmentPhase,
+  objectIds: readonly string[],
+  expectedKind: CityObjectKind | undefined,
+  relation: string,
+  issues: ValidationIssue[]
+): void {
+  for (const objectId of objectIds) {
+    const object = city.objectIndex.objectsById[objectId];
+
+    if (!object) {
+      issues.push(
+        createDevelopmentPhaseIssue(
+          phase,
+          `missing-${relation}-${objectId}`,
+          `Development phase ${phase.id} references missing ${relation} ${objectId}.`
+        )
+      );
+      continue;
+    }
+
+    if (expectedKind && object.kind !== expectedKind) {
+      issues.push(
+        createDevelopmentPhaseIssue(
+          phase,
+          `invalid-${relation}-${objectId}`,
+          `Development phase ${phase.id} ${relation} ${objectId} must be a ${expectedKind}.`
+        )
+      );
+    }
+  }
+}
+
+function createDevelopmentPhaseIssue(
+  phase: ValidationDevelopmentPhase,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `development-phase-${issueIdSuffix}-${phase.id}`,
+    severity: 'error',
+    category: 'metadata',
+    objectId: phase.id,
+    affectedPoint: phase.focusPoint,
+    affectedBoundary: phase.boundary,
+    suggestedFix: 'Regenerate phasing from blueprint rules so dependencies, closures, temporary assets, and growth-boundary references are coherent.',
+    message
+  };
+}
+
 function validateBuildingTypology(building: ValidationBuilding, issues: ValidationIssue[]): void {
   const typology = building.typology;
 
@@ -4003,6 +4178,11 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
 
   for (const metric of city.cityMetrics) {
     validatePoint2D(city.geospatial, metric.id, 'focusPoint', metric.focusPoint, issues);
+  }
+
+  for (const phase of city.developmentPhases) {
+    validatePoint2D(city.geospatial, phase.id, 'focusPoint', phase.focusPoint, issues);
+    validatePolygon2D(city.geospatial, phase.id, 'boundary', phase.boundary, issues);
   }
 
   for (const block of city.blocks) {

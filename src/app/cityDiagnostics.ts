@@ -78,6 +78,7 @@ export interface CityDiagnostics {
   readonly soilGeology: SoilGeologyDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
+  readonly developmentPhasing: DevelopmentPhasingDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
   readonly resilienceGoals: ResilienceGoalDiagnostics;
   readonly validation: GeneratedCity['validation'];
@@ -169,6 +170,10 @@ export interface CityDiagnostics {
     readonly districtTransitionBuffers: number;
     readonly districtStylePalettes: number;
     readonly cityMetrics: number;
+    readonly developmentPhases: number;
+    readonly activeDevelopmentPhases: number;
+    readonly temporaryRoadClosures: number;
+    readonly temporaryPhaseAssets: number;
     readonly constraints: number;
     readonly resilienceGoals: number;
     readonly districts: number;
@@ -511,6 +516,22 @@ export interface CityMetricDiagnostics {
   readonly valuesByKind: Readonly<Record<string, number>>;
 }
 
+export interface DevelopmentPhasingDiagnostics {
+  readonly total: number;
+  readonly active: number;
+  readonly planned: number;
+  readonly temporary: number;
+  readonly completed: number;
+  readonly futureExpansionPhases: number;
+  readonly temporaryConditionPhases: number;
+  readonly closureRoads: number;
+  readonly temporaryRoads: number;
+  readonly temporaryParks: number;
+  readonly unlockLinks: number;
+  readonly maxSequence: number;
+  readonly phaseNames: readonly string[];
+}
+
 export interface ResilienceGoalDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -565,6 +586,7 @@ export function createCityDiagnostics(
   const soilGeology = createSoilGeologyDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
+  const developmentPhasing = createDevelopmentPhasingDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
   const resilienceGoals = createResilienceGoalDiagnostics(city);
   const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
@@ -607,6 +629,7 @@ export function createCityDiagnostics(
     soilGeology,
     districtCharacter,
     cityMetrics,
+    developmentPhasing,
     constraintLayer,
     resilienceGoals,
     validation: city.validation,
@@ -689,6 +712,10 @@ export function createCityDiagnostics(
       districtTransitionBuffers: districtCharacter.transitionBuffers,
       districtStylePalettes: districtCharacter.stylePalettes.length,
       cityMetrics: city.cityMetrics.length,
+      developmentPhases: developmentPhasing.total,
+      activeDevelopmentPhases: developmentPhasing.active,
+      temporaryRoadClosures: developmentPhasing.closureRoads,
+      temporaryPhaseAssets: developmentPhasing.temporaryRoads + developmentPhasing.temporaryParks,
       constraints: city.constraints.length,
       resilienceGoals: city.resilienceGoals.length,
       districts: city.districts.length,
@@ -1485,6 +1512,45 @@ function createCityMetricDiagnostics(city: GeneratedCity): CityMetricDiagnostics
         (scoreMetrics.reduce((sum, metric) => sum + metric.value, 0) / Math.max(1, scoreMetrics.length)) * 100
       ) / 100,
     valuesByKind
+  };
+}
+
+function createDevelopmentPhasingDiagnostics(city: GeneratedCity): DevelopmentPhasingDiagnostics {
+  const closureRoads = new Set<string>();
+  const temporaryRoads = new Set<string>();
+  const temporaryParks = new Set<string>();
+  let unlockLinks = 0;
+
+  for (const phase of city.developmentPhases) {
+    unlockLinks += phase.unlocksAfterPhaseIds.length + phase.unlocksObjectIds.length;
+
+    for (const roadId of phase.closureRoadIds) {
+      closureRoads.add(roadId);
+    }
+
+    for (const roadId of phase.temporaryRoadIds) {
+      temporaryRoads.add(roadId);
+    }
+
+    for (const parkId of phase.temporaryParkIds) {
+      temporaryParks.add(parkId);
+    }
+  }
+
+  return {
+    total: city.developmentPhases.length,
+    active: city.developmentPhases.filter((phase) => phase.status === 'active').length,
+    planned: city.developmentPhases.filter((phase) => phase.status === 'planned').length,
+    temporary: city.developmentPhases.filter((phase) => phase.status === 'temporary').length,
+    completed: city.developmentPhases.filter((phase) => phase.status === 'completed').length,
+    futureExpansionPhases: city.developmentPhases.filter((phase) => phase.phaseKind === 'future-expansion').length,
+    temporaryConditionPhases: city.developmentPhases.filter((phase) => phase.phaseKind === 'temporary-condition').length,
+    closureRoads: closureRoads.size,
+    temporaryRoads: temporaryRoads.size,
+    temporaryParks: temporaryParks.size,
+    unlockLinks,
+    maxSequence: Math.max(...city.developmentPhases.map((phase) => phase.sequence)),
+    phaseNames: city.developmentPhases.map((phase) => phase.name ?? phase.id)
   };
 }
 

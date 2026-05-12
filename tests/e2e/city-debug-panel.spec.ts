@@ -33,6 +33,8 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('5 zones, 2 high-risk, 2 drainage');
   expect(panelText).toContain('Resilience');
   expect(panelText).toContain('7 goals, 3 shelters');
+  expect(panelText).toContain('Phasing');
+  expect(panelText).toContain('3 phases, 1 active, 3 closures');
   expect(panelText).toContain('Metrics');
   expect(panelText).toContain('8 metrics, 6 pass, 2 warn');
   expect(panelText).toContain('Validation');
@@ -40,7 +42,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('4903/4903 tagged');
+  expect(panelText).toContain('4906/4906 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -50,18 +52,18 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Assets');
   expect(panelText).toContain('32 assets, 32 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 3946 objects');
+  expect(panelText).toContain('6 formats, 3949 objects');
   expect(panelText).toContain('Registry');
-  expect(panelText).toContain('37 kinds');
+  expect(panelText).toContain('38 kinds');
   expect(panelText).toContain('Groups');
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
   expect(panelText).toContain(
-    '15: administrative-boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil-geology, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
+    '16: administrative-boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil-geology, phasing, city-metrics, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
   );
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');
-  expect(panelText).toContain('37 policies');
+  expect(panelText).toContain('38 policies');
   expect(panelText).toContain('Performance');
   expect(panelText).toContain('Frame');
   await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');

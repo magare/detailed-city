@@ -21,6 +21,7 @@ export type CityOverlayId =
   | 'hazards'
   | 'topography'
   | 'soil-geology'
+  | 'phasing'
   | 'city-metrics'
   | 'constraints'
   | 'resilience-goals'
@@ -76,6 +77,7 @@ export function createCityOverlayDatasets(
     createDataset('hazards', 'Hazards', 'domain-data', createHazardFeatures(city)),
     createDataset('topography', 'Topography', 'domain-data', createTopographyFeatures(city)),
     createDataset('soil-geology', 'Soil Geology', 'domain-data', createSoilGeologyFeatures(city)),
+    createDataset('phasing', 'Phasing', 'domain-data', createDevelopmentPhaseFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
@@ -334,6 +336,34 @@ function createSoilGeologyFeatures(city: GeneratedCity): CityOverlayFeature[] {
       hazardRefs: zone.hazardZoneIds.length,
       parcels: zone.parcelIds.length,
       buildings: zone.buildingIds.length
+    }
+  }));
+}
+
+function createDevelopmentPhaseFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.developmentPhases.map((phase) => ({
+    id: `overlay:phasing:${phase.id}`,
+    overlayId: 'phasing',
+    objectId: phase.id,
+    objectKind: phase.kind,
+    ownerDomain: phase.ownerDomain,
+    label: phase.name ?? phase.id,
+    geometry: { type: 'polygon', points: phase.boundary },
+    severity: phase.status === 'active' ? 'info' : phase.status === 'temporary' ? 'warning' : 'info',
+    category: 'metadata',
+    metadata: {
+      phaseKind: phase.phaseKind,
+      status: phase.status,
+      sequence: phase.sequence,
+      startYear: phase.startYear,
+      targetYear: phase.targetYear,
+      unlockDependencies: phase.unlocksAfterPhaseIds.length,
+      unlockObjects: phase.unlocksObjectIds.length,
+      closureRoads: phase.closureRoadIds.length,
+      temporaryRoads: phase.temporaryRoadIds.length,
+      temporaryParks: phase.temporaryParkIds.length,
+      growthBoundaries: phase.masterPlanGrowthBoundaryIds.length,
+      simulationScenarios: phase.operationsHooks.simulationScenarioIds.length
     }
   }));
 }

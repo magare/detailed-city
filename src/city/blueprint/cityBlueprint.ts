@@ -15,6 +15,7 @@ import {
 } from './master-plan/masterPlan';
 import { CITY_CONSTRAINT_RULES, type ConstraintRule } from './constraints/constraintLayer';
 import { CITY_METRIC_TARGET_RULES, type CityMetricTargetRule } from './metrics/cityMetricTargets';
+import { CITY_PHASING_PLAN, type DevelopmentPhaseRule } from './phasing/phasingPlan';
 import { CITY_RESILIENCE_GOAL_RULES, type ResilienceGoalRule } from './resilience/resilienceGoals';
 
 export interface DistrictRule {
@@ -56,6 +57,7 @@ export interface CityBlueprint {
   readonly masterPlan: CityMasterPlan;
   readonly districtRules: readonly DistrictRule[];
   readonly metricTargetRules: readonly CityMetricTargetRule[];
+  readonly phasingPlan: readonly DevelopmentPhaseRule[];
   readonly constraintRules: readonly ConstraintRule[];
   readonly resilienceGoalRules: readonly ResilienceGoalRule[];
   readonly publicSpaces: readonly PlannedPublicSpace[];
@@ -67,6 +69,7 @@ export const CITY_BLUEPRINT: CityBlueprint = {
   id: 'detailed-city-v1',
   masterPlan: CITY_MASTER_PLAN,
   metricTargetRules: CITY_METRIC_TARGET_RULES,
+  phasingPlan: CITY_PHASING_PLAN,
   constraintRules: CITY_CONSTRAINT_RULES,
   resilienceGoalRules: CITY_RESILIENCE_GOAL_RULES,
   districtRules: [
