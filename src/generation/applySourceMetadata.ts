@@ -24,6 +24,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     ),
     crossings: city.crossings.map((crossing) => withProceduralMetadata(crossing, 'mobility-crossings')),
     curbZones: city.curbZones.map((curbZone) => withProceduralMetadata(curbZone, 'mobility-curb-zones')),
+    trafficCalmingDevices: city.trafficCalmingDevices.map((device) =>
+      withProceduralMetadata(device, 'mobility-traffic-calming')
+    ),
     streetLights: city.streetLights.map((streetLight) =>
       withProceduralMetadata(streetLight, 'public-realm-street-lights')
     ),

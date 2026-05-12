@@ -26,6 +26,7 @@ import { PedestrianNetworkGenerator } from './roads/PedestrianNetworkGenerator';
 import { RoadNetworkGenerator } from './roads/RoadNetworkGenerator';
 import { applyDetailedStreetSliceTags, DetailedStreetSliceGenerator } from './slices/DetailedStreetSliceGenerator';
 import { TerrainGenerator } from './terrain/TerrainGenerator';
+import { TrafficCalmingGenerator } from './traffic/TrafficCalmingGenerator';
 import { applyGeneratedCitySourceMetadata } from './applySourceMetadata';
 
 export class CityGenerator {
@@ -99,6 +100,13 @@ export class CityGenerator {
       intersections: sliceTagged.intersections
     });
     const verticalSlicesWithCurbs = attachCurbZoneIdsToSlices(verticalSlices, curbZones);
+    const trafficCalmingDevices = new TrafficCalmingGenerator().create({
+      slices: verticalSlicesWithCurbs,
+      roads: sliceTagged.roads,
+      intersections: sliceTagged.intersections,
+      crossings: sliceTagged.crossings,
+      curbZones
+    });
     const streetTrees = new StreetTreeGenerator().create({
       slices: verticalSlicesWithCurbs,
       roads: sliceTagged.roads,
@@ -152,6 +160,7 @@ export class CityGenerator {
       intersections: sliceTagged.intersections,
       crossings: sliceTagged.crossings,
       curbZones,
+      trafficCalmingDevices,
       streetLights,
       streetFurniture,
       sidewalkGraph: sliceTagged.sidewalkGraph,

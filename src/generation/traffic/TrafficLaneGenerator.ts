@@ -10,6 +10,7 @@ import type {
   IntersectionPlan,
   LaneMarkingPlan,
   RoadSegment,
+  TrafficCalmingDevice,
   TrafficPlan,
   TrafficVehiclePlan
 } from '../../types/city';
@@ -18,6 +19,7 @@ export interface TrafficPlanSource {
   readonly roads: readonly RoadSegment[];
   readonly crossings?: readonly CrossingPlan[];
   readonly intersections?: readonly IntersectionPlan[];
+  readonly trafficCalmingDevices?: readonly TrafficCalmingDevice[];
 }
 
 const DASH_SPACING_METERS = 20;
@@ -153,6 +155,7 @@ export class TrafficLaneGenerator {
           road,
           routeNodes,
           crossings: source.crossings ?? [],
+          trafficCalmingDevices: source.trafficCalmingDevices ?? [],
           index,
           direction
         })
@@ -167,10 +170,11 @@ function createVehicle(input: {
   readonly road: RoadSegment;
   readonly routeNodes: readonly IntersectionPlan[];
   readonly crossings: readonly CrossingPlan[];
+  readonly trafficCalmingDevices: readonly TrafficCalmingDevice[];
   readonly index: number;
   readonly direction: 1 | -1;
 }): TrafficVehiclePlan {
-  const { road, routeNodes, crossings, index, direction } = input;
+  const { road, routeNodes, crossings, trafficCalmingDevices, index, direction } = input;
   const lane = selectLane(road, direction, index);
   const laneOffsetMeters = getLaneCenterOffset(road, lane);
   const axis = road.orientation === 'horizontal' ? 'x' : 'z';
@@ -182,7 +186,7 @@ function createVehicle(input: {
   const seededOffset = (index * 37 + 11) % Math.max(1, Math.floor(routeLengthMeters));
   const routeOffsetMeters = roundMeters(direction === 1 ? min + seededOffset : max - seededOffset);
   const profile = getStreetProfile(road.streetProfileId);
-  const speedLimitKph = profile.designSpeedKph;
+  const speedLimitKph = getCalmedSpeedLimitKph(road, trafficCalmingDevices, profile.designSpeedKph);
   const speed = roundMeters((speedLimitKph / 3.6) * (0.62 + (index % 3) * 0.08));
 
   return {
@@ -309,6 +313,18 @@ function getStopZoneOffsets(
   }
 
   return routeNodes.slice(1, -1).map((node) => roundMeters(getRoadOffsetMeters(road, node.center)));
+}
+
+function getCalmedSpeedLimitKph(
+  road: RoadSegment,
+  trafficCalmingDevices: readonly TrafficCalmingDevice[],
+  profileSpeedKph: number
+): number {
+  const roadDeviceSpeeds = trafficCalmingDevices
+    .filter((device) => device.roadId === road.id)
+    .map((device) => device.targetSpeedKph);
+
+  return roadDeviceSpeeds.length > 0 ? Math.min(profileSpeedKph, ...roadDeviceSpeeds) : profileSpeedKph;
 }
 
 function uniqueRoundedNumbers(values: readonly number[]): number[] {

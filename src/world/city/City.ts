@@ -24,6 +24,7 @@ import type {
   RoadSegment,
   StreetFurniture,
   StreetLight,
+  TrafficCalmingDevice,
   TrafficPlan,
   TreePlanting,
   Updatable,
@@ -72,6 +73,7 @@ export class City implements Updatable {
     this.addTreePlantings(generated.trees);
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
+    this.addTrafficCalmingDevices(generated.trafficCalmingDevices);
     this.addBuildings(generated.buildings);
     this.addActiveFrontages(generated.activeFrontages);
     this.addTraffic(trafficPlan);
@@ -289,6 +291,35 @@ export class City implements Updatable {
     ).build(streetFurniture);
 
     this.layerGroups['public-realm'].add(streetFurnitureGroup);
+  }
+
+  private addTrafficCalmingDevices(devices: readonly TrafficCalmingDevice[]): void {
+    if (devices.length === 0) {
+      return;
+    }
+
+    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), this.materials.trafficCalming, devices.length);
+    const matrix = new THREE.Matrix4();
+    const rotation = new THREE.Quaternion();
+
+    devices.forEach((device, index) => {
+      matrix.compose(
+        new THREE.Vector3(device.center.x, 0.1 + device.heightMeters / 2, device.center.z),
+        rotation,
+        new THREE.Vector3(device.size.x, device.heightMeters, device.size.z)
+      );
+      mesh.setMatrixAt(index, matrix);
+    });
+
+    mesh.name = 'TrafficCalmingDeviceInstances';
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.attachInstancePickingMetadata(
+      mesh,
+      devices.map((device) => device.id)
+    );
+    mesh.instanceMatrix.needsUpdate = true;
+    this.layerGroups.networks.add(mesh);
   }
 
   private addTraffic(trafficPlan: TrafficPlan): void {

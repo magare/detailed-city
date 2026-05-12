@@ -178,6 +178,10 @@ export class DebugPanel {
         `${diagnostics.crossingDetails.total} total, ${diagnostics.crossingDetails.midblockCrossings} midblock, ${diagnostics.crossingDetails.raisedCrossings} raised`
       ),
       createMetric(
+        'Calming',
+        `${diagnostics.trafficCalming.total} devices, ${diagnostics.trafficCalming.curbExtensions} curb, ${diagnostics.trafficCalming.minimumTargetSpeedKph}kph min`
+      ),
+      createMetric(
         'City',
         `${diagnostics.objectCounts.buildings} buildings, ${diagnostics.objectCounts.activeFrontages} frontages`
       ),

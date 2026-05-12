@@ -26,6 +26,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:road:turn-arrow:primitive', 'road', 'Turn Arrow Primitive', 'turn-arrow', 5.4, 'lod2'),
   createProceduralAsset('asset:road:tactile-paving:primitive', 'road', 'Tactile Paving Primitive', 'tactile-paving', 2.8, 'lod3'),
   createProceduralAsset('asset:road:refuge-island:primitive', 'road', 'Refuge Island Primitive', 'refuge-island', 5.8, 'lod2'),
+  createProceduralAsset('asset:road:traffic-calming:primitive', 'road', 'Traffic Calming Primitive', 'traffic-calming', 7.5, 'lod3'),
   createProceduralAsset('asset:building:storefront-window:primitive', 'building', 'Storefront Window Primitive', 'storefront-window', 4.8, 'lod3'),
   createProceduralAsset('asset:building:storefront-awning:primitive', 'building', 'Storefront Awning Primitive', 'storefront-awning', 3.8, 'lod3'),
   createProceduralAsset('asset:building:storefront-sign:primitive', 'building', 'Storefront Sign Primitive', 'storefront-sign', 3.2, 'lod4'),
@@ -251,6 +252,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'curb-concrete',
     fallbackMaterial: 'refugeIsland',
     fallbackGeometry: 'refuge-island-box'
+  },
+  {
+    id: 'binding:road:traffic-calming',
+    objectKind: 'traffic-calming-device',
+    semanticTag: 'traffic-calming',
+    assetId: 'asset:road:traffic-calming:primitive',
+    materialZone: 'traffic-calming',
+    fallbackMaterial: 'trafficCalming',
+    fallbackGeometry: 'traffic-calming-box'
   },
   {
     id: 'binding:facade:storefront-window',

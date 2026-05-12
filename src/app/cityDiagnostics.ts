@@ -55,6 +55,7 @@ export interface CityDiagnostics {
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
   readonly crossingDetails: CrossingDetailDiagnostics;
+  readonly trafficCalming: TrafficCalmingDiagnostics;
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly waterfrontModel: WaterfrontModelDiagnostics;
   readonly hazardLayer: HazardLayerDiagnostics;
@@ -155,6 +156,10 @@ export interface CityDiagnostics {
     readonly tactileCrossings: number;
     readonly crossingRefugeIslands: number;
     readonly crossingSignalPhases: number;
+    readonly trafficCalmingDevices: number;
+    readonly curbExtensions: number;
+    readonly busBulbs: number;
+    readonly speedTables: number;
     readonly curbZones: number;
     readonly sidewalkGraphNodes: number;
     readonly sidewalkGraphEdges: number;
@@ -281,6 +286,17 @@ export interface CrossingDetailDiagnostics {
   readonly signalPhases: number;
 }
 
+export interface TrafficCalmingDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly curbExtensions: number;
+  readonly busBulbs: number;
+  readonly speedTables: number;
+  readonly speedReductionDevices: number;
+  readonly minimumTargetSpeedKph: number;
+  readonly averageTargetSpeedKph: number;
+}
+
 export interface WaterwayNetworkDiagnostics {
   readonly total: number;
   readonly edgeSegments: number;
@@ -356,6 +372,7 @@ export function createCityDiagnostics(
     roads: city.roads,
     crossings: city.crossings,
     intersections: city.intersections,
+    trafficCalmingDevices: city.trafficCalmingDevices,
     assetBindings: city.assetBindings,
     traffic,
     lodPolicy: city.lodPolicy
@@ -374,6 +391,7 @@ export function createCityDiagnostics(
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
   const crossingDetails = createCrossingDetailDiagnostics(city);
+  const trafficCalming = createTrafficCalmingDiagnostics(city);
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
   const hazardLayer = createHazardLayerDiagnostics(city);
@@ -407,6 +425,7 @@ export function createCityDiagnostics(
     laneRestrictions,
     intersectionBehavior,
     crossingDetails,
+    trafficCalming,
     waterwayNetwork,
     waterfrontModel,
     hazardLayer,
@@ -498,6 +517,10 @@ export function createCityDiagnostics(
       tactileCrossings: crossingDetails.tactileCrossings,
       crossingRefugeIslands: crossingDetails.refugeIslandCrossings,
       crossingSignalPhases: crossingDetails.signalPhases,
+      trafficCalmingDevices: trafficCalming.total,
+      curbExtensions: trafficCalming.curbExtensions,
+      busBulbs: trafficCalming.busBulbs,
+      speedTables: trafficCalming.speedTables,
       curbZones: city.curbZones.length,
       sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
       sidewalkGraphEdges: city.sidewalkGraph.edges.length,
@@ -747,6 +770,34 @@ function createCrossingDetailDiagnostics(city: GeneratedCity): CrossingDetailDia
     tactileCrossings: city.crossings.filter((crossing) => crossing.tactileCues).length,
     refugeIslandCrossings: city.crossings.filter((crossing) => crossing.hasRefugeIsland).length,
     signalPhases: city.crossings.filter((crossing) => crossing.signalPhase).length
+  };
+}
+
+function createTrafficCalmingDiagnostics(city: GeneratedCity): TrafficCalmingDiagnostics {
+  const byKind: Record<string, number> = {};
+  let targetSpeedTotal = 0;
+  let minimumTargetSpeedKph = Number.POSITIVE_INFINITY;
+
+  for (const device of city.trafficCalmingDevices) {
+    byKind[device.deviceKind] = (byKind[device.deviceKind] ?? 0) + 1;
+    targetSpeedTotal += device.targetSpeedKph;
+    minimumTargetSpeedKph = Math.min(minimumTargetSpeedKph, device.targetSpeedKph);
+  }
+
+  return {
+    total: city.trafficCalmingDevices.length,
+    byKind,
+    curbExtensions: byKind['curb-extension'] ?? 0,
+    busBulbs: byKind['bus-bulb'] ?? 0,
+    speedTables: byKind['speed-table'] ?? 0,
+    speedReductionDevices:
+      (byKind.chicane ?? 0) +
+      (byKind.pinchpoint ?? 0) +
+      (byKind['speed-hump'] ?? 0) +
+      (byKind['speed-cushion'] ?? 0) +
+      (byKind['neighborhood-gateway'] ?? 0),
+    minimumTargetSpeedKph: Number.isFinite(minimumTargetSpeedKph) ? minimumTargetSpeedKph : 0,
+    averageTargetSpeedKph: Number((targetSpeedTotal / Math.max(1, city.trafficCalmingDevices.length)).toFixed(1))
   };
 }
 

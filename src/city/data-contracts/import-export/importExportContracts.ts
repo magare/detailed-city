@@ -235,6 +235,7 @@ export interface ProceduralSeedDomainSections {
   readonly intersections: GeneratedCity['intersections'];
   readonly crossings: GeneratedCity['crossings'];
   readonly curbZones: GeneratedCity['curbZones'];
+  readonly trafficCalmingDevices: GeneratedCity['trafficCalmingDevices'];
   readonly streetLights: GeneratedCity['streetLights'];
   readonly streetFurniture: GeneratedCity['streetFurniture'];
   readonly sidewalkGraph: GeneratedCity['sidewalkGraph'];
@@ -263,6 +264,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly intersections: number;
   readonly crossings: number;
   readonly curbZones: number;
+  readonly trafficCalmingDevices: number;
   readonly streetLights: number;
   readonly streetFurniture: number;
   readonly sidewalkGraphNodes: number;
@@ -365,6 +367,7 @@ export function createProceduralSeedJsonExport(
       intersections: city.intersections,
       crossings: city.crossings,
       curbZones: city.curbZones,
+      trafficCalmingDevices: city.trafficCalmingDevices,
       streetLights: city.streetLights,
       streetFurniture: city.streetFurniture,
       sidewalkGraph: city.sidewalkGraph,
@@ -489,6 +492,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'resilienceGoals'
     | 'crossings'
     | 'curbZones'
+    | 'trafficCalmingDevices'
     | 'districts'
     | 'zoningDistricts'
     | 'intersections'
@@ -520,6 +524,7 @@ export function createProceduralSeedDomainSectionCounts(
     intersections: city.intersections.length,
     crossings: city.crossings.length,
     curbZones: city.curbZones.length,
+    trafficCalmingDevices: city.trafficCalmingDevices.length,
     streetLights: city.streetLights.length,
     streetFurniture: city.streetFurniture.length,
     sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
@@ -558,6 +563,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'intersections') +
     getArrayLength(city, 'crossings') +
     getArrayLength(city, 'curbZones') +
+    getArrayLength(city, 'trafficCalmingDevices') +
     getArrayLength(city, 'streetLights') +
     getArrayLength(city, 'streetFurniture') +
     getNestedArrayLength(city, 'sidewalkGraph', 'nodes') +

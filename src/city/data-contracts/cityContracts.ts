@@ -32,6 +32,7 @@ export type CityObjectKind =
   | 'street-furniture'
   | 'street-light'
   | 'traffic-vehicle'
+  | 'traffic-calming-device'
   | 'tree-planting'
   | 'utility-edge'
   | 'utility-node'
@@ -474,6 +475,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Traffic agents render at route-aware network detail and can gain near-view variants later.'
+    },
+    {
+      objectKind: 'traffic-calming-device',
+      scope: 'network',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Traffic calming devices are human-scale network details that slow approaches and improve crossing safety.'
     },
     {
       objectKind: 'tree-planting',
@@ -1485,6 +1493,40 @@ export interface TrafficVehicleContract extends CityObjectBase<'traffic-vehicle'
   readonly route: TrafficVehicleRoute;
   readonly stopBehavior: TrafficVehicleStopBehavior;
   readonly incidentHookIds: readonly CityId[];
+}
+
+export type TrafficCalmingDeviceKind =
+  | 'curb-extension'
+  | 'bus-bulb'
+  | 'chicane'
+  | 'pinchpoint'
+  | 'speed-hump'
+  | 'speed-table'
+  | 'speed-cushion'
+  | 'neighborhood-gateway';
+
+export interface TrafficCalmingDeviceContract extends CityObjectBase<'traffic-calming-device'> {
+  readonly sliceId: CityId;
+  readonly roadId: CityId;
+  readonly intersectionId?: CityId;
+  readonly crossingId?: CityId;
+  readonly curbZoneIds: readonly CityId[];
+  readonly deviceKind: TrafficCalmingDeviceKind;
+  readonly center: Point2D;
+  readonly orientation: 'horizontal' | 'vertical';
+  readonly positionOnRoadMeters: number;
+  readonly side: CurbSide | 'both';
+  readonly size: {
+    readonly x: number;
+    readonly z: number;
+  };
+  readonly heightMeters: number;
+  readonly targetSpeedKph: number;
+  readonly designSpeedKph: number;
+  readonly emergencyVehicleClearanceMeters: number;
+  readonly accessibleClearPathMeters: number;
+  readonly crossingSafetyBenefit: 'shorter-crossing' | 'speed-reduction' | 'transit-access' | 'gateway-slow-zone';
+  readonly assetBindingId: CityId;
 }
 
 export type AssetFormat = 'glb' | 'gltf' | 'png' | 'jpg' | 'webp' | 'ktx2' | 'hdr' | 'exr' | 'procedural';

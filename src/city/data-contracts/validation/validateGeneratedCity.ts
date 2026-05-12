@@ -58,6 +58,7 @@ type GeneratedCityForValidation = Pick<
   | 'sidewalkGraph'
   | 'streetFurniture'
   | 'streetLights'
+  | 'trafficCalmingDevices'
   | 'trees'
   | 'verticalSlices'
   | 'waterfrontEdges'
@@ -104,6 +105,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:road:turn-arrow',
   'binding:road:tactile-paving',
   'binding:road:refuge-island',
+  'binding:road:traffic-calming',
   'binding:facade:storefront-window',
   'binding:facade:awning',
   'binding:facade:sign',
@@ -123,6 +125,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'street-light',
   'street-furniture',
   'lane-marking',
+  'traffic-calming-device',
   'waterfront-edge',
   'traffic-vehicle'
 ] as const satisfies readonly CityObjectKind[];
@@ -872,6 +875,112 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
           message: `Curb zones ${previous.id} and ${current.id} overlap on sidewalk ${sidewalkId}.`
         });
       }
+    }
+  }
+
+  for (const device of city.trafficCalmingDevices) {
+    const slice = slicesById.get(device.sliceId);
+    const road = roadsById.get(device.roadId);
+    const assetBinding = assetBindingsById.get(device.assetBindingId);
+
+    if (!road || device.parentId !== device.roadId) {
+      issues.push({
+        id: `invalid-traffic-calming-road-${device.id}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: device.id,
+        message: `Traffic calming device ${device.id} must reference parent road ${device.roadId}.`
+      });
+    }
+
+    if (!slice || device.tags?.detailedStreetSliceId !== device.sliceId) {
+      issues.push({
+        id: `invalid-traffic-calming-slice-${device.id}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: device.id,
+        message: `Traffic calming device ${device.id} must belong to a detailed street slice.`
+      });
+    }
+
+    if (device.intersectionId && !intersectionsById.has(device.intersectionId)) {
+      issues.push({
+        id: `missing-traffic-calming-intersection-${device.id}-${device.intersectionId}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: device.id,
+        message: `Traffic calming device ${device.id} references missing intersection ${device.intersectionId}.`
+      });
+    }
+
+    if (device.crossingId && !hasObjectId(city, device.crossingId)) {
+      issues.push({
+        id: `missing-traffic-calming-crossing-${device.id}-${device.crossingId}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: device.id,
+        message: `Traffic calming device ${device.id} references missing crossing ${device.crossingId}.`
+      });
+    }
+
+    for (const curbZoneId of device.curbZoneIds) {
+      if (!curbZonesById.has(curbZoneId)) {
+        issues.push({
+          id: `missing-traffic-calming-curb-zone-${device.id}-${curbZoneId}`,
+          severity: 'error',
+          category: 'identifier',
+          objectId: device.id,
+          message: `Traffic calming device ${device.id} references missing curb zone ${curbZoneId}.`
+        });
+      }
+    }
+
+    if (
+      !isFiniteNumber(device.center.x) ||
+      !isFiniteNumber(device.center.z) ||
+      device.positionOnRoadMeters < 0 ||
+      (road && device.positionOnRoadMeters > road.length + 0.001) ||
+      device.size.x <= 0 ||
+      device.size.z <= 0 ||
+      device.heightMeters <= 0
+    ) {
+      issues.push({
+        id: `invalid-traffic-calming-geometry-${device.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: device.id,
+        message: 'Traffic calming devices must have finite center coordinates, positive dimensions, and stay inside the parent road.'
+      });
+    }
+
+    if (road && (device.designSpeedKph !== road.designSpeedKph || device.targetSpeedKph >= road.designSpeedKph)) {
+      issues.push({
+        id: `invalid-traffic-calming-speed-policy-${device.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: device.id,
+        message: `Traffic calming device ${device.id} must reduce design speed for road ${road.id}.`
+      });
+    }
+
+    if (device.emergencyVehicleClearanceMeters < 3.5 || device.accessibleClearPathMeters < 1.8) {
+      issues.push({
+        id: `traffic-calming-blocks-access-${device.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: device.id,
+        message: `Traffic calming device ${device.id} must preserve emergency clearance and accessible clear path.`
+      });
+    }
+
+    if (!assetBinding || assetBinding.objectKind !== 'traffic-calming-device') {
+      issues.push({
+        id: `invalid-traffic-calming-asset-binding-${device.id}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: device.id,
+        message: `Traffic calming device ${device.id} must reference a traffic-calming render binding.`
+      });
     }
   }
 

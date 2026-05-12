@@ -22,6 +22,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const activeFrontage = city.activeFrontages[0];
   const streetLight = city.streetLights[0];
   const streetFurniture = city.streetFurniture[0];
+  const trafficCalmingDevice = city.trafficCalmingDevices[0];
   const zebraCrossing = traffic.markings.find((marking) => marking.markingType === 'zebra-crossing-stripe');
 
   expect(catalog.pickableObjectIds).toHaveLength(
@@ -34,6 +35,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length +
+      city.trafficCalmingDevices.length +
       traffic.markings.length +
       traffic.vehicles.length
   );
@@ -42,6 +44,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
   expect(catalog.countsByKind['street-furniture']).toBe(city.streetFurniture.length);
+  expect(catalog.countsByKind['traffic-calming-device']).toBe(city.trafficCalmingDevices.length);
   expect(catalog.countsByKind['waterfront-edge']).toBe(city.waterfrontEdges.length);
   expect(catalog.countsByKind['lane-marking']).toBe(traffic.markings.length);
   expect(zebraCrossing).toBeTruthy();
@@ -69,6 +72,16 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       sidewalkId: streetLight.sidewalkId,
       sliceId: streetLight.sliceId,
       curbZoneId: streetLight.curbZoneId
+    }
+  });
+  expect(catalog.metadataByObjectId[trafficCalmingDevice.id]).toMatchObject({
+    objectId: trafficCalmingDevice.id,
+    kind: 'traffic-calming-device',
+    ownerDomain: 'mobility',
+    parentId: trafficCalmingDevice.roadId,
+    references: {
+      roadId: trafficCalmingDevice.roadId,
+      sliceId: trafficCalmingDevice.sliceId
     }
   });
   expect(catalog.metadataByObjectId[activeFrontage.id]).toMatchObject({

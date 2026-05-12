@@ -68,6 +68,7 @@ type PickableObjectSource = Pick<
   | 'roads'
   | 'streetFurniture'
   | 'streetLights'
+  | 'trafficCalmingDevices'
   | 'trees'
   | 'waterfrontEdges'
   | 'waterways'
@@ -88,6 +89,7 @@ export function createCityPickingMetadataCatalog(
     ...city.trees,
     ...city.streetLights,
     ...city.streetFurniture,
+    ...city.trafficCalmingDevices,
     ...traffic.markings,
     ...traffic.vehicles
   ];

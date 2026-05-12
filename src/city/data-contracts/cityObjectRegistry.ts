@@ -42,6 +42,7 @@ const SIDEWALK_ID = String.raw`${ROAD_ID}-sidewalk-${SIDEWALK_SIDE}`;
 const CROSSING_ID = String.raw`crossing-(?:${INTERSECTION_ID}-${ROAD_ID}|midblock-${ROAD_ID}-\d+)`;
 const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|regulatory-sign|street-name-sign|wayfinding-sign)`;
+const TRAFFIC_CALMING_KIND = String.raw`(?:curb-extension|bus-bulb|chicane|pinchpoint|speed-hump|speed-table|speed-cushion|neighborhood-gateway)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
 const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
 const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|landslide-risk|restricted-area)`;
@@ -109,6 +110,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('street-furniture', ['street-furniture-<road-id>-<side>-<index>-<type>'], [exact(String.raw`street-furniture-${ROAD_ID}-${SIDEWALK_SIDE}-\d+-${STREET_FURNITURE_TYPE}`)], required(['sidewalk'])),
   entry('street-light', ['street-light-<road-id>-<side>-<index>'], [exact(String.raw`street-light-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)], required(['sidewalk'])),
   entry('traffic-vehicle', ['traffic-vehicle-<index>'], [exact(String.raw`traffic-vehicle-\d+`)], required(['road-segment'])),
+  entry(
+    'traffic-calming-device',
+    ['traffic-calming-<road-id>-<device-kind>-<index>'],
+    [exact(String.raw`traffic-calming-${ROAD_ID}-${TRAFFIC_CALMING_KIND}-\d+`)],
+    required(['road-segment'])
+  ),
   entry('tree-planting', ['<park-id>-tree-<index>', 'street-tree-<road-id>-<side>-<index>'], [exact(String.raw`${NAMED_ID}-tree-\d+`), exact(String.raw`street-tree-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)], required(['park', 'sidewalk'])),
   entry('utility-edge', ['utility-edge-<slug>'], [exact(String.raw`utility-edge-${NAMED_ID}`)], optional(['utility-node'])),
   entry('utility-node', ['utility-node-<slug>'], [exact(String.raw`utility-node-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'road-segment'])),

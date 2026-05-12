@@ -31,9 +31,10 @@ test('generated city object index is deterministic and resolves road children', 
   expect(firstCity.objectIndex.countsByKind['zoning-district']).toBe(5);
   expect(firstCity.objectIndex.countsByKind['waterfront-edge']).toBe(11);
   expect(firstCity.objectIndex.countsByKind['hazard-zone']).toBe(6);
-  expect(firstCity.objectIndex.countsByKind.asset).toBe(31);
-  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(34);
-  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(34);
+  expect(firstCity.objectIndex.countsByKind.asset).toBe(32);
+  expect(firstCity.objectIndex.countsByKind['traffic-calming-device']).toBe(12);
+  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(35);
+  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(35);
   expect(firstCity.objectIndex.objectsById['slice-detailed-street-road-v-6']).toMatchObject({
     id: 'slice-detailed-street-road-v-6',
     kind: 'vertical-slice',
@@ -75,8 +76,8 @@ test('generated city object index is deterministic and resolves road children', 
 test('render asset catalog provides fallback coverage for current scene objects', () => {
   const city = new CityGenerator(cityConfig).generate();
 
-  expect(city.assetCatalog).toHaveLength(31);
-  expect(city.assetBindings).toHaveLength(31);
+  expect(city.assetCatalog).toHaveLength(32);
+  expect(city.assetBindings).toHaveLength(32);
   expect(city.validation.issues.filter((issue) => issue.category === 'asset')).toEqual([]);
   expect(city.assetBindings).toEqual(
     expect.arrayContaining([
@@ -103,6 +104,12 @@ test('render asset catalog provides fallback coverage for current scene objects'
         objectKind: 'lane-marking',
         fallbackMaterial: 'lanePaint',
         fallbackGeometry: 'crosswalk-stripe-plane'
+      }),
+      expect.objectContaining({
+        id: 'binding:road:traffic-calming',
+        objectKind: 'traffic-calming-device',
+        fallbackMaterial: 'trafficCalming',
+        fallbackGeometry: 'traffic-calming-box'
       }),
       expect.objectContaining({
         id: 'binding:facade:storefront-window',

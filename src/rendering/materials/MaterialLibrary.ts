@@ -26,6 +26,12 @@ export class MaterialLibrary {
     roughness: 0.82
   });
 
+  readonly trafficCalming = new THREE.MeshStandardMaterial({
+    color: 0xd0c2a0,
+    roughness: 0.84,
+    metalness: 0.02
+  });
+
   readonly park = new THREE.MeshStandardMaterial({
     color: 0x5c8f45,
     roughness: 0.96
@@ -173,6 +179,7 @@ export class MaterialLibrary {
     this.lanePaint.dispose();
     this.tactilePaving.dispose();
     this.refugeIsland.dispose();
+    this.trafficCalming.dispose();
     this.park.dispose();
     this.treeTrunk.dispose();
     this.treeCanopy.dispose();

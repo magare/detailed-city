@@ -47,7 +47,8 @@ export class App {
     const trafficPlan = new TrafficLaneGenerator().create({
       roads: generatedCity.roads,
       crossings: generatedCity.crossings,
-      intersections: generatedCity.intersections
+      intersections: generatedCity.intersections,
+      trafficCalmingDevices: generatedCity.trafficCalmingDevices
     });
     this.activeAgentCount = trafficPlan.vehicles.length;
     this.diagnostics = createCityDiagnostics(generatedCity, trafficPlan, renderConfig, cityConfig);

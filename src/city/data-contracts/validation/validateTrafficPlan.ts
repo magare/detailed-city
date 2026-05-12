@@ -10,12 +10,13 @@ import {
 import { validateCityObjectRegistryIdentity } from '../cityObjectRegistry';
 import { validateCityLodPolicy } from '../lodPolicy';
 import { validateSourceMetadata } from '../sourceMetadata';
-import type { CrossingPlan, IntersectionPlan, RoadSegment, TrafficPlan } from '../../../types/city';
+import type { CrossingPlan, IntersectionPlan, RoadSegment, TrafficCalmingDevice, TrafficPlan } from '../../../types/city';
 
 export interface TrafficPlanValidationSource {
   readonly roads: readonly RoadSegment[];
   readonly crossings: readonly CrossingPlan[];
   readonly intersections: readonly IntersectionPlan[];
+  readonly trafficCalmingDevices?: readonly TrafficCalmingDevice[];
   readonly assetBindings: readonly RenderBinding[];
   readonly traffic: TrafficPlan;
   readonly lodPolicy?: CityLodPolicy;
@@ -215,13 +216,19 @@ export function validateTrafficPlan(source: TrafficPlanValidationSource): Valida
         });
       }
 
-      if (profile && vehicle.speedLimitKph !== profile.designSpeedKph) {
+      const expectedSpeedLimitKph = getExpectedVehicleSpeedLimitKph(
+        road,
+        profile?.designSpeedKph ?? vehicle.speedLimitKph,
+        source.trafficCalmingDevices ?? []
+      );
+
+      if (vehicle.speedLimitKph !== expectedSpeedLimitKph) {
         issues.push({
           id: `traffic-vehicle-speed-profile-mismatch-${vehicle.id}`,
           severity: 'error',
           category: 'simulation',
           objectId: vehicle.id,
-          message: `Traffic vehicle ${vehicle.id} speed limit must come from street profile ${road.streetProfileId}.`
+          message: `Traffic vehicle ${vehicle.id} speed limit must come from street profile ${road.streetProfileId} and traffic calming policy.`
         });
       }
 
@@ -368,4 +375,16 @@ function isCrossingMarking(markingType: TrafficPlan['markings'][number]['marking
     markingType === 'tactile-paving' ||
     markingType === 'refuge-island'
   );
+}
+
+function getExpectedVehicleSpeedLimitKph(
+  road: RoadSegment,
+  profileSpeedKph: number,
+  trafficCalmingDevices: readonly TrafficCalmingDevice[]
+): number {
+  const calmedSpeedLimits = trafficCalmingDevices
+    .filter((device) => device.roadId === road.id)
+    .map((device) => device.targetSpeedKph);
+
+  return calmedSpeedLimits.length > 0 ? Math.min(profileSpeedKph, ...calmedSpeedLimits) : profileSpeedKph;
 }

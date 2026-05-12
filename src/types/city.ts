@@ -34,6 +34,7 @@ import type {
   StreetHierarchy,
   ParcelContract,
   TrafficVehicleContract,
+  TrafficCalmingDeviceContract,
   ValidationResult,
   WaterfrontEdgeContract,
   WaterwayContract,
@@ -231,6 +232,8 @@ export interface LaneMarkingPlan extends LaneMarkingContract {
 
 export interface TrafficVehiclePlan extends TrafficVehicleContract {}
 
+export interface TrafficCalmingDevice extends TrafficCalmingDeviceContract {}
+
 export type GeneratedCityObject =
   | AssetDefinition
   | AdministrativeBoundaryPlan
@@ -248,6 +251,7 @@ export type GeneratedCityObject =
   | CurbZone
   | StreetLight
   | StreetFurniture
+  | TrafficCalmingDevice
   | SidewalkGraphNode
   | SidewalkGraphEdge
   | LaneContract
@@ -288,6 +292,7 @@ export interface GeneratedCity {
   curbZones: CurbZone[];
   streetLights: StreetLight[];
   streetFurniture: StreetFurniture[];
+  trafficCalmingDevices: TrafficCalmingDevice[];
   sidewalkGraph: SidewalkGraph;
   parcels: Parcel[];
   buildings: BuildingPlan[];

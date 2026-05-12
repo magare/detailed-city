@@ -74,7 +74,7 @@ export function createCitySceneLayerDiagnostics(
   const roofDetailCount = city.buildings.filter((building) => building.roofStyle !== 'flat').length;
   const objectCounts: Record<CitySceneLayerId, number> = {
     terrain: 1 + city.waterways.length,
-    networks: city.roads.length + traffic.markings.length,
+    networks: city.roads.length + city.trafficCalmingDevices.length + traffic.markings.length,
     buildings: city.buildings.length + roofDetailCount + city.activeFrontages.length,
     'public-realm':
       city.parks.length +
