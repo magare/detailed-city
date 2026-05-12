@@ -81,6 +81,7 @@ export function createCitySceneLayerDiagnostics(
     buildings: city.buildings.length + roofDetailCount + city.activeFrontages.length,
     'public-realm':
       city.parks.length +
+      city.parkFeatures.length +
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length +

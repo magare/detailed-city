@@ -65,6 +65,7 @@ type PickableObjectSource = Pick<
   | 'activeFrontages'
   | 'buildings'
   | 'parks'
+  | 'parkFeatures'
   | 'roads'
   | 'streetFurniture'
   | 'streetLights'
@@ -84,6 +85,7 @@ export function createCityPickingMetadataCatalog(
     ...city.buildings,
     ...city.activeFrontages,
     ...city.parks,
+    ...city.parkFeatures,
     ...city.waterways,
     ...city.waterfrontEdges,
     ...city.trees,

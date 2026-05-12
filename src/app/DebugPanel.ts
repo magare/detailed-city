@@ -156,6 +156,10 @@ export class DebugPanel {
         `${diagnostics.developmentPhasing.total} phases, ${diagnostics.developmentPhasing.active} active, ${diagnostics.developmentPhasing.closureRoads} closures`
       ),
       createMetric(
+        'Parks',
+        `${diagnostics.parkExpansion.totalFeatures} features, ${diagnostics.parkExpansion.pathFeatures} paths, ${diagnostics.parkExpansion.connectedParks} connected`
+      ),
+      createMetric(
         'Metrics',
         `${diagnostics.cityMetrics.total} metrics, ${diagnostics.cityMetrics.passing} pass, ${diagnostics.cityMetrics.warnings} warn`
       ),

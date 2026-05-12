@@ -1,5 +1,14 @@
 import { CITY_BLUEPRINT } from '../../city/blueprint/cityBlueprint';
-import type { CityBounds, CityConfig, ConstraintPlan, ParkPatch, RoadSegment, TreePlanting, Waterway } from '../../types/city';
+import type {
+  CityBounds,
+  CityConfig,
+  ConstraintPlan,
+  ParkFeature,
+  ParkPatch,
+  RoadSegment,
+  TreePlanting,
+  Waterway
+} from '../../types/city';
 import { isPointInsidePolygon, rectanglePolygon } from '../../utils/geometry';
 
 export class TerrainGenerator {
@@ -38,10 +47,68 @@ export class TerrainGenerator {
           },
           center,
           size,
-          boundary: rectanglePolygon(center, size)
+          boundary: rectanglePolygon(center, size),
+          connectedSidewalkIds: [],
+          programZoneIds: [],
+          pathFeatureIds: []
         }
       ];
     });
+  }
+
+  connectParksToSidewalks(parks: readonly ParkPatch[], roads: readonly RoadSegment[]): ParkPatch[] {
+    return parks.map((park) => ({
+      ...park,
+      connectedSidewalkIds: getNearestSidewalkIds(park, roads, 2)
+    }));
+  }
+
+  attachParkFeatureIds(parks: readonly ParkPatch[], features: readonly ParkFeature[]): ParkPatch[] {
+    return parks.map((park) => {
+      const parkFeatures = features.filter((feature) => feature.parkId === park.id);
+
+      return {
+        ...park,
+        programZoneIds: parkFeatures.filter((feature) => feature.featureKind !== 'path').map((feature) => feature.id),
+        pathFeatureIds: parkFeatures.filter((feature) => feature.featureKind === 'path').map((feature) => feature.id)
+      };
+    });
+  }
+
+  generateParkFeatures(parks: readonly ParkPatch[]): ParkFeature[] {
+    return parks.flatMap((park) => createParkFeatureTemplates(park).map((template, index) => {
+      const center = offsetPoint(park.center, park.size, template.offset);
+      const size = {
+        x: Math.max(1.4, park.size.x * template.sizeRatio.x),
+        z: Math.max(1.4, park.size.z * template.sizeRatio.z)
+      };
+
+      return {
+        id: `park-feature-${park.id}-${template.featureKind}-${index}`,
+        kind: 'park-feature',
+        ownerDomain: 'public-realm',
+        parentId: park.id,
+        parkId: park.id,
+        name: `${park.name ?? park.id} ${template.name}`,
+        lod: template.lod,
+        featureKind: template.featureKind,
+        programKind: template.programKind,
+        center,
+        size,
+        boundary: rectanglePolygon(center, size),
+        surface: template.surface,
+        accessible: template.accessible,
+        connectedSidewalkIds: template.featureKind === 'path' || template.accessible ? park.connectedSidewalkIds : [],
+        capacityPeople: template.capacityPeople,
+        shadeTreeIds: [],
+        assetBindingId: `binding:park-feature:${template.featureKind}`,
+        tags: {
+          parkId: park.id,
+          featureKind: template.featureKind,
+          programKind: template.programKind
+        }
+      };
+    }));
   }
 
   generateWaterways(bounds: CityBounds, roads: readonly RoadSegment[]): Waterway[] {
@@ -153,6 +220,149 @@ export class TerrainGenerator {
       z: -bounds.halfSpan + this.config.roadWidth + this.config.blockSize / 2 + blockZ * bounds.spacing
     };
   }
+}
+
+interface ParkFeatureTemplate {
+  readonly name: string;
+  readonly featureKind: ParkFeature['featureKind'];
+  readonly programKind: ParkFeature['programKind'];
+  readonly surface: ParkFeature['surface'];
+  readonly lod: ParkFeature['lod'];
+  readonly accessible: boolean;
+  readonly offset: { readonly x: number; readonly z: number };
+  readonly sizeRatio: { readonly x: number; readonly z: number };
+  readonly capacityPeople?: number;
+}
+
+function createParkFeatureTemplates(park: ParkPatch): readonly ParkFeatureTemplate[] {
+  const programKind = park.id === 'civic-plaza'
+    ? 'civic-gathering'
+    : park.id === 'riverside-green'
+      ? 'waterfront-open-space'
+      : 'passive-recreation';
+
+  return [
+    {
+      name: 'Lawn',
+      featureKind: 'lawn',
+      programKind,
+      surface: 'grass',
+      lod: 'lod1',
+      accessible: true,
+      offset: { x: 0, z: 0 },
+      sizeRatio: { x: 0.62, z: 0.46 },
+      capacityPeople: Math.round((park.size.x * park.size.z) / 18)
+    },
+    {
+      name: 'Primary Path',
+      featureKind: 'path',
+      programKind,
+      surface: 'compacted-gravel',
+      lod: 'lod2',
+      accessible: true,
+      offset: { x: 0, z: -0.28 },
+      sizeRatio: { x: 0.84, z: 0.06 }
+    },
+    {
+      name: 'Cross Path',
+      featureKind: 'path',
+      programKind,
+      surface: 'compacted-gravel',
+      lod: 'lod2',
+      accessible: true,
+      offset: { x: -0.28, z: 0 },
+      sizeRatio: { x: 0.06, z: 0.76 }
+    },
+    {
+      name: 'Planting Bed',
+      featureKind: 'planting',
+      programKind: 'ecological-buffer',
+      surface: 'planting-bed',
+      lod: 'lod2',
+      accessible: false,
+      offset: { x: 0.32, z: 0.28 },
+      sizeRatio: { x: 0.24, z: 0.22 }
+    },
+    {
+      name: 'Active Recreation',
+      featureKind: 'sports',
+      programKind: 'active-recreation',
+      surface: 'play-surface',
+      lod: 'lod2',
+      accessible: true,
+      offset: { x: 0.26, z: -0.18 },
+      sizeRatio: { x: 0.24, z: 0.2 },
+      capacityPeople: 18
+    },
+    {
+      name: 'Seating Grove',
+      featureKind: 'seating',
+      programKind,
+      surface: 'timber',
+      lod: 'lod3',
+      accessible: true,
+      offset: { x: -0.28, z: 0.28 },
+      sizeRatio: { x: 0.18, z: 0.12 },
+      capacityPeople: 12
+    },
+    {
+      name: park.id === 'riverside-green' ? 'Water Overlook' : 'Water Feature',
+      featureKind: 'water-feature',
+      programKind: park.id === 'riverside-green' ? 'waterfront-open-space' : programKind,
+      surface: 'water',
+      lod: 'lod2',
+      accessible: true,
+      offset: { x: 0.12, z: 0.22 },
+      sizeRatio: { x: 0.16, z: 0.12 },
+      capacityPeople: 8
+    },
+    {
+      name: 'Shade Structure',
+      featureKind: 'shade',
+      programKind,
+      surface: 'paving',
+      lod: 'lod3',
+      accessible: true,
+      offset: { x: -0.18, z: -0.18 },
+      sizeRatio: { x: 0.18, z: 0.12 },
+      capacityPeople: 10
+    }
+  ];
+}
+
+function offsetPoint(
+  center: ParkPatch['center'],
+  size: ParkPatch['size'],
+  offset: { readonly x: number; readonly z: number }
+): ParkPatch['center'] {
+  return {
+    x: center.x + size.x * offset.x,
+    z: center.z + size.z * offset.z
+  };
+}
+
+function getNearestSidewalkIds(park: ParkPatch, roads: readonly RoadSegment[], limit: number): string[] {
+  return roads
+    .flatMap((road) =>
+      road.sidewalks.map((sidewalk) => ({
+        id: sidewalk.id,
+        distance: distanceFromParkToRoad(park, road)
+      }))
+    )
+    .sort((left, right) => left.distance - right.distance || left.id.localeCompare(right.id))
+    .slice(0, limit)
+    .map((sidewalk) => sidewalk.id);
+}
+
+function distanceFromParkToRoad(park: ParkPatch, road: RoadSegment): number {
+  const halfX = park.size.x / 2;
+  const halfZ = park.size.z / 2;
+
+  if (road.orientation === 'vertical') {
+    return Math.max(0, Math.abs(road.center.x - park.center.x) - halfX);
+  }
+
+  return Math.max(0, Math.abs(road.center.z - park.center.z) - halfZ);
 }
 
 export function blockKey(blockX: number, blockZ: number): string {

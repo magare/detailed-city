@@ -46,6 +46,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
       withProceduralMetadata(frontage, 'building-active-frontages')
     ),
     parks: city.parks.map((park) => withProceduralMetadata(park, 'terrain-parks')),
+    parkFeatures: city.parkFeatures.map((feature) =>
+      withProceduralMetadata(feature, 'public-realm-park-features')
+    ),
     waterways: city.waterways.map((waterway) => withProceduralMetadata(waterway, 'terrain-waterways')),
     waterfrontEdges: city.waterfrontEdges.map((edge) => withProceduralMetadata(edge, 'land-waterfront')),
     trees: city.trees.map((tree) => withProceduralMetadata(tree, 'environment-tree-plantings')),

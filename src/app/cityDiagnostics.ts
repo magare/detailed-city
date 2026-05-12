@@ -79,6 +79,7 @@ export interface CityDiagnostics {
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly developmentPhasing: DevelopmentPhasingDiagnostics;
+  readonly parkExpansion: ParkExpansionDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
   readonly resilienceGoals: ResilienceGoalDiagnostics;
   readonly validation: GeneratedCity['validation'];
@@ -174,6 +175,10 @@ export interface CityDiagnostics {
     readonly activeDevelopmentPhases: number;
     readonly temporaryRoadClosures: number;
     readonly temporaryPhaseAssets: number;
+    readonly parkFeatures: number;
+    readonly parkPaths: number;
+    readonly parkProgramZones: number;
+    readonly parkSidewalkConnections: number;
     readonly constraints: number;
     readonly resilienceGoals: number;
     readonly districts: number;
@@ -532,6 +537,17 @@ export interface DevelopmentPhasingDiagnostics {
   readonly phaseNames: readonly string[];
 }
 
+export interface ParkExpansionDiagnostics {
+  readonly totalFeatures: number;
+  readonly pathFeatures: number;
+  readonly programZones: number;
+  readonly accessibleFeatures: number;
+  readonly connectedParks: number;
+  readonly sidewalkConnections: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly byProgram: Readonly<Record<string, number>>;
+}
+
 export interface ResilienceGoalDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -587,6 +603,7 @@ export function createCityDiagnostics(
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const developmentPhasing = createDevelopmentPhasingDiagnostics(city);
+  const parkExpansion = createParkExpansionDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
   const resilienceGoals = createResilienceGoalDiagnostics(city);
   const sceneLayers = createCitySceneLayerDiagnostics(city, traffic);
@@ -630,6 +647,7 @@ export function createCityDiagnostics(
     districtCharacter,
     cityMetrics,
     developmentPhasing,
+    parkExpansion,
     constraintLayer,
     resilienceGoals,
     validation: city.validation,
@@ -716,6 +734,10 @@ export function createCityDiagnostics(
       activeDevelopmentPhases: developmentPhasing.active,
       temporaryRoadClosures: developmentPhasing.closureRoads,
       temporaryPhaseAssets: developmentPhasing.temporaryRoads + developmentPhasing.temporaryParks,
+      parkFeatures: parkExpansion.totalFeatures,
+      parkPaths: parkExpansion.pathFeatures,
+      parkProgramZones: parkExpansion.programZones,
+      parkSidewalkConnections: parkExpansion.sidewalkConnections,
       constraints: city.constraints.length,
       resilienceGoals: city.resilienceGoals.length,
       districts: city.districts.length,
@@ -1551,6 +1573,38 @@ function createDevelopmentPhasingDiagnostics(city: GeneratedCity): DevelopmentPh
     unlockLinks,
     maxSequence: Math.max(...city.developmentPhases.map((phase) => phase.sequence)),
     phaseNames: city.developmentPhases.map((phase) => phase.name ?? phase.id)
+  };
+}
+
+function createParkExpansionDiagnostics(city: GeneratedCity): ParkExpansionDiagnostics {
+  const byKind: Record<string, number> = {};
+  const byProgram: Record<string, number> = {};
+  const sidewalkConnections = new Set<string>();
+
+  for (const feature of city.parkFeatures) {
+    byKind[feature.featureKind] = (byKind[feature.featureKind] ?? 0) + 1;
+    byProgram[feature.programKind] = (byProgram[feature.programKind] ?? 0) + 1;
+
+    for (const sidewalkId of feature.connectedSidewalkIds) {
+      sidewalkConnections.add(`${feature.parkId}:${sidewalkId}`);
+    }
+  }
+
+  for (const park of city.parks) {
+    for (const sidewalkId of park.connectedSidewalkIds) {
+      sidewalkConnections.add(`${park.id}:${sidewalkId}`);
+    }
+  }
+
+  return {
+    totalFeatures: city.parkFeatures.length,
+    pathFeatures: city.parkFeatures.filter((feature) => feature.featureKind === 'path').length,
+    programZones: city.parkFeatures.filter((feature) => feature.featureKind !== 'path').length,
+    accessibleFeatures: city.parkFeatures.filter((feature) => feature.accessible).length,
+    connectedParks: city.parks.filter((park) => park.connectedSidewalkIds.length > 0).length,
+    sidewalkConnections: sidewalkConnections.size,
+    byKind,
+    byProgram
   };
 }
 

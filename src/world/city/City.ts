@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ActiveFrontageMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ActiveFrontageMeshBuilder';
 import { BuildingFacadeMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingFacadeMeshBuilder';
 import { BuildingRoofMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingRoofMeshBuilder';
+import { ParkFeatureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkFeatureMeshBuilder';
 import { StreetFurnitureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetFurnitureMeshBuilder';
 import { StreetLightMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetLightMeshBuilder';
 import { TrafficMeshBuilder, type TrafficVehicle } from '../../city/rendering-handoff/mesh-builders/TrafficMeshBuilder';
@@ -70,6 +71,7 @@ export class City implements Updatable {
     this.addWaterways(generated.waterways);
     this.addRoads(generated.roads);
     this.addParks(generated.parks);
+    this.addParkFeatures(generated);
     this.addWaterfrontEdges(generated.waterfrontEdges);
     this.addTreePlantings(generated.trees);
     this.addStreetLights(generated.streetLights);
@@ -129,6 +131,15 @@ export class City implements Updatable {
       this.attachPickingMetadata(mesh, park.id);
       this.layerGroups['public-realm'].add(mesh);
     }
+  }
+
+  private addParkFeatures(generated: GeneratedCity): void {
+    const group = new ParkFeatureMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(generated.parkFeatures);
+
+    this.layerGroups['public-realm'].add(group);
   }
 
   private addWaterfrontEdges(edges: WaterfrontEdge[]): void {

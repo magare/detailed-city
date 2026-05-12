@@ -24,6 +24,7 @@ export type CityObjectKind =
   | 'lane-marking'
   | 'parcel'
   | 'park'
+  | 'park-feature'
   | 'resilience-goal'
   | 'road-segment'
   | 'sensor'
@@ -123,6 +124,40 @@ export interface DevelopmentPhaseContract extends CityObjectBase<'development-ph
     readonly closureIds: readonly CityId[];
     readonly simulationScenarioIds: readonly CityId[];
   };
+}
+
+export type ParkFeatureKind = 'lawn' | 'path' | 'planting' | 'sports' | 'seating' | 'water-feature' | 'shade';
+export type ParkProgramKind =
+  | 'active-recreation'
+  | 'civic-gathering'
+  | 'ecological-buffer'
+  | 'passive-recreation'
+  | 'waterfront-open-space';
+export type ParkFeatureSurface =
+  | 'compacted-gravel'
+  | 'grass'
+  | 'planting-bed'
+  | 'paving'
+  | 'play-surface'
+  | 'timber'
+  | 'water';
+
+export interface ParkFeatureContract extends CityObjectBase<'park-feature'> {
+  readonly parkId: CityId;
+  readonly featureKind: ParkFeatureKind;
+  readonly programKind: ParkProgramKind;
+  readonly center: Point2D;
+  readonly size: {
+    readonly x: number;
+    readonly z: number;
+  };
+  readonly boundary: Polygon2D;
+  readonly surface: ParkFeatureSurface;
+  readonly accessible: boolean;
+  readonly connectedSidewalkIds: readonly CityId[];
+  readonly capacityPeople?: number;
+  readonly shadeTreeIds: readonly CityId[];
+  readonly assetBindingId: CityId;
 }
 
 export interface CityObjectIndex<ObjectType extends CityObjectBase = CityObjectBase> {
@@ -453,6 +488,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2'],
       description: 'Parks render as terrain patches with optional close planting detail.'
+    },
+    {
+      objectKind: 'park-feature',
+      scope: 'public-realm-prop',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod1', 'lod2', 'lod3'],
+      description: 'Park features describe paths, lawns, planting, sports, seating, water, and shade zones inside park boundaries.'
     },
     {
       objectKind: 'road-segment',

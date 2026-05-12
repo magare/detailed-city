@@ -34,10 +34,11 @@ test('generated city object index is deterministic and resolves road children', 
   expect(firstCity.objectIndex.countsByKind['topography-zone']).toBe(5);
   expect(firstCity.objectIndex.countsByKind['soil-geology-zone']).toBe(5);
   expect(firstCity.objectIndex.countsByKind['development-phase']).toBe(3);
-  expect(firstCity.objectIndex.countsByKind.asset).toBe(32);
+  expect(firstCity.objectIndex.countsByKind['park-feature']).toBe(24);
+  expect(firstCity.objectIndex.countsByKind.asset).toBe(39);
   expect(firstCity.objectIndex.countsByKind['traffic-calming-device']).toBe(12);
-  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(38);
-  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(38);
+  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(39);
+  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(39);
   expect(firstCity.objectIndex.objectsById['slice-detailed-street-road-v-6']).toMatchObject({
     id: 'slice-detailed-street-road-v-6',
     kind: 'vertical-slice',
@@ -79,8 +80,8 @@ test('generated city object index is deterministic and resolves road children', 
 test('render asset catalog provides fallback coverage for current scene objects', () => {
   const city = new CityGenerator(cityConfig).generate();
 
-  expect(city.assetCatalog).toHaveLength(32);
-  expect(city.assetBindings).toHaveLength(32);
+  expect(city.assetCatalog).toHaveLength(39);
+  expect(city.assetBindings).toHaveLength(39);
   expect(city.validation.issues.filter((issue) => issue.category === 'asset')).toEqual([]);
   expect(city.assetBindings).toEqual(
     expect.arrayContaining([
@@ -113,6 +114,12 @@ test('render asset catalog provides fallback coverage for current scene objects'
         objectKind: 'traffic-calming-device',
         fallbackMaterial: 'trafficCalming',
         fallbackGeometry: 'traffic-calming-box'
+      }),
+      expect.objectContaining({
+        id: 'binding:park-feature:path',
+        objectKind: 'park-feature',
+        fallbackMaterial: 'park-path',
+        fallbackGeometry: 'park-path-strip'
       }),
       expect.objectContaining({
         id: 'binding:facade:storefront-window',

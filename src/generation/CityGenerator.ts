@@ -59,6 +59,9 @@ export class CityGenerator {
     });
     const roadsWithTopography = topography.roads;
     const pedestrianNetwork = new PedestrianNetworkGenerator().create(roadsWithTopography, intersections);
+    const parksWithSidewalks = terrainGenerator.connectParksToSidewalks(parks, roadsWithTopography);
+    const parkFeatures = terrainGenerator.generateParkFeatures(parksWithSidewalks);
+    const parksWithFeatures = terrainGenerator.attachParkFeatureIds(parksWithSidewalks, parkFeatures);
     const landAndBuildingsWithTopography = {
       ...landAndBuildings,
       buildings: topography.buildings
@@ -71,14 +74,14 @@ export class CityGenerator {
     });
     const resilienceGoals = new ResilienceGoalGenerator(this.config).create({
       bounds,
-      parks,
+      parks: parksWithFeatures,
       roads: roadsWithTopography,
       waterways
     });
     const waterfrontEdges = new WaterfrontGenerator().create({
       waterways,
       roads: roadsWithTopography,
-      parks
+      parks: parksWithFeatures
     });
     const hazardZones = new HazardZoneGenerator().create({
       bounds,
@@ -97,7 +100,7 @@ export class CityGenerator {
       waterways
     });
     const developmentPhases = new PhasingGenerator().create({ bounds });
-    const parkTrees = terrainGenerator.generateTreePlantings(parks);
+    const parkTrees = terrainGenerator.generateTreePlantings(parksWithFeatures);
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
       roads: roadsWithTopography,
       intersections,
@@ -160,7 +163,7 @@ export class CityGenerator {
       parcels: sliceTagged.parcels,
       buildings: sliceTagged.buildings,
       activeFrontages,
-      parks,
+      parks: parksWithFeatures,
       resilienceGoals
     });
 
@@ -193,7 +196,8 @@ export class CityGenerator {
       parcels: sliceTagged.parcels,
       buildings: sliceTagged.buildings,
       activeFrontages,
-      parks,
+      parks: parksWithFeatures,
+      parkFeatures,
       waterways,
       waterfrontEdges,
       trees,

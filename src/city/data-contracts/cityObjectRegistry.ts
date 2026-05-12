@@ -50,6 +50,7 @@ const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|prome
 const TOPOGRAPHY_ZONE_KIND = String.raw`(?:elevation-band|slope-area|retaining-condition|buildability-area)`;
 const SOIL_GEOLOGY_KIND = String.raw`(?:alluvial-silt|engineered-fill|shallow-bedrock|sandy-loam|contaminated-fill|waterfront-clay)`;
 const DEVELOPMENT_PHASE_KIND = String.raw`(?:baseline|future-expansion|temporary-condition)`;
+const PARK_FEATURE_KIND = String.raw`(?:lawn|path|planting|sports|seating|water-feature|shade)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -100,6 +101,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   ),
   entry('parcel', ['parcel-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(String.raw`parcel-\d+-\d+-\d+-\d+`)], required(['block'])),
   entry('park', ['<park-slug>'], [exact(NAMED_ID)], none()),
+  entry(
+    'park-feature',
+    ['park-feature-<park-id>-<feature-kind>-<index>'],
+    [exact(String.raw`park-feature-${NAMED_ID}-${PARK_FEATURE_KIND}-\d+`)],
+    required(['park'])
+  ),
   entry('resilience-goal', ['resilience-goal-<slug>'], [exact(String.raw`resilience-goal-${NAMED_ID}`)], none()),
   entry('road-segment', ['road-v-<index>', 'road-h-<index>'], [exact(ROAD_ID)], none()),
   entry('sensor', ['sensor-<slug>'], [exact(String.raw`sensor-${NAMED_ID}`)], optional(['building', 'road-segment', 'street-light', 'utility-node'])),

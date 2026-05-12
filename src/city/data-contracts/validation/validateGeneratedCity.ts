@@ -67,6 +67,7 @@ type GeneratedCityForValidation = Pick<
   | 'objectIndex'
   | 'parcels'
   | 'parks'
+  | 'parkFeatures'
   | 'resilienceGoals'
   | 'roads'
   | 'sidewalkGraph'
@@ -88,6 +89,8 @@ type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'][number];
+type ValidationPark = GeneratedCityForValidation['parks'][number];
+type ValidationParkFeature = GeneratedCityForValidation['parkFeatures'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationHazardZone = GeneratedCityForValidation['hazardZones'][number];
@@ -106,6 +109,13 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:road:asphalt',
   'binding:water:river',
   'binding:park:grass',
+  'binding:park-feature:lawn',
+  'binding:park-feature:path',
+  'binding:park-feature:planting',
+  'binding:park-feature:sports',
+  'binding:park-feature:seating',
+  'binding:park-feature:water-feature',
+  'binding:park-feature:shade',
   'binding:building:massing',
   'binding:building:roof-detail',
   'binding:tree:trunk',
@@ -140,6 +150,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'road-segment',
   'waterway',
   'park',
+  'park-feature',
   'building',
   'facade',
   'tree-planting',
@@ -2032,6 +2043,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     });
   }
 
+  validateParkExpansion(city, issues, assetBindingsById);
+
   for (const tree of city.trees) {
     if (tree.plantingContext === 'park' && (!tree.parkId || !hasObjectId(city, tree.parkId) || tree.parentId !== tree.parkId)) {
       issues.push({
@@ -3155,6 +3168,147 @@ function validateBuildingSoilGeology(city: GeneratedCityForValidation, issues: V
   }
 }
 
+function validateParkExpansion(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const featuresByParkId = new Map<string, ValidationParkFeature[]>();
+
+  for (const feature of city.parkFeatures) {
+    const features = featuresByParkId.get(feature.parkId) ?? [];
+    features.push(feature);
+    featuresByParkId.set(feature.parkId, features);
+    validateParkFeature(city, feature, issues, assetBindingsById);
+  }
+
+  for (const park of city.parks) {
+    const features = featuresByParkId.get(park.id) ?? [];
+    const featureIds = new Set(features.map((feature) => feature.id));
+    const featureKinds = new Set(features.map((feature) => feature.featureKind));
+
+    if (park.connectedSidewalkIds.length === 0) {
+      issues.push(createParkIssue(park, 'missing-sidewalk-connection', 'Park must expose at least one sidewalk connection.'));
+    }
+
+    for (const sidewalkId of park.connectedSidewalkIds) {
+      const sidewalk = city.objectIndex.objectsById[sidewalkId];
+
+      if (!sidewalk || sidewalk.kind !== 'sidewalk') {
+        issues.push(createParkIssue(park, `missing-sidewalk-${sidewalkId}`, `Park references missing sidewalk connection ${sidewalkId}.`));
+      }
+    }
+
+    for (const featureId of [...park.programZoneIds, ...park.pathFeatureIds]) {
+      if (!featureIds.has(featureId)) {
+        issues.push(createParkIssue(park, `missing-feature-${featureId}`, `Park references missing feature ${featureId}.`));
+      }
+    }
+
+    for (const requiredKind of ['lawn', 'path', 'planting', 'seating'] as const) {
+      if (!featureKinds.has(requiredKind)) {
+        issues.push(createParkIssue(park, `missing-${requiredKind}`, `Park must include a ${requiredKind} feature.`));
+      }
+    }
+
+    if (!features.some((feature) => feature.programKind === 'active-recreation' || feature.programKind === 'civic-gathering')) {
+      issues.push(createParkIssue(park, 'missing-active-program', 'Park must include an active recreation or civic gathering program zone.'));
+    }
+  }
+}
+
+function validateParkFeature(
+  city: GeneratedCityForValidation,
+  feature: ValidationParkFeature,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const park = city.parks.find((candidate) => candidate.id === feature.parkId);
+
+  if (!park || feature.parentId !== feature.parkId) {
+    issues.push({
+      id: `park-feature-missing-parent-${feature.id}`,
+      severity: 'error',
+      category: 'identifier',
+      objectId: feature.id,
+      message: `Park feature ${feature.id} must reference parent park ${feature.parkId}.`
+    });
+    return;
+  }
+
+  if (!isPointInsidePolygon(feature.center, park.boundary)) {
+    issues.push({
+      id: `park-feature-outside-park-${feature.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: feature.id,
+      affectedPoint: feature.center,
+      affectedBoundary: park.boundary,
+      suggestedFix: 'Regenerate park features from the park boundary so every program zone remains inside its parent park.',
+      message: `Park feature ${feature.id} center must be inside parent park ${park.id}.`
+    });
+  }
+
+  if (feature.size.x <= 0 || feature.size.z <= 0) {
+    issues.push({
+      id: `park-feature-invalid-size-${feature.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: feature.id,
+      message: `Park feature ${feature.id} must have positive x/z dimensions.`
+    });
+  }
+
+  if (feature.accessible && feature.connectedSidewalkIds.length === 0) {
+    issues.push({
+      id: `park-feature-missing-access-${feature.id}`,
+      severity: 'error',
+      category: 'graph',
+      objectId: feature.id,
+      message: `Accessible park feature ${feature.id} must connect to at least one sidewalk.`
+    });
+  }
+
+  for (const sidewalkId of feature.connectedSidewalkIds) {
+    const sidewalk = city.objectIndex.objectsById[sidewalkId];
+
+    if (!sidewalk || sidewalk.kind !== 'sidewalk') {
+      issues.push({
+        id: `park-feature-missing-sidewalk-${feature.id}-${sidewalkId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: feature.id,
+        message: `Park feature ${feature.id} references missing sidewalk ${sidewalkId}.`
+      });
+    }
+  }
+
+  const binding = assetBindingsById.get(feature.assetBindingId);
+
+  if (!binding || binding.objectKind !== 'park-feature') {
+    issues.push({
+      id: `park-feature-missing-binding-${feature.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: feature.id,
+      message: `Park feature ${feature.id} must reference a park-feature render binding.`
+    });
+  }
+}
+
+function createParkIssue(park: ValidationPark, issueIdSuffix: string, message: string): ValidationIssue {
+  return {
+    id: `park-${issueIdSuffix}-${park.id}`,
+    severity: 'error',
+    category: 'graph',
+    objectId: park.id,
+    affectedPoint: park.center,
+    affectedBoundary: park.boundary,
+    suggestedFix: 'Regenerate park expansion from public-space and sidewalk rules so paths, program zones, and access links stay coherent.',
+    message
+  };
+}
+
 function validateDevelopmentPhases(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
   if (city.developmentPhases.length === 0) {
     issues.push({
@@ -4235,6 +4389,11 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
   for (const park of city.parks) {
     validatePoint2D(city.geospatial, park.id, 'center', park.center, issues);
     validatePolygon2D(city.geospatial, park.id, 'boundary', park.boundary, issues);
+  }
+
+  for (const feature of city.parkFeatures) {
+    validatePoint2D(city.geospatial, feature.id, 'center', feature.center, issues);
+    validatePolygon2D(city.geospatial, feature.id, 'boundary', feature.boundary, issues);
   }
 
   for (const waterway of city.waterways) {
