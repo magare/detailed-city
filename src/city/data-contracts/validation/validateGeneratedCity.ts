@@ -2,7 +2,10 @@ import type {
   AssetDefinition,
   AssetFormat,
   BuildingEntranceStrategy,
+  BuildingFacadeMaterialZone,
+  BuildingFacadeRhythm,
   BuildingFootprintGrammarKind,
+  BuildingFrontageSide,
   BuildingStructuralSystemKind,
   BuildingServiceAccessProfile,
   BuildingTypologyKind,
@@ -184,6 +187,24 @@ const BUILDING_STRUCTURAL_SYSTEM_KINDS = [
   'long-span-steel',
   'civic-frame'
 ] as const satisfies readonly BuildingStructuralSystemKind[];
+const BUILDING_FACADE_RHYTHMS = [
+  'civic-formal',
+  'fine-grain',
+  'industrial-large-bay',
+  'mid-rise-waterfront',
+  'residential-regular',
+  'tower-grid'
+] as const satisfies readonly BuildingFacadeRhythm[];
+const BUILDING_FACADE_MATERIAL_ZONES = [
+  'balcony-rail',
+  'brick',
+  'concrete',
+  'glass',
+  'metal-panel',
+  'plaster',
+  'stone',
+  'storefront-glass'
+] as const satisfies readonly BuildingFacadeMaterialZone[];
 const CROSSING_LOCATIONS = ['intersection', 'midblock'] as const;
 const CROSSWALK_TYPES = ['zebra', 'continental', 'raised-table'] as const;
 const CROSSING_PRIORITIES = ['signal-protected', 'pedestrian-priority', 'yield-controlled', 'uncontrolled'] as const;
@@ -1919,6 +1940,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     validateBuildingTypology(building, issues);
     validateBuildingFootprintGrammar(building, parcel, issues);
     validateBuildingStructureShell(building, issues);
+    validateBuildingFacadeGrammar(building, issues);
   }
 
   validateBuildingTopography(city, issues);
@@ -3315,6 +3337,171 @@ function validateBuildingStructureShell(building: ValidationBuilding, issues: Va
       objectId: building.id,
       ...createIssueFocus(building.center, 'Regenerate transfer levels and load-bearing assumptions from the structural system.'),
       message: `Building ${building.id} structure shell must expose valid transfer levels and load-bearing assumptions.`
+    });
+  }
+}
+
+function validateBuildingFacadeGrammar(building: ValidationBuilding, issues: ValidationIssue[]): void {
+  const grammar = building.facadeGrammar;
+
+  if (!grammar) {
+    issues.push({
+      id: `missing-building-facade-grammar-${building.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: building.id,
+      ...createIssueFocus(building.center, `Generate facade grammar for ${building.id} before rendering facade modules.`),
+      message: `Building ${building.id} must carry a facade grammar contract.`
+    });
+    return;
+  }
+
+  if (
+    grammar.grammarId !== `${building.id}-facade-grammar` ||
+    grammar.templateId !== building.facadeGrammarId ||
+    grammar.sourceStructureShellId !== building.structureShell.grammarId ||
+    !BUILDING_FACADE_RHYTHMS.includes(grammar.rhythm)
+  ) {
+    issues.push({
+      id: `invalid-building-facade-grammar-kind-${building.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Use a stable building-owned facade grammar id, template id, and source shell id.'),
+      message: `Building ${building.id} has an invalid facade grammar id, template, rhythm, or shell reference.`
+    });
+  }
+
+  if (
+    grammar.floorGrid.floorCount !== building.floorCount ||
+    Math.abs(grammar.floorGrid.typicalFloorHeightMeters - building.structureShell.massing.typicalFloorHeightMeters) > 0.01 ||
+    grammar.floorGrid.expressedFloorLevels.length === 0 ||
+    grammar.floorGrid.expressedFloorLevels.some((level) => level < 1 || level > building.floorCount) ||
+    grammar.baySpacingMeters <= 0
+  ) {
+    issues.push({
+      id: `building-facade-floor-grid-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Regenerate facade floor grid from the structure shell floor plates.'),
+      message: `Building ${building.id} facade grammar floor grid must match structure shell floors.`
+    });
+  }
+
+  const expectedSides = new Set<BuildingFrontageSide>(['north', 'east', 'south', 'west']);
+  const seenSides = new Set<BuildingFrontageSide>();
+  let primaryStorefrontFound = false;
+
+  for (const side of grammar.sides) {
+    const expectedWidth = side.side === 'north' || side.side === 'south' ? building.size.x : building.size.z;
+    seenSides.add(side.side);
+
+    if (
+      !isBuildingFrontageSide(side.side) ||
+      side.widthMeters <= 0 ||
+      Math.abs(side.widthMeters - expectedWidth) > 0.01 ||
+      Math.abs(side.heightMeters - building.heightMeters) > 0.01 ||
+      side.bayCount < 1 ||
+      side.baySpacingMeters <= 0 ||
+      Math.abs(side.baySpacingMeters - side.widthMeters / side.bayCount) > 0.02 ||
+      side.floorLevels.some((level) => !grammar.floorGrid.expressedFloorLevels.includes(level)) ||
+      !CITY_LOD_TIERS.includes(side.renderLod)
+    ) {
+      issues.push({
+        id: `building-facade-side-mismatch-${building.id}-${side.side}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Regenerate facade side dimensions, bay counts, and LOD tier from building size.'),
+        message: `Building ${building.id} facade side ${side.side} must match building dimensions and floor grid.`
+      });
+      continue;
+    }
+
+    if (
+      side.windowModule.widthMeters <= 0 ||
+      side.windowModule.heightMeters <= 0 ||
+      side.windowModule.sillHeightMeters < 0 ||
+      side.windowModule.transparencyRatio <= 0 ||
+      side.windowModule.transparencyRatio > 1
+    ) {
+      issues.push({
+        id: `building-facade-window-module-mismatch-${building.id}-${side.side}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Set positive facade window module dimensions and a valid transparency ratio.'),
+        message: `Building ${building.id} facade side ${side.side} must expose usable window modules.`
+      });
+    }
+
+    if (
+      side.balconyModule.enabled &&
+      (side.balconyModule.startLevel < 2 ||
+        side.balconyModule.startLevel > building.floorCount ||
+        side.balconyModule.everyNFloors < 1 ||
+        side.balconyModule.widthMeters <= 0 ||
+        side.balconyModule.depthMeters <= 0)
+    ) {
+      issues.push({
+        id: `building-facade-balcony-module-mismatch-${building.id}-${side.side}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Set balcony levels and dimensions inside the facade floor grid.'),
+        message: `Building ${building.id} facade side ${side.side} balcony module is invalid.`
+      });
+    }
+
+    if (side.materialZones.length === 0 || side.materialZones.some((zone) => !BUILDING_FACADE_MATERIAL_ZONES.includes(zone))) {
+      issues.push({
+        id: `building-facade-material-zone-mismatch-${building.id}-${side.side}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Use registered facade material zones for all facade sides.'),
+        message: `Building ${building.id} facade side ${side.side} must expose registered material zones.`
+      });
+    }
+
+    if (side.storefrontModule.enabled) {
+      primaryStorefrontFound = primaryStorefrontFound || side.side === building.primaryFrontageSide;
+      if (
+        side.side !== building.primaryFrontageSide ||
+        side.storefrontModule.roadId !== building.primaryFrontageRoadId ||
+        side.storefrontModule.bayCount < 1 ||
+        !side.storefrontModule.signAtlasSlot ||
+        !side.storefrontModule.awningAtlasSlot ||
+        !hasActiveFrontageUse(building.uses)
+      ) {
+        issues.push({
+          id: `building-facade-storefront-module-mismatch-${building.id}-${side.side}`,
+          severity: 'error',
+          category: 'asset',
+          objectId: building.id,
+          ...createIssueFocus(building.center, 'Attach storefront modules only to active-use primary frontage sides.'),
+          message: `Building ${building.id} storefront facade module must match its active-use primary frontage.`
+        });
+      }
+    }
+  }
+
+  if (
+    grammar.sides.length !== expectedSides.size ||
+    [...expectedSides].some((side) => !seenSides.has(side)) ||
+    !grammar.atlasSlots.wall ||
+    !grammar.atlasSlots.window ||
+    !grammar.atlasSlots.frame ||
+    (hasActiveFrontageUse(building.uses) && !primaryStorefrontFound)
+  ) {
+    issues.push({
+      id: `building-facade-grammar-completeness-${building.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Generate all four facade sides, required atlas slots, and active storefront modules.'),
+      message: `Building ${building.id} facade grammar must cover all sides, atlas slots, and active-use storefront modules.`
     });
   }
 }
@@ -5454,6 +5641,23 @@ function validateActiveFrontage(
       category: 'graph',
       objectId: activeFrontage.id,
       message: `Active frontage ${activeFrontage.id} must reference at least one building public entrance.`
+    });
+  }
+
+  const facadeSide = building?.facadeGrammar.sides.find((side) => side.side === activeFrontage.frontageSide);
+  if (
+    building &&
+    (!facadeSide ||
+      !facadeSide.storefrontModule.enabled ||
+      facadeSide.storefrontModule.roadId !== activeFrontage.roadId ||
+      facadeSide.storefrontModule.bayCount <= 0)
+  ) {
+    issues.push({
+      id: `active-frontage-facade-grammar-mismatch-${activeFrontage.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: activeFrontage.id,
+      message: `Active frontage ${activeFrontage.id} must match a storefront module in ${building.id} facade grammar.`
     });
   }
 

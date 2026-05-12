@@ -202,6 +202,10 @@ export class DebugPanel {
         `${diagnostics.buildingStructureShells.structuralSystemKinds} systems, ${diagnostics.buildingStructureShells.floorPlates} plates, ${diagnostics.buildingStructureShells.transferLevels} transfer`
       ),
       createMetric(
+        'Facades',
+        `${diagnostics.buildingFacades.facadeRhythms} rhythms, ${diagnostics.buildingFacades.windowModules} windows, ${diagnostics.buildingFacades.storefrontModules} storefront`
+      ),
+      createMetric(
         'Assets',
         `${diagnostics.assetBindingDiagnostics.assetDefinitions} assets, ${diagnostics.assetBindingDiagnostics.renderBindings} bindings`
       ),

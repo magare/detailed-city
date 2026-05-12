@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ActiveFrontageMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ActiveFrontageMeshBuilder';
+import { BuildingFacadeMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingFacadeMeshBuilder';
 import { StreetFurnitureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetFurnitureMeshBuilder';
 import { StreetLightMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetLightMeshBuilder';
 import { TrafficMeshBuilder, type TrafficVehicle } from '../../city/rendering-handoff/mesh-builders/TrafficMeshBuilder';
@@ -75,6 +76,7 @@ export class City implements Updatable {
     this.addStreetFurniture(generated.streetFurniture);
     this.addTrafficCalmingDevices(generated.trafficCalmingDevices);
     this.addBuildings(generated.buildings);
+    this.addBuildingFacades(generated);
     this.addActiveFrontages(generated.activeFrontages);
     this.addTraffic(trafficPlan);
   }
@@ -217,6 +219,16 @@ export class City implements Updatable {
     );
     roofMesh.instanceMatrix.needsUpdate = true;
     this.layerGroups.buildings.add(roofMesh);
+  }
+
+  private addBuildingFacades(generated: GeneratedCity): void {
+    const detailedBuildingIds = new Set(generated.verticalSlices.flatMap((slice) => slice.buildingIds));
+    const facadeGroup = new BuildingFacadeMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(generated.buildings, detailedBuildingIds);
+
+    this.layerGroups.buildings.add(facadeGroup);
   }
 
   private addActiveFrontages(activeFrontages: readonly ActiveFrontage[]): void {

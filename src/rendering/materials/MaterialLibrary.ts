@@ -84,6 +84,18 @@ export class MaterialLibrary {
     clearcoat: 0.36
   });
 
+  readonly facadeFrame = new THREE.MeshStandardMaterial({
+    color: 0x778086,
+    roughness: 0.68,
+    metalness: 0.12
+  });
+
+  readonly facadeBalcony = new THREE.MeshStandardMaterial({
+    color: 0x57626a,
+    roughness: 0.62,
+    metalness: 0.28
+  });
+
   readonly storefrontAwning = new THREE.MeshStandardMaterial({
     color: 0x2d7f78,
     roughness: 0.74
@@ -188,6 +200,8 @@ export class MaterialLibrary {
     this.rooftop.dispose();
     this.windowGlow.dispose();
     this.storefrontGlass.dispose();
+    this.facadeFrame.dispose();
+    this.facadeBalcony.dispose();
     this.storefrontAwning.dispose();
     this.storefrontSign.dispose();
     this.entranceDoor.dispose();

@@ -1496,6 +1496,80 @@ export interface BuildingStructureShellContract {
   };
 }
 
+export type BuildingFacadeRhythm =
+  | 'civic-formal'
+  | 'fine-grain'
+  | 'industrial-large-bay'
+  | 'mid-rise-waterfront'
+  | 'residential-regular'
+  | 'tower-grid';
+
+export type BuildingFacadeMaterialZone =
+  | 'balcony-rail'
+  | 'brick'
+  | 'concrete'
+  | 'glass'
+  | 'metal-panel'
+  | 'plaster'
+  | 'stone'
+  | 'storefront-glass';
+
+export interface BuildingFacadeAtlasSlotsContract {
+  readonly wall: string;
+  readonly window: string;
+  readonly frame: string;
+  readonly balcony?: string;
+  readonly storefrontSign?: string;
+  readonly awning?: string;
+}
+
+export interface BuildingFacadeSideContract {
+  readonly side: BuildingFrontageSide;
+  readonly widthMeters: number;
+  readonly heightMeters: number;
+  readonly bayCount: number;
+  readonly baySpacingMeters: number;
+  readonly floorLevels: readonly number[];
+  readonly windowModule: {
+    readonly widthMeters: number;
+    readonly heightMeters: number;
+    readonly sillHeightMeters: number;
+    readonly transparencyRatio: number;
+  };
+  readonly balconyModule: {
+    readonly enabled: boolean;
+    readonly startLevel: number;
+    readonly everyNFloors: number;
+    readonly widthMeters: number;
+    readonly depthMeters: number;
+  };
+  readonly storefrontModule: {
+    readonly enabled: boolean;
+    readonly roadId?: CityId;
+    readonly bayCount: number;
+    readonly signAtlasSlot?: string;
+    readonly awningAtlasSlot?: string;
+  };
+  readonly materialZones: readonly BuildingFacadeMaterialZone[];
+  readonly renderLod: LodTier;
+}
+
+export interface BuildingFacadeGrammarContract {
+  readonly grammarId: string;
+  readonly templateId: string;
+  readonly sourceStructureShellId: string;
+  readonly rhythm: BuildingFacadeRhythm;
+  readonly floorGrid: {
+    readonly floorCount: number;
+    readonly typicalFloorHeightMeters: number;
+    readonly expressedFloorLevels: readonly number[];
+  };
+  readonly baySpacingMeters: number;
+  readonly sides: readonly BuildingFacadeSideContract[];
+  readonly materialPaletteId: string;
+  readonly atlasSlots: BuildingFacadeAtlasSlotsContract;
+}
+
 export interface BuildingContract extends CityObjectBase<'building'> {
   readonly parcelId: CityId;
   readonly zoningDistrictId: CityId;
@@ -1506,6 +1580,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly typology: BuildingTypologyContract;
   readonly footprintGrammar: BuildingFootprintGrammarContract;
   readonly structureShell: BuildingStructureShellContract;
+  readonly facadeGrammar: BuildingFacadeGrammarContract;
   readonly facadeGrammarId: string;
   readonly roofGrammarId: string;
   readonly primaryFrontageRoadId: CityId;

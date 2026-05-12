@@ -7,6 +7,7 @@ import {
   type MasterPlanDiagnostics
 } from '../city/blueprint/master-plan/masterPlan';
 import type {
+  BuildingFacadeRhythm,
   BuildingFootprintGrammarKind,
   BuildingStructuralSystemKind,
   BuildingTypologyKind,
@@ -60,6 +61,7 @@ export interface CityDiagnostics {
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
   readonly buildingStructureShells: BuildingStructureShellDiagnostics;
+  readonly buildingFacades: BuildingFacadeDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
@@ -189,6 +191,12 @@ export interface CityDiagnostics {
     readonly buildingStructuralSystemKinds: number;
     readonly buildingsWithStructureShell: number;
     readonly buildingFloorPlates: number;
+    readonly buildingFacadeRhythms: number;
+    readonly buildingsWithFacadeGrammar: number;
+    readonly buildingFacadeSides: number;
+    readonly buildingFacadeWindowModules: number;
+    readonly buildingFacadeBalconySides: number;
+    readonly buildingFacadeStorefrontModules: number;
     readonly activeFrontages: number;
     readonly parks: number;
     readonly waterways: number;
@@ -297,6 +305,19 @@ export interface BuildingStructureShellDiagnostics {
   readonly transferLevels: number;
   readonly longSpanBuildings: number;
   readonly averageFloorPlateAreaSqM: number;
+}
+
+export interface BuildingFacadeDiagnostics {
+  readonly total: number;
+  readonly buildingsWithGrammar: number;
+  readonly facadeRhythms: number;
+  readonly byRhythm: Readonly<Partial<Record<BuildingFacadeRhythm, number>>>;
+  readonly facadeSides: number;
+  readonly windowModules: number;
+  readonly balconySides: number;
+  readonly storefrontModules: number;
+  readonly atlasSlotIds: readonly string[];
+  readonly materialZoneIds: readonly string[];
 }
 
 export interface RoadNetworkDiagnostics {
@@ -475,6 +496,7 @@ export function createCityDiagnostics(
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
   const buildingStructureShells = createBuildingStructureShellDiagnostics(city);
+  const buildingFacades = createBuildingFacadeDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
@@ -514,6 +536,7 @@ export function createCityDiagnostics(
     buildingTypologies,
     buildingFootprints,
     buildingStructureShells,
+    buildingFacades,
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
@@ -634,6 +657,12 @@ export function createCityDiagnostics(
       buildingStructuralSystemKinds: buildingStructureShells.structuralSystemKinds,
       buildingsWithStructureShell: buildingStructureShells.buildingsWithShell,
       buildingFloorPlates: buildingStructureShells.floorPlates,
+      buildingFacadeRhythms: buildingFacades.facadeRhythms,
+      buildingsWithFacadeGrammar: buildingFacades.buildingsWithGrammar,
+      buildingFacadeSides: buildingFacades.facadeSides,
+      buildingFacadeWindowModules: buildingFacades.windowModules,
+      buildingFacadeBalconySides: buildingFacades.balconySides,
+      buildingFacadeStorefrontModules: buildingFacades.storefrontModules,
       activeFrontages: city.activeFrontages.length,
       parks: city.parks.length,
       waterways: city.waterways.length,
@@ -919,6 +948,67 @@ function createBuildingStructureShellDiagnostics(city: GeneratedCity): BuildingS
     transferLevels,
     longSpanBuildings,
     averageFloorPlateAreaSqM: Number((floorPlateAreaTotal / Math.max(1, floorPlates)).toFixed(2))
+  };
+}
+
+function createBuildingFacadeDiagnostics(city: GeneratedCity): BuildingFacadeDiagnostics {
+  const byRhythm: Partial<Record<BuildingFacadeRhythm, number>> = {};
+  const atlasSlotIds = new Set<string>();
+  const materialZoneIds = new Set<string>();
+  let buildingsWithGrammar = 0;
+  let facadeSides = 0;
+  let windowModules = 0;
+  let balconySides = 0;
+  let storefrontModules = 0;
+
+  for (const building of city.buildings) {
+    const grammar = building.facadeGrammar;
+
+    if (!grammar) {
+      continue;
+    }
+
+    buildingsWithGrammar += 1;
+    byRhythm[grammar.rhythm] = (byRhythm[grammar.rhythm] ?? 0) + 1;
+    facadeSides += grammar.sides.length;
+    atlasSlotIds.add(grammar.atlasSlots.wall);
+    atlasSlotIds.add(grammar.atlasSlots.window);
+    atlasSlotIds.add(grammar.atlasSlots.frame);
+    if (grammar.atlasSlots.balcony) {
+      atlasSlotIds.add(grammar.atlasSlots.balcony);
+    }
+    if (grammar.atlasSlots.storefrontSign) {
+      atlasSlotIds.add(grammar.atlasSlots.storefrontSign);
+    }
+    if (grammar.atlasSlots.awning) {
+      atlasSlotIds.add(grammar.atlasSlots.awning);
+    }
+
+    for (const side of grammar.sides) {
+      windowModules += side.bayCount * side.floorLevels.length;
+      if (side.balconyModule.enabled) {
+        balconySides += 1;
+      }
+      if (side.storefrontModule.enabled) {
+        storefrontModules += 1;
+      }
+      for (const materialZone of side.materialZones) {
+        materialZoneIds.add(materialZone);
+      }
+    }
+  }
+
+  return {
+    total: city.buildings.length,
+    buildingsWithGrammar,
+    facadeRhythms: Object.keys(byRhythm).length,
+    byRhythm,
+    facadeSides,
+    windowModules,
+    balconySides,
+    storefrontModules,
+    atlasSlotIds: [...atlasSlotIds].sort(),
+    materialZoneIds: [...materialZoneIds].sort()
   };
 }
 

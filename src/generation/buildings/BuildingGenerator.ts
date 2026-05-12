@@ -8,6 +8,10 @@ import type {
   BlockFrontageClass,
   BlockFrontageContract,
   BlockInternalAccessContract,
+  BuildingFacadeGrammarContract,
+  BuildingFacadeMaterialZone,
+  BuildingFacadeRhythm,
+  BuildingFacadeSideContract,
   BuildingFootprintGrammarContract,
   BuildingFootprintGrammarKind,
   BuildingFrontageSide,
@@ -208,6 +212,7 @@ export class BuildingGenerator {
               heightMeters
             });
             const floorCount = this.getFloorCount(heightMeters, typology);
+            const primaryFrontageSide = this.getFrontageSide(primaryFrontageRoadId, blockX, blockZ);
             const structureShell = this.createBuildingStructureShell({
               buildingId,
               typology,
@@ -215,6 +220,16 @@ export class BuildingGenerator {
               footprint: footprintPlan.footprint,
               heightMeters,
               floorCount
+            });
+            const facadeGrammar = this.createBuildingFacadeGrammar({
+              buildingId,
+              district,
+              typology,
+              footprintGrammar: footprintPlan.grammar,
+              structureShell,
+              size: footprintPlan.size,
+              primaryFrontageRoadId,
+              primaryFrontageSide
             });
 
             parcels.push({
@@ -259,10 +274,11 @@ export class BuildingGenerator {
               typology,
               footprintGrammar: footprintPlan.grammar,
               structureShell,
+              facadeGrammar,
               facadeGrammarId: typology.facadeGrammarId,
               roofGrammarId: typology.roofGrammarId,
               primaryFrontageRoadId,
-              primaryFrontageSide: this.getFrontageSide(primaryFrontageRoadId, blockX, blockZ),
+              primaryFrontageSide,
               entranceIds: publicEntranceIds,
               publicEntranceIds,
               center: footprintPlan.center,
@@ -1077,6 +1093,183 @@ export class BuildingGenerator {
       return 5;
     }
     return 3.2;
+  }
+
+  private createBuildingFacadeGrammar(input: {
+    readonly buildingId: string;
+    readonly district: DistrictKind;
+    readonly typology: BuildingTypologyContract;
+    readonly footprintGrammar: BuildingFootprintGrammarContract;
+    readonly structureShell: BuildingStructureShellContract;
+    readonly size: { readonly x: number; readonly z: number };
+    readonly primaryFrontageRoadId: string;
+    readonly primaryFrontageSide: BuildingFrontageSide;
+  }): BuildingFacadeGrammarContract {
+    const rhythm = this.getFacadeRhythm(input.district, input.typology, input.footprintGrammar);
+    const baySpacingMeters = this.getFacadeBaySpacing(input.typology, input.structureShell);
+    const expressedFloorLevels = input.structureShell.floorPlates
+      .filter((floorPlate) => floorPlate.level === 1 || floorPlate.level === input.structureShell.massing.floorCount || floorPlate.level % 2 === 0)
+      .map((floorPlate) => floorPlate.level);
+    const atlasSlots = this.getFacadeAtlasSlots(input.typology, rhythm);
+    const materialZones = this.getFacadeMaterialZones(input.district, input.typology, rhythm);
+    const sides: BuildingFacadeSideContract[] = (['north', 'east', 'south', 'west'] as const).map((side) => {
+      const sideWidthMeters = side === 'north' || side === 'south' ? input.size.x : input.size.z;
+      const bayCount = Math.max(1, Math.round(sideWidthMeters / baySpacingMeters));
+      const hasStorefront = side === input.primaryFrontageSide && this.hasStorefrontFacade(input.typology);
+
+      return {
+        side,
+        widthMeters: Number(sideWidthMeters.toFixed(2)),
+        heightMeters: input.structureShell.massing.totalHeightMeters,
+        bayCount,
+        baySpacingMeters: Number((sideWidthMeters / bayCount).toFixed(2)),
+        floorLevels: expressedFloorLevels,
+        windowModule: {
+          widthMeters: Number(Math.min(2.6, Math.max(0.8, (sideWidthMeters / bayCount) * 0.52)).toFixed(2)),
+          heightMeters: this.getFacadeWindowHeight(input.typology),
+          sillHeightMeters: input.typology.kind === 'industrial' || input.typology.kind === 'warehouse' ? 1.4 : 0.92,
+          transparencyRatio: this.getFacadeTransparencyRatio(input.typology, input.district)
+        },
+        balconyModule: {
+          enabled: this.hasBalconyFacade(input.typology, input.district),
+          startLevel: Math.min(input.structureShell.massing.floorCount, input.typology.kind === 'hospitality' ? 3 : 2),
+          everyNFloors: input.typology.kind === 'residential' ? 2 : 3,
+          widthMeters: Number(Math.min(3.2, Math.max(1.4, (sideWidthMeters / bayCount) * 0.72)).toFixed(2)),
+          depthMeters: input.district === 'waterfront' ? 1.05 : 0.72
+        },
+        storefrontModule: {
+          enabled: hasStorefront,
+          roadId: hasStorefront ? input.primaryFrontageRoadId : undefined,
+          bayCount: hasStorefront ? Math.max(1, Math.min(6, bayCount)) : 0,
+          signAtlasSlot: hasStorefront ? atlasSlots.storefrontSign : undefined,
+          awningAtlasSlot: hasStorefront ? atlasSlots.awning : undefined
+        },
+        materialZones,
+        renderLod: side === input.primaryFrontageSide || hasStorefront ? 'lod3' : 'lod2'
+      };
+    });
+
+    return {
+      grammarId: `${input.buildingId}-facade-grammar`,
+      templateId: input.typology.facadeGrammarId,
+      sourceStructureShellId: input.structureShell.grammarId,
+      rhythm,
+      floorGrid: {
+        floorCount: input.structureShell.massing.floorCount,
+        typicalFloorHeightMeters: input.structureShell.massing.typicalFloorHeightMeters,
+        expressedFloorLevels
+      },
+      baySpacingMeters,
+      sides,
+      materialPaletteId: `${input.district}-${rhythm}-facade-palette`,
+      atlasSlots
+    };
+  }
+
+  private getFacadeRhythm(
+    district: DistrictKind,
+    typology: BuildingTypologyContract,
+    footprintGrammar: BuildingFootprintGrammarContract
+  ): BuildingFacadeRhythm {
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return 'industrial-large-bay';
+    }
+    if (typology.kind === 'civic' || footprintGrammar.kind === 'civic-block') {
+      return 'civic-formal';
+    }
+    if (footprintGrammar.kind === 'tower-on-podium') {
+      return 'tower-grid';
+    }
+    if (district === 'waterfront') {
+      return 'mid-rise-waterfront';
+    }
+    if (typology.kind === 'mixed-use' || typology.kind === 'retail' || typology.kind === 'hospitality') {
+      return 'fine-grain';
+    }
+    return 'residential-regular';
+  }
+
+  private getFacadeBaySpacing(
+    typology: BuildingTypologyContract,
+    shell: BuildingStructureShellContract
+  ): number {
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return Number(Math.max(shell.structuralGrid.baySpacingMeters.x, shell.structuralGrid.baySpacingMeters.z).toFixed(2));
+    }
+    if (typology.kind === 'civic') {
+      return 4.8;
+    }
+    if (typology.kind === 'mixed-use' || typology.kind === 'retail' || typology.kind === 'hospitality') {
+      return 3.6;
+    }
+    return 3.2;
+  }
+
+  private getFacadeAtlasSlots(
+    typology: BuildingTypologyContract,
+    rhythm: BuildingFacadeRhythm
+  ): BuildingFacadeGrammarContract['atlasSlots'] {
+    const wall = rhythm === 'industrial-large-bay' ? 'facade-wall-metal-panel-a' : rhythm === 'civic-formal' ? 'facade-wall-stone-a' : 'facade-wall-neutral-a';
+
+    return {
+      wall,
+      window: typology.kind === 'industrial' || typology.kind === 'warehouse' ? 'facade-window-strip-a' : 'facade-window-punched-a',
+      frame: rhythm === 'tower-grid' ? 'facade-frame-metal-a' : 'facade-frame-concrete-a',
+      balcony: this.hasBalconyFacade(typology, rhythm === 'mid-rise-waterfront' ? 'waterfront' : 'residential') ? 'facade-balcony-rail-a' : undefined,
+      storefrontSign: this.hasStorefrontFacade(typology) ? 'facade-storefront-sign-a' : undefined,
+      awning: this.hasStorefrontFacade(typology) ? 'facade-awning-a' : undefined
+    };
+  }
+
+  private getFacadeMaterialZones(
+    district: DistrictKind,
+    typology: BuildingTypologyContract,
+    rhythm: BuildingFacadeRhythm
+  ): BuildingFacadeMaterialZone[] {
+    if (rhythm === 'industrial-large-bay') {
+      return ['metal-panel', 'glass'];
+    }
+    if (rhythm === 'civic-formal') {
+      return ['stone', 'concrete', 'glass'];
+    }
+    if (district === 'waterfront') {
+      return ['glass', 'plaster', 'balcony-rail', 'storefront-glass'];
+    }
+    if (typology.kind === 'mixed-use' || typology.kind === 'retail' || typology.kind === 'hospitality') {
+      return ['brick', 'glass', 'storefront-glass'];
+    }
+    return ['plaster', 'glass', 'balcony-rail'];
+  }
+
+  private getFacadeWindowHeight(typology: BuildingTypologyContract): number {
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return 1.4;
+    }
+    if (typology.kind === 'retail' || typology.kind === 'hospitality') {
+      return 2.1;
+    }
+    return 1.55;
+  }
+
+  private getFacadeTransparencyRatio(typology: BuildingTypologyContract, district: DistrictKind): number {
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return 0.22;
+    }
+    if (typology.kind === 'civic') {
+      return 0.38;
+    }
+    if (typology.kind === 'mixed-use' || typology.kind === 'retail' || typology.kind === 'hospitality') {
+      return 0.58;
+    }
+    return district === 'waterfront' ? 0.46 : 0.34;
+  }
+
+  private hasStorefrontFacade(typology: BuildingTypologyContract): boolean {
+    return typology.kind === 'mixed-use' || typology.kind === 'retail' || typology.kind === 'hospitality';
+  }
+
+  private hasBalconyFacade(typology: BuildingTypologyContract, district: DistrictKind): boolean {
+    return typology.kind === 'residential' || typology.kind === 'hospitality' || district === 'waterfront';
   }
 
   private createBuildingFootprintPlan(input: {
