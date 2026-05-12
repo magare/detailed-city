@@ -71,7 +71,10 @@ export function createCitySceneLayerDiagnostics(
   city: GeneratedCity,
   traffic: TrafficPlan
 ): readonly CitySceneLayerDiagnostics[] {
-  const roofDetailCount = city.buildings.filter((building) => building.roofStyle !== 'flat').length;
+  const detailedBuildingIds = new Set(city.verticalSlices.flatMap((slice) => slice.buildingIds));
+  const roofDetailCount = city.buildings
+    .filter((building) => detailedBuildingIds.has(building.id))
+    .reduce((sum, building) => sum + (building.roofGrammar?.details.length ?? 0), 0);
   const objectCounts: Record<CitySceneLayerId, number> = {
     terrain: 1 + city.waterways.length,
     networks: city.roads.length + city.trafficCalmingDevices.length + traffic.markings.length,

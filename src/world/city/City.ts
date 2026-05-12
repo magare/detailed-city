@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ActiveFrontageMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ActiveFrontageMeshBuilder';
 import { BuildingFacadeMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingFacadeMeshBuilder';
+import { BuildingRoofMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingRoofMeshBuilder';
 import { StreetFurnitureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetFurnitureMeshBuilder';
 import { StreetLightMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetLightMeshBuilder';
 import { TrafficMeshBuilder, type TrafficVehicle } from '../../city/rendering-handoff/mesh-builders/TrafficMeshBuilder';
@@ -18,7 +19,6 @@ import {
 } from '../../city/rendering-handoff/picking/pickingMetadata';
 import { MaterialLibrary } from '../../rendering/materials/MaterialLibrary';
 import type {
-  BuildingPlan,
   ActiveFrontage,
   GeneratedCity,
   ParkPatch,
@@ -75,7 +75,7 @@ export class City implements Updatable {
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
     this.addTrafficCalmingDevices(generated.trafficCalmingDevices);
-    this.addBuildings(generated.buildings);
+    this.addBuildings(generated);
     this.addBuildingFacades(generated);
     this.addActiveFrontages(generated.activeFrontages);
     this.addTraffic(trafficPlan);
@@ -148,7 +148,9 @@ export class City implements Updatable {
     }
   }
 
-  private addBuildings(buildingPlans: BuildingPlan[]): void {
+  private addBuildings(generated: GeneratedCity): void {
+    const buildingPlans = generated.buildings;
+
     if (buildingPlans.length === 0) {
       return;
     }
@@ -181,44 +183,17 @@ export class City implements Updatable {
       buildings.instanceColor.needsUpdate = true;
     }
     this.layerGroups.buildings.add(buildings);
-    this.addRooftopDetails(buildingPlans);
+    this.addRooftopDetails(generated);
   }
 
-  private addRooftopDetails(buildingPlans: BuildingPlan[]): void {
-    const detailedBuildings = buildingPlans.filter((building) => building.roofStyle !== 'flat');
+  private addRooftopDetails(generated: GeneratedCity): void {
+    const detailedBuildingIds = new Set(generated.verticalSlices.flatMap((slice) => slice.buildingIds));
+    const roofGroup = new BuildingRoofMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(generated.buildings, detailedBuildingIds);
 
-    if (detailedBuildings.length === 0) {
-      return;
-    }
-
-    const roofMesh = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      this.materials.rooftop,
-      detailedBuildings.length
-    );
-    const matrix = new THREE.Matrix4();
-    const rotation = new THREE.Quaternion();
-
-    detailedBuildings.forEach((building, index) => {
-      const isAntenna = building.roofStyle === 'antenna';
-      const scale = isAntenna
-        ? new THREE.Vector3(0.55, 10, 0.55)
-        : new THREE.Vector3(Math.max(2.2, building.size.x * 0.25), 1.4, Math.max(2.2, building.size.z * 0.25));
-      const y = building.heightMeters + scale.y / 2;
-
-      matrix.compose(new THREE.Vector3(building.center.x, y, building.center.z), rotation, scale);
-      roofMesh.setMatrixAt(index, matrix);
-    });
-
-    roofMesh.name = 'RooftopDetails';
-    roofMesh.castShadow = true;
-    roofMesh.receiveShadow = true;
-    this.attachInstancePickingMetadata(
-      roofMesh,
-      detailedBuildings.map((building) => building.id)
-    );
-    roofMesh.instanceMatrix.needsUpdate = true;
-    this.layerGroups.buildings.add(roofMesh);
+    this.layerGroups.buildings.add(roofGroup);
   }
 
   private addBuildingFacades(generated: GeneratedCity): void {

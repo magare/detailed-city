@@ -206,6 +206,10 @@ export class DebugPanel {
         `${diagnostics.buildingFacades.facadeRhythms} rhythms, ${diagnostics.buildingFacades.windowModules} windows, ${diagnostics.buildingFacades.storefrontModules} storefront`
       ),
       createMetric(
+        'Roofs',
+        `${diagnostics.buildingRoofs.roofStyles} styles, ${diagnostics.buildingRoofs.detailModules} details, ${diagnostics.buildingRoofs.heightExemptions} exempt`
+      ),
+      createMetric(
         'Assets',
         `${diagnostics.assetBindingDiagnostics.assetDefinitions} assets, ${diagnostics.assetBindingDiagnostics.renderBindings} bindings`
       ),

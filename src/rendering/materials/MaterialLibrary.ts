@@ -69,6 +69,24 @@ export class MaterialLibrary {
     metalness: 0.12
   });
 
+  readonly roofSolarPanel = new THREE.MeshStandardMaterial({
+    color: 0x1f3444,
+    roughness: 0.42,
+    metalness: 0.22
+  });
+
+  readonly roofGreen = new THREE.MeshStandardMaterial({
+    color: 0x4f7d4e,
+    roughness: 0.9,
+    metalness: 0.02
+  });
+
+  readonly roofTerrace = new THREE.MeshStandardMaterial({
+    color: 0xb8ad95,
+    roughness: 0.84,
+    metalness: 0.03
+  });
+
   readonly windowGlow = new THREE.MeshBasicMaterial({
     color: 0xf4d391,
     transparent: true,
@@ -198,6 +216,9 @@ export class MaterialLibrary {
     this.water.dispose();
     this.building.dispose();
     this.rooftop.dispose();
+    this.roofSolarPanel.dispose();
+    this.roofGreen.dispose();
+    this.roofTerrace.dispose();
     this.windowGlow.dispose();
     this.storefrontGlass.dispose();
     this.facadeFrame.dispose();

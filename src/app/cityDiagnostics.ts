@@ -9,6 +9,8 @@ import {
 import type {
   BuildingFacadeRhythm,
   BuildingFootprintGrammarKind,
+  BuildingRoofDetailKind,
+  BuildingRoofStyleKind,
   BuildingStructuralSystemKind,
   BuildingTypologyKind,
   CityObjectIndex,
@@ -62,6 +64,7 @@ export interface CityDiagnostics {
   readonly buildingFootprints: BuildingFootprintDiagnostics;
   readonly buildingStructureShells: BuildingStructureShellDiagnostics;
   readonly buildingFacades: BuildingFacadeDiagnostics;
+  readonly buildingRoofs: BuildingRoofDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
@@ -197,6 +200,16 @@ export interface CityDiagnostics {
     readonly buildingFacadeWindowModules: number;
     readonly buildingFacadeBalconySides: number;
     readonly buildingFacadeStorefrontModules: number;
+    readonly buildingRoofStyles: number;
+    readonly buildingsWithRoofGrammar: number;
+    readonly roofDetailModules: number;
+    readonly roofMechanicalScreens: number;
+    readonly roofSolarArrays: number;
+    readonly roofGreenRoofs: number;
+    readonly roofAntennas: number;
+    readonly roofTerraces: number;
+    readonly roofAccessCores: number;
+    readonly roofHeightExemptions: number;
     readonly activeFrontages: number;
     readonly parks: number;
     readonly waterways: number;
@@ -318,6 +331,23 @@ export interface BuildingFacadeDiagnostics {
   readonly storefrontModules: number;
   readonly atlasSlotIds: readonly string[];
   readonly materialZoneIds: readonly string[];
+}
+
+export interface BuildingRoofDiagnostics {
+  readonly total: number;
+  readonly buildingsWithGrammar: number;
+  readonly roofStyles: number;
+  readonly byStyle: Readonly<Partial<Record<BuildingRoofStyleKind, number>>>;
+  readonly detailModules: number;
+  readonly byDetailKind: Readonly<Partial<Record<BuildingRoofDetailKind, number>>>;
+  readonly mechanicalScreens: number;
+  readonly solarArrays: number;
+  readonly greenRoofs: number;
+  readonly antennas: number;
+  readonly terraces: number;
+  readonly roofAccessCores: number;
+  readonly heightExemptions: number;
+  readonly averageUsableAreaSqM: number;
 }
 
 export interface RoadNetworkDiagnostics {
@@ -497,6 +527,7 @@ export function createCityDiagnostics(
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
   const buildingStructureShells = createBuildingStructureShellDiagnostics(city);
   const buildingFacades = createBuildingFacadeDiagnostics(city);
+  const buildingRoofs = createBuildingRoofDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
@@ -537,6 +568,7 @@ export function createCityDiagnostics(
     buildingFootprints,
     buildingStructureShells,
     buildingFacades,
+    buildingRoofs,
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
@@ -663,6 +695,16 @@ export function createCityDiagnostics(
       buildingFacadeWindowModules: buildingFacades.windowModules,
       buildingFacadeBalconySides: buildingFacades.balconySides,
       buildingFacadeStorefrontModules: buildingFacades.storefrontModules,
+      buildingRoofStyles: buildingRoofs.roofStyles,
+      buildingsWithRoofGrammar: buildingRoofs.buildingsWithGrammar,
+      roofDetailModules: buildingRoofs.detailModules,
+      roofMechanicalScreens: buildingRoofs.mechanicalScreens,
+      roofSolarArrays: buildingRoofs.solarArrays,
+      roofGreenRoofs: buildingRoofs.greenRoofs,
+      roofAntennas: buildingRoofs.antennas,
+      roofTerraces: buildingRoofs.terraces,
+      roofAccessCores: buildingRoofs.roofAccessCores,
+      roofHeightExemptions: buildingRoofs.heightExemptions,
       activeFrontages: city.activeFrontages.length,
       parks: city.parks.length,
       waterways: city.waterways.length,
@@ -1009,6 +1051,50 @@ function createBuildingFacadeDiagnostics(city: GeneratedCity): BuildingFacadeDia
     storefrontModules,
     atlasSlotIds: [...atlasSlotIds].sort(),
     materialZoneIds: [...materialZoneIds].sort()
+  };
+}
+
+function createBuildingRoofDiagnostics(city: GeneratedCity): BuildingRoofDiagnostics {
+  const byStyle: Partial<Record<BuildingRoofStyleKind, number>> = {};
+  const byDetailKind: Partial<Record<BuildingRoofDetailKind, number>> = {};
+  let buildingsWithGrammar = 0;
+  let detailModules = 0;
+  let heightExemptions = 0;
+  let usableAreaTotal = 0;
+
+  for (const building of city.buildings) {
+    const grammar = building.roofGrammar;
+
+    if (!grammar) {
+      continue;
+    }
+
+    buildingsWithGrammar += 1;
+    byStyle[grammar.roofStyle] = (byStyle[grammar.roofStyle] ?? 0) + 1;
+    detailModules += grammar.details.length;
+    heightExemptions += grammar.heightExemptions.length;
+    usableAreaTotal += grammar.roofPlane.usableAreaSqM;
+
+    for (const detail of grammar.details) {
+      byDetailKind[detail.detailKind] = (byDetailKind[detail.detailKind] ?? 0) + 1;
+    }
+  }
+
+  return {
+    total: city.buildings.length,
+    buildingsWithGrammar,
+    roofStyles: Object.keys(byStyle).length,
+    byStyle,
+    detailModules,
+    byDetailKind,
+    mechanicalScreens: byDetailKind['mechanical-screen'] ?? 0,
+    solarArrays: byDetailKind['solar-array'] ?? 0,
+    greenRoofs: byDetailKind['green-roof'] ?? 0,
+    antennas: byDetailKind.antenna ?? 0,
+    terraces: byDetailKind.terrace ?? 0,
+    roofAccessCores: byDetailKind['roof-access'] ?? 0,
+    heightExemptions,
+    averageUsableAreaSqM: Number((usableAreaTotal / Math.max(1, buildingsWithGrammar)).toFixed(2))
   };
 }
 

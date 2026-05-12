@@ -12,7 +12,10 @@ test('scene layer diagnostics are deterministic and match current city data', ()
     intersections: city.intersections
   });
   const layers = createCitySceneLayerDiagnostics(city, traffic);
-  const roofDetailCount = city.buildings.filter((building) => building.roofStyle !== 'flat').length;
+  const detailedBuildingIds = new Set(city.verticalSlices.flatMap((slice) => slice.buildingIds));
+  const roofDetailCount = city.buildings
+    .filter((building) => detailedBuildingIds.has(building.id))
+    .reduce((sum, building) => sum + building.roofGrammar.details.length, 0);
 
   expect(layers.map((layer) => layer.id)).toEqual([
     'terrain',

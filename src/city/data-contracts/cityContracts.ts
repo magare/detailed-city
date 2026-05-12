@@ -1570,6 +1570,70 @@ export interface BuildingFacadeGrammarContract {
   readonly atlasSlots: BuildingFacadeAtlasSlotsContract;
 }
 
+export type BuildingRoofStyleKind = 'flat' | 'mechanical' | 'green' | 'antenna' | 'terrace' | 'sawtooth' | 'civic-cornice';
+export type BuildingRoofDetailKind =
+  | 'mechanical-screen'
+  | 'solar-array'
+  | 'green-roof'
+  | 'antenna'
+  | 'terrace'
+  | 'roof-access';
+export type BuildingRoofMaterialZone = 'roof' | 'solar' | 'green-roof' | 'metal' | 'terrace';
+
+export interface BuildingRoofDetailContract {
+  readonly detailId: CityId;
+  readonly detailKind: BuildingRoofDetailKind;
+  readonly centerOffsetMeters: Point2D;
+  readonly sizeMeters: { readonly x: number; readonly y: number; readonly z: number };
+  readonly baseElevationMeters: number;
+  readonly topElevationMeters: number;
+  readonly assetBindingId: CityId;
+  readonly materialZone: BuildingRoofMaterialZone;
+  readonly heightExempt: boolean;
+}
+
+export interface BuildingRoofGrammarContract {
+  readonly grammarId: string;
+  readonly templateId: string;
+  readonly sourceStructureShellId: string;
+  readonly roofStyle: BuildingRoofStyleKind;
+  readonly roofPlane: {
+    readonly footprint: Polygon2D;
+    readonly areaSqM: number;
+    readonly elevationMeters: number;
+    readonly usableAreaSqM: number;
+    readonly parapetHeightMeters: number;
+    readonly drainageSlopePercent: number;
+  };
+  readonly details: readonly BuildingRoofDetailContract[];
+  readonly solar: {
+    readonly panelCount: number;
+    readonly arrayAreaSqM: number;
+    readonly tiltDegrees: number;
+    readonly azimuthDegrees: number;
+    readonly detailIds: readonly CityId[];
+  };
+  readonly greenRoof: {
+    readonly enabled: boolean;
+    readonly coverageRatio: number;
+    readonly areaSqM: number;
+    readonly soilDepthMeters: number;
+    readonly detailId?: CityId;
+  };
+  readonly roofAccess: {
+    readonly hasStairBulkhead: boolean;
+    readonly hasMaintenancePath: boolean;
+    readonly accessDetailIds: readonly CityId[];
+  };
+  readonly heightExemptions: readonly {
+    readonly detailId: CityId;
+    readonly allowed: boolean;
+    readonly reason: 'mechanical-screen' | 'antenna' | 'access-bulkhead';
+    readonly exemptHeightMeters: number;
+    readonly zoningLimitMeters: number;
+  }[];
+}
+
 export interface BuildingContract extends CityObjectBase<'building'> {
   readonly parcelId: CityId;
   readonly zoningDistrictId: CityId;
@@ -1582,6 +1646,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly structureShell: BuildingStructureShellContract;
   readonly facadeGrammar: BuildingFacadeGrammarContract;
   readonly facadeGrammarId: string;
+  readonly roofGrammar: BuildingRoofGrammarContract;
   readonly roofGrammarId: string;
   readonly primaryFrontageRoadId: CityId;
   readonly primaryFrontageSide: BuildingFrontageSide;

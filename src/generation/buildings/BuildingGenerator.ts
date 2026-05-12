@@ -15,6 +15,9 @@ import type {
   BuildingFootprintGrammarContract,
   BuildingFootprintGrammarKind,
   BuildingFrontageSide,
+  BuildingRoofDetailContract,
+  BuildingRoofGrammarContract,
+  BuildingRoofStyleKind,
   BuildingStructureShellContract,
   BuildingStructuralSystemKind,
   BuildingTypologyContract,
@@ -231,6 +234,15 @@ export class BuildingGenerator {
               primaryFrontageRoadId,
               primaryFrontageSide
             });
+            const roofGrammar = this.createBuildingRoofGrammar({
+              buildingId,
+              district,
+              typology,
+              structureShell,
+              center: footprintPlan.center,
+              roofStyle,
+              maxHeightMeters
+            });
 
             parcels.push({
               id,
@@ -276,6 +288,7 @@ export class BuildingGenerator {
               structureShell,
               facadeGrammar,
               facadeGrammarId: typology.facadeGrammarId,
+              roofGrammar,
               roofGrammarId: typology.roofGrammarId,
               primaryFrontageRoadId,
               primaryFrontageSide,
@@ -1093,6 +1106,233 @@ export class BuildingGenerator {
       return 5;
     }
     return 3.2;
+  }
+
+  private createBuildingRoofGrammar(input: {
+    readonly buildingId: string;
+    readonly district: DistrictKind;
+    readonly typology: BuildingTypologyContract;
+    readonly structureShell: BuildingStructureShellContract;
+    readonly center: Point2D;
+    readonly roofStyle: RoofStyle;
+    readonly maxHeightMeters: number;
+  }): BuildingRoofGrammarContract {
+    const roofPlate = input.structureShell.floorPlates[input.structureShell.floorPlates.length - 1];
+    const roofFootprint = roofPlate?.footprint ?? input.structureShell.core.footprint;
+    const roofBounds = getPolygonBounds(roofFootprint);
+    const roofSize = {
+      x: Number((roofBounds.maxX - roofBounds.minX).toFixed(2)),
+      z: Number((roofBounds.maxZ - roofBounds.minZ).toFixed(2))
+    };
+    const roofCenter = {
+      x: Number(((roofBounds.minX + roofBounds.maxX) / 2).toFixed(2)),
+      z: Number(((roofBounds.minZ + roofBounds.maxZ) / 2).toFixed(2))
+    };
+    const roofCenterOffset = {
+      x: roofCenter.x - input.center.x,
+      z: roofCenter.z - input.center.z
+    };
+    const roofAreaSqM = Number(getPolygonArea(roofFootprint).toFixed(2));
+    const roofElevationMeters = input.structureShell.massing.roofElevationMeters;
+    const details: BuildingRoofDetailContract[] = [];
+    const addDetail = (
+      suffix: string,
+      detailKind: BuildingRoofDetailContract['detailKind'],
+      offset: Point2D,
+      sizeMeters: BuildingRoofDetailContract['sizeMeters'],
+      materialZone: BuildingRoofDetailContract['materialZone'],
+      heightExempt: boolean
+    ): BuildingRoofDetailContract => {
+      const fittedSize = {
+        x: Number(Math.max(0.45, Math.min(sizeMeters.x, roofSize.x - 0.7)).toFixed(2)),
+        y: sizeMeters.y,
+        z: Number(Math.max(0.45, Math.min(sizeMeters.z, roofSize.z - 0.7)).toFixed(2))
+      };
+      const safeOffset = this.clampRoofOffset(offset, roofSize, fittedSize);
+      const detail = {
+        detailId: `${input.buildingId}-${suffix}`,
+        detailKind,
+        centerOffsetMeters: {
+          x: Number((roofCenterOffset.x + safeOffset.x).toFixed(2)),
+          z: Number((roofCenterOffset.z + safeOffset.z).toFixed(2))
+        },
+        sizeMeters: {
+          x: fittedSize.x,
+          y: Number(fittedSize.y.toFixed(2)),
+          z: fittedSize.z
+        },
+        baseElevationMeters: Number(roofElevationMeters.toFixed(2)),
+        topElevationMeters: Number((roofElevationMeters + fittedSize.y).toFixed(2)),
+        assetBindingId: 'binding:building:roof-detail',
+        materialZone,
+        heightExempt
+      };
+      details.push(detail);
+      return detail;
+    };
+
+    const access = addDetail(
+      'roof-access-0',
+      'roof-access',
+      { x: -roofSize.x * 0.28, z: roofSize.z * 0.24 },
+      { x: Math.min(3.2, Math.max(1.8, roofSize.x * 0.14)), y: 2.4, z: Math.min(3.2, Math.max(1.8, roofSize.z * 0.14)) },
+      'roof',
+      true
+    );
+    const roofStyle = this.getRoofGrammarStyle(input.typology, input.roofStyle);
+    const mechanicalEligible =
+      input.roofStyle === 'mechanical' ||
+      input.typology.kind === 'industrial' ||
+      input.typology.kind === 'warehouse' ||
+      input.typology.kind === 'office' ||
+      input.typology.kind === 'mixed-use' ||
+      input.structureShell.massing.totalHeightMeters > 24;
+    const solarEligible = roofAreaSqM >= 32 && input.typology.kind !== 'civic';
+    const greenEligible =
+      roofAreaSqM >= 36 &&
+      (input.roofStyle === 'green' ||
+        input.district === 'waterfront' ||
+        input.district === 'residential' ||
+        input.typology.kind === 'hospitality');
+    const terraceEligible =
+      roofAreaSqM >= 36 &&
+      input.structureShell.massing.floorCount >= 3 &&
+      (input.typology.kind === 'residential' || input.typology.kind === 'mixed-use' || input.typology.kind === 'hospitality');
+    const antennaEligible = input.roofStyle === 'antenna' || input.structureShell.massing.totalHeightMeters > 58;
+
+    if (mechanicalEligible) {
+      addDetail(
+        'roof-mechanical-0',
+        'mechanical-screen',
+        { x: roofSize.x * 0.24, z: -roofSize.z * 0.22 },
+        { x: Math.min(6.8, Math.max(2.8, roofSize.x * 0.26)), y: 1.6, z: Math.min(5.4, Math.max(2.2, roofSize.z * 0.22)) },
+        'metal',
+        true
+      );
+    }
+
+    const solarDetail = solarEligible
+      ? addDetail(
+          'roof-solar-0',
+          'solar-array',
+          { x: roofSize.x * 0.12, z: roofSize.z * 0.18 },
+          { x: Math.min(roofSize.x * 0.52, 9.6), y: 0.16, z: Math.min(roofSize.z * 0.32, 5.2) },
+          'solar',
+          false
+        )
+      : undefined;
+    const greenDetail = greenEligible
+      ? addDetail(
+          'roof-green-0',
+          'green-roof',
+          { x: -roofSize.x * 0.1, z: -roofSize.z * 0.08 },
+          { x: Math.min(roofSize.x * 0.58, 10.5), y: 0.12, z: Math.min(roofSize.z * 0.42, 7.4) },
+          'green-roof',
+          false
+        )
+      : undefined;
+
+    if (terraceEligible) {
+      addDetail(
+        'roof-terrace-0',
+        'terrace',
+        { x: 0, z: roofSize.z * 0.3 },
+        { x: Math.min(roofSize.x * 0.48, 8.2), y: 0.12, z: Math.min(roofSize.z * 0.24, 4.4) },
+        'terrace',
+        false
+      );
+    }
+
+    if (antennaEligible) {
+      addDetail(
+        'roof-antenna-0',
+        'antenna',
+        { x: roofSize.x * 0.32, z: roofSize.z * 0.3 },
+        { x: 0.5, y: Math.min(10.5, Math.max(6, input.structureShell.massing.totalHeightMeters * 0.12)), z: 0.5 },
+        'metal',
+        true
+      );
+    }
+
+    const heightExemptions: BuildingRoofGrammarContract['heightExemptions'] = details
+      .filter((detail) => detail.heightExempt)
+      .map((detail) => ({
+        detailId: detail.detailId,
+        allowed: detail.topElevationMeters <= input.maxHeightMeters + 12,
+        reason:
+          detail.detailKind === 'antenna'
+            ? 'antenna'
+            : detail.detailKind === 'mechanical-screen'
+              ? 'mechanical-screen'
+              : 'access-bulkhead',
+        exemptHeightMeters: Number((detail.topElevationMeters - roofElevationMeters).toFixed(2)),
+        zoningLimitMeters: Number(input.maxHeightMeters.toFixed(2))
+      }));
+    const solarArrayArea = solarDetail ? Number((solarDetail.sizeMeters.x * solarDetail.sizeMeters.z).toFixed(2)) : 0;
+    const greenArea = greenDetail ? Number((greenDetail.sizeMeters.x * greenDetail.sizeMeters.z).toFixed(2)) : 0;
+
+    return {
+      grammarId: `${input.buildingId}-roof-grammar`,
+      templateId: input.typology.roofGrammarId,
+      sourceStructureShellId: input.structureShell.grammarId,
+      roofStyle,
+      roofPlane: {
+        footprint: roofFootprint,
+        areaSqM: roofAreaSqM,
+        elevationMeters: Number(roofElevationMeters.toFixed(2)),
+        usableAreaSqM: Number(Math.max(0, roofAreaSqM - details.reduce((sum, detail) => sum + detail.sizeMeters.x * detail.sizeMeters.z, 0)).toFixed(2)),
+        parapetHeightMeters: input.typology.kind === 'industrial' || input.typology.kind === 'warehouse' ? 0.65 : 0.9,
+        drainageSlopePercent: input.typology.kind === 'industrial' || input.typology.kind === 'warehouse' ? 1.5 : 2
+      },
+      details,
+      solar: {
+        panelCount: solarDetail ? Math.max(2, Math.floor(solarArrayArea / 1.8)) : 0,
+        arrayAreaSqM: solarArrayArea,
+        tiltDegrees: solarDetail ? 12 : 0,
+        azimuthDegrees: 180,
+        detailIds: solarDetail ? [solarDetail.detailId] : []
+      },
+      greenRoof: {
+        enabled: Boolean(greenDetail),
+        coverageRatio: Number((greenArea / Math.max(1, roofAreaSqM)).toFixed(4)),
+        areaSqM: greenArea,
+        soilDepthMeters: greenDetail ? 0.18 : 0,
+        detailId: greenDetail?.detailId
+      },
+      roofAccess: {
+        hasStairBulkhead: true,
+        hasMaintenancePath: details.some((detail) => detail.detailKind === 'mechanical-screen' || detail.detailKind === 'solar-array'),
+        accessDetailIds: [access.detailId]
+      },
+      heightExemptions
+    };
+  }
+
+  private getRoofGrammarStyle(typology: BuildingTypologyContract, roofStyle: RoofStyle): BuildingRoofStyleKind {
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return 'sawtooth';
+    }
+    if (typology.kind === 'civic') {
+      return 'civic-cornice';
+    }
+    if (typology.kind === 'hospitality' || typology.kind === 'residential') {
+      return roofStyle === 'flat' ? 'terrace' : roofStyle;
+    }
+    return roofStyle;
+  }
+
+  private clampRoofOffset(
+    offset: Point2D,
+    roofSize: { readonly x: number; readonly z: number },
+    detailSize: { readonly x: number; readonly z: number }
+  ): Point2D {
+    const limitX = Math.max(0, roofSize.x / 2 - detailSize.x / 2 - 0.25);
+    const limitZ = Math.max(0, roofSize.z / 2 - detailSize.z / 2 - 0.25);
+
+    return {
+      x: Number(Math.min(limitX, Math.max(-limitX, offset.x)).toFixed(2)),
+      z: Number(Math.min(limitZ, Math.max(-limitZ, offset.z)).toFixed(2))
+    };
   }
 
   private createBuildingFacadeGrammar(input: {

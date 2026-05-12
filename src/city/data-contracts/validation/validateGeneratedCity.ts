@@ -6,6 +6,9 @@ import type {
   BuildingFacadeRhythm,
   BuildingFootprintGrammarKind,
   BuildingFrontageSide,
+  BuildingRoofDetailKind,
+  BuildingRoofMaterialZone,
+  BuildingRoofStyleKind,
   BuildingStructuralSystemKind,
   BuildingServiceAccessProfile,
   BuildingTypologyKind,
@@ -205,6 +208,30 @@ const BUILDING_FACADE_MATERIAL_ZONES = [
   'stone',
   'storefront-glass'
 ] as const satisfies readonly BuildingFacadeMaterialZone[];
+const BUILDING_ROOF_STYLE_KINDS = [
+  'flat',
+  'mechanical',
+  'green',
+  'antenna',
+  'terrace',
+  'sawtooth',
+  'civic-cornice'
+] as const satisfies readonly BuildingRoofStyleKind[];
+const BUILDING_ROOF_DETAIL_KINDS = [
+  'mechanical-screen',
+  'solar-array',
+  'green-roof',
+  'antenna',
+  'terrace',
+  'roof-access'
+] as const satisfies readonly BuildingRoofDetailKind[];
+const BUILDING_ROOF_MATERIAL_ZONES = [
+  'roof',
+  'solar',
+  'green-roof',
+  'metal',
+  'terrace'
+] as const satisfies readonly BuildingRoofMaterialZone[];
 const CROSSING_LOCATIONS = ['intersection', 'midblock'] as const;
 const CROSSWALK_TYPES = ['zebra', 'continental', 'raised-table'] as const;
 const CROSSING_PRIORITIES = ['signal-protected', 'pedestrian-priority', 'yield-controlled', 'uncontrolled'] as const;
@@ -1941,6 +1968,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     validateBuildingFootprintGrammar(building, parcel, issues);
     validateBuildingStructureShell(building, issues);
     validateBuildingFacadeGrammar(building, issues);
+    validateBuildingRoofGrammar(building, issues);
   }
 
   validateBuildingTopography(city, issues);
@@ -3503,6 +3531,185 @@ function validateBuildingFacadeGrammar(building: ValidationBuilding, issues: Val
       ...createIssueFocus(building.center, 'Generate all four facade sides, required atlas slots, and active storefront modules.'),
       message: `Building ${building.id} facade grammar must cover all sides, atlas slots, and active-use storefront modules.`
     });
+  }
+}
+
+function validateBuildingRoofGrammar(building: ValidationBuilding, issues: ValidationIssue[]): void {
+  const grammar = building.roofGrammar;
+
+  if (!grammar) {
+    issues.push({
+      id: `missing-building-roof-grammar-${building.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: building.id,
+      ...createIssueFocus(building.center, `Generate roof grammar for ${building.id} before rendering rooftop details.`),
+      message: `Building ${building.id} must carry a roof grammar contract.`
+    });
+    return;
+  }
+
+  if (
+    grammar.grammarId !== `${building.id}-roof-grammar` ||
+    grammar.templateId !== building.roofGrammarId ||
+    grammar.sourceStructureShellId !== building.structureShell.grammarId ||
+    !BUILDING_ROOF_STYLE_KINDS.includes(grammar.roofStyle)
+  ) {
+    issues.push({
+      id: `invalid-building-roof-grammar-kind-${building.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Use a stable building-owned roof grammar id, template id, and source shell id.'),
+      message: `Building ${building.id} has an invalid roof grammar id, template, style, or shell reference.`
+    });
+  }
+
+  const expectedRoofArea = Number(getPolygonArea(grammar.roofPlane.footprint).toFixed(2));
+  if (
+    grammar.roofPlane.areaSqM <= 0 ||
+    Math.abs(grammar.roofPlane.areaSqM - expectedRoofArea) > 0.01 ||
+    Math.abs(grammar.roofPlane.elevationMeters - building.structureShell.massing.roofElevationMeters) > 0.01 ||
+    grammar.roofPlane.usableAreaSqM < 0 ||
+    grammar.roofPlane.usableAreaSqM > grammar.roofPlane.areaSqM ||
+    grammar.roofPlane.parapetHeightMeters < 0 ||
+    grammar.roofPlane.drainageSlopePercent <= 0 ||
+    !isPolygonWithinPolygonBounds(grammar.roofPlane.footprint, building.footprint)
+  ) {
+    issues.push({
+      id: `building-roof-plane-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      affectedBoundary: grammar.roofPlane.footprint,
+      suggestedFix: `Regenerate ${building.id}.roofGrammar.roofPlane from its top structure shell floor plate.`,
+      message: `Building ${building.id} roof plane must match structure shell elevation and footprint bounds.`
+    });
+  }
+
+  const detailIds = new Set<string>();
+  const roofBounds = getPolygonBounds(grammar.roofPlane.footprint);
+  const exemptionIds = new Set(grammar.heightExemptions.map((exemption) => exemption.detailId));
+
+  for (const detail of grammar.details) {
+    const detailCenter = {
+      x: building.center.x + detail.centerOffsetMeters.x,
+      z: building.center.z + detail.centerOffsetMeters.z
+    };
+    const detailBounds = {
+      minX: detailCenter.x - detail.sizeMeters.x / 2,
+      maxX: detailCenter.x + detail.sizeMeters.x / 2,
+      minZ: detailCenter.z - detail.sizeMeters.z / 2,
+      maxZ: detailCenter.z + detail.sizeMeters.z / 2
+    };
+    const detailInsideRoof =
+      detailBounds.minX >= roofBounds.minX - 0.001 &&
+      detailBounds.maxX <= roofBounds.maxX + 0.001 &&
+      detailBounds.minZ >= roofBounds.minZ - 0.001 &&
+      detailBounds.maxZ <= roofBounds.maxZ + 0.001;
+
+    if (
+      detailIds.has(detail.detailId) ||
+      !BUILDING_ROOF_DETAIL_KINDS.includes(detail.detailKind) ||
+      !BUILDING_ROOF_MATERIAL_ZONES.includes(detail.materialZone) ||
+      detail.assetBindingId !== 'binding:building:roof-detail' ||
+      detail.sizeMeters.x <= 0 ||
+      detail.sizeMeters.y <= 0 ||
+      detail.sizeMeters.z <= 0 ||
+      Math.abs(detail.baseElevationMeters - grammar.roofPlane.elevationMeters) > 0.01 ||
+      detail.topElevationMeters < detail.baseElevationMeters ||
+      !detailInsideRoof
+    ) {
+      issues.push({
+        id: `building-roof-detail-mismatch-${building.id}-${toIssueIdToken(detail.detailId)}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: building.id,
+        ...createIssueFocus(detailCenter, 'Place rooftop equipment inside the roof plane with positive dimensions and registered material zones.'),
+        message: `Building ${building.id} rooftop detail ${detail.detailId} must be valid and inside the roof plane.`
+      });
+    }
+
+    if (detail.heightExempt && !exemptionIds.has(detail.detailId)) {
+      issues.push({
+        id: `building-roof-height-exemption-mismatch-${building.id}-${toIssueIdToken(detail.detailId)}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: building.id,
+        ...createIssueFocus(detailCenter, 'Declare height exemptions for rooftop equipment that extends above zoning height.'),
+        message: `Building ${building.id} rooftop detail ${detail.detailId} is marked exempt without an exemption record.`
+      });
+    }
+
+    detailIds.add(detail.detailId);
+  }
+
+  if (!grammar.details.some((detail) => detail.detailKind === 'roof-access') || !grammar.roofAccess.hasStairBulkhead) {
+    issues.push({
+      id: `building-roof-access-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Add a roof-access bulkhead detail and reference it from roof access metadata.'),
+      message: `Building ${building.id} roof grammar must expose rooftop access.`
+    });
+  }
+
+  if (
+    grammar.solar.panelCount < 0 ||
+    grammar.solar.arrayAreaSqM < 0 ||
+    grammar.solar.tiltDegrees < 0 ||
+    grammar.solar.tiltDegrees > 45 ||
+    grammar.solar.detailIds.some((detailId) => !detailIds.has(detailId)) ||
+    (grammar.solar.panelCount > 0 && !grammar.details.some((detail) => detail.detailKind === 'solar-array'))
+  ) {
+    issues.push({
+      id: `building-roof-solar-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Keep solar panel counts, area, tilt, and detail references consistent.'),
+      message: `Building ${building.id} roof solar metadata must match solar array details.`
+    });
+  }
+
+  if (
+    grammar.greenRoof.coverageRatio < 0 ||
+    grammar.greenRoof.coverageRatio > 1 ||
+    grammar.greenRoof.areaSqM < 0 ||
+    grammar.greenRoof.soilDepthMeters < 0 ||
+    (grammar.greenRoof.enabled && (!grammar.greenRoof.detailId || !detailIds.has(grammar.greenRoof.detailId)))
+  ) {
+    issues.push({
+      id: `building-roof-green-roof-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Keep green roof coverage and detail references inside the roof plane.'),
+      message: `Building ${building.id} green roof metadata must match its rooftop detail.`
+    });
+  }
+
+  for (const exemption of grammar.heightExemptions) {
+    const detail = grammar.details.find((candidate) => candidate.detailId === exemption.detailId);
+    if (
+      !detail ||
+      !detail.heightExempt ||
+      !exemption.allowed ||
+      exemption.exemptHeightMeters <= 0 ||
+      exemption.exemptHeightMeters > 12 ||
+      exemption.zoningLimitMeters <= 0 ||
+      (detail.detailKind === 'terrace' || detail.detailKind === 'solar-array' || detail.detailKind === 'green-roof')
+    ) {
+      issues.push({
+        id: `building-roof-height-exemption-invalid-${building.id}-${toIssueIdToken(exemption.detailId)}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Only mechanical screens, antennas, and access bulkheads can receive bounded height exemptions.'),
+        message: `Building ${building.id} roof height exemption ${exemption.detailId} is invalid.`
+      });
+    }
   }
 }
 
