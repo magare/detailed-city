@@ -27,6 +27,7 @@ export class StreetFurnitureMeshBuilder {
     this.addBollards(group, filterFurniture(streetFurniture, 'bollard'));
     this.addKiosks(group, filterFurniture(streetFurniture, 'kiosk'));
     this.addBusShelters(group, filterFurniture(streetFurniture, 'bus-shelter'));
+    this.addRailings(group, filterFurniture(streetFurniture, 'railing'));
     this.addSigns(group, streetFurniture.filter((item) => item.signFace));
 
     return group;
@@ -159,6 +160,29 @@ export class StreetFurnitureMeshBuilder {
     finishInstancedMesh(roofMesh, shelters, this.metadataByObjectId);
     finishInstancedMesh(glassMesh, shelters, this.metadataByObjectId);
     group.add(roofMesh, glassMesh);
+  }
+
+  private addRailings(group: THREE.Group, railings: readonly StreetFurniture[]): void {
+    if (railings.length === 0) {
+      return;
+    }
+
+    const topRailMesh = this.createBoxMesh('StreetFurnitureRailingTopInstances', railings, this.materials.streetFurnitureMetal);
+    const postMesh = this.createCylinderMesh('StreetFurnitureRailingPostInstances', railings, this.materials.streetFurnitureMetal, 8);
+    const matrix = new THREE.Matrix4();
+
+    railings.forEach((railing, index) => {
+      setFurnitureMatrix(
+        matrix,
+        railing,
+        railing.dimensions.heightMeters,
+        new THREE.Vector3(0.08, 0.08, railing.dimensions.lengthMeters)
+      );
+      topRailMesh.setMatrixAt(index, matrix);
+    });
+
+    finishInstancedMesh(topRailMesh, railings, this.metadataByObjectId);
+    group.add(topRailMesh, postMesh);
   }
 
   private addSigns(group: THREE.Group, signs: readonly StreetFurniture[]): void {

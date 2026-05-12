@@ -20,11 +20,11 @@ test('asset binding diagnostics expose current fallback coverage', () => {
   expect(city.validation.issues.filter((issue) => issue.category === 'asset')).toEqual([]);
   expect(city.validation.issues.filter((issue) => issue.category === 'metadata')).toEqual([]);
   expect(diagnostics.assetBindingDiagnostics).toMatchObject({
-    assetDefinitions: 40,
-    renderBindings: 40,
-    bindingsWithAssets: 40,
+    assetDefinitions: 41,
+    renderBindings: 41,
+    bindingsWithAssets: 41,
     bindingsMissingAssets: 0,
-    bindingsWithFallbacks: 40,
+    bindingsWithFallbacks: 41,
     bindingsMissingFallbacks: 0,
     unboundAssetDefinitions: 0
   });
@@ -46,6 +46,7 @@ test('asset binding diagnostics expose current fallback coverage', () => {
     ])
   );
   expect(diagnostics.assetBindingDiagnostics.materialZones.length).toBeGreaterThan(20);
+  expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('railing');
   expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('traffic-car');
 });
 

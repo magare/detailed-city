@@ -245,6 +245,10 @@ export interface CityDiagnostics {
     readonly treeSoilVolumeCubicMeters: number;
     readonly streetLights: number;
     readonly streetFurniture: number;
+    readonly detailedStreetFurniture: number;
+    readonly citywideStreetFurniture: number;
+    readonly railings: number;
+    readonly transitShelters: number;
     readonly laneMarkings: number;
     readonly trafficVehicles: number;
     readonly indexedObjects: number;
@@ -842,6 +846,10 @@ export function createCityDiagnostics(
       treeSoilVolumeCubicMeters: plantingModel.soilVolumeCubicMeters,
       streetLights: city.streetLights.length,
       streetFurniture: city.streetFurniture.length,
+      detailedStreetFurniture: city.streetFurniture.filter((item) => item.placementContext === 'detailed-street').length,
+      citywideStreetFurniture: city.streetFurniture.filter((item) => item.placementContext === 'citywide-street').length,
+      railings: city.streetFurniture.filter((item) => item.furnitureType === 'railing').length,
+      transitShelters: city.streetFurniture.filter((item) => item.furnitureType === 'bus-shelter').length,
       laneMarkings: objectIndex.countsByKind['lane-marking'] ?? 0,
       trafficVehicles: objectIndex.countsByKind['traffic-vehicle'] ?? 0,
       indexedObjects: objectIndex.objectIds.length,

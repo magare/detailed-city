@@ -3,11 +3,13 @@ import type {
   StreetFurniturePlacementZone,
   StreetFurnitureType
 } from '../../city/data-contracts/cityContracts';
-import type { CurbZone, DetailedStreetSlice, RoadSegment, StreetFurniture } from '../../types/city';
+import { DEFAULT_STREET_PROFILES } from '../../city/data-contracts/cityContracts';
+import type { CurbZone, DetailedStreetSlice, IntersectionPlan, RoadSegment, StreetFurniture } from '../../types/city';
 
 export interface StreetFurnitureSource {
   readonly slices: readonly DetailedStreetSlice[];
   readonly roads: readonly RoadSegment[];
+  readonly intersections: readonly IntersectionPlan[];
   readonly curbZones: readonly CurbZone[];
 }
 
@@ -29,6 +31,7 @@ const BASE_RECIPES = {
   bollard: createRecipe('bollard', 0.08, 0.42, 0.22, 0.8, 0.95, 'binding:street-furniture:bollard'),
   kiosk: createRecipe('kiosk', 0.82, 0.8, 1.3, 1.8, 2.6, 'binding:street-furniture:kiosk'),
   'bus-shelter': createRecipe('bus-shelter', 0.52, 0.8, 1.4, 4.8, 2.45, 'binding:street-furniture:bus-shelter'),
+  railing: createRecipe('railing', 0.5, 0.46, 0.28, 3.4, 1.05, 'binding:street-furniture:railing'),
   'regulatory-sign': createRecipe(
     'regulatory-sign',
     0.18,
@@ -63,7 +66,8 @@ const BASE_RECIPES = {
 
 export class StreetFurnitureGenerator {
   create(source: StreetFurnitureSource): StreetFurniture[] {
-    return source.slices.flatMap((slice) => {
+    const detailedRoadIds = new Set(source.slices.map((slice) => slice.corridorRoadId));
+    const detailedFurniture = source.slices.flatMap((slice) => {
       const road = source.roads.find((candidate) => candidate.id === slice.corridorRoadId);
 
       if (!road) {
@@ -74,6 +78,16 @@ export class StreetFurnitureGenerator {
         .filter((curbZone) => curbZone.sliceId === slice.id && curbZone.curbUse !== 'no-stopping')
         .flatMap((curbZone, curbZoneIndex) => createStreetFurnitureForCurbZone(slice, road, curbZone, curbZoneIndex));
     });
+    const citywideFurniture = source.roads
+      .filter((road) => !detailedRoadIds.has(road.id))
+      .flatMap((road) =>
+        createCitywideStreetFurniture(
+          road,
+          source.intersections.filter((intersection) => intersection.connectedRoadIds.includes(road.id))
+        )
+      );
+
+    return [...detailedFurniture, ...citywideFurniture];
   }
 }
 
@@ -145,6 +159,7 @@ function createStreetFurniture(
     ownerDomain: 'public-realm',
     parentId: curbZone.sidewalkId,
     lod: recipe.signRole ? 'lod4' : 'lod3',
+    placementContext: 'detailed-street',
     sliceId: slice.id,
     roadId: road.id,
     sidewalkId: curbZone.sidewalkId,
@@ -158,6 +173,9 @@ function createStreetFurniture(
     orientationRadians: road.orientation === 'vertical' ? 0 : Math.PI / 2,
     dimensions: recipe.dimensions,
     clearanceEnvelope: recipe.clearanceEnvelope,
+    clearPathWidthMeters: 2.4,
+    crossingClearanceMeters: curbZone.crossingClearanceMeters,
+    visibilityClearanceMeters: getVisibilityClearanceMeters(recipe.furnitureType),
     assetBindingId: recipe.assetBindingId,
     signFace: recipe.signRole
       ? {
@@ -173,6 +191,134 @@ function createStreetFurniture(
       curbZoneId: curbZone.id,
       furnitureType: recipe.furnitureType,
       placementZone: recipe.placementZone
+    }
+  };
+}
+
+function createCitywideStreetFurniture(
+  road: RoadSegment,
+  intersections: readonly IntersectionPlan[]
+): StreetFurniture[] {
+  const profile = DEFAULT_STREET_PROFILES.find((candidate) => candidate.id === road.streetProfileId);
+
+  if (!profile?.treeZone || profile.sidewalkWidthMeters < 3) {
+    return [];
+  }
+
+  const offsets = [0, ...intersections.map((intersection) => getRoadOffsetMeters(road, intersection)).sort((a, b) => a - b), road.length];
+  const segmentCenters = offsets
+    .slice(0, -1)
+    .map((start, index) => ({ start, end: offsets[index + 1], index }))
+    .filter((segment) => segment.end - segment.start >= 24)
+    .map((segment) => ({ alongRoadMeters: roundMeters((segment.start + segment.end) / 2), index: segment.index }));
+  const cadence = getCitywideFurnitureCadence(road);
+
+  return road.sidewalks.flatMap((sidewalk) => {
+    const side = sidewalk.id.endsWith('left') ? 'left' : 'right';
+    const sideOffset = side === 'left' ? 0 : 1;
+
+    return segmentCenters
+      .filter((slot) => (slot.index + road.id.length + sideOffset) % cadence === 0)
+      .map((slot) => {
+        const recipe = getCitywideRecipe(road, slot.index, sideOffset, sidewalk.furnishingZoneMeters);
+
+        return recipe ? createCitywideFurniture(road, sidewalk, side, slot.index, slot.alongRoadMeters, recipe) : undefined;
+      })
+      .filter((item): item is StreetFurniture => item !== undefined);
+  });
+}
+
+function getCitywideRecipe(
+  road: RoadSegment,
+  segmentIndex: number,
+  sideOffset: number,
+  furnishingZoneMeters: number
+): StreetFurnitureRecipe | undefined {
+  const preferred =
+    road.transitEligible && segmentIndex % 6 === 2
+      ? BASE_RECIPES['bus-shelter']
+      : getRecipeFromCycle(road, segmentIndex, sideOffset);
+
+  return fitRecipeToFurnishingZone(preferred, furnishingZoneMeters) ?? fitRecipeToFurnishingZone(BASE_RECIPES.bollard, furnishingZoneMeters);
+}
+
+function getRecipeFromCycle(road: RoadSegment, segmentIndex: number, sideOffset: number): StreetFurnitureRecipe {
+  const cycle = getCitywideRecipeCycle(road);
+
+  return cycle[(segmentIndex + road.id.length + sideOffset) % cycle.length];
+}
+
+function getCitywideRecipeCycle(road: RoadSegment): readonly StreetFurnitureRecipe[] {
+  if (road.hierarchy === 'promenade') {
+    return [BASE_RECIPES.bench, BASE_RECIPES.railing, BASE_RECIPES.bin, BASE_RECIPES['bike-rack'], BASE_RECIPES.kiosk];
+  }
+
+  if (road.hierarchy === 'arterial' || road.hierarchy === 'transit-corridor') {
+    return [BASE_RECIPES.bench, BASE_RECIPES.bin, BASE_RECIPES['bike-rack'], BASE_RECIPES.bollard, BASE_RECIPES.kiosk, BASE_RECIPES.railing];
+  }
+
+  if (road.hierarchy === 'collector') {
+    return [BASE_RECIPES.bench, BASE_RECIPES.bin, BASE_RECIPES['bike-rack'], BASE_RECIPES.bollard, BASE_RECIPES.railing];
+  }
+
+  return [BASE_RECIPES.bench, BASE_RECIPES.bin, BASE_RECIPES.bollard, BASE_RECIPES.railing];
+}
+
+function fitRecipeToFurnishingZone(
+  recipe: StreetFurnitureRecipe,
+  furnishingZoneMeters: number
+): StreetFurnitureRecipe | undefined {
+  if (recipe.clearanceEnvelope.widthMeters > furnishingZoneMeters + 0.001) {
+    return undefined;
+  }
+
+  const maxOffset = furnishingZoneMeters - recipe.clearanceEnvelope.widthMeters / 2;
+  const minOffset = recipe.clearanceEnvelope.widthMeters / 2;
+
+  return {
+    ...recipe,
+    offsetFromRoadEdgeMeters: floorMeters(Math.min(Math.max(recipe.offsetFromRoadEdgeMeters, minOffset), maxOffset))
+  };
+}
+
+function createCitywideFurniture(
+  road: RoadSegment,
+  sidewalk: RoadSegment['sidewalks'][number],
+  side: 'left' | 'right',
+  segmentIndex: number,
+  alongRoadMeters: number,
+  recipe: StreetFurnitureRecipe
+): StreetFurniture {
+  return {
+    id: `street-furniture-${road.id}-${side}-${segmentIndex}-${recipe.furnitureType}`,
+    kind: 'street-furniture',
+    ownerDomain: 'public-realm',
+    parentId: sidewalk.id,
+    lod: recipe.signRole ? 'lod4' : 'lod3',
+    placementContext: 'citywide-street',
+    roadId: road.id,
+    sidewalkId: sidewalk.id,
+    side,
+    furnitureType: recipe.furnitureType,
+    placementZone: recipe.placementZone,
+    position: getFurniturePosition(road, { side } as CurbZone, recipe.offsetFromRoadEdgeMeters, alongRoadMeters),
+    alongRoadMeters,
+    offsetFromRoadEdgeMeters: recipe.offsetFromRoadEdgeMeters,
+    orientationRadians: road.orientation === 'vertical' ? 0 : Math.PI / 2,
+    dimensions: recipe.dimensions,
+    clearanceEnvelope: recipe.clearanceEnvelope,
+    clearPathWidthMeters: sidewalk.accessibleClearPathMeters,
+    crossingClearanceMeters: 9,
+    visibilityClearanceMeters: getVisibilityClearanceMeters(recipe.furnitureType),
+    transitStopId: recipe.furnitureType === 'bus-shelter' ? `transit-stop-${road.id}-${side}-${segmentIndex}` : undefined,
+    assetBindingId: recipe.assetBindingId,
+    tags: {
+      citywideFurniture: true,
+      corridorRoadId: road.id,
+      furnitureType: recipe.furnitureType,
+      placementZone: recipe.placementZone,
+      streetProfileId: road.streetProfileId,
+      hierarchy: road.hierarchy
     }
   };
 }
@@ -238,6 +384,41 @@ function getSignTextCode(furnitureType: StreetFurnitureType, roadId: CityId, sid
   }
 }
 
+function getCitywideFurnitureCadence(road: RoadSegment): number {
+  if (road.hierarchy === 'arterial' || road.hierarchy === 'transit-corridor' || road.hierarchy === 'promenade') {
+    return 2;
+  }
+
+  if (road.hierarchy === 'collector') {
+    return 3;
+  }
+
+  return 4;
+}
+
+function getRoadOffsetMeters(road: RoadSegment, intersection: IntersectionPlan): number {
+  const coordinate = road.orientation === 'vertical' ? intersection.center.z - road.center.z : intersection.center.x - road.center.x;
+
+  return roundMeters(coordinate + road.length / 2);
+}
+
+function getVisibilityClearanceMeters(furnitureType: StreetFurnitureType): number {
+  switch (furnitureType) {
+    case 'bus-shelter':
+    case 'kiosk':
+      return 5;
+    case 'railing':
+    case 'bollard':
+      return 2.4;
+    default:
+      return 3;
+  }
+}
+
 function roundMeters(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function floorMeters(value: number): number {
+  return Math.floor(value * 100) / 100;
 }

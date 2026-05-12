@@ -25,6 +25,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:street-prop:bollard:primitive', 'street-prop', 'Bollard Primitive', 'bollard', 0.95, 'lod3'),
   createProceduralAsset('asset:street-prop:bus-shelter:primitive', 'street-prop', 'Bus Shelter Primitive', 'bus-shelter', 4.8, 'lod3'),
   createProceduralAsset('asset:street-prop:kiosk:primitive', 'street-prop', 'Kiosk Primitive', 'kiosk', 2.6, 'lod3'),
+  createProceduralAsset('asset:street-prop:railing:primitive', 'street-prop', 'Railing Primitive', 'railing', 3.4, 'lod3'),
   createProceduralAsset('asset:street-prop:regulatory-sign:primitive', 'street-prop', 'Regulatory Sign Primitive', 'regulatory-sign', 2.4, 'lod4'),
   createProceduralAsset('asset:street-prop:street-name-sign:primitive', 'street-prop', 'Street Name Sign Primitive', 'street-name-sign', 2.65, 'lod4'),
   createProceduralAsset('asset:street-prop:wayfinding-sign:primitive', 'street-prop', 'Wayfinding Sign Primitive', 'wayfinding-sign', 2.35, 'lod4'),
@@ -195,6 +196,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'street-furniture',
     fallbackMaterial: 'streetFurnitureAccent',
     fallbackGeometry: 'kiosk-box'
+  },
+  {
+    id: 'binding:street-furniture:railing',
+    objectKind: 'street-furniture',
+    semanticTag: 'railing',
+    assetId: 'asset:street-prop:railing:primitive',
+    materialZone: 'street-furniture',
+    fallbackMaterial: 'streetFurnitureMetal',
+    fallbackGeometry: 'railing-bar'
   },
   {
     id: 'binding:street-furniture:regulatory-sign',

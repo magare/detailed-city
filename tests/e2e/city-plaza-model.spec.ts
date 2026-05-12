@@ -106,7 +106,7 @@ test('browser diagnostics expose plaza zones and debug panel metric', async ({ p
     plazaActiveEdges: 1,
     plazaLinkedFrontages: 4,
     plazaZoneObjects: 6,
-    publicRealmObjects: 259,
+    publicRealmObjects: 467,
     plazaModel: {
       totalZones: 6,
       eventZones: 1,

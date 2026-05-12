@@ -1937,17 +1937,20 @@ export type StreetFurnitureType =
   | 'bollard'
   | 'bus-shelter'
   | 'kiosk'
+  | 'railing'
   | 'regulatory-sign'
   | 'street-name-sign'
   | 'wayfinding-sign';
 
 export type StreetFurniturePlacementZone = 'curb-edge' | 'furnishing-zone' | 'frontage-zone';
+export type StreetFurniturePlacementContext = 'detailed-street' | 'citywide-street';
 
 export interface StreetFurnitureContract extends CityObjectBase<'street-furniture'> {
-  readonly sliceId: CityId;
+  readonly placementContext: StreetFurniturePlacementContext;
+  readonly sliceId?: CityId;
   readonly roadId: CityId;
   readonly sidewalkId: CityId;
-  readonly curbZoneId: CityId;
+  readonly curbZoneId?: CityId;
   readonly side: CurbSide;
   readonly furnitureType: StreetFurnitureType;
   readonly placementZone: StreetFurniturePlacementZone;
@@ -1964,6 +1967,10 @@ export interface StreetFurnitureContract extends CityObjectBase<'street-furnitur
     readonly widthMeters: number;
     readonly lengthMeters: number;
   };
+  readonly clearPathWidthMeters: number;
+  readonly crossingClearanceMeters: number;
+  readonly visibilityClearanceMeters: number;
+  readonly transitStopId?: CityId;
   readonly assetBindingId: CityId;
   readonly signFace?: {
     readonly signRole: 'regulatory' | 'street-name' | 'wayfinding';

@@ -147,6 +147,7 @@ export class CityGenerator {
     const streetFurniture = new StreetFurnitureGenerator().create({
       slices: verticalSlicesWithCurbs,
       roads: sliceTagged.roads,
+      intersections: sliceTagged.intersections,
       curbZones
     });
     const activeFrontages = new ActiveFrontageGenerator().create({

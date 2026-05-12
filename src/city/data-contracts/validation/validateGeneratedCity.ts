@@ -745,6 +745,12 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   const intersectionsById = new Map(city.intersections.map((intersection) => [intersection.id, intersection]));
+  const roadIntersectionIdsByRoad = new Map<CityId, CityId[]>();
+  for (const intersection of city.intersections) {
+    for (const roadId of intersection.connectedRoadIds) {
+      roadIntersectionIdsByRoad.set(roadId, [...(roadIntersectionIdsByRoad.get(roadId) ?? []), intersection.id]);
+    }
+  }
   const slicesById = new Map(city.verticalSlices.map((slice) => [slice.id, slice]));
   const curbZonesById = new Map(city.curbZones.map((curbZone) => [curbZone.id, curbZone]));
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
@@ -1587,17 +1593,29 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   for (const streetFurniture of city.streetFurniture) {
-    const slice = slicesById.get(streetFurniture.sliceId);
+    const isDetailedStreetFurniture = streetFurniture.placementContext === 'detailed-street';
+    const isCitywideStreetFurniture = streetFurniture.placementContext === 'citywide-street';
+    const slice = streetFurniture.sliceId ? slicesById.get(streetFurniture.sliceId) : undefined;
     const road = roadsById.get(streetFurniture.roadId);
     const sidewalk = city.objectIndex.objectsById[streetFurniture.sidewalkId];
-    const curbZone = curbZonesById.get(streetFurniture.curbZoneId);
+    const curbZone = streetFurniture.curbZoneId ? curbZonesById.get(streetFurniture.curbZoneId) : undefined;
     const binding = assetBindingsById.get(streetFurniture.assetBindingId);
     const sidewalkFurnishingZone =
       sidewalk && sidewalk.kind === 'sidewalk' ? sidewalk.furnishingZoneMeters : undefined;
     const objectStartMeters = streetFurniture.alongRoadMeters - streetFurniture.clearanceEnvelope.lengthMeters / 2;
     const objectEndMeters = streetFurniture.alongRoadMeters + streetFurniture.clearanceEnvelope.lengthMeters / 2;
 
-    if (!slice) {
+    if (!isDetailedStreetFurniture && !isCitywideStreetFurniture) {
+      issues.push({
+        id: `invalid-street-furniture-placement-context-${streetFurniture.id}`,
+        severity: 'error',
+        category: 'config',
+        objectId: streetFurniture.id,
+        message: `Street furniture ${streetFurniture.id} must declare a supported placement context.`
+      });
+    }
+
+    if (isDetailedStreetFurniture && !slice) {
       issues.push({
         id: `missing-street-furniture-slice-${streetFurniture.id}`,
         severity: 'error',
@@ -1637,7 +1655,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
-    if (!curbZone || curbZone.curbUse === 'no-stopping') {
+    if (isDetailedStreetFurniture && (!curbZone || curbZone.curbUse === 'no-stopping')) {
       issues.push({
         id: `invalid-street-furniture-curb-zone-${streetFurniture.id}`,
         severity: 'error',
@@ -1645,11 +1663,11 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         objectId: streetFurniture.id,
         message: `Street furniture ${streetFurniture.id} must reference an active curb zone.`
       });
-    } else if (
+    } else if (curbZone && (
       curbZone.sliceId !== streetFurniture.sliceId ||
       curbZone.roadId !== streetFurniture.roadId ||
       curbZone.sidewalkId !== streetFurniture.sidewalkId
-    ) {
+    )) {
       issues.push({
         id: `street-furniture-curb-zone-mismatch-${streetFurniture.id}`,
         severity: 'error',
@@ -1669,7 +1687,10 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       streetFurniture.dimensions.lengthMeters <= 0 ||
       streetFurniture.dimensions.heightMeters <= 0 ||
       streetFurniture.clearanceEnvelope.widthMeters <= 0 ||
-      streetFurniture.clearanceEnvelope.lengthMeters <= 0
+      streetFurniture.clearanceEnvelope.lengthMeters <= 0 ||
+      streetFurniture.clearPathWidthMeters < 1.8 ||
+      streetFurniture.crossingClearanceMeters <= 0 ||
+      streetFurniture.visibilityClearanceMeters <= 0
     ) {
       issues.push({
         id: `invalid-street-furniture-geometry-${streetFurniture.id}`,
@@ -1719,8 +1740,22 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
-    if (slice && road && curbZone) {
-      for (const intersectionId of slice.intersectionIds) {
+    if (!curbZone && road && (objectStartMeters < -0.001 || objectEndMeters > road.length + 0.001)) {
+      issues.push({
+        id: `street-furniture-outside-road-segment-${streetFurniture.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: streetFurniture.id,
+        message: `Citywide street furniture ${streetFurniture.id} clearance envelope must stay inside road ${road.id}.`
+      });
+    }
+
+    if (road) {
+      const roadIntersectionIds = new Set(
+        isDetailedStreetFurniture && slice ? slice.intersectionIds : roadIntersectionIdsByRoad.get(road.id) ?? []
+      );
+
+      for (const intersectionId of roadIntersectionIds) {
         const intersection = intersectionsById.get(intersectionId);
         const crossingOffset = intersection ? getRoadOffsetMeters(road, intersection.center) : undefined;
 
@@ -1729,8 +1764,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
           rangesOverlap(
             objectStartMeters,
             objectEndMeters,
-            crossingOffset - curbZone.crossingClearanceMeters,
-            crossingOffset + curbZone.crossingClearanceMeters
+            crossingOffset - streetFurniture.crossingClearanceMeters,
+            crossingOffset + streetFurniture.crossingClearanceMeters
           )
         ) {
           issues.push({
@@ -1744,7 +1779,10 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       }
     }
 
-    if (streetFurniture.furnitureType === 'bus-shelter' && curbZone?.curbUse !== 'bus-stop') {
+    if (
+      streetFurniture.furnitureType === 'bus-shelter' &&
+      ((curbZone && curbZone.curbUse !== 'bus-stop') || (!curbZone && (!road?.transitEligible || !streetFurniture.transitStopId)))
+    ) {
       issues.push({
         id: `bus-shelter-without-bus-stop-${streetFurniture.id}`,
         severity: 'error',
@@ -1764,7 +1802,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
-    if (streetFurniture.tags?.detailedStreetSliceId !== streetFurniture.sliceId) {
+    if (isDetailedStreetFurniture && streetFurniture.tags?.detailedStreetSliceId !== streetFurniture.sliceId) {
       issues.push({
         id: `missing-street-furniture-slice-tag-${streetFurniture.id}`,
         severity: 'error',

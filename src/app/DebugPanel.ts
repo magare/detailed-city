@@ -168,6 +168,10 @@ export class DebugPanel {
         `${diagnostics.plantingModel.totalTrees} trees, ${diagnostics.plantingModel.greenCorridors} corridors, ${diagnostics.plantingModel.canopyAreaSquareMeters}m2 canopy`
       ),
       createMetric(
+        'Furniture',
+        `${diagnostics.objectCounts.citywideStreetFurniture} citywide, ${diagnostics.objectCounts.railings} railings, ${diagnostics.objectCounts.transitShelters} shelters`
+      ),
+      createMetric(
         'Metrics',
         `${diagnostics.cityMetrics.total} metrics, ${diagnostics.cityMetrics.passing} pass, ${diagnostics.cityMetrics.warnings} warn`
       ),

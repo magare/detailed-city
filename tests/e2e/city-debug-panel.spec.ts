@@ -42,7 +42,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('5036/5036 tagged');
+  expect(panelText).toContain('5245/5245 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -54,11 +54,13 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('6 zones, 255 event cap, 1 active edge');
   expect(panelText).toContain('Planting');
   expect(panelText).toContain('145 trees, 27 corridors, 3116m2 canopy');
+  expect(panelText).toContain('Furniture');
+  expect(panelText).toContain('208 citywide, 6 railings, 19 shelters');
   expect(panelText).toContain('583 buildings, 44 frontages');
   expect(panelText).toContain('Assets');
-  expect(panelText).toContain('40 assets, 40 bindings');
+  expect(panelText).toContain('41 assets, 41 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 4079 objects');
+  expect(panelText).toContain('6 formats, 4288 objects');
   expect(panelText).toContain('Registry');
   expect(panelText).toContain('40 kinds');
   expect(panelText).toContain('Groups');
