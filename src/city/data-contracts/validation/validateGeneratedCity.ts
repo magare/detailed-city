@@ -2,6 +2,7 @@ import type {
   AssetDefinition,
   AssetFormat,
   BuildingEntranceStrategy,
+  BuildingFootprintGrammarKind,
   BuildingServiceAccessProfile,
   BuildingTypologyKind,
   CityId,
@@ -72,6 +73,7 @@ type GeneratedCityForValidation = Pick<
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
+type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
@@ -165,6 +167,14 @@ const BUILDING_SERVICE_ACCESS_PROFILES = [
   'public-service',
   'utility-only'
 ] as const satisfies readonly BuildingServiceAccessProfile[];
+const BUILDING_FOOTPRINT_GRAMMAR_KINDS = [
+  'bar',
+  'podium',
+  'tower-on-podium',
+  'courtyard',
+  'warehouse-shed',
+  'civic-block'
+] as const satisfies readonly BuildingFootprintGrammarKind[];
 const CROSSING_LOCATIONS = ['intersection', 'midblock'] as const;
 const CROSSWALK_TYPES = ['zebra', 'continental', 'raised-table'] as const;
 const CROSSING_PRIORITIES = ['signal-protected', 'pedestrian-priority', 'yield-controlled', 'uncontrolled'] as const;
@@ -1898,6 +1908,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     }
 
     validateBuildingTypology(building, issues);
+    validateBuildingFootprintGrammar(building, parcel, issues);
   }
 
   validateBuildingTopography(city, issues);
@@ -2069,6 +2080,21 @@ function isPolygonWithinPolygonBounds(inner: Polygon2D, outer: Polygon2D, tolera
     innerBounds.minZ >= outerBounds.minZ - tolerance &&
     innerBounds.maxZ <= outerBounds.maxZ + tolerance
   );
+}
+
+function getPolygonArea(polygon: Polygon2D): number {
+  if (polygon.length < 3) {
+    return 0;
+  }
+
+  let area = 0;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const current = polygon[index];
+    const next = polygon[(index + 1) % polygon.length];
+    area += current.x * next.z - next.x * current.z;
+  }
+
+  return Math.abs(area) / 2;
 }
 
 function validateBlockModel(
@@ -3008,6 +3034,142 @@ function validateBuildingTypology(building: ValidationBuilding, issues: Validati
       objectId: building.id,
       ...createIssueFocus(building.center, 'Set typology entrance, service, and schedule defaults from the typology rule table.'),
       message: `Building ${building.id} typology must define entrance, service, and schedule defaults.`
+    });
+  }
+}
+
+function validateBuildingFootprintGrammar(
+  building: ValidationBuilding,
+  parcel: ValidationParcel,
+  issues: ValidationIssue[]
+): void {
+  const grammar = building.footprintGrammar;
+
+  if (!grammar) {
+    issues.push({
+      id: `missing-building-footprint-grammar-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, `Generate a footprint grammar for ${building.id} before rendering massing.`),
+      message: `Building ${building.id} must carry a footprint grammar contract.`
+    });
+    return;
+  }
+
+  if (
+    grammar.grammarId !== `${building.id}-footprint-grammar` ||
+    !BUILDING_FOOTPRINT_GRAMMAR_KINDS.includes(grammar.kind)
+  ) {
+    issues.push({
+      id: `invalid-building-footprint-grammar-kind-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Use a stable building-owned footprint grammar id and registered grammar kind.'),
+      message: `Building ${building.id} has an invalid footprint grammar kind or id.`
+    });
+  }
+
+  if (
+    grammar.parcelFitEnvelopeId !== parcel.fit.buildableEnvelopeId ||
+    !isPolygonWithinPolygonBounds(grammar.buildableEnvelope, parcel.boundary) ||
+    !isPolygonWithinPolygonBounds(building.footprint, grammar.buildableEnvelope)
+  ) {
+    issues.push({
+      id: `building-footprint-envelope-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      affectedBoundary: building.footprint,
+      suggestedFix: `Regenerate ${building.id}.footprintGrammar from ${parcel.id}.fit before massing.`,
+      message: `Building ${building.id} footprint grammar must reference the parcel fit envelope and contain the footprint.`
+    });
+  }
+
+  const footprintAreaSqM = Number(getPolygonArea(building.footprint).toFixed(2));
+  const expectedGroundCoverage = Number((footprintAreaSqM / (parcel.size.x * parcel.size.z)).toFixed(4));
+  const envelopeBounds = getPolygonBounds(parcel.fit.buildableEnvelope);
+  const envelopeAreaSqM = (envelopeBounds.maxX - envelopeBounds.minX) * (envelopeBounds.maxZ - envelopeBounds.minZ);
+  const expectedEnvelopeCoverage = Number((footprintAreaSqM / envelopeAreaSqM).toFixed(4));
+
+  if (
+    grammar.footprintAreaSqM <= 0 ||
+    Math.abs(grammar.footprintAreaSqM - footprintAreaSqM) > 0.01 ||
+    Math.abs(grammar.groundCoverageRatio - expectedGroundCoverage) > 0.0001 ||
+    Math.abs(grammar.envelopeCoverageRatio - expectedEnvelopeCoverage) > 0.0001
+  ) {
+    issues.push({
+      id: `building-footprint-coverage-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Recompute footprint area and coverage from the generated footprint polygon.'),
+      message: `Building ${building.id} footprint grammar area and coverage ratios must match its footprint.`
+    });
+  }
+
+  const expectedOffset = {
+    x: Number((building.center.x - parcel.fit.preferredBuildingCenter.x).toFixed(2)),
+    z: Number((building.center.z - parcel.fit.preferredBuildingCenter.z).toFixed(2))
+  };
+  if (
+    Math.abs(grammar.placementOffsetMeters.x - expectedOffset.x) > 0.01 ||
+    Math.abs(grammar.placementOffsetMeters.z - expectedOffset.z) > 0.01
+  ) {
+    issues.push({
+      id: `building-footprint-offset-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Store the footprint center offset from the parcel preferred building center.'),
+      message: `Building ${building.id} footprint grammar offset must match its generated center.`
+    });
+  }
+
+  const grammarConstraintIds = [...grammar.constraintIds].sort();
+  const parcelConstraintIds = [...parcel.parcelConstraintIds].sort();
+  if (grammarConstraintIds.join('|') !== parcelConstraintIds.join('|')) {
+    issues.push({
+      id: `building-footprint-constraint-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Copy parcel constraint ids into the footprint grammar after constraint filtering.'),
+      message: `Building ${building.id} footprint grammar must reference the same constraints as parcel ${parcel.id}.`
+    });
+  }
+
+  if (grammar.kind === 'tower-on-podium' && (!grammar.podium || !grammar.tower)) {
+    issues.push({
+      id: `missing-building-tower-podium-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Generate podium and tower floor-plate metadata for tower-on-podium footprints.'),
+      message: `Building ${building.id} tower-on-podium grammar must expose podium and tower metadata.`
+    });
+  }
+
+  if (grammar.kind === 'courtyard' && !grammar.courtyard) {
+    issues.push({
+      id: `missing-building-courtyard-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Generate courtyard void metadata for courtyard footprint grammar.'),
+      message: `Building ${building.id} courtyard grammar must expose courtyard metadata.`
+    });
+  }
+
+  if (grammar.hazardConstrained && grammar.constraintIds.length === 0) {
+    issues.push({
+      id: `building-footprint-hazard-without-constraint-${building.id}`,
+      severity: 'error',
+      category: 'zoning',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Link hazard-constrained footprint grammar to the parcel constraint ids.'),
+      message: `Building ${building.id} hazard-constrained footprint must reference constraint ids.`
     });
   }
 }

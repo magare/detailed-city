@@ -1,4 +1,4 @@
-import type { ConstraintPlan } from '../../types/city';
+import type { BuildingPlan, ConstraintPlan } from '../../types/city';
 import type { GeneratedLandAndBuildings } from '../buildings/BuildingGenerator';
 import { isPointInsidePolygon } from '../../utils/geometry';
 
@@ -30,6 +30,7 @@ export function applyConstraintFilters(
         .sort()
     }));
   const parcelIds = new Set(parcels.map((parcel) => parcel.id));
+  const parcelsById = new Map(parcels.map((parcel) => [parcel.id, parcel]));
 
   return {
     ...land,
@@ -38,10 +39,33 @@ export function applyConstraintFilters(
       parcelIds: zoning.parcelIds.filter((parcelId) => parcelIds.has(parcelId))
     })),
     parcels,
-    buildings: land.buildings.filter(
-      (building) =>
-        !blockedParcelIds.has(building.parcelId) &&
-        !buildingBlockingConstraints.some((constraint) => isPointInsidePolygon(building.center, constraint.boundary))
-    )
+    buildings: land.buildings
+      .filter(
+        (building) =>
+          !blockedParcelIds.has(building.parcelId) &&
+          !buildingBlockingConstraints.some((constraint) =>
+            isPointInsidePolygon(getBuildingConstraintProbePoint(building), constraint.boundary)
+          )
+      )
+      .map((building) => {
+        const parcel = parcelsById.get(building.parcelId);
+        const constraintIds = parcel?.parcelConstraintIds ?? building.footprintGrammar.constraintIds;
+
+        return {
+          ...building,
+          footprintGrammar: {
+            ...building.footprintGrammar,
+            constraintIds,
+            hazardConstrained: constraintIds.some((constraintId) => constraintId.includes('hazard'))
+          }
+        };
+      })
+  };
+}
+
+function getBuildingConstraintProbePoint(building: BuildingPlan): BuildingPlan['center'] {
+  return {
+    x: building.center.x - building.footprintGrammar.placementOffsetMeters.x,
+    z: building.center.z - building.footprintGrammar.placementOffsetMeters.z
   };
 }

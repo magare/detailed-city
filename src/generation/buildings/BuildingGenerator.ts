@@ -8,6 +8,8 @@ import type {
   BlockFrontageClass,
   BlockFrontageContract,
   BlockInternalAccessContract,
+  BuildingFootprintGrammarContract,
+  BuildingFootprintGrammarKind,
   BuildingFrontageSide,
   BuildingTypologyContract,
   BuildingTypologyKind,
@@ -15,7 +17,9 @@ import type {
   ParcelFitContract,
   ParcelFrontagePriorityContract,
   ParcelZoningControlsContract,
-  ParcelSetbackContract
+  ParcelSetbackContract,
+  Point2D,
+  Polygon2D
 } from '../../city/data-contracts/cityContracts';
 import type {
   BlockPlan,
@@ -48,6 +52,57 @@ function getPriorityRank(priority: ParcelFrontagePriorityContract['priority']): 
     return 1;
   }
   return 2;
+}
+
+function clampPointToEnvelope(
+  point: Point2D,
+  envelopeBounds: ReturnType<typeof getPolygonBounds>,
+  size: { readonly x: number; readonly z: number }
+): Point2D {
+  const halfX = size.x / 2;
+  const halfZ = size.z / 2;
+
+  return {
+    x: Math.min(envelopeBounds.maxX - halfX, Math.max(envelopeBounds.minX + halfX, point.x)),
+    z: Math.min(envelopeBounds.maxZ - halfZ, Math.max(envelopeBounds.minZ + halfZ, point.z))
+  };
+}
+
+function createCourtyardFootprint(
+  center: Point2D,
+  size: { readonly x: number; readonly z: number },
+  courtyardSize: { readonly x: number; readonly z: number }
+): Polygon2D {
+  const halfX = size.x / 2;
+  const halfZ = size.z / 2;
+  const courtHalfX = courtyardSize.x / 2;
+  const courtHalfZ = courtyardSize.z / 2;
+
+  return [
+    { x: center.x - halfX, z: center.z - halfZ },
+    { x: center.x + halfX, z: center.z - halfZ },
+    { x: center.x + halfX, z: center.z + halfZ },
+    { x: center.x + courtHalfX, z: center.z + halfZ },
+    { x: center.x + courtHalfX, z: center.z - courtHalfZ },
+    { x: center.x - courtHalfX, z: center.z - courtHalfZ },
+    { x: center.x - courtHalfX, z: center.z + halfZ },
+    { x: center.x - halfX, z: center.z + halfZ }
+  ];
+}
+
+function getPolygonArea(polygon: Polygon2D): number {
+  if (polygon.length < 3) {
+    return 0;
+  }
+
+  let area = 0;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const current = polygon[index];
+    const next = polygon[(index + 1) % polygon.length];
+    area += current.x * next.z - next.x * current.z;
+  }
+
+  return Math.abs(area) / 2;
 }
 
 export class BuildingGenerator {
@@ -137,11 +192,19 @@ export class BuildingGenerator {
               maxHeightMeters,
               maxCoverageRatio
             });
-            const maxFootprintSide = Math.sqrt(maxCoverageRatio) * lotSize;
-            const buildingSize = {
-              x: Math.min(maxFootprintSide, parcelModel.fit.minBuildableWidthMeters * this.random.range(0.78, 0.96)),
-              z: Math.min(maxFootprintSide, parcelModel.fit.minBuildableDepthMeters * this.random.range(0.78, 0.96))
-            };
+            const footprintPlan = this.createBuildingFootprintPlan({
+              buildingId,
+              district,
+              typology,
+              parcelCenter: center,
+              parcelSize,
+              parcelFit: parcelModel.fit,
+              parcelSetbacks: parcelModel.setbacks,
+              parcelConstraintIds: parcelModel.parcelConstraintIds,
+              frontagePriority: parcelModel.frontagePriority,
+              maxCoverageRatio,
+              heightMeters
+            });
 
             parcels.push({
               id,
@@ -178,19 +241,20 @@ export class BuildingGenerator {
               lod: 'lod1',
               parcelId: id,
               zoningDistrictId: zoning.zoningDistrictId,
-              footprint: rectanglePolygon(parcelModel.fit.preferredBuildingCenter, buildingSize),
+              footprint: footprintPlan.footprint,
               uses: buildingUses,
               heightMeters,
               floorCount: this.getFloorCount(heightMeters, typology),
               typology,
+              footprintGrammar: footprintPlan.grammar,
               facadeGrammarId: typology.facadeGrammarId,
               roofGrammarId: typology.roofGrammarId,
               primaryFrontageRoadId,
               primaryFrontageSide: this.getFrontageSide(primaryFrontageRoadId, blockX, blockZ),
               entranceIds: publicEntranceIds,
               publicEntranceIds,
-              center: parcelModel.fit.preferredBuildingCenter,
-              size: buildingSize,
+              center: footprintPlan.center,
+              size: footprintPlan.size,
               district,
               roofStyle
             });
@@ -751,6 +815,219 @@ export class BuildingGenerator {
 
   private getFloorCount(heightMeters: number, typology: BuildingTypologyContract): number {
     return Math.max(1, Math.round(heightMeters / typology.typicalFloorHeightMeters));
+  }
+
+  private createBuildingFootprintPlan(input: {
+    readonly buildingId: string;
+    readonly district: DistrictKind;
+    readonly typology: BuildingTypologyContract;
+    readonly parcelCenter: Point2D;
+    readonly parcelSize: { readonly x: number; readonly z: number };
+    readonly parcelFit: ParcelFitContract;
+    readonly parcelSetbacks: ParcelSetbackContract;
+    readonly parcelConstraintIds: readonly string[];
+    readonly frontagePriority: readonly ParcelFrontagePriorityContract[];
+    readonly maxCoverageRatio: number;
+    readonly heightMeters: number;
+  }): {
+    readonly center: Point2D;
+    readonly size: { readonly x: number; readonly z: number };
+    readonly footprint: Polygon2D;
+    readonly grammar: BuildingFootprintGrammarContract;
+  } {
+    const kind = this.getFootprintGrammarKind(input.district, input.typology, input.heightMeters);
+    const envelopeBounds = getPolygonBounds(input.parcelFit.buildableEnvelope);
+    const envelopeSize = {
+      x: envelopeBounds.maxX - envelopeBounds.minX,
+      z: envelopeBounds.maxZ - envelopeBounds.minZ
+    };
+    const waterfrontSetbackApplied = input.frontagePriority.some((frontage) => frontage.frontageClass === 'waterfront');
+    const hazardConstrained = input.parcelConstraintIds.some((constraintId) => constraintId.includes('hazard'));
+    const coverageScale = this.getFootprintCoverageScale(kind, input.district, hazardConstrained);
+    const maxFootprintSide = Math.sqrt(input.maxCoverageRatio * coverageScale) * Math.min(input.parcelSize.x, input.parcelSize.z);
+    const widthJitter = this.random.range(0.78, 0.96);
+    const depthJitter = this.random.range(0.78, 0.96);
+    const size = {
+      x: Math.min(envelopeSize.x, maxFootprintSide, envelopeSize.x * this.getFootprintWidthRatio(kind) * widthJitter),
+      z: Math.min(envelopeSize.z, maxFootprintSide, envelopeSize.z * this.getFootprintDepthRatio(kind) * depthJitter)
+    };
+    const offset = this.getFootprintOffset(kind, envelopeSize, size, input.frontagePriority, waterfrontSetbackApplied);
+    const center = clampPointToEnvelope(
+      {
+        x: input.parcelFit.preferredBuildingCenter.x + offset.x,
+        z: input.parcelFit.preferredBuildingCenter.z + offset.z
+      },
+      envelopeBounds,
+      size
+    );
+    const baseFootprint = rectanglePolygon(center, size);
+    const courtyard =
+      kind === 'courtyard'
+        ? {
+            center,
+            sizeMeters: {
+              x: Number((size.x * 0.34).toFixed(2)),
+              z: Number((size.z * 0.34).toFixed(2))
+            },
+            openToSky: true
+          }
+        : undefined;
+    const podium =
+      kind === 'podium' || kind === 'tower-on-podium'
+        ? {
+            footprint: baseFootprint,
+            heightMeters: Number(Math.min(input.heightMeters, kind === 'tower-on-podium' ? 18 : 12).toFixed(2))
+          }
+        : undefined;
+    const tower =
+      kind === 'tower-on-podium'
+        ? {
+            footprint: rectanglePolygon(center, {
+              x: Number((size.x * 0.58).toFixed(2)),
+              z: Number((size.z * 0.58).toFixed(2))
+            }),
+            floorPlateAreaSqM: Number((size.x * size.z * 0.58 * 0.58).toFixed(2)),
+            stepbackMeters: Number((Math.min(size.x, size.z) * 0.12).toFixed(2))
+          }
+        : undefined;
+    const footprint = kind === 'courtyard' ? createCourtyardFootprint(center, size, courtyard!.sizeMeters) : baseFootprint;
+    const footprintAreaSqM = Number(getPolygonArea(footprint).toFixed(2));
+    const parcelAreaSqM = input.parcelSize.x * input.parcelSize.z;
+    const envelopeAreaSqM = envelopeSize.x * envelopeSize.z;
+
+    return {
+      center,
+      size,
+      footprint,
+      grammar: {
+        grammarId: `${input.buildingId}-footprint-grammar`,
+        kind,
+        parcelFitEnvelopeId: input.parcelFit.buildableEnvelopeId,
+        buildableEnvelope: input.parcelFit.buildableEnvelope,
+        footprintAreaSqM,
+        groundCoverageRatio: Number((footprintAreaSqM / parcelAreaSqM).toFixed(4)),
+        envelopeCoverageRatio: Number((footprintAreaSqM / envelopeAreaSqM).toFixed(4)),
+        placementOffsetMeters: {
+          x: Number((center.x - input.parcelFit.preferredBuildingCenter.x).toFixed(2)),
+          z: Number((center.z - input.parcelFit.preferredBuildingCenter.z).toFixed(2))
+        },
+        setbacks: {
+          ...input.parcelSetbacks,
+          waterfrontMeters: waterfrontSetbackApplied ? Number((input.parcelSetbacks.frontMeters + 2.5).toFixed(2)) : undefined
+        },
+        podium,
+        tower,
+        courtyard,
+        constraintIds: [...input.parcelConstraintIds],
+        waterfrontSetbackApplied,
+        hazardConstrained
+      }
+    };
+  }
+
+  private getFootprintGrammarKind(
+    district: DistrictKind,
+    typology: BuildingTypologyContract,
+    heightMeters: number
+  ): BuildingFootprintGrammarKind {
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return 'warehouse-shed';
+    }
+    if (typology.kind === 'civic') {
+      return 'civic-block';
+    }
+    if ((district === 'downtown' || district === 'waterfront') && heightMeters >= 42) {
+      return 'tower-on-podium';
+    }
+    if (district === 'downtown' || district === 'waterfront') {
+      return 'podium';
+    }
+    if (district === 'residential' && heightMeters >= 18) {
+      return 'courtyard';
+    }
+    return 'bar';
+  }
+
+  private getFootprintCoverageScale(
+    kind: BuildingFootprintGrammarKind,
+    district: DistrictKind,
+    hazardConstrained: boolean
+  ): number {
+    const base =
+      kind === 'tower-on-podium'
+        ? 0.68
+        : kind === 'courtyard'
+          ? 0.72
+          : kind === 'warehouse-shed'
+            ? 0.9
+            : kind === 'civic-block'
+              ? 0.76
+              : district === 'downtown'
+                ? 0.82
+                : 0.74;
+
+    return hazardConstrained ? base * 0.86 : base;
+  }
+
+  private getFootprintWidthRatio(kind: BuildingFootprintGrammarKind): number {
+    if (kind === 'tower-on-podium') {
+      return 0.74;
+    }
+    if (kind === 'warehouse-shed') {
+      return 0.92;
+    }
+    if (kind === 'bar') {
+      return 0.68;
+    }
+    return 0.82;
+  }
+
+  private getFootprintDepthRatio(kind: BuildingFootprintGrammarKind): number {
+    if (kind === 'tower-on-podium') {
+      return 0.74;
+    }
+    if (kind === 'warehouse-shed') {
+      return 0.86;
+    }
+    if (kind === 'bar') {
+      return 0.52;
+    }
+    return 0.78;
+  }
+
+  private getFootprintOffset(
+    kind: BuildingFootprintGrammarKind,
+    envelopeSize: { readonly x: number; readonly z: number },
+    footprintSize: { readonly x: number; readonly z: number },
+    frontagePriority: readonly ParcelFrontagePriorityContract[],
+    waterfrontSetbackApplied: boolean
+  ): Point2D {
+    const offsetRoom = {
+      x: Math.max(0, (envelopeSize.x - footprintSize.x) / 2),
+      z: Math.max(0, (envelopeSize.z - footprintSize.z) / 2)
+    };
+    const primarySide = frontagePriority.find((frontage) => frontage.priority === 'primary')?.side ?? frontagePriority[0]?.side;
+    const frontBias = kind === 'tower-on-podium' || kind === 'podium' ? 0.46 : kind === 'bar' ? 0.34 : 0.24;
+    let offset: Point2D = { x: 0, z: 0 };
+
+    if (primarySide === 'west') {
+      offset = { x: -offsetRoom.x * frontBias, z: 0 };
+    } else if (primarySide === 'east') {
+      offset = { x: offsetRoom.x * frontBias, z: 0 };
+    } else if (primarySide === 'south') {
+      offset = { x: 0, z: -offsetRoom.z * frontBias };
+    } else if (primarySide === 'north') {
+      offset = { x: 0, z: offsetRoom.z * frontBias };
+    }
+
+    if (waterfrontSetbackApplied) {
+      offset = { x: offset.x, z: offset.z + offsetRoom.z * 0.32 };
+    }
+
+    return {
+      x: Number(offset.x.toFixed(2)),
+      z: Number(offset.z.toFixed(2))
+    };
   }
 
   private getBlockPermeability(district: DistrictKind): BlockPlan['permeability'] {

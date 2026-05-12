@@ -1394,6 +1394,48 @@ export interface BuildingTypologyContract {
   readonly scheduleProfileId: string;
 }
 
+export type BuildingFootprintGrammarKind =
+  | 'bar'
+  | 'podium'
+  | 'tower-on-podium'
+  | 'courtyard'
+  | 'warehouse-shed'
+  | 'civic-block';
+
+export interface BuildingFootprintGrammarContract {
+  readonly grammarId: string;
+  readonly kind: BuildingFootprintGrammarKind;
+  readonly parcelFitEnvelopeId: CityId;
+  readonly buildableEnvelope: Polygon2D;
+  readonly footprintAreaSqM: number;
+  readonly groundCoverageRatio: number;
+  readonly envelopeCoverageRatio: number;
+  readonly placementOffsetMeters: Point2D;
+  readonly setbacks: {
+    readonly frontMeters: number;
+    readonly sideMeters: number;
+    readonly rearMeters: number;
+    readonly waterfrontMeters?: number;
+  };
+  readonly podium?: {
+    readonly footprint: Polygon2D;
+    readonly heightMeters: number;
+  };
+  readonly tower?: {
+    readonly footprint: Polygon2D;
+    readonly floorPlateAreaSqM: number;
+    readonly stepbackMeters: number;
+  };
+  readonly courtyard?: {
+    readonly center: Point2D;
+    readonly sizeMeters: { readonly x: number; readonly z: number };
+    readonly openToSky: boolean;
+  };
+  readonly constraintIds: readonly CityId[];
+  readonly waterfrontSetbackApplied: boolean;
+  readonly hazardConstrained: boolean;
+}
+
 export interface BuildingContract extends CityObjectBase<'building'> {
   readonly parcelId: CityId;
   readonly zoningDistrictId: CityId;
@@ -1402,6 +1444,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly heightMeters: number;
   readonly floorCount: number;
   readonly typology: BuildingTypologyContract;
+  readonly footprintGrammar: BuildingFootprintGrammarContract;
   readonly facadeGrammarId: string;
   readonly roofGrammarId: string;
   readonly primaryFrontageRoadId: CityId;

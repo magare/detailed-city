@@ -194,6 +194,10 @@ export class DebugPanel {
         `${diagnostics.buildingTypologies.typologyKinds} kinds, ${diagnostics.buildingTypologies.storefrontEntrances} storefront, ${diagnostics.buildingTypologies.yardLoadingBuildings} yard`
       ),
       createMetric(
+        'Footprints',
+        `${diagnostics.buildingFootprints.grammarKinds} kinds, ${diagnostics.buildingFootprints.offsetFootprints} offset, ${diagnostics.buildingFootprints.towers} towers`
+      ),
+      createMetric(
         'Assets',
         `${diagnostics.assetBindingDiagnostics.assetDefinitions} assets, ${diagnostics.assetBindingDiagnostics.renderBindings} bindings`
       ),

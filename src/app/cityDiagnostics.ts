@@ -6,7 +6,12 @@ import {
   createMasterPlanDiagnostics,
   type MasterPlanDiagnostics
 } from '../city/blueprint/master-plan/masterPlan';
-import type { BuildingTypologyKind, CityObjectIndex, SourceType } from '../city/data-contracts/cityContracts';
+import type {
+  BuildingFootprintGrammarKind,
+  BuildingTypologyKind,
+  CityObjectIndex,
+  SourceType
+} from '../city/data-contracts/cityContracts';
 import { createGeneratedRuntimeObjectIndex } from '../city/data-contracts/generatedCityObjectIndex';
 import { createGeneratedCityObjectGroupIndex } from '../city/data-contracts/generatedCityObjectGroups';
 import {
@@ -52,6 +57,7 @@ export interface CityDiagnostics {
   readonly parcelModel: ParcelModelDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
+  readonly buildingFootprints: BuildingFootprintDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
@@ -175,6 +181,9 @@ export interface CityDiagnostics {
     readonly buildings: number;
     readonly buildingTypologyKinds: number;
     readonly buildingsWithTypology: number;
+    readonly buildingFootprintGrammarKinds: number;
+    readonly buildingsWithFootprintGrammar: number;
+    readonly offsetBuildingFootprints: number;
     readonly activeFrontages: number;
     readonly parks: number;
     readonly waterways: number;
@@ -257,6 +266,20 @@ export interface BuildingTypologyDiagnostics {
   readonly storefrontEntrances: number;
   readonly yardLoadingBuildings: number;
   readonly scheduleProfiles: readonly string[];
+}
+
+export interface BuildingFootprintDiagnostics {
+  readonly total: number;
+  readonly buildingsWithGrammar: number;
+  readonly grammarKinds: number;
+  readonly byKind: Readonly<Partial<Record<BuildingFootprintGrammarKind, number>>>;
+  readonly offsetFootprints: number;
+  readonly podiums: number;
+  readonly towers: number;
+  readonly courtyards: number;
+  readonly waterfrontSetbacks: number;
+  readonly hazardConstrained: number;
+  readonly averageGroundCoverageRatio: number;
 }
 
 export interface RoadNetworkDiagnostics {
@@ -433,6 +456,7 @@ export function createCityDiagnostics(
   const parcelModel = createParcelModelDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
+  const buildingFootprints = createBuildingFootprintDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
@@ -470,6 +494,7 @@ export function createCityDiagnostics(
     parcelModel,
     zoningModel,
     buildingTypologies,
+    buildingFootprints,
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
@@ -584,6 +609,9 @@ export function createCityDiagnostics(
       buildings: city.buildings.length,
       buildingTypologyKinds: buildingTypologies.typologyKinds,
       buildingsWithTypology: buildingTypologies.buildingsWithTypology,
+      buildingFootprintGrammarKinds: buildingFootprints.grammarKinds,
+      buildingsWithFootprintGrammar: buildingFootprints.buildingsWithGrammar,
+      offsetBuildingFootprints: buildingFootprints.offsetFootprints,
       activeFrontages: city.activeFrontages.length,
       parks: city.parks.length,
       waterways: city.waterways.length,
@@ -769,6 +797,63 @@ function createBuildingTypologyDiagnostics(city: GeneratedCity): BuildingTypolog
     storefrontEntrances,
     yardLoadingBuildings,
     scheduleProfiles: [...scheduleProfiles].sort()
+  };
+}
+
+function createBuildingFootprintDiagnostics(city: GeneratedCity): BuildingFootprintDiagnostics {
+  const byKind: Partial<Record<BuildingFootprintGrammarKind, number>> = {};
+  let buildingsWithGrammar = 0;
+  let offsetFootprints = 0;
+  let podiums = 0;
+  let towers = 0;
+  let courtyards = 0;
+  let waterfrontSetbacks = 0;
+  let hazardConstrained = 0;
+  let groundCoverageTotal = 0;
+
+  for (const building of city.buildings) {
+    const grammar = building.footprintGrammar;
+
+    if (!grammar) {
+      continue;
+    }
+
+    buildingsWithGrammar += 1;
+    byKind[grammar.kind] = (byKind[grammar.kind] ?? 0) + 1;
+    groundCoverageTotal += grammar.groundCoverageRatio;
+
+    if (Math.abs(grammar.placementOffsetMeters.x) > 0.01 || Math.abs(grammar.placementOffsetMeters.z) > 0.01) {
+      offsetFootprints += 1;
+    }
+    if (grammar.podium) {
+      podiums += 1;
+    }
+    if (grammar.tower) {
+      towers += 1;
+    }
+    if (grammar.courtyard) {
+      courtyards += 1;
+    }
+    if (grammar.waterfrontSetbackApplied) {
+      waterfrontSetbacks += 1;
+    }
+    if (grammar.hazardConstrained) {
+      hazardConstrained += 1;
+    }
+  }
+
+  return {
+    total: city.buildings.length,
+    buildingsWithGrammar,
+    grammarKinds: Object.keys(byKind).length,
+    byKind,
+    offsetFootprints,
+    podiums,
+    towers,
+    courtyards,
+    waterfrontSetbacks,
+    hazardConstrained,
+    averageGroundCoverageRatio: Number((groundCoverageTotal / Math.max(1, buildingsWithGrammar)).toFixed(4))
   };
 }
 
