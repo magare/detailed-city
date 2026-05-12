@@ -7,6 +7,7 @@ import { PlazaZoneMeshBuilder } from '../../city/rendering-handoff/mesh-builders
 import { StreetFurnitureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetFurnitureMeshBuilder';
 import { StreetLightMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetLightMeshBuilder';
 import { TrafficMeshBuilder, type TrafficVehicle } from '../../city/rendering-handoff/mesh-builders/TrafficMeshBuilder';
+import { WaterfrontOpenSpaceMeshBuilder } from '../../city/rendering-handoff/mesh-builders/WaterfrontOpenSpaceMeshBuilder';
 import {
   CITY_SCENE_LAYER_DEFINITIONS,
   type CitySceneLayerId
@@ -75,6 +76,7 @@ export class City implements Updatable {
     this.addParkFeatures(generated);
     this.addPlazaZones(generated);
     this.addWaterfrontEdges(generated.waterfrontEdges);
+    this.addWaterfrontOpenSpaces(generated);
     this.addTreePlantings(generated.trees);
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
@@ -168,6 +170,15 @@ export class City implements Updatable {
       this.attachPickingMetadata(mesh, edge.id);
       this.layerGroups['public-realm'].add(mesh);
     }
+  }
+
+  private addWaterfrontOpenSpaces(generated: GeneratedCity): void {
+    const group = new WaterfrontOpenSpaceMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(generated.waterfrontOpenSpaces);
+
+    this.layerGroups['public-realm'].add(group);
   }
 
   private addBuildings(generated: GeneratedCity): void {

@@ -36,10 +36,11 @@ test('generated city object index is deterministic and resolves road children', 
   expect(firstCity.objectIndex.countsByKind['development-phase']).toBe(3);
   expect(firstCity.objectIndex.countsByKind['park-feature']).toBe(24);
   expect(firstCity.objectIndex.countsByKind['plaza-zone']).toBe(6);
-  expect(firstCity.objectIndex.countsByKind.asset).toBe(41);
+  expect(firstCity.objectIndex.countsByKind['waterfront-open-space']).toBe(8);
+  expect(firstCity.objectIndex.countsByKind.asset).toBe(42);
   expect(firstCity.objectIndex.countsByKind['traffic-calming-device']).toBe(12);
-  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(40);
-  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(40);
+  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(41);
+  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(41);
   expect(firstCity.objectIndex.objectsById['slice-detailed-street-road-v-6']).toMatchObject({
     id: 'slice-detailed-street-road-v-6',
     kind: 'vertical-slice',
@@ -81,8 +82,8 @@ test('generated city object index is deterministic and resolves road children', 
 test('render asset catalog provides fallback coverage for current scene objects', () => {
   const city = new CityGenerator(cityConfig).generate();
 
-  expect(city.assetCatalog).toHaveLength(41);
-  expect(city.assetBindings).toHaveLength(41);
+  expect(city.assetCatalog).toHaveLength(42);
+  expect(city.assetBindings).toHaveLength(42);
   expect(city.validation.issues.filter((issue) => issue.category === 'asset')).toEqual([]);
   expect(city.assetBindings).toEqual(
     expect.arrayContaining([
@@ -127,6 +128,12 @@ test('render asset catalog provides fallback coverage for current scene objects'
         objectKind: 'plaza-zone',
         fallbackMaterial: 'plazaHardscape',
         fallbackGeometry: 'plaza-zone-box'
+      }),
+      expect.objectContaining({
+        id: 'binding:waterfront:open-space',
+        objectKind: 'waterfront-open-space',
+        fallbackMaterial: 'waterfrontEdge',
+        fallbackGeometry: 'waterfront-open-space-promenade'
       }),
       expect.objectContaining({
         id: 'binding:facade:storefront-window',

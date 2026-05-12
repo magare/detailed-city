@@ -73,6 +73,7 @@ type PickableObjectSource = Pick<
   | 'trafficCalmingDevices'
   | 'trees'
   | 'waterfrontEdges'
+  | 'waterfrontOpenSpaces'
   | 'waterways'
 >;
 
@@ -90,6 +91,7 @@ export function createCityPickingMetadataCatalog(
     ...city.plazaZones,
     ...city.waterways,
     ...city.waterfrontEdges,
+    ...city.waterfrontOpenSpaces,
     ...city.trees,
     ...city.streetLights,
     ...city.streetFurniture,
@@ -219,6 +221,9 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.waterwayId = object.id;
   } else if (object.kind === 'waterfront-edge') {
     references.waterfrontEdgeId = object.id;
+  } else if (object.kind === 'waterfront-open-space') {
+    references.waterfrontEdgeId = typeof record.waterfrontEdgeId === 'string' ? record.waterfrontEdgeId : object.parentId;
+    references.waterwayId = typeof record.waterwayId === 'string' ? record.waterwayId : undefined;
   } else if (
     (object.kind === 'lane-marking' || object.kind === 'traffic-vehicle') &&
     !references.roadId &&

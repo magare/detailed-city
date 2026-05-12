@@ -37,7 +37,19 @@ test('debug overlay datasets are generated from domain data', () => {
   expect(overlays.find((overlay) => overlay.id === 'districts')?.featureCount).toBe(5);
   expect(overlays.find((overlay) => overlay.id === 'zoning')?.featureCount).toBe(5);
   expect(overlays.find((overlay) => overlay.id === 'waterways')?.featureCount).toBe(40);
-  expect(overlays.find((overlay) => overlay.id === 'waterfront')?.featureCount).toBe(11);
+  expect(overlays.find((overlay) => overlay.id === 'waterfront')?.featureCount).toBe(19);
+  expect(overlays.find((overlay) => overlay.id === 'waterfront')?.features).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        objectKind: 'waterfront-open-space',
+        ownerDomain: 'public-realm',
+        metadata: expect.objectContaining({
+          openSpaceKind: 'water-access',
+          waterAccess: true
+        })
+      })
+    ])
+  );
   expect(overlays.find((overlay) => overlay.id === 'hazards')?.featureCount).toBe(6);
   expect(overlays.find((overlay) => overlay.id === 'topography')?.featureCount).toBe(5);
   expect(overlays.find((overlay) => overlay.id === 'soil-geology')?.featureCount).toBe(5);

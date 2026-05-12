@@ -68,6 +68,10 @@ export class PerformanceMonitor implements Updatable {
   update(deltaSeconds: number): void {
     const frameMs = deltaSeconds * 1000;
 
+    if (!Number.isFinite(frameMs) || frameMs <= 0) {
+      return;
+    }
+
     this.framesObserved += 1;
     this.lastFrameMs = roundMetric(frameMs);
     this.averageFrameMs = roundMetric(

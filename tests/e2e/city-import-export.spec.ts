@@ -76,11 +76,13 @@ test('procedural seed export is deterministic JSON without renderer-only fields'
     activeFrontages: 44,
     parkFeatures: 24,
     plazaZones: 6,
-    assetCatalog: 41,
-    renderBindings: 41
+    waterfrontOpenSpaces: 8,
+    assetCatalog: 42,
+    renderBindings: 42
   });
-  expect(firstExport.assets.catalog).toHaveLength(41);
-  expect(firstExport.assets.bindings).toHaveLength(41);
+  expect(firstExport.city.waterfrontOpenSpaces).toHaveLength(8);
+  expect(firstExport.assets.catalog).toHaveLength(42);
+  expect(firstExport.assets.bindings).toHaveLength(42);
 
   const jsonText = JSON.stringify(firstExport);
   const jsonArtifact = JSON.parse(jsonText) as Record<string, unknown>;
@@ -146,8 +148,8 @@ test('city diagnostics expose procedural export readiness without embedding the 
     proceduralSeedExport: {
       format: 'procedural-seed-json',
       objectCount: city.objectIndex.objectIds.length,
-      exportedAssetDefinitions: 41,
-      exportedRenderBindings: 41,
+      exportedAssetDefinitions: 42,
+      exportedRenderBindings: 42,
       validationPassed: true,
       jsonSerializable: true,
       rendererOnlyFieldsDetected: [],

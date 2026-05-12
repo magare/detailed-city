@@ -250,6 +250,7 @@ export interface ProceduralSeedDomainSections {
   readonly plazaZones: GeneratedCity['plazaZones'];
   readonly waterways: GeneratedCity['waterways'];
   readonly waterfrontEdges: GeneratedCity['waterfrontEdges'];
+  readonly waterfrontOpenSpaces: GeneratedCity['waterfrontOpenSpaces'];
   readonly trees: GeneratedCity['trees'];
 }
 
@@ -285,6 +286,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly plazaZones: number;
   readonly waterways: number;
   readonly waterfrontEdges: number;
+  readonly waterfrontOpenSpaces: number;
   readonly trees: number;
   readonly assetCatalog: number;
   readonly renderBindings: number;
@@ -392,6 +394,7 @@ export function createProceduralSeedJsonExport(
       plazaZones: city.plazaZones,
       waterways: city.waterways,
       waterfrontEdges: city.waterfrontEdges,
+      waterfrontOpenSpaces: city.waterfrontOpenSpaces,
       trees: city.trees
     },
     assets: {
@@ -526,6 +529,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'verticalSlices'
     | 'waterways'
     | 'waterfrontEdges'
+    | 'waterfrontOpenSpaces'
   >
 ): ProceduralSeedDomainSectionCounts {
   return {
@@ -560,6 +564,7 @@ export function createProceduralSeedDomainSectionCounts(
     plazaZones: city.plazaZones.length,
     waterways: city.waterways.length,
     waterfrontEdges: city.waterfrontEdges.length,
+    waterfrontOpenSpaces: city.waterfrontOpenSpaces.length,
     trees: city.trees.length,
     assetCatalog: city.assetCatalog.length,
     renderBindings: city.assetBindings.length
@@ -604,6 +609,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'plazaZones') +
     getArrayLength(city, 'waterways') +
     getArrayLength(city, 'waterfrontEdges') +
+    getArrayLength(city, 'waterfrontOpenSpaces') +
     getArrayLength(city, 'trees') +
     getArrayLength(assets, 'catalog')
   );

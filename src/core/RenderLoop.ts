@@ -35,7 +35,7 @@ export class RenderLoop {
     }
 
     this.timer.update(timestamp);
-    const delta = Math.min(this.timer.getDelta(), 0.05);
+    const delta = Math.max(0, Math.min(this.timer.getDelta(), 0.05));
     const elapsed = this.timer.getElapsed();
 
     for (const updatable of this.updatables) {

@@ -369,28 +369,52 @@ function createDevelopmentPhaseFeatures(city: GeneratedCity): CityOverlayFeature
 }
 
 function createWaterfrontFeatures(city: GeneratedCity): CityOverlayFeature[] {
-  return city.waterfrontEdges.map((edge) => ({
-    id: `overlay:waterfront:${edge.id}`,
-    overlayId: 'waterfront',
-    objectId: edge.id,
-    objectKind: edge.kind,
-    ownerDomain: edge.ownerDomain,
-    label: edge.name ?? edge.id,
-    geometry: { type: 'polygon', points: edge.boundary },
-    metadata: {
-      waterfrontKind: edge.waterfrontKind,
-      waterwayId: edge.waterwayId,
-      waterwayEdgeSegmentId: edge.waterwayEdgeSegmentId ?? '',
-      dockId: edge.dockId ?? '',
-      publicAccess: edge.publicAccess,
-      publicRealmConnections: edge.connectedPublicRealmIds.length,
-      roadConnections: edge.connectedRoadIds.length,
-      floodProtection: edge.floodProtection.kind,
-      materialHint: edge.materialHint,
-      lengthMeters: edge.lengthMeters,
-      widthMeters: edge.widthMeters
-    }
-  }));
+  return [
+    ...city.waterfrontEdges.map((edge) => ({
+      id: `overlay:waterfront:${edge.id}`,
+      overlayId: 'waterfront' as const,
+      objectId: edge.id,
+      objectKind: edge.kind,
+      ownerDomain: edge.ownerDomain,
+      label: edge.name ?? edge.id,
+      geometry: { type: 'polygon' as const, points: edge.boundary },
+      metadata: {
+        waterfrontKind: edge.waterfrontKind,
+        waterwayId: edge.waterwayId,
+        waterwayEdgeSegmentId: edge.waterwayEdgeSegmentId ?? '',
+        dockId: edge.dockId ?? '',
+        publicAccess: edge.publicAccess,
+        publicRealmConnections: edge.connectedPublicRealmIds.length,
+        roadConnections: edge.connectedRoadIds.length,
+        floodProtection: edge.floodProtection.kind,
+        materialHint: edge.materialHint,
+        lengthMeters: edge.lengthMeters,
+        widthMeters: edge.widthMeters
+      }
+    })),
+    ...city.waterfrontOpenSpaces.map((openSpace) => ({
+      id: `overlay:waterfront:${openSpace.id}`,
+      overlayId: 'waterfront' as const,
+      objectId: openSpace.id,
+      objectKind: openSpace.kind,
+      ownerDomain: openSpace.ownerDomain,
+      label: openSpace.name ?? openSpace.id,
+      geometry: { type: 'polygon' as const, points: openSpace.boundary },
+      metadata: {
+        openSpaceKind: openSpace.openSpaceKind,
+        waterfrontEdgeId: openSpace.waterfrontEdgeId,
+        waterwayId: openSpace.waterwayId,
+        surface: openSpace.surface,
+        publicAccess: openSpace.publicAccess,
+        seatingCapacity: openSpace.seatingCapacity,
+        railingLengthMeters: openSpace.railingLengthMeters,
+        shadeTrees: openSpace.shadeTreeIds.length,
+        nearbyFurniture: openSpace.nearbyFurnitureIds.length,
+        waterAccess: Boolean(openSpace.waterAccessPoint),
+        eventCapacityPeople: openSpace.comfort.eventCapacityPeople
+      }
+    }))
+  ];
 }
 
 function createHazardFeatures(city: GeneratedCity): CityOverlayFeature[] {

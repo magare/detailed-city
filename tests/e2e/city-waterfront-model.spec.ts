@@ -16,12 +16,18 @@ test('waterfront land model is deterministic and connects public access to water
   const runtimeIndex = createGeneratedRuntimeObjectIndex(firstCity, traffic);
   const overlays = createCityOverlayDatasets(firstCity, runtimeIndex);
   const waterfront = firstCity.waterfrontEdges;
+  const openSpaces = firstCity.waterfrontOpenSpaces;
   const publicAccess = waterfront.find((edge) => edge.waterfrontKind === 'public-access');
   const pier = waterfront.find((edge) => edge.waterfrontKind === 'pier' && edge.publicAccess);
+  const waterAccessOpenSpace = openSpaces.find((openSpace) => openSpace.openSpaceKind === 'water-access');
+  const overlookOpenSpace = openSpaces.find((openSpace) => openSpace.openSpaceKind === 'overlook');
 
   expect(waterfront.map((edge) => edge.id)).toEqual(secondCity.waterfrontEdges.map((edge) => edge.id));
+  expect(openSpaces.map((openSpace) => openSpace.id)).toEqual(secondCity.waterfrontOpenSpaces.map((openSpace) => openSpace.id));
   expect(waterfront).toHaveLength(11);
+  expect(openSpaces).toHaveLength(8);
   expect(firstCity.objectIndex.countsByKind['waterfront-edge']).toBe(11);
+  expect(firstCity.objectIndex.countsByKind['waterfront-open-space']).toBe(8);
   expect(firstCity.validation.issues.filter((issue) => issue.category === 'land')).toEqual([]);
   expect(publicAccess).toMatchObject({
     id: 'waterfront-edge-south-river-public-access-2',
@@ -43,6 +49,26 @@ test('waterfront land model is deterministic and connects public access to water
     dockId: expect.stringMatching(/^south-river-dock-/),
     materialHint: 'boardwalk'
   });
+  expect(waterAccessOpenSpace).toMatchObject({
+    id: 'waterfront-open-space-south-river-water-access-2',
+    kind: 'waterfront-open-space',
+    ownerDomain: 'public-realm',
+    parentId: 'waterfront-edge-south-river-public-access-2',
+    openSpaceKind: 'water-access',
+    waterfrontEdgeId: 'waterfront-edge-south-river-public-access-2',
+    waterwayId: 'south-river',
+    accessible: true,
+    publicAccess: true,
+    surface: 'concrete-promenade',
+    assetBindingId: 'binding:waterfront:open-space'
+  });
+  expect(waterAccessOpenSpace?.waterAccessPoint).toBeDefined();
+  expect(waterAccessOpenSpace?.seatingCapacity).toBeGreaterThan(0);
+  expect(waterAccessOpenSpace?.railingLengthMeters).toBeGreaterThan(0);
+  expect(overlookOpenSpace).toMatchObject({
+    openSpaceKind: 'overlook',
+    comfort: expect.objectContaining({ overlook: true })
+  });
   expect(diagnostics.waterfrontModel).toMatchObject({
     total: 11,
     publicAccessEdges: 6,
@@ -57,13 +83,33 @@ test('waterfront land model is deterministic and connects public access to water
       quay: 1
     }
   });
+  expect(diagnostics.waterfrontOpenSpace).toMatchObject({
+    total: 8,
+    publicAccessSpaces: 6,
+    accessibleSpaces: 6,
+    waterAccessPoints: 3,
+    ecologicalSpaces: 2,
+    byKind: {
+      boardwalk: 1,
+      'ecological-edge': 2,
+      overlook: 1,
+      'pier-landing': 2,
+      promenade: 1,
+      'water-access': 1
+    }
+  });
+  expect(diagnostics.waterfrontOpenSpace.seatingCapacity).toBeGreaterThan(100);
+  expect(diagnostics.waterfrontOpenSpace.railingLengthMeters).toBeGreaterThan(500);
   expect(diagnostics.objectCounts).toMatchObject({
     waterfrontEdges: 11,
     waterfrontPublicAccessEdges: 6,
     waterfrontFloodProtectionEdges: 4,
-    waterfrontPiers: 3
+    waterfrontPiers: 3,
+    waterfrontOpenSpaces: 8,
+    waterfrontWaterAccessPoints: 3,
+    waterfrontEcologicalOpenSpaces: 2
   });
-  expect(overlays.find((overlay) => overlay.id === 'waterfront')?.featureCount).toBe(11);
+  expect(overlays.find((overlay) => overlay.id === 'waterfront')?.featureCount).toBe(19);
   expect(overlays.find((overlay) => overlay.id === 'waterfront')?.features[0]).toMatchObject({
     id: 'overlay:waterfront:waterfront-edge-south-river-quay-0',
     objectKind: 'waterfront-edge',
@@ -76,14 +122,25 @@ test('waterfront land model is deterministic and connects public access to water
       floodProtection: 'none'
     }
   });
+  expect(overlays.find((overlay) => overlay.id === 'waterfront')?.features.at(-1)).toMatchObject({
+    objectKind: 'waterfront-open-space',
+    ownerDomain: 'public-realm',
+    geometry: { type: 'polygon' },
+    metadata: expect.objectContaining({
+      openSpaceKind: 'pier-landing',
+      waterAccess: true
+    })
+  });
 });
 
-test('waterfront validation catches broken water, public realm, road, dock, and flood protection references', () => {
+test('waterfront validation catches broken water, public realm, road, dock, open space, and flood protection references', () => {
   const city = new CityGenerator(cityConfig).generate();
   const baseEdge = city.waterfrontEdges.find((edge) => edge.waterfrontKind === 'public-access');
   const floodWall = city.waterfrontEdges.find((edge) => edge.waterfrontKind === 'flood-wall');
+  const baseOpenSpace = city.waterfrontOpenSpaces.find((openSpace) => openSpace.openSpaceKind === 'water-access');
   expect(baseEdge).toBeDefined();
   expect(floodWall).toBeDefined();
+  expect(baseOpenSpace).toBeDefined();
   const invalidPublicEdge = {
     ...baseEdge!,
     widthMeters: 0,
@@ -102,6 +159,25 @@ test('waterfront validation catches broken water, public realm, road, dock, and 
     ...city.waterfrontEdges.find((edge) => edge.waterfrontKind === 'pier')!,
     dockId: 'missing-dock'
   };
+  const invalidOpenSpace = {
+    ...baseOpenSpace!,
+    parentId: 'missing-waterfront-edge',
+    waterfrontEdgeId: 'missing-waterfront-edge',
+    lengthMeters: 0,
+    accessible: false,
+    waterAccessPoint: undefined,
+    connectedRoadIds: ['missing-road'],
+    connectedParkIds: ['missing-park'],
+    nearbyFurnitureIds: ['missing-furniture'],
+    shadeTreeIds: ['missing-tree'],
+    seatingCapacity: 0,
+    railingLengthMeters: 0,
+    comfort: {
+      ...baseOpenSpace!.comfort,
+      shadeCoverageRatio: 1.4
+    },
+    assetBindingId: 'missing-binding'
+  };
   const invalidCity = {
     ...city,
     waterfrontEdges: city.waterfrontEdges.map((edge) => {
@@ -115,7 +191,10 @@ test('waterfront validation catches broken water, public realm, road, dock, and 
         return invalidPier;
       }
       return edge;
-    })
+    }),
+    waterfrontOpenSpaces: city.waterfrontOpenSpaces.map((openSpace) =>
+      openSpace.id === invalidOpenSpace.id ? invalidOpenSpace : openSpace
+    )
   };
   const validation = validateGeneratedCity({
     ...invalidCity,
@@ -141,7 +220,11 @@ test('waterfront validation catches broken water, public realm, road, dock, and 
         id: `waterfront-missing-flood-wall-protection-${invalidFloodWall.id}`,
         category: 'land'
       }),
-      expect.objectContaining({ id: `waterfront-missing-dock-missing-dock-${invalidPier.id}`, category: 'land' })
+      expect.objectContaining({ id: `waterfront-missing-dock-missing-dock-${invalidPier.id}`, category: 'land' }),
+      expect.objectContaining({
+        id: `waterfront-open-space-missing-waterfront-edge-${invalidOpenSpace.id}`,
+        category: 'land'
+      })
     ])
   );
 });
@@ -152,9 +235,11 @@ test('browser diagnostics expose waterfront model counts and visible pickable wa
 
   const diagnostics = await page.evaluate(() => ({
     waterfrontModel: window.cityDiagnostics?.waterfrontModel,
+    waterfrontOpenSpace: window.cityDiagnostics?.waterfrontOpenSpace,
     objectCounts: window.cityDiagnostics?.objectCounts,
     waterfrontOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'waterfront'),
     pickingKindCount: window.cityDiagnostics?.picking.countsByKind['waterfront-edge'],
+    pickingOpenSpaceKindCount: window.cityDiagnostics?.picking.countsByKind['waterfront-open-space'],
     debugText: document.body.textContent
   }));
 
@@ -168,15 +253,27 @@ test('browser diagnostics expose waterfront model counts and visible pickable wa
     waterfrontEdges: 11,
     waterfrontPublicAccessEdges: 6,
     waterfrontFloodProtectionEdges: 4,
-    waterfrontPiers: 3
+    waterfrontPiers: 3,
+    waterfrontOpenSpaces: 8,
+    waterfrontWaterAccessPoints: 3,
+    waterfrontEcologicalOpenSpaces: 2
+  });
+  expect(diagnostics.waterfrontOpenSpace).toMatchObject({
+    total: 8,
+    publicAccessSpaces: 6,
+    waterAccessPoints: 3,
+    ecologicalSpaces: 2
   });
   expect(diagnostics.waterfrontOverlay).toMatchObject({
     id: 'waterfront',
-    featureCount: 11
+    featureCount: 19
   });
   expect(diagnostics.pickingKindCount).toBe(11);
+  expect(diagnostics.pickingOpenSpaceKindCount).toBe(8);
   expect(diagnostics.debugText).toContain('Waterfront');
   expect(diagnostics.debugText).toContain('11 edges, 6 public, 3 piers');
+  expect(diagnostics.debugText).toContain('Promenade');
+  expect(diagnostics.debugText).toContain('8 spaces');
 });
 
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {

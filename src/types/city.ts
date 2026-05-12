@@ -47,6 +47,7 @@ import type {
   TrafficCalmingDeviceContract,
   ValidationResult,
   WaterfrontEdgeContract,
+  WaterfrontOpenSpaceContract,
   WaterwayContract,
   ZoningDistrictContract
 } from '../city/data-contracts/cityContracts';
@@ -227,6 +228,8 @@ export interface Waterway extends WaterwayContract {}
 
 export interface WaterfrontEdge extends WaterfrontEdgeContract {}
 
+export interface WaterfrontOpenSpace extends WaterfrontOpenSpaceContract {}
+
 export interface TreePlanting extends CityObjectBase<'tree-planting'> {
   plantingContext: 'park' | 'street';
   plantingForm: TreePlantingForm;
@@ -299,6 +302,7 @@ export type GeneratedCityObject =
   | PlazaZone
   | Waterway
   | WaterfrontEdge
+  | WaterfrontOpenSpace
   | TreePlanting;
 
 export type GeneratedRuntimeCityObject = GeneratedCityObject | LaneMarkingPlan | TrafficVehiclePlan;
@@ -342,6 +346,7 @@ export interface GeneratedCity {
   plazaZones: PlazaZone[];
   waterways: Waterway[];
   waterfrontEdges: WaterfrontEdge[];
+  waterfrontOpenSpaces: WaterfrontOpenSpace[];
   trees: TreePlanting[];
   objectIndex: CityObjectIndex<GeneratedCityObject>;
   assetCatalog: AssetDefinition[];

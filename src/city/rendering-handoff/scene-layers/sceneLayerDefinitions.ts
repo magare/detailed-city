@@ -86,7 +86,8 @@ export function createCitySceneLayerDiagnostics(
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length +
-      city.waterfrontEdges.length,
+      city.waterfrontEdges.length +
+      city.waterfrontOpenSpaces.length,
     agents: traffic.vehicles.length,
     overlays:
       city.administrativeBoundaries.length +

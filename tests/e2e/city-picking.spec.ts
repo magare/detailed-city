@@ -34,6 +34,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.plazaZones.length +
       city.waterways.length +
       city.waterfrontEdges.length +
+      city.waterfrontOpenSpaces.length +
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length +
@@ -50,6 +51,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind['plaza-zone']).toBe(city.plazaZones.length);
   expect(catalog.countsByKind['traffic-calming-device']).toBe(city.trafficCalmingDevices.length);
   expect(catalog.countsByKind['waterfront-edge']).toBe(city.waterfrontEdges.length);
+  expect(catalog.countsByKind['waterfront-open-space']).toBe(city.waterfrontOpenSpaces.length);
   expect(catalog.countsByKind['lane-marking']).toBe(traffic.markings.length);
   expect(zebraCrossing).toBeTruthy();
   expect(catalog.metadataByObjectId[building.id]).toMatchObject({
@@ -122,6 +124,16 @@ test('picking catalog exposes deterministic object metadata and inherited refere
     parentId: city.waterfrontEdges[0].waterwayId,
     references: {
       waterfrontEdgeId: city.waterfrontEdges[0].id
+    }
+  });
+  expect(catalog.metadataByObjectId[city.waterfrontOpenSpaces[0].id]).toMatchObject({
+    objectId: city.waterfrontOpenSpaces[0].id,
+    kind: 'waterfront-open-space',
+    ownerDomain: 'public-realm',
+    parentId: city.waterfrontOpenSpaces[0].waterfrontEdgeId,
+    references: {
+      waterfrontEdgeId: city.waterfrontOpenSpaces[0].waterfrontEdgeId,
+      waterwayId: city.waterfrontOpenSpaces[0].waterwayId
     }
   });
   expect(catalog.metadataByObjectId[zebraCrossing?.id ?? '']).toMatchObject({

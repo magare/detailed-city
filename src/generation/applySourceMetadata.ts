@@ -52,6 +52,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     plazaZones: city.plazaZones.map((zone) => withProceduralMetadata(zone, 'public-realm-plaza-zones')),
     waterways: city.waterways.map((waterway) => withProceduralMetadata(waterway, 'terrain-waterways')),
     waterfrontEdges: city.waterfrontEdges.map((edge) => withProceduralMetadata(edge, 'land-waterfront')),
+    waterfrontOpenSpaces: city.waterfrontOpenSpaces.map((openSpace) =>
+      withProceduralMetadata(openSpace, 'public-realm-waterfront-open-space')
+    ),
     trees: city.trees.map((tree) => withProceduralMetadata(tree, 'environment-tree-plantings')),
     assetCatalog: city.assetCatalog.map((asset) => withProceduralMetadata(asset, 'render-asset-catalog'))
   };

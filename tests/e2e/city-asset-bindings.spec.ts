@@ -20,11 +20,11 @@ test('asset binding diagnostics expose current fallback coverage', () => {
   expect(city.validation.issues.filter((issue) => issue.category === 'asset')).toEqual([]);
   expect(city.validation.issues.filter((issue) => issue.category === 'metadata')).toEqual([]);
   expect(diagnostics.assetBindingDiagnostics).toMatchObject({
-    assetDefinitions: 41,
-    renderBindings: 41,
-    bindingsWithAssets: 41,
+    assetDefinitions: 42,
+    renderBindings: 42,
+    bindingsWithAssets: 42,
     bindingsMissingAssets: 0,
-    bindingsWithFallbacks: 41,
+    bindingsWithFallbacks: 42,
     bindingsMissingFallbacks: 0,
     unboundAssetDefinitions: 0
   });
@@ -42,11 +42,13 @@ test('asset binding diagnostics expose current fallback coverage', () => {
       'traffic-vehicle',
       'tree-planting',
       'waterfront-edge',
+      'waterfront-open-space',
       'waterway'
     ])
   );
   expect(diagnostics.assetBindingDiagnostics.materialZones.length).toBeGreaterThan(20);
   expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('railing');
+  expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('waterfront-open-space');
   expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('traffic-car');
 });
 

@@ -25,6 +25,7 @@ import { PlazaGenerator } from './public-realm/PlazaGenerator';
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
 import { StreetTreeGenerator } from './public-realm/StreetTreeGenerator';
+import { WaterfrontOpenSpaceGenerator } from './public-realm/WaterfrontOpenSpaceGenerator';
 import { ResilienceGoalGenerator } from './resilience/ResilienceGoalGenerator';
 import { PedestrianNetworkGenerator } from './roads/PedestrianNetworkGenerator';
 import { RoadNetworkGenerator } from './roads/RoadNetworkGenerator';
@@ -162,6 +163,12 @@ export class CityGenerator {
       activeFrontages
     });
     const trees = [...parkTrees, ...streetTrees];
+    const waterfrontOpenSpaces = new WaterfrontOpenSpaceGenerator().create({
+      waterfrontEdges,
+      parks: parksWithFeatures,
+      streetFurniture,
+      trees
+    });
     const cityMetrics = new CityMetricGenerator(this.config).create({
       bounds,
       roads: sliceTagged.roads,
@@ -208,6 +215,7 @@ export class CityGenerator {
       plazaZones,
       waterways,
       waterfrontEdges,
+      waterfrontOpenSpaces,
       trees,
       assetCatalog: [...DEFAULT_RENDER_ASSET_CATALOG],
       assetBindings: [...DEFAULT_RENDER_BINDINGS]

@@ -73,6 +73,7 @@ export interface CityDiagnostics {
   readonly trafficCalming: TrafficCalmingDiagnostics;
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly waterfrontModel: WaterfrontModelDiagnostics;
+  readonly waterfrontOpenSpace: WaterfrontOpenSpaceDiagnostics;
   readonly hazardLayer: HazardLayerDiagnostics;
   readonly topography: TopographyDiagnostics;
   readonly soilGeology: SoilGeologyDiagnostics;
@@ -155,6 +156,11 @@ export interface CityDiagnostics {
     readonly waterfrontPublicAccessEdges: number;
     readonly waterfrontFloodProtectionEdges: number;
     readonly waterfrontPiers: number;
+    readonly waterfrontOpenSpaces: number;
+    readonly waterfrontOpenSpaceSeating: number;
+    readonly waterfrontOpenSpaceRailings: number;
+    readonly waterfrontWaterAccessPoints: number;
+    readonly waterfrontEcologicalOpenSpaces: number;
     readonly hazardZones: number;
     readonly criticalHazards: number;
     readonly noBuildHazards: number;
@@ -474,6 +480,22 @@ export interface WaterfrontModelDiagnostics {
   readonly materialHints: readonly string[];
 }
 
+export interface WaterfrontOpenSpaceDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly publicAccessSpaces: number;
+  readonly accessibleSpaces: number;
+  readonly seatingCapacity: number;
+  readonly railingLengthMeters: number;
+  readonly waterAccessPoints: number;
+  readonly ecologicalSpaces: number;
+  readonly linkedRoads: number;
+  readonly linkedParks: number;
+  readonly linkedFurniture: number;
+  readonly linkedShadeTrees: number;
+  readonly surfaces: readonly string[];
+}
+
 export interface HazardLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -637,6 +659,7 @@ export function createCityDiagnostics(
   const trafficCalming = createTrafficCalmingDiagnostics(city);
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
+  const waterfrontOpenSpace = createWaterfrontOpenSpaceDiagnostics(city);
   const hazardLayer = createHazardLayerDiagnostics(city);
   const topography = createTopographyDiagnostics(city);
   const soilGeology = createSoilGeologyDiagnostics(city);
@@ -683,6 +706,7 @@ export function createCityDiagnostics(
     trafficCalming,
     waterwayNetwork,
     waterfrontModel,
+    waterfrontOpenSpace,
     hazardLayer,
     topography,
     soilGeology,
@@ -756,6 +780,11 @@ export function createCityDiagnostics(
       waterfrontPublicAccessEdges: waterfrontModel.publicAccessEdges,
       waterfrontFloodProtectionEdges: waterfrontModel.floodProtectionEdges,
       waterfrontPiers: waterfrontModel.piers,
+      waterfrontOpenSpaces: waterfrontOpenSpace.total,
+      waterfrontOpenSpaceSeating: waterfrontOpenSpace.seatingCapacity,
+      waterfrontOpenSpaceRailings: waterfrontOpenSpace.railingLengthMeters,
+      waterfrontWaterAccessPoints: waterfrontOpenSpace.waterAccessPoints,
+      waterfrontEcologicalOpenSpaces: waterfrontOpenSpace.ecologicalSpaces,
       hazardZones: hazardLayer.total,
       criticalHazards: hazardLayer.criticalHazards,
       noBuildHazards: hazardLayer.noBuildHazards,
@@ -1445,6 +1474,50 @@ function createWaterfrontModelDiagnostics(city: GeneratedCity): WaterfrontModelD
     floodProtectionEdges: city.waterfrontEdges.filter((edge) => edge.floodProtection.kind !== 'none').length,
     piers: city.waterfrontEdges.filter((edge) => edge.waterfrontKind === 'pier').length,
     materialHints: [...new Set(city.waterfrontEdges.map((edge) => edge.materialHint))].sort()
+  };
+}
+
+function createWaterfrontOpenSpaceDiagnostics(city: GeneratedCity): WaterfrontOpenSpaceDiagnostics {
+  const byKind: Record<string, number> = {};
+  const linkedRoads = new Set<string>();
+  const linkedParks = new Set<string>();
+  const linkedFurniture = new Set<string>();
+  const linkedShadeTrees = new Set<string>();
+
+  for (const openSpace of city.waterfrontOpenSpaces) {
+    byKind[openSpace.openSpaceKind] = (byKind[openSpace.openSpaceKind] ?? 0) + 1;
+
+    for (const roadId of openSpace.connectedRoadIds) {
+      linkedRoads.add(roadId);
+    }
+
+    for (const parkId of openSpace.connectedParkIds) {
+      linkedParks.add(parkId);
+    }
+
+    for (const furnitureId of openSpace.nearbyFurnitureIds) {
+      linkedFurniture.add(furnitureId);
+    }
+
+    for (const treeId of openSpace.shadeTreeIds) {
+      linkedShadeTrees.add(treeId);
+    }
+  }
+
+  return {
+    total: city.waterfrontOpenSpaces.length,
+    byKind,
+    publicAccessSpaces: city.waterfrontOpenSpaces.filter((openSpace) => openSpace.publicAccess).length,
+    accessibleSpaces: city.waterfrontOpenSpaces.filter((openSpace) => openSpace.accessible).length,
+    seatingCapacity: city.waterfrontOpenSpaces.reduce((sum, openSpace) => sum + openSpace.seatingCapacity, 0),
+    railingLengthMeters: city.waterfrontOpenSpaces.reduce((sum, openSpace) => sum + openSpace.railingLengthMeters, 0),
+    waterAccessPoints: city.waterfrontOpenSpaces.filter((openSpace) => openSpace.waterAccessPoint).length,
+    ecologicalSpaces: city.waterfrontOpenSpaces.filter((openSpace) => openSpace.openSpaceKind === 'ecological-edge').length,
+    linkedRoads: linkedRoads.size,
+    linkedParks: linkedParks.size,
+    linkedFurniture: linkedFurniture.size,
+    linkedShadeTrees: linkedShadeTrees.size,
+    surfaces: [...new Set(city.waterfrontOpenSpaces.map((openSpace) => openSpace.surface))].sort()
   };
 }
 

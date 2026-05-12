@@ -80,6 +80,7 @@ type GeneratedCityForValidation = Pick<
   | 'trees'
   | 'verticalSlices'
   | 'waterfrontEdges'
+  | 'waterfrontOpenSpaces'
   | 'waterways'
   | 'zoningDistricts'
 >;
@@ -103,6 +104,7 @@ type ValidationCrossing = GeneratedCityForValidation['crossings'][number];
 type ValidationIntersection = GeneratedCityForValidation['intersections'][number];
 type ValidationRoad = GeneratedCityForValidation['roads'][number];
 type ValidationWaterfrontEdge = GeneratedCityForValidation['waterfrontEdges'][number];
+type ValidationWaterfrontOpenSpace = GeneratedCityForValidation['waterfrontOpenSpaces'][number];
 type ValidationWaterway = GeneratedCityForValidation['waterways'][number];
 type ValidationZoningDistrict = GeneratedCityForValidation['zoningDistricts'][number];
 
@@ -146,6 +148,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:facade:entrance-door',
   'binding:facade:night-window',
   'binding:waterfront:edge',
+  'binding:waterfront:open-space',
   'binding:vehicle:traffic-car'
 ] as const;
 
@@ -163,10 +166,25 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'lane-marking',
   'traffic-calming-device',
   'waterfront-edge',
+  'waterfront-open-space',
   'traffic-vehicle'
 ] as const satisfies readonly CityObjectKind[];
 
 const ASSET_FORMATS = ['glb', 'gltf', 'png', 'jpg', 'webp', 'ktx2', 'hdr', 'exr', 'procedural'] as const satisfies readonly AssetFormat[];
+const WATERFRONT_OPEN_SPACE_KINDS = [
+  'boardwalk',
+  'ecological-edge',
+  'overlook',
+  'pier-landing',
+  'promenade',
+  'water-access'
+] as const;
+const WATERFRONT_OPEN_SPACE_SURFACES = [
+  'concrete-promenade',
+  'ecological-planting',
+  'stone-quay',
+  'timber-boardwalk'
+] as const;
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -2087,6 +2105,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
 
   validateParkExpansion(city, issues, assetBindingsById);
   validatePlazaModel(city, issues, assetBindingsById);
+  validateWaterfrontOpenSpaces(city, issues, assetBindingsById);
 
   for (const tree of city.trees) {
     if (tree.plantingContext === 'park' && (!tree.parkId || !hasObjectId(city, tree.parkId) || tree.parentId !== tree.parkId)) {
@@ -4715,6 +4734,15 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
     }
   }
 
+  for (const openSpace of city.waterfrontOpenSpaces) {
+    validatePoint2D(city.geospatial, openSpace.id, 'center', openSpace.center, issues);
+    validatePolygon2D(city.geospatial, openSpace.id, 'boundary', openSpace.boundary, issues);
+    if (openSpace.waterAccessPoint) {
+      validatePoint2D(city.geospatial, openSpace.id, 'waterAccessPoint', openSpace.waterAccessPoint, issues);
+    }
+    validateHeightValue(city.geospatial, openSpace.id, 'elevationMeters', openSpace.elevationMeters, issues);
+  }
+
   for (const hazardZone of city.hazardZones) {
     validatePoint2D(city.geospatial, hazardZone.id, 'focusPoint', hazardZone.focusPoint, issues);
     validatePolygon2D(city.geospatial, hazardZone.id, 'boundary', hazardZone.boundary, issues);
@@ -5713,6 +5741,219 @@ function createWaterfrontIssue(
     ...createIssueFocus(
       edge.center,
       `Regenerate ${edge.id} from current waterway edge, dock, public realm, and road references.`
+    ),
+    message
+  };
+}
+
+function validateWaterfrontOpenSpaces(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const spacesByEdgeId = new Map<CityId, ValidationWaterfrontOpenSpace[]>();
+
+  for (const openSpace of city.waterfrontOpenSpaces) {
+    const edge = city.waterfrontEdges.find((candidate) => candidate.id === openSpace.waterfrontEdgeId);
+    const binding = assetBindingsById.get(openSpace.assetBindingId);
+    spacesByEdgeId.set(openSpace.waterfrontEdgeId, [...(spacesByEdgeId.get(openSpace.waterfrontEdgeId) ?? []), openSpace]);
+
+    if (!edge || openSpace.parentId !== openSpace.waterfrontEdgeId) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'missing-waterfront-edge',
+          `Waterfront open space ${openSpace.id} must be parented to existing waterfront edge ${openSpace.waterfrontEdgeId}.`
+        )
+      );
+      continue;
+    }
+
+    if (openSpace.waterwayId !== edge.waterwayId) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'waterway-mismatch',
+          `Waterfront open space ${openSpace.id} must use parent edge waterway ${edge.waterwayId}.`
+        )
+      );
+    }
+
+    if (!WATERFRONT_OPEN_SPACE_KINDS.includes(openSpace.openSpaceKind)) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'invalid-kind',
+          `Waterfront open space ${openSpace.id} must declare a supported open-space kind.`
+        )
+      );
+    }
+
+    if (!WATERFRONT_OPEN_SPACE_SURFACES.includes(openSpace.surface)) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'invalid-surface',
+          `Waterfront open space ${openSpace.id} must declare a supported surface.`
+        )
+      );
+    }
+
+    if (openSpace.lengthMeters <= 0 || openSpace.widthMeters <= 0) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'invalid-dimensions',
+          `Waterfront open space ${openSpace.id} must have positive length and width.`
+        )
+      );
+    }
+
+    if (openSpace.publicAccess && !openSpace.accessible) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'public-not-accessible',
+          `Public waterfront open space ${openSpace.id} must be accessible.`
+        )
+      );
+    }
+
+    if ((openSpace.openSpaceKind === 'water-access' || openSpace.openSpaceKind === 'pier-landing') && !openSpace.waterAccessPoint) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'missing-water-access',
+          `Waterfront open space ${openSpace.id} must expose a water access point.`
+        )
+      );
+    }
+
+    if (openSpace.openSpaceKind !== 'ecological-edge' && openSpace.seatingCapacity <= 0) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'missing-seating',
+          `Usable waterfront open space ${openSpace.id} must expose seating capacity.`
+        )
+      );
+    }
+
+    if (openSpace.openSpaceKind !== 'ecological-edge' && openSpace.railingLengthMeters <= 0) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'missing-railing',
+          `Usable waterfront open space ${openSpace.id} must expose railing length.`
+        )
+      );
+    }
+
+    if (
+      openSpace.comfort.shadeCoverageRatio < 0 ||
+      openSpace.comfort.shadeCoverageRatio > 1 ||
+      openSpace.comfort.ecologyScore < 0 ||
+      openSpace.comfort.ecologyScore > 1 ||
+      openSpace.comfort.eventCapacityPeople < 0
+    ) {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'invalid-comfort',
+          `Waterfront open space ${openSpace.id} comfort metrics must be bounded and non-negative.`
+        )
+      );
+    }
+
+    if (!binding || binding.objectKind !== 'waterfront-open-space') {
+      issues.push(
+        createWaterfrontOpenSpaceIssue(
+          openSpace,
+          'missing-render-binding',
+          `Waterfront open space ${openSpace.id} must reference a waterfront-open-space render binding.`
+        )
+      );
+    }
+
+    for (const roadId of openSpace.connectedRoadIds) {
+      const road = city.objectIndex.objectsById[roadId];
+      if (!road || road.kind !== 'road-segment') {
+        issues.push(
+          createWaterfrontOpenSpaceIssue(
+            openSpace,
+            `missing-road-${toIssueIdToken(roadId)}`,
+            `Waterfront open space ${openSpace.id} references missing road ${roadId}.`
+          )
+        );
+      }
+    }
+
+    for (const parkId of openSpace.connectedParkIds) {
+      const park = city.objectIndex.objectsById[parkId];
+      if (!park || park.kind !== 'park') {
+        issues.push(
+          createWaterfrontOpenSpaceIssue(
+            openSpace,
+            `missing-park-${toIssueIdToken(parkId)}`,
+            `Waterfront open space ${openSpace.id} references missing park ${parkId}.`
+          )
+        );
+      }
+    }
+
+    for (const furnitureId of openSpace.nearbyFurnitureIds) {
+      const furniture = city.objectIndex.objectsById[furnitureId];
+      if (!furniture || furniture.kind !== 'street-furniture') {
+        issues.push(
+          createWaterfrontOpenSpaceIssue(
+            openSpace,
+            `missing-furniture-${toIssueIdToken(furnitureId)}`,
+            `Waterfront open space ${openSpace.id} references missing street furniture ${furnitureId}.`
+          )
+        );
+      }
+    }
+
+    for (const treeId of openSpace.shadeTreeIds) {
+      const tree = city.objectIndex.objectsById[treeId];
+      if (!tree || tree.kind !== 'tree-planting') {
+        issues.push(
+          createWaterfrontOpenSpaceIssue(
+            openSpace,
+            `missing-tree-${toIssueIdToken(treeId)}`,
+            `Waterfront open space ${openSpace.id} references missing shade tree ${treeId}.`
+          )
+        );
+      }
+    }
+  }
+
+  for (const edge of city.waterfrontEdges) {
+    if ((edge.publicAccess || edge.waterfrontKind === 'ecological-edge') && !spacesByEdgeId.has(edge.id)) {
+      issues.push(
+        createWaterfrontIssue(
+          edge,
+          'missing-open-space',
+          `Waterfront edge ${edge.id} must have a matching public-realm waterfront open space.`
+        )
+      );
+    }
+  }
+}
+
+function createWaterfrontOpenSpaceIssue(
+  openSpace: ValidationWaterfrontOpenSpace,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `waterfront-open-space-${issueIdSuffix}-${toIssueIdToken(openSpace.id)}`,
+    severity: 'error',
+    category: 'land',
+    objectId: openSpace.id,
+    ...createIssueFocus(
+      openSpace.center,
+      `Regenerate ${openSpace.id} from current waterfront edge, public realm, tree, and furniture references.`
     ),
     message
   };

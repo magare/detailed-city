@@ -38,6 +38,7 @@ test('scene layer diagnostics are deterministic and match current city data', ()
       city.parkFeatures.length +
       city.plazaZones.length +
       city.waterfrontEdges.length +
+      city.waterfrontOpenSpaces.length +
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length

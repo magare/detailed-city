@@ -43,6 +43,7 @@ export type CityObjectKind =
   | 'utility-node'
   | 'vertical-slice'
   | 'waterfront-edge'
+  | 'waterfront-open-space'
   | 'waterway'
   | 'zoning-district';
 
@@ -653,6 +654,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Waterfront edge objects render promenades, quays, piers, flood walls, and ecological banks.'
+    },
+    {
+      objectKind: 'waterfront-open-space',
+      scope: 'public-realm-prop',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Waterfront open spaces describe public promenades, overlooks, boardwalks, ecological terraces, seating, railings, and water access.'
     }
   ]
 };
@@ -948,6 +956,43 @@ export interface WaterfrontEdgeContract extends CityObjectBase<'waterfront-edge'
     readonly crestElevationMeters?: number;
   };
   readonly materialHint: WaterfrontMaterialHint;
+}
+
+export type WaterfrontOpenSpaceKind =
+  | 'boardwalk'
+  | 'ecological-edge'
+  | 'overlook'
+  | 'pier-landing'
+  | 'promenade'
+  | 'water-access';
+export type WaterfrontOpenSpaceSurface = 'concrete-promenade' | 'ecological-planting' | 'stone-quay' | 'timber-boardwalk';
+
+export interface WaterfrontOpenSpaceContract extends CityObjectBase<'waterfront-open-space'> {
+  readonly openSpaceKind: WaterfrontOpenSpaceKind;
+  readonly waterfrontEdgeId: CityId;
+  readonly waterwayId: CityId;
+  readonly boundary: Polygon2D;
+  readonly center: Point2D;
+  readonly lengthMeters: number;
+  readonly widthMeters: number;
+  readonly elevationMeters: number;
+  readonly surface: WaterfrontOpenSpaceSurface;
+  readonly accessible: boolean;
+  readonly publicAccess: boolean;
+  readonly connectedRoadIds: readonly CityId[];
+  readonly connectedParkIds: readonly CityId[];
+  readonly seatingCapacity: number;
+  readonly railingLengthMeters: number;
+  readonly shadeTreeIds: readonly CityId[];
+  readonly nearbyFurnitureIds: readonly CityId[];
+  readonly waterAccessPoint?: Point2D;
+  readonly comfort: {
+    readonly shadeCoverageRatio: number;
+    readonly ecologyScore: number;
+    readonly overlook: boolean;
+    readonly eventCapacityPeople: number;
+  };
+  readonly assetBindingId: CityId;
 }
 
 export const CITY_CONSTRAINT_KINDS = [
