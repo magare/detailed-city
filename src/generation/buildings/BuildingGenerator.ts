@@ -11,6 +11,8 @@ import type {
   BuildingFootprintGrammarContract,
   BuildingFootprintGrammarKind,
   BuildingFrontageSide,
+  BuildingStructureShellContract,
+  BuildingStructuralSystemKind,
   BuildingTypologyContract,
   BuildingTypologyKind,
   LandUse,
@@ -205,6 +207,15 @@ export class BuildingGenerator {
               maxCoverageRatio,
               heightMeters
             });
+            const floorCount = this.getFloorCount(heightMeters, typology);
+            const structureShell = this.createBuildingStructureShell({
+              buildingId,
+              typology,
+              footprintGrammar: footprintPlan.grammar,
+              footprint: footprintPlan.footprint,
+              heightMeters,
+              floorCount
+            });
 
             parcels.push({
               id,
@@ -244,9 +255,10 @@ export class BuildingGenerator {
               footprint: footprintPlan.footprint,
               uses: buildingUses,
               heightMeters,
-              floorCount: this.getFloorCount(heightMeters, typology),
+              floorCount,
               typology,
               footprintGrammar: footprintPlan.grammar,
+              structureShell,
               facadeGrammarId: typology.facadeGrammarId,
               roofGrammarId: typology.roofGrammarId,
               primaryFrontageRoadId,
@@ -815,6 +827,256 @@ export class BuildingGenerator {
 
   private getFloorCount(heightMeters: number, typology: BuildingTypologyContract): number {
     return Math.max(1, Math.round(heightMeters / typology.typicalFloorHeightMeters));
+  }
+
+  private createBuildingStructureShell(input: {
+    readonly buildingId: string;
+    readonly typology: BuildingTypologyContract;
+    readonly footprintGrammar: BuildingFootprintGrammarContract;
+    readonly footprint: Polygon2D;
+    readonly heightMeters: number;
+    readonly floorCount: number;
+  }): BuildingStructureShellContract {
+    const structuralSystem = this.getStructuralSystem(input.typology, input.footprintGrammar);
+    const gridMaterial = this.getStructuralGridMaterial(structuralSystem);
+    const typicalFloorHeightMeters = Number((input.heightMeters / input.floorCount).toFixed(2));
+    const gridFootprintBounds = getPolygonBounds(input.footprintGrammar.tower?.footprint ?? input.footprint);
+    const gridFootprintSize = {
+      x: gridFootprintBounds.maxX - gridFootprintBounds.minX,
+      z: gridFootprintBounds.maxZ - gridFootprintBounds.minZ
+    };
+    const podiumFloorCount = input.footprintGrammar.podium
+      ? Math.min(input.floorCount, Math.max(1, Math.round(input.footprintGrammar.podium.heightMeters / typicalFloorHeightMeters)))
+      : 0;
+    const towerFloorCount = input.footprintGrammar.tower ? Math.max(0, input.floorCount - podiumFloorCount) : 0;
+    const gridBaySpacing = this.getStructuralBaySpacing(structuralSystem, input.footprintGrammar);
+    const core = this.createBuildingCore(input.buildingId, input.typology, input.footprintGrammar, input.footprint, input.floorCount);
+    const transferLevels =
+      input.footprintGrammar.tower && podiumFloorCount < input.floorCount ? [podiumFloorCount + 1] : [];
+    const floorPlates = Array.from({ length: input.floorCount }, (_, index) => {
+      const level = index + 1;
+      const footprint =
+        input.footprintGrammar.tower && level > podiumFloorCount
+          ? input.footprintGrammar.tower.footprint
+          : input.footprint;
+      const areaSqM = Number(getPolygonArea(footprint).toFixed(2));
+
+      return {
+        level,
+        elevationMeters: Number((index * typicalFloorHeightMeters).toFixed(2)),
+        floorHeightMeters: typicalFloorHeightMeters,
+        footprint,
+        areaSqM,
+        use: input.typology.defaultUses[Math.min(index, input.typology.defaultUses.length - 1)] ?? input.typology.primaryUse,
+        structuralGridId: `${input.buildingId}-structural-grid`,
+        isTransferLevel: transferLevels.includes(level),
+        isMechanicalLevel: input.floorCount > 8 && level === input.floorCount
+      };
+    });
+
+    return {
+      grammarId: `${input.buildingId}-structure-shell`,
+      structuralSystem,
+      massing: {
+        totalHeightMeters: Number(input.heightMeters.toFixed(2)),
+        floorCount: input.floorCount,
+        typicalFloorHeightMeters,
+        podiumFloorCount,
+        towerFloorCount,
+        roofElevationMeters: Number(input.heightMeters.toFixed(2))
+      },
+      core,
+      structuralGrid: {
+        gridId: `${input.buildingId}-structural-grid`,
+        baySpacingMeters: gridBaySpacing,
+        columnLineCount: {
+          x: Math.max(2, Math.ceil(gridFootprintSize.x / gridBaySpacing.x) + 1),
+          z: Math.max(2, Math.ceil(gridFootprintSize.z / gridBaySpacing.z) + 1)
+        },
+        primarySpanMeters: Number(Math.max(gridBaySpacing.x, gridBaySpacing.z).toFixed(2)),
+        material: gridMaterial
+      },
+      floorPlates,
+      transferLevels,
+      loadBearingAssumptions: {
+        gravitySystem: this.getGravitySystem(structuralSystem),
+        lateralSystem: this.getLateralSystem(structuralSystem),
+        foundationHint: this.getFoundationHint(input.typology, input.footprintGrammar),
+        liveLoadKpa: this.getLiveLoadKpa(input.typology),
+        longSpan: structuralSystem === 'long-span-steel'
+      }
+    };
+  }
+
+  private getStructuralSystem(
+    typology: BuildingTypologyContract,
+    footprintGrammar: BuildingFootprintGrammarContract
+  ): BuildingStructuralSystemKind {
+    if (footprintGrammar.kind === 'tower-on-podium') {
+      return 'concrete-core-outrigger';
+    }
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return 'long-span-steel';
+    }
+    if (typology.kind === 'civic') {
+      return 'civic-frame';
+    }
+    if (typology.kind === 'residential' && footprintGrammar.kind === 'bar') {
+      return 'load-bearing-wall';
+    }
+    if (typology.kind === 'office' || typology.kind === 'mixed-use') {
+      return 'steel-frame';
+    }
+    return 'reinforced-concrete-frame';
+  }
+
+  private getStructuralGridMaterial(
+    structuralSystem: BuildingStructuralSystemKind
+  ): BuildingStructureShellContract['structuralGrid']['material'] {
+    if (structuralSystem === 'load-bearing-wall') {
+      return 'masonry';
+    }
+    if (structuralSystem === 'steel-frame' || structuralSystem === 'long-span-steel') {
+      return 'steel';
+    }
+    if (structuralSystem === 'concrete-core-outrigger') {
+      return 'hybrid';
+    }
+    return 'concrete';
+  }
+
+  private getStructuralBaySpacing(
+    structuralSystem: BuildingStructuralSystemKind,
+    footprintGrammar: BuildingFootprintGrammarContract
+  ): { readonly x: number; readonly z: number } {
+    if (structuralSystem === 'long-span-steel') {
+      return { x: 9, z: 12 };
+    }
+    if (structuralSystem === 'concrete-core-outrigger') {
+      return { x: 8.4, z: 8.4 };
+    }
+    if (structuralSystem === 'load-bearing-wall') {
+      return { x: 5.4, z: 6 };
+    }
+    if (footprintGrammar.kind === 'civic-block') {
+      return { x: 8, z: 9 };
+    }
+    return { x: 7.2, z: 7.2 };
+  }
+
+  private createBuildingCore(
+    buildingId: string,
+    typology: BuildingTypologyContract,
+    footprintGrammar: BuildingFootprintGrammarContract,
+    footprint: Polygon2D,
+    floorCount: number
+  ): BuildingStructureShellContract['core'] {
+    const bounds = getPolygonBounds(footprintGrammar.tower?.footprint ?? footprint);
+    const width = bounds.maxX - bounds.minX;
+    const depth = bounds.maxZ - bounds.minZ;
+    const coreKind = this.getCoreKind(typology, footprintGrammar);
+    const coreSize = {
+      x: Number(Math.max(0.8, Math.min(width * 0.28, coreKind === 'service-core' ? 5.5 : 7.5)).toFixed(2)),
+      z: Number(Math.max(0.8, Math.min(depth * 0.28, coreKind === 'service-core' ? 5.5 : 7.5)).toFixed(2))
+    };
+    const coreCenter =
+      coreKind === 'side-core'
+        ? {
+            x: Number((bounds.minX + coreSize.x / 2 + Math.max(0.6, width * 0.08)).toFixed(2)),
+            z: Number(((bounds.minZ + bounds.maxZ) / 2).toFixed(2))
+          }
+        : {
+            x: Number(((bounds.minX + bounds.maxX) / 2).toFixed(2)),
+            z: Number(((bounds.minZ + bounds.maxZ) / 2).toFixed(2))
+          };
+    const elevatorBankCount = Math.max(
+      coreKind === 'service-core' ? 0 : 1,
+      Math.min(6, Math.ceil(floorCount / (coreKind === 'dual-core' ? 12 : 16)))
+    );
+
+    return {
+      coreId: `${buildingId}-core`,
+      kind: coreKind,
+      footprint: rectanglePolygon(coreCenter, coreSize),
+      areaSqM: Number((coreSize.x * coreSize.z).toFixed(2)),
+      servesLevels: [1, floorCount],
+      egressStairCount: coreKind === 'distributed-core' || coreKind === 'dual-core' ? 2 : 1,
+      elevatorBankCount
+    };
+  }
+
+  private getCoreKind(
+    typology: BuildingTypologyContract,
+    footprintGrammar: BuildingFootprintGrammarContract
+  ): BuildingStructureShellContract['core']['kind'] {
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return 'service-core';
+    }
+    if (footprintGrammar.kind === 'courtyard') {
+      return 'side-core';
+    }
+    if (footprintGrammar.kind === 'civic-block') {
+      return 'distributed-core';
+    }
+    if (footprintGrammar.kind === 'tower-on-podium' && footprintGrammar.tower) {
+      return 'dual-core';
+    }
+    return 'single-core';
+  }
+
+  private getGravitySystem(structuralSystem: BuildingStructuralSystemKind): string {
+    if (structuralSystem === 'load-bearing-wall') {
+      return 'bearing walls and precast slabs';
+    }
+    if (structuralSystem === 'long-span-steel') {
+      return 'steel portal frames and metal deck';
+    }
+    if (structuralSystem === 'concrete-core-outrigger') {
+      return 'composite columns, slabs, and outrigger levels';
+    }
+    return 'regular column grid and flat slabs';
+  }
+
+  private getLateralSystem(structuralSystem: BuildingStructuralSystemKind): string {
+    if (structuralSystem === 'concrete-core-outrigger') {
+      return 'reinforced core with outrigger transfer';
+    }
+    if (structuralSystem === 'long-span-steel') {
+      return 'braced steel bays';
+    }
+    if (structuralSystem === 'load-bearing-wall') {
+      return 'bearing wall shear panels';
+    }
+    return 'moment frame with shear walls';
+  }
+
+  private getFoundationHint(
+    typology: BuildingTypologyContract,
+    footprintGrammar: BuildingFootprintGrammarContract
+  ): string {
+    if (footprintGrammar.hazardConstrained || footprintGrammar.waterfrontSetbackApplied) {
+      return 'deep piles with waterproofed podium edge';
+    }
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return 'spread footings with slab-on-grade';
+    }
+    if (footprintGrammar.kind === 'tower-on-podium') {
+      return 'mat foundation with core thickening';
+    }
+    return 'shallow spread footings';
+  }
+
+  private getLiveLoadKpa(typology: BuildingTypologyContract): number {
+    if (typology.kind === 'industrial' || typology.kind === 'warehouse') {
+      return 7.5;
+    }
+    if (typology.kind === 'retail' || typology.kind === 'hospitality') {
+      return 4.8;
+    }
+    if (typology.kind === 'civic') {
+      return 5;
+    }
+    return 3.2;
   }
 
   private createBuildingFootprintPlan(input: {

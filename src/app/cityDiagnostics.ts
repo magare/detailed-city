@@ -8,6 +8,7 @@ import {
 } from '../city/blueprint/master-plan/masterPlan';
 import type {
   BuildingFootprintGrammarKind,
+  BuildingStructuralSystemKind,
   BuildingTypologyKind,
   CityObjectIndex,
   SourceType
@@ -58,6 +59,7 @@ export interface CityDiagnostics {
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
+  readonly buildingStructureShells: BuildingStructureShellDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
@@ -184,6 +186,9 @@ export interface CityDiagnostics {
     readonly buildingFootprintGrammarKinds: number;
     readonly buildingsWithFootprintGrammar: number;
     readonly offsetBuildingFootprints: number;
+    readonly buildingStructuralSystemKinds: number;
+    readonly buildingsWithStructureShell: number;
+    readonly buildingFloorPlates: number;
     readonly activeFrontages: number;
     readonly parks: number;
     readonly waterways: number;
@@ -280,6 +285,18 @@ export interface BuildingFootprintDiagnostics {
   readonly waterfrontSetbacks: number;
   readonly hazardConstrained: number;
   readonly averageGroundCoverageRatio: number;
+}
+
+export interface BuildingStructureShellDiagnostics {
+  readonly total: number;
+  readonly buildingsWithShell: number;
+  readonly structuralSystemKinds: number;
+  readonly bySystem: Readonly<Partial<Record<BuildingStructuralSystemKind, number>>>;
+  readonly cores: number;
+  readonly floorPlates: number;
+  readonly transferLevels: number;
+  readonly longSpanBuildings: number;
+  readonly averageFloorPlateAreaSqM: number;
 }
 
 export interface RoadNetworkDiagnostics {
@@ -457,6 +474,7 @@ export function createCityDiagnostics(
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
+  const buildingStructureShells = createBuildingStructureShellDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
@@ -495,6 +513,7 @@ export function createCityDiagnostics(
     zoningModel,
     buildingTypologies,
     buildingFootprints,
+    buildingStructureShells,
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
@@ -612,6 +631,9 @@ export function createCityDiagnostics(
       buildingFootprintGrammarKinds: buildingFootprints.grammarKinds,
       buildingsWithFootprintGrammar: buildingFootprints.buildingsWithGrammar,
       offsetBuildingFootprints: buildingFootprints.offsetFootprints,
+      buildingStructuralSystemKinds: buildingStructureShells.structuralSystemKinds,
+      buildingsWithStructureShell: buildingStructureShells.buildingsWithShell,
+      buildingFloorPlates: buildingStructureShells.floorPlates,
       activeFrontages: city.activeFrontages.length,
       parks: city.parks.length,
       waterways: city.waterways.length,
@@ -854,6 +876,49 @@ function createBuildingFootprintDiagnostics(city: GeneratedCity): BuildingFootpr
     waterfrontSetbacks,
     hazardConstrained,
     averageGroundCoverageRatio: Number((groundCoverageTotal / Math.max(1, buildingsWithGrammar)).toFixed(4))
+  };
+}
+
+function createBuildingStructureShellDiagnostics(city: GeneratedCity): BuildingStructureShellDiagnostics {
+  const bySystem: Partial<Record<BuildingStructuralSystemKind, number>> = {};
+  let buildingsWithShell = 0;
+  let cores = 0;
+  let floorPlates = 0;
+  let transferLevels = 0;
+  let longSpanBuildings = 0;
+  let floorPlateAreaTotal = 0;
+
+  for (const building of city.buildings) {
+    const shell = building.structureShell;
+
+    if (!shell) {
+      continue;
+    }
+
+    buildingsWithShell += 1;
+    bySystem[shell.structuralSystem] = (bySystem[shell.structuralSystem] ?? 0) + 1;
+    floorPlates += shell.floorPlates.length;
+    transferLevels += shell.transferLevels.length;
+    floorPlateAreaTotal += shell.floorPlates.reduce((total, floorPlate) => total + floorPlate.areaSqM, 0);
+
+    if (shell.core) {
+      cores += 1;
+    }
+    if (shell.loadBearingAssumptions.longSpan) {
+      longSpanBuildings += 1;
+    }
+  }
+
+  return {
+    total: city.buildings.length,
+    buildingsWithShell,
+    structuralSystemKinds: Object.keys(bySystem).length,
+    bySystem,
+    cores,
+    floorPlates,
+    transferLevels,
+    longSpanBuildings,
+    averageFloorPlateAreaSqM: Number((floorPlateAreaTotal / Math.max(1, floorPlates)).toFixed(2))
   };
 }
 

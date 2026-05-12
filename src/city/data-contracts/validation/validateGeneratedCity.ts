@@ -3,6 +3,7 @@ import type {
   AssetFormat,
   BuildingEntranceStrategy,
   BuildingFootprintGrammarKind,
+  BuildingStructuralSystemKind,
   BuildingServiceAccessProfile,
   BuildingTypologyKind,
   CityId,
@@ -175,6 +176,14 @@ const BUILDING_FOOTPRINT_GRAMMAR_KINDS = [
   'warehouse-shed',
   'civic-block'
 ] as const satisfies readonly BuildingFootprintGrammarKind[];
+const BUILDING_STRUCTURAL_SYSTEM_KINDS = [
+  'load-bearing-wall',
+  'reinforced-concrete-frame',
+  'steel-frame',
+  'concrete-core-outrigger',
+  'long-span-steel',
+  'civic-frame'
+] as const satisfies readonly BuildingStructuralSystemKind[];
 const CROSSING_LOCATIONS = ['intersection', 'midblock'] as const;
 const CROSSWALK_TYPES = ['zebra', 'continental', 'raised-table'] as const;
 const CROSSING_PRIORITIES = ['signal-protected', 'pedestrian-priority', 'yield-controlled', 'uncontrolled'] as const;
@@ -1909,6 +1918,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
 
     validateBuildingTypology(building, issues);
     validateBuildingFootprintGrammar(building, parcel, issues);
+    validateBuildingStructureShell(building, issues);
   }
 
   validateBuildingTopography(city, issues);
@@ -3170,6 +3180,141 @@ function validateBuildingFootprintGrammar(
       objectId: building.id,
       ...createIssueFocus(building.center, 'Link hazard-constrained footprint grammar to the parcel constraint ids.'),
       message: `Building ${building.id} hazard-constrained footprint must reference constraint ids.`
+    });
+  }
+}
+
+function validateBuildingStructureShell(building: ValidationBuilding, issues: ValidationIssue[]): void {
+  const shell = building.structureShell;
+
+  if (!shell) {
+    issues.push({
+      id: `missing-building-structure-shell-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      ...createIssueFocus(building.center, `Generate structure and shell grammar for ${building.id}.`),
+      message: `Building ${building.id} must carry a structure shell contract.`
+    });
+    return;
+  }
+
+  if (
+    shell.grammarId !== `${building.id}-structure-shell` ||
+    !BUILDING_STRUCTURAL_SYSTEM_KINDS.includes(shell.structuralSystem)
+  ) {
+    issues.push({
+      id: `invalid-building-structure-shell-kind-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Use a stable building-owned structure shell id and registered structural system.'),
+      message: `Building ${building.id} has an invalid structure shell grammar id or structural system.`
+    });
+  }
+
+  if (
+    shell.massing.floorCount !== building.floorCount ||
+    shell.floorPlates.length !== building.floorCount ||
+    Math.abs(shell.massing.totalHeightMeters - building.heightMeters) > 0.01 ||
+    Math.abs(shell.massing.roofElevationMeters - building.heightMeters) > 0.01 ||
+    shell.massing.typicalFloorHeightMeters <= 0
+  ) {
+    issues.push({
+      id: `building-structure-massing-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Regenerate massing summary from building height and floor count.'),
+      message: `Building ${building.id} structure shell massing must match building height and floor count.`
+    });
+  }
+
+  const transferLevels = new Set(shell.transferLevels);
+  for (let index = 0; index < shell.floorPlates.length; index += 1) {
+    const floorPlate = shell.floorPlates[index];
+    const expectedLevel = index + 1;
+    const expectedElevation = Number((index * shell.massing.typicalFloorHeightMeters).toFixed(2));
+    const computedArea = Number(getPolygonArea(floorPlate.footprint).toFixed(2));
+
+    if (
+      floorPlate.level !== expectedLevel ||
+      floorPlate.structuralGridId !== shell.structuralGrid.gridId ||
+      Math.abs(floorPlate.elevationMeters - expectedElevation) > 0.01 ||
+      floorPlate.floorHeightMeters <= 0 ||
+      Math.abs(floorPlate.areaSqM - computedArea) > 0.01 ||
+      !building.uses.includes(floorPlate.use) ||
+      floorPlate.isTransferLevel !== transferLevels.has(floorPlate.level) ||
+      !isPolygonWithinPolygonBounds(floorPlate.footprint, building.footprint)
+    ) {
+      issues.push({
+        id: `building-floor-plate-mismatch-${building.id}-${floorPlate.level}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: building.id,
+        affectedBoundary: floorPlate.footprint,
+        suggestedFix: `Regenerate ${building.id}.structureShell.floorPlates from the footprint grammar and building uses.`,
+        message: `Building ${building.id} floor plate ${floorPlate.level} must match shell massing, grid, use, and footprint bounds.`
+      });
+      break;
+    }
+  }
+
+  if (
+    shell.core.coreId !== `${building.id}-core` ||
+    shell.core.areaSqM <= 0 ||
+    shell.core.servesLevels[0] !== 1 ||
+    shell.core.servesLevels[1] !== building.floorCount ||
+    shell.core.egressStairCount < 1 ||
+    shell.core.elevatorBankCount < 0 ||
+    !isPolygonWithinPolygonBounds(shell.core.footprint, building.footprint)
+  ) {
+    issues.push({
+      id: `building-core-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      affectedBoundary: shell.core.footprint,
+      suggestedFix: `Place ${building.id}.structureShell.core inside the generated building footprint and serve all levels.`,
+      message: `Building ${building.id} core must be inside the footprint and serve all floor levels.`
+    });
+  }
+
+  if (
+    shell.structuralGrid.gridId !== `${building.id}-structural-grid` ||
+    shell.structuralGrid.baySpacingMeters.x <= 0 ||
+    shell.structuralGrid.baySpacingMeters.z <= 0 ||
+    shell.structuralGrid.columnLineCount.x < 2 ||
+    shell.structuralGrid.columnLineCount.z < 2 ||
+    shell.structuralGrid.primarySpanMeters <= 0
+  ) {
+    issues.push({
+      id: `building-structural-grid-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Generate a positive structural grid with at least two column lines per axis.'),
+      message: `Building ${building.id} structural grid must expose usable bay spacing and column lines.`
+    });
+  }
+
+  const invalidTransferLevel = shell.transferLevels.some((level) => level < 1 || level > building.floorCount);
+  if (
+    invalidTransferLevel ||
+    (building.footprintGrammar.kind === 'tower-on-podium' && shell.transferLevels.length === 0) ||
+    (shell.loadBearingAssumptions.longSpan !== (shell.structuralSystem === 'long-span-steel')) ||
+    !shell.loadBearingAssumptions.gravitySystem ||
+    !shell.loadBearingAssumptions.lateralSystem ||
+    !shell.loadBearingAssumptions.foundationHint ||
+    shell.loadBearingAssumptions.liveLoadKpa <= 0
+  ) {
+    issues.push({
+      id: `building-load-bearing-assumption-mismatch-${building.id}`,
+      severity: 'error',
+      category: 'geometry',
+      objectId: building.id,
+      ...createIssueFocus(building.center, 'Regenerate transfer levels and load-bearing assumptions from the structural system.'),
+      message: `Building ${building.id} structure shell must expose valid transfer levels and load-bearing assumptions.`
     });
   }
 }

@@ -1436,6 +1436,66 @@ export interface BuildingFootprintGrammarContract {
   readonly hazardConstrained: boolean;
 }
 
+export type BuildingStructuralSystemKind =
+  | 'load-bearing-wall'
+  | 'reinforced-concrete-frame'
+  | 'steel-frame'
+  | 'concrete-core-outrigger'
+  | 'long-span-steel'
+  | 'civic-frame';
+
+export type BuildingCoreKind = 'single-core' | 'dual-core' | 'side-core' | 'service-core' | 'distributed-core';
+
+export interface BuildingFloorPlateContract {
+  readonly level: number;
+  readonly elevationMeters: number;
+  readonly floorHeightMeters: number;
+  readonly footprint: Polygon2D;
+  readonly areaSqM: number;
+  readonly use: LandUse;
+  readonly structuralGridId: string;
+  readonly isTransferLevel: boolean;
+  readonly isMechanicalLevel: boolean;
+}
+
+export interface BuildingStructureShellContract {
+  readonly grammarId: string;
+  readonly structuralSystem: BuildingStructuralSystemKind;
+  readonly massing: {
+    readonly totalHeightMeters: number;
+    readonly floorCount: number;
+    readonly typicalFloorHeightMeters: number;
+    readonly podiumFloorCount: number;
+    readonly towerFloorCount: number;
+    readonly roofElevationMeters: number;
+  };
+  readonly core: {
+    readonly coreId: string;
+    readonly kind: BuildingCoreKind;
+    readonly footprint: Polygon2D;
+    readonly areaSqM: number;
+    readonly servesLevels: readonly [number, number];
+    readonly egressStairCount: number;
+    readonly elevatorBankCount: number;
+  };
+  readonly structuralGrid: {
+    readonly gridId: string;
+    readonly baySpacingMeters: { readonly x: number; readonly z: number };
+    readonly columnLineCount: { readonly x: number; readonly z: number };
+    readonly primarySpanMeters: number;
+    readonly material: 'concrete' | 'steel' | 'hybrid' | 'masonry';
+  };
+  readonly floorPlates: readonly BuildingFloorPlateContract[];
+  readonly transferLevels: readonly number[];
+  readonly loadBearingAssumptions: {
+    readonly gravitySystem: string;
+    readonly lateralSystem: string;
+    readonly foundationHint: string;
+    readonly liveLoadKpa: number;
+    readonly longSpan: boolean;
+  };
+}
+
 export interface BuildingContract extends CityObjectBase<'building'> {
   readonly parcelId: CityId;
   readonly zoningDistrictId: CityId;
@@ -1445,6 +1505,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly floorCount: number;
   readonly typology: BuildingTypologyContract;
   readonly footprintGrammar: BuildingFootprintGrammarContract;
+  readonly structureShell: BuildingStructureShellContract;
   readonly facadeGrammarId: string;
   readonly roofGrammarId: string;
   readonly primaryFrontageRoadId: CityId;

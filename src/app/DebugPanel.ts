@@ -198,6 +198,10 @@ export class DebugPanel {
         `${diagnostics.buildingFootprints.grammarKinds} kinds, ${diagnostics.buildingFootprints.offsetFootprints} offset, ${diagnostics.buildingFootprints.towers} towers`
       ),
       createMetric(
+        'Shells',
+        `${diagnostics.buildingStructureShells.structuralSystemKinds} systems, ${diagnostics.buildingStructureShells.floorPlates} plates, ${diagnostics.buildingStructureShells.transferLevels} transfer`
+      ),
+      createMetric(
         'Assets',
         `${diagnostics.assetBindingDiagnostics.assetDefinitions} assets, ${diagnostics.assetBindingDiagnostics.renderBindings} bindings`
       ),
