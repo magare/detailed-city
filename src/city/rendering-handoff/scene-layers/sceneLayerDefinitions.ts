@@ -78,7 +78,12 @@ export function createCitySceneLayerDiagnostics(
   const objectCounts: Record<CitySceneLayerId, number> = {
     terrain: 1 + city.waterways.length,
     networks: city.roads.length + city.trafficCalmingDevices.length + traffic.markings.length,
-    buildings: city.buildings.length + city.civicAnchors.length + roofDetailCount + city.activeFrontages.length,
+    buildings:
+      city.buildings.length +
+      city.civicAnchors.length +
+      city.governmentAnchors.length +
+      roofDetailCount +
+      city.activeFrontages.length,
     'public-realm':
       city.parks.length +
       city.parkFeatures.length +

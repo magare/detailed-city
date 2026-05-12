@@ -38,10 +38,11 @@ test('generated city object index is deterministic and resolves road children', 
   expect(firstCity.objectIndex.countsByKind['plaza-zone']).toBe(6);
   expect(firstCity.objectIndex.countsByKind['waterfront-open-space']).toBe(8);
   expect(firstCity.objectIndex.countsByKind['civic-anchor']).toBe(4);
-  expect(firstCity.objectIndex.countsByKind.asset).toBe(43);
+  expect(firstCity.objectIndex.countsByKind['government-anchor']).toBe(5);
+  expect(firstCity.objectIndex.countsByKind.asset).toBe(44);
   expect(firstCity.objectIndex.countsByKind['traffic-calming-device']).toBe(12);
-  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(41);
-  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(41);
+  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(42);
+  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(42);
   expect(firstCity.objectIndex.objectsById['slice-detailed-street-road-v-6']).toMatchObject({
     id: 'slice-detailed-street-road-v-6',
     kind: 'vertical-slice',
@@ -83,8 +84,8 @@ test('generated city object index is deterministic and resolves road children', 
 test('render asset catalog provides fallback coverage for current scene objects', () => {
   const city = new CityGenerator(cityConfig).generate();
 
-  expect(city.assetCatalog).toHaveLength(43);
-  expect(city.assetBindings).toHaveLength(43);
+  expect(city.assetCatalog).toHaveLength(44);
+  expect(city.assetBindings).toHaveLength(44);
   expect(city.validation.issues.filter((issue) => issue.category === 'asset')).toEqual([]);
   expect(city.assetBindings).toEqual(
     expect.arrayContaining([
@@ -99,6 +100,12 @@ test('render asset catalog provides fallback coverage for current scene objects'
         objectKind: 'civic-anchor',
         fallbackMaterial: 'building',
         fallbackGeometry: 'civic-anchor-marker'
+      }),
+      expect.objectContaining({
+        id: 'binding:civic:government-anchor',
+        objectKind: 'government-anchor',
+        fallbackMaterial: 'building',
+        fallbackGeometry: 'government-anchor-marker'
       }),
       expect.objectContaining({
         id: 'binding:vehicle:traffic-car',

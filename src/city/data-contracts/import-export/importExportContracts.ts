@@ -245,6 +245,7 @@ export interface ProceduralSeedDomainSections {
   readonly parcels: GeneratedCity['parcels'];
   readonly buildings: GeneratedCity['buildings'];
   readonly civicAnchors: GeneratedCity['civicAnchors'];
+  readonly governmentAnchors: GeneratedCity['governmentAnchors'];
   readonly activeFrontages: GeneratedCity['activeFrontages'];
   readonly parks: GeneratedCity['parks'];
   readonly parkFeatures: GeneratedCity['parkFeatures'];
@@ -282,6 +283,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly parcels: number;
   readonly buildings: number;
   readonly civicAnchors: number;
+  readonly governmentAnchors: number;
   readonly activeFrontages: number;
   readonly parks: number;
   readonly parkFeatures: number;
@@ -391,6 +393,7 @@ export function createProceduralSeedJsonExport(
       parcels: city.parcels,
       buildings: city.buildings,
       civicAnchors: city.civicAnchors,
+      governmentAnchors: city.governmentAnchors,
       activeFrontages: city.activeFrontages,
       parks: city.parks,
       parkFeatures: city.parkFeatures,
@@ -508,6 +511,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'blocks'
     | 'buildings'
     | 'civicAnchors'
+    | 'governmentAnchors'
     | 'cityMetrics'
     | 'developmentPhases'
     | 'constraints'
@@ -563,6 +567,7 @@ export function createProceduralSeedDomainSectionCounts(
     parcels: city.parcels.length,
     buildings: city.buildings.length,
     civicAnchors: city.civicAnchors.length,
+    governmentAnchors: city.governmentAnchors.length,
     activeFrontages: city.activeFrontages.length,
     parks: city.parks.length,
     parkFeatures: city.parkFeatures.length,
@@ -609,6 +614,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'parcels') +
     getArrayLength(city, 'buildings') +
     getArrayLength(city, 'civicAnchors') +
+    getArrayLength(city, 'governmentAnchors') +
     getArrayLength(city, 'activeFrontages') +
     getArrayLength(city, 'parks') +
     getArrayLength(city, 'parkFeatures') +

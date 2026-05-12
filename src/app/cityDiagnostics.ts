@@ -15,6 +15,7 @@ import type {
   BuildingTypologyKind,
   CivicAnchorServiceType,
   CityObjectIndex,
+  GovernmentAnchorKind,
   SourceType
 } from '../city/data-contracts/cityContracts';
 import { createGeneratedRuntimeObjectIndex } from '../city/data-contracts/generatedCityObjectIndex';
@@ -67,6 +68,7 @@ export interface CityDiagnostics {
   readonly buildingFacades: BuildingFacadeDiagnostics;
   readonly buildingRoofs: BuildingRoofDiagnostics;
   readonly civicAnchors: CivicAnchorDiagnostics;
+  readonly governmentAnchors: GovernmentAnchorDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
@@ -222,6 +224,12 @@ export interface CityDiagnostics {
     readonly civicAnchorDailyVisitors: number;
     readonly civicAnchorStaff: number;
     readonly civicAnchorEmergencyAccess: number;
+    readonly governmentAnchors: number;
+    readonly governmentAnchorKinds: number;
+    readonly governmentServiceCounters: number;
+    readonly governmentDailyVisitors: number;
+    readonly governmentStaffCapacity: number;
+    readonly governmentPlazaLinks: number;
     readonly buildingTypologyKinds: number;
     readonly buildingsWithTypology: number;
     readonly buildingFootprintGrammarKinds: number;
@@ -404,6 +412,20 @@ export interface CivicAnchorDiagnostics {
   readonly arrivalModes: readonly string[];
   readonly scheduleProfiles: readonly string[];
   readonly averageCatchmentRadiusMeters: number;
+}
+
+export interface GovernmentAnchorDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Partial<Record<GovernmentAnchorKind, number>>>;
+  readonly anchorKinds: number;
+  readonly serviceCounters: number;
+  readonly dailyVisitors: number;
+  readonly staffCapacity: number;
+  readonly queueCapacityPeople: number;
+  readonly ceremonialCapacityPeople: number;
+  readonly plazaLinkedAnchors: number;
+  readonly securityScreenedAnchors: number;
+  readonly publicAccessAnchors: number;
 }
 
 export interface RoadNetworkDiagnostics {
@@ -671,6 +693,7 @@ export function createCityDiagnostics(
   const buildingFacades = createBuildingFacadeDiagnostics(city);
   const buildingRoofs = createBuildingRoofDiagnostics(city);
   const civicAnchors = createCivicAnchorDiagnostics(city);
+  const governmentAnchors = createGovernmentAnchorDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
@@ -719,6 +742,7 @@ export function createCityDiagnostics(
     buildingFacades,
     buildingRoofs,
     civicAnchors,
+    governmentAnchors,
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
@@ -865,6 +889,12 @@ export function createCityDiagnostics(
       civicAnchorDailyVisitors: civicAnchors.dailyVisitors,
       civicAnchorStaff: civicAnchors.staff,
       civicAnchorEmergencyAccess: civicAnchors.emergencyAccessAnchors,
+      governmentAnchors: governmentAnchors.total,
+      governmentAnchorKinds: governmentAnchors.anchorKinds,
+      governmentServiceCounters: governmentAnchors.serviceCounters,
+      governmentDailyVisitors: governmentAnchors.dailyVisitors,
+      governmentStaffCapacity: governmentAnchors.staffCapacity,
+      governmentPlazaLinks: governmentAnchors.plazaLinkedAnchors,
       buildingTypologyKinds: buildingTypologies.typologyKinds,
       buildingsWithTypology: buildingTypologies.buildingsWithTypology,
       buildingFootprintGrammarKinds: buildingFootprints.grammarKinds,
@@ -1120,6 +1150,53 @@ function createCivicAnchorDiagnostics(city: GeneratedCity): CivicAnchorDiagnosti
     arrivalModes: [...arrivalModes].sort(),
     scheduleProfiles: [...scheduleProfiles].sort(),
     averageCatchmentRadiusMeters: Number((catchmentRadiusTotal / Math.max(1, city.civicAnchors.length)).toFixed(2))
+  };
+}
+
+function createGovernmentAnchorDiagnostics(city: GeneratedCity): GovernmentAnchorDiagnostics {
+  const byKind: Partial<Record<GovernmentAnchorKind, number>> = {};
+  let serviceCounters = 0;
+  let dailyVisitors = 0;
+  let staffCapacity = 0;
+  let queueCapacityPeople = 0;
+  let ceremonialCapacityPeople = 0;
+  let plazaLinkedAnchors = 0;
+  let securityScreenedAnchors = 0;
+  let publicAccessAnchors = 0;
+
+  for (const anchor of city.governmentAnchors) {
+    byKind[anchor.anchorKind] = (byKind[anchor.anchorKind] ?? 0) + 1;
+    serviceCounters += anchor.serviceCounterCount;
+    dailyVisitors += anchor.dailyVisitors;
+    staffCapacity += anchor.staffCapacity;
+    queueCapacityPeople += anchor.queueCapacityPeople;
+    ceremonialCapacityPeople += anchor.ceremonialCapacityPeople;
+
+    if (anchor.plazaZoneIds.length > 0) {
+      plazaLinkedAnchors += 1;
+    }
+
+    if (anchor.securityScreening) {
+      securityScreenedAnchors += 1;
+    }
+
+    if (anchor.publicAccess) {
+      publicAccessAnchors += 1;
+    }
+  }
+
+  return {
+    total: city.governmentAnchors.length,
+    byKind,
+    anchorKinds: Object.keys(byKind).length,
+    serviceCounters,
+    dailyVisitors,
+    staffCapacity,
+    queueCapacityPeople,
+    ceremonialCapacityPeople,
+    plazaLinkedAnchors,
+    securityScreenedAnchors,
+    publicAccessAnchors
   };
 }
 

@@ -18,6 +18,7 @@ export type CityObjectKind =
   | 'district'
   | 'economy-anchor'
   | 'facade'
+  | 'government-anchor'
   | 'hazard-zone'
   | 'intersection'
   | 'lane'
@@ -416,6 +417,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2', 'lod3'],
       description: 'Civic anchors render as named building or place markers until dedicated assets exist.'
+    },
+    {
+      objectKind: 'government-anchor',
+      scope: 'building',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Government anchors expose city hall, administrative, court, service counter, and civic plaza public-administration nodes.'
     },
     {
       objectKind: 'city-metric',
@@ -1634,6 +1642,32 @@ export interface CivicAnchorContract extends CityObjectBase<'civic-anchor'> {
     readonly closeHour: number;
     readonly emergencyAccess: boolean;
   };
+  readonly renderBindingId: CityId;
+}
+
+export type GovernmentAnchorKind =
+  | 'administrative-office'
+  | 'city-hall'
+  | 'civic-plaza-interface'
+  | 'court'
+  | 'service-counter';
+
+export interface GovernmentAnchorContract extends CityObjectBase<'government-anchor'> {
+  readonly anchorKind: GovernmentAnchorKind;
+  readonly civicAnchorId: CityId;
+  readonly buildingId: CityId;
+  readonly districtId: CityId;
+  readonly plazaZoneIds: readonly CityId[];
+  readonly center: Point2D;
+  readonly publicAdministrationRole: string;
+  readonly serviceCounterCount: number;
+  readonly dailyVisitors: number;
+  readonly staffCapacity: number;
+  readonly queueCapacityPeople: number;
+  readonly ceremonialCapacityPeople: number;
+  readonly securityScreening: boolean;
+  readonly publicAccess: boolean;
+  readonly scheduleProfileId: string;
   readonly renderBindingId: CityId;
 }
 

@@ -26,9 +26,10 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const zebraCrossing = traffic.markings.find((marking) => marking.markingType === 'zebra-crossing-stripe');
 
   expect(catalog.pickableObjectIds).toHaveLength(
-    city.roads.length +
+      city.roads.length +
       city.buildings.length +
       city.civicAnchors.length +
+      city.governmentAnchors.length +
       city.activeFrontages.length +
       city.parks.length +
       city.parkFeatures.length +
@@ -46,6 +47,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind['road-segment']).toBe(city.roads.length);
   expect(catalog.countsByKind.building).toBe(city.buildings.length);
   expect(catalog.countsByKind['civic-anchor']).toBe(city.civicAnchors.length);
+  expect(catalog.countsByKind['government-anchor']).toBe(city.governmentAnchors.length);
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
   expect(catalog.countsByKind['street-furniture']).toBe(city.streetFurniture.length);
@@ -148,6 +150,17 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       parcelId: city.civicAnchors[0].parcelId,
       blockId: city.civicAnchors[0].blockId,
       districtId: city.civicAnchors[0].districtId
+    }
+  });
+  expect(catalog.metadataByObjectId[city.governmentAnchors[0].id]).toMatchObject({
+    objectId: city.governmentAnchors[0].id,
+    kind: 'government-anchor',
+    ownerDomain: 'civic',
+    parentId: city.governmentAnchors[0].civicAnchorId,
+    references: {
+      civicAnchorId: city.governmentAnchors[0].civicAnchorId,
+      buildingId: city.governmentAnchors[0].buildingId,
+      districtId: city.governmentAnchors[0].districtId
     }
   });
   expect(catalog.metadataByObjectId[zebraCrossing?.id ?? '']).toMatchObject({

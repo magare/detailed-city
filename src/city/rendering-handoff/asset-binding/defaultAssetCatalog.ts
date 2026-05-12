@@ -42,6 +42,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:building:entrance-door:primitive', 'building', 'Entrance Door Primitive', 'entrance-door', 2.2, 'lod4'),
   createProceduralAsset('asset:building:night-window:primitive', 'building', 'Night Window Primitive', 'night-window', 2.4, 'lod3'),
   createProceduralAsset('asset:building:civic-anchor:primitive', 'building', 'Civic Anchor Primitive', 'civic-anchor', 12, 'lod2'),
+  createProceduralAsset('asset:building:government-anchor:primitive', 'building', 'Government Anchor Primitive', 'government-anchor', 10, 'lod2'),
   createProceduralAsset('asset:street-prop:waterfront-edge:primitive', 'street-prop', 'Waterfront Edge Primitive', 'waterfront-edge', 18, 'lod2'),
   createProceduralAsset('asset:street-prop:waterfront-open-space:primitive', 'street-prop', 'Waterfront Open Space Primitive', 'waterfront-open-space', 18, 'lod3'),
   createProceduralAsset('asset:vehicle:traffic-car:primitive', 'vehicle', 'Traffic Car Primitive', 'vehicle', 4.8, 'lod2')
@@ -351,6 +352,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'civic',
     fallbackMaterial: 'building',
     fallbackGeometry: 'civic-anchor-marker'
+  },
+  {
+    id: 'binding:civic:government-anchor',
+    objectKind: 'government-anchor',
+    semanticTag: 'government-anchor',
+    assetId: 'asset:building:government-anchor:primitive',
+    materialZone: 'civic',
+    fallbackMaterial: 'building',
+    fallbackGeometry: 'government-anchor-marker'
   },
   {
     id: 'binding:waterfront:edge',

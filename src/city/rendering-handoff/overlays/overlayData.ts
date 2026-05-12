@@ -24,6 +24,7 @@ export type CityOverlayId =
   | 'phasing'
   | 'city-metrics'
   | 'civic-anchors'
+  | 'government-anchors'
   | 'constraints'
   | 'resilience-goals'
   | 'parcels'
@@ -81,6 +82,7 @@ export function createCityOverlayDatasets(
     createDataset('phasing', 'Phasing', 'domain-data', createDevelopmentPhaseFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
+    createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('parcels', 'Parcels', 'domain-data', createParcelFeatures(city)),
@@ -481,6 +483,28 @@ function createCivicAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
       dailyVisitors: anchor.capacity.dailyVisitors,
       staff: anchor.capacity.staff,
       emergencyAccess: anchor.schedule.emergencyAccess
+    }
+  }));
+}
+
+function createGovernmentAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.governmentAnchors.map((anchor) => ({
+    id: `overlay:government-anchors:${anchor.id}`,
+    overlayId: 'government-anchors',
+    objectId: anchor.id,
+    objectKind: anchor.kind,
+    ownerDomain: anchor.ownerDomain,
+    label: anchor.name ?? anchor.id,
+    geometry: { type: 'point', point: anchor.center },
+    metadata: {
+      anchorKind: anchor.anchorKind,
+      civicAnchorId: anchor.civicAnchorId,
+      buildingId: anchor.buildingId,
+      plazaZones: anchor.plazaZoneIds.length,
+      serviceCounters: anchor.serviceCounterCount,
+      dailyVisitors: anchor.dailyVisitors,
+      staffCapacity: anchor.staffCapacity,
+      publicAccess: anchor.publicAccess
     }
   }));
 }

@@ -18,6 +18,7 @@ import type {
   CityObjectKind,
   ConstraintKind,
   GeospatialFrame,
+  GovernmentAnchorKind,
   HazardMitigationKind,
   IntersectionControlType,
   LaneRole,
@@ -57,6 +58,7 @@ type GeneratedCityForValidation = Pick<
   | 'blocks'
   | 'buildings'
   | 'civicAnchors'
+  | 'governmentAnchors'
   | 'cityMetrics'
   | 'developmentPhases'
   | 'constraints'
@@ -91,6 +93,7 @@ type GeneratedCityForValidation = Pick<
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
+type ValidationGovernmentAnchor = GeneratedCityForValidation['governmentAnchors'][number];
 type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
@@ -152,6 +155,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:facade:entrance-door',
   'binding:facade:night-window',
   'binding:civic:anchor',
+  'binding:civic:government-anchor',
   'binding:waterfront:edge',
   'binding:waterfront:open-space',
   'binding:vehicle:traffic-car'
@@ -165,6 +169,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'plaza-zone',
   'building',
   'civic-anchor',
+  'government-anchor',
   'facade',
   'tree-planting',
   'street-light',
@@ -207,6 +212,13 @@ const CIVIC_ANCHOR_ARRIVAL_MODES = [
   'transit',
   'vehicle'
 ] as const satisfies readonly CivicAnchorArrivalMode[];
+const GOVERNMENT_ANCHOR_KINDS = [
+  'administrative-office',
+  'city-hall',
+  'civic-plaza-interface',
+  'court',
+  'service-counter'
+] as const satisfies readonly GovernmentAnchorKind[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -2129,6 +2141,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validatePlazaModel(city, issues, assetBindingsById);
   validateWaterfrontOpenSpaces(city, issues, assetBindingsById);
   validateCivicAnchors(city, issues, assetBindingsById);
+  validateGovernmentAnchors(city, issues, assetBindingsById);
 
   for (const tree of city.trees) {
     if (tree.plantingContext === 'park' && (!tree.parkId || !hasObjectId(city, tree.parkId) || tree.parentId !== tree.parkId)) {
@@ -4694,6 +4707,10 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
     validatePoint2D(city.geospatial, anchor.id, 'center', anchor.center, issues);
   }
 
+  for (const anchor of city.governmentAnchors) {
+    validatePoint2D(city.geospatial, anchor.id, 'center', anchor.center, issues);
+  }
+
   for (const activeFrontage of city.activeFrontages) {
     validatePoint2D(city.geospatial, activeFrontage.id, 'position', activeFrontage.position, issues);
     validateHeightValue(city.geospatial, activeFrontage.id, 'heightMeters', activeFrontage.heightMeters, issues);
@@ -6126,6 +6143,123 @@ function createCivicAnchorIssue(
     category: 'zoning',
     objectId: anchor.id,
     ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from current civic buildings and administrative service areas.`),
+    message
+  };
+}
+
+function validateGovernmentAnchors(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const anchorsByKind = new Map<GovernmentAnchorKind, ValidationGovernmentAnchor[]>();
+  const governmentBaseAnchor = city.civicAnchors.find((anchor) => anchor.serviceType === 'government');
+
+  for (const anchor of city.governmentAnchors) {
+    const civicAnchor = city.civicAnchors.find((candidate) => candidate.id === anchor.civicAnchorId);
+    const building = city.buildings.find((candidate) => candidate.id === anchor.buildingId);
+    const district = city.districts.find((candidate) => candidate.id === anchor.districtId);
+    const binding = assetBindingsById.get(anchor.renderBindingId);
+
+    if (GOVERNMENT_ANCHOR_KINDS.includes(anchor.anchorKind)) {
+      anchorsByKind.set(anchor.anchorKind, [...(anchorsByKind.get(anchor.anchorKind) ?? []), anchor]);
+    } else {
+      issues.push(createGovernmentAnchorIssue(anchor, 'invalid-kind', `Government anchor ${anchor.id} must declare a supported government anchor kind.`));
+    }
+
+    if (!civicAnchor || civicAnchor.serviceType !== 'government' || anchor.parentId !== anchor.civicAnchorId) {
+      issues.push(createGovernmentAnchorIssue(anchor, 'missing-civic-anchor', `Government anchor ${anchor.id} must be parented to a government civic anchor.`));
+    }
+
+    if (!building || (civicAnchor && building.id !== civicAnchor.buildingId)) {
+      issues.push(createGovernmentAnchorIssue(anchor, 'building-mismatch', `Government anchor ${anchor.id} must reuse the government civic anchor building.`));
+    }
+
+    if (!district || (civicAnchor && district.id !== civicAnchor.districtId)) {
+      issues.push(createGovernmentAnchorIssue(anchor, 'district-mismatch', `Government anchor ${anchor.id} must stay in the government civic anchor district.`));
+    }
+
+    if (anchor.plazaZoneIds.length === 0) {
+      issues.push(createGovernmentAnchorIssue(anchor, 'missing-plaza-relationship', `Government anchor ${anchor.id} must link to civic plaza zones.`));
+    }
+
+    for (const plazaZoneId of anchor.plazaZoneIds) {
+      const plazaZone = city.plazaZones.find((zone) => zone.id === plazaZoneId);
+
+      if (!plazaZone || plazaZone.plazaId !== 'civic-plaza') {
+        issues.push(createGovernmentAnchorIssue(anchor, `missing-plaza-zone-${toIssueIdToken(plazaZoneId)}`, `Government anchor ${anchor.id} references missing civic plaza zone ${plazaZoneId}.`));
+      }
+    }
+
+    if (
+      anchor.publicAdministrationRole.length === 0 ||
+      anchor.serviceCounterCount < 0 ||
+      anchor.dailyVisitors <= 0 ||
+      anchor.staffCapacity <= 0 ||
+      anchor.queueCapacityPeople < 0 ||
+      anchor.ceremonialCapacityPeople < 0 ||
+      anchor.scheduleProfileId.length === 0
+    ) {
+      issues.push(createGovernmentAnchorIssue(anchor, 'invalid-capacity', `Government anchor ${anchor.id} must expose positive public-administration demand and staffing metrics.`));
+    }
+
+    if (!anchor.publicAccess) {
+      issues.push(createGovernmentAnchorIssue(anchor, 'missing-public-access', `Government anchor ${anchor.id} must expose public access.`));
+    }
+
+    if ((anchor.anchorKind === 'city-hall' || anchor.anchorKind === 'court') && !anchor.securityScreening) {
+      issues.push(createGovernmentAnchorIssue(anchor, 'missing-security-screening', `City hall and court anchors must expose security screening.`));
+    }
+
+    if (anchor.anchorKind === 'service-counter' && anchor.serviceCounterCount === 0) {
+      issues.push(createGovernmentAnchorIssue(anchor, 'missing-service-counters', `Service counter anchors must expose service counter capacity.`));
+    }
+
+    if (anchor.anchorKind === 'civic-plaza-interface' && anchor.ceremonialCapacityPeople === 0) {
+      issues.push(createGovernmentAnchorIssue(anchor, 'missing-ceremonial-capacity', `Civic plaza interface anchors must expose ceremonial/event capacity.`));
+    }
+
+    if (!binding || binding.objectKind !== 'government-anchor') {
+      issues.push(createGovernmentAnchorIssue(anchor, 'missing-render-binding', `Government anchor ${anchor.id} must reference a government-anchor render binding.`));
+    }
+  }
+
+  if (governmentBaseAnchor && city.governmentAnchors.length === 0) {
+    issues.push({
+      id: 'missing-government-anchors',
+      severity: 'error',
+      category: 'zoning',
+      objectId: governmentBaseAnchor.id,
+      ...createIssueFocus(governmentBaseAnchor.center, 'Generate government anchors from the government civic anchor and civic plaza zones.'),
+      message: 'Government civic anchors must expose city hall, administration, courts, service counters, and civic plaza relationships.'
+    });
+  }
+
+  for (const anchorKind of GOVERNMENT_ANCHOR_KINDS) {
+    if (!anchorsByKind.has(anchorKind)) {
+      issues.push({
+        id: `missing-government-anchor-${anchorKind}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: governmentBaseAnchor?.id,
+        ...createIssueFocus(governmentBaseAnchor?.center, `Create the ${anchorKind} government anchor from the government civic anchor.`),
+        message: `Government anchors must include ${anchorKind}.`
+      });
+    }
+  }
+}
+
+function createGovernmentAnchorIssue(
+  anchor: ValidationGovernmentAnchor,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `government-anchor-${issueIdSuffix}-${toIssueIdToken(anchor.id)}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: anchor.id,
+    ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from the government civic anchor and civic plaza zones.`),
     message
   };
 }

@@ -53,6 +53,7 @@ const SOIL_GEOLOGY_KIND = String.raw`(?:alluvial-silt|engineered-fill|shallow-be
 const DEVELOPMENT_PHASE_KIND = String.raw`(?:baseline|future-expansion|temporary-condition)`;
 const PARK_FEATURE_KIND = String.raw`(?:lawn|path|planting|sports|seating|water-feature|shade)`;
 const PLAZA_ZONE_KIND = String.raw`(?:active-edge|event|hardscape|paving|seating|shade)`;
+const GOVERNMENT_ANCHOR_KIND = String.raw`(?:administrative-offices|city-hall|civic-plaza-interface|courts|service-counters)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -88,6 +89,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('district', ['district-<district-slug>'], [exact(String.raw`district-${NAMED_ID}`)], none()),
   entry('economy-anchor', ['economy-anchor-<slug>'], [exact(String.raw`economy-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
   entry('facade', ['facade-active-frontage-<building-id>-<road-id>'], [exact(String.raw`facade-active-frontage-${BUILDING_ID}-${ROAD_ID}`)], required(['building'])),
+  entry(
+    'government-anchor',
+    ['government-anchor-<government-anchor-kind>'],
+    [exact(String.raw`government-anchor-${GOVERNMENT_ANCHOR_KIND}`)],
+    required(['civic-anchor'])
+  ),
   entry('hazard-zone', ['hazard-zone-<hazard-kind>-<slug>'], [exact(String.raw`hazard-zone-${HAZARD_ZONE_KIND}-${NAMED_ID}`)], none()),
   entry('intersection', ['intersection-v<vertical-index>-h<horizontal-index>'], [exact(INTERSECTION_ID)], none()),
   entry('lane', ['<road-id>-lane-<index>'], [exact(String.raw`${ROAD_ID}-lane-\d+`)], required(['road-segment'])),

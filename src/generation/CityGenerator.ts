@@ -12,6 +12,7 @@ import { SeededRandom } from '../utils/random';
 import { ActiveFrontageGenerator } from './buildings/ActiveFrontageGenerator';
 import { BuildingGenerator } from './buildings/BuildingGenerator';
 import { CivicAnchorGenerator } from './civic/CivicAnchorGenerator';
+import { GovernmentAnchorGenerator } from './civic/GovernmentAnchorGenerator';
 import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
@@ -176,6 +177,11 @@ export class CityGenerator {
       parcels: soilGeology.parcels,
       buildings: sliceTagged.buildings
     });
+    const governmentAnchors = new GovernmentAnchorGenerator().create({
+      civicAnchors,
+      buildings: sliceTagged.buildings,
+      plazaZones
+    });
     const cityMetrics = new CityMetricGenerator(this.config).create({
       bounds,
       roads: sliceTagged.roads,
@@ -217,6 +223,7 @@ export class CityGenerator {
       parcels: sliceTagged.parcels,
       buildings: sliceTagged.buildings,
       civicAnchors,
+      governmentAnchors,
       activeFrontages,
       parks: parksWithFeatures,
       parkFeatures,

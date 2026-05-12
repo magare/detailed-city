@@ -17,6 +17,7 @@ export interface CityPickingReferences {
   readonly blockId?: CityId;
   readonly parcelId?: CityId;
   readonly buildingId?: CityId;
+  readonly civicAnchorId?: CityId;
   readonly roadId?: CityId;
   readonly roadSegmentId?: CityId;
   readonly laneId?: CityId;
@@ -65,6 +66,7 @@ type PickableObjectSource = Pick<
   | 'activeFrontages'
   | 'buildings'
   | 'civicAnchors'
+  | 'governmentAnchors'
   | 'parks'
   | 'parkFeatures'
   | 'plazaZones'
@@ -87,6 +89,7 @@ export function createCityPickingMetadataCatalog(
     ...city.roads,
     ...city.buildings,
     ...city.civicAnchors,
+    ...city.governmentAnchors,
     ...city.activeFrontages,
     ...city.parks,
     ...city.parkFeatures,
@@ -190,6 +193,7 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   copyStringReference(record, references, 'districtId');
   copyStringReference(record, references, 'blockId');
   copyStringReference(record, references, 'buildingId');
+  copyStringReference(record, references, 'civicAnchorId');
   copyStringReference(record, references, 'parcelId');
   copyStringReference(record, references, 'roadId');
   copyStringReference(record, references, 'roadSegmentId');
@@ -217,6 +221,8 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.roadId = object.id;
   } else if (object.kind === 'civic-anchor') {
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : object.parentId;
+  } else if (object.kind === 'government-anchor') {
+    references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
   } else if (object.kind === 'park') {
     references.parkId = object.id;
   } else if (object.kind === 'plaza-zone') {

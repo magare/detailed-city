@@ -27,6 +27,7 @@ test('debug overlay datasets are generated from domain data', () => {
     'phasing',
     'city-metrics',
     'civic-anchors',
+    'government-anchors',
     'constraints',
     'resilience-goals',
     'parcels',
@@ -64,6 +65,19 @@ test('debug overlay datasets are generated from domain data', () => {
         ownerDomain: 'civic',
         metadata: expect.objectContaining({
           serviceType: 'government'
+        })
+      })
+    ])
+  );
+  expect(overlays.find((overlay) => overlay.id === 'government-anchors')?.featureCount).toBe(5);
+  expect(overlays.find((overlay) => overlay.id === 'government-anchors')?.features).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        objectKind: 'government-anchor',
+        ownerDomain: 'civic',
+        metadata: expect.objectContaining({
+          anchorKind: 'city-hall',
+          serviceCounters: 8
         })
       })
     ])
