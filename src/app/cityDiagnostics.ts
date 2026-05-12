@@ -13,6 +13,7 @@ import type {
   BuildingRoofStyleKind,
   BuildingStructuralSystemKind,
   BuildingTypologyKind,
+  CivicAnchorServiceType,
   CityObjectIndex,
   SourceType
 } from '../city/data-contracts/cityContracts';
@@ -65,6 +66,7 @@ export interface CityDiagnostics {
   readonly buildingStructureShells: BuildingStructureShellDiagnostics;
   readonly buildingFacades: BuildingFacadeDiagnostics;
   readonly buildingRoofs: BuildingRoofDiagnostics;
+  readonly civicAnchors: CivicAnchorDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
@@ -215,6 +217,11 @@ export interface CityDiagnostics {
     readonly sidewalks: number;
     readonly parcels: number;
     readonly buildings: number;
+    readonly civicAnchors: number;
+    readonly civicAnchorServiceTypes: number;
+    readonly civicAnchorDailyVisitors: number;
+    readonly civicAnchorStaff: number;
+    readonly civicAnchorEmergencyAccess: number;
     readonly buildingTypologyKinds: number;
     readonly buildingsWithTypology: number;
     readonly buildingFootprintGrammarKinds: number;
@@ -385,6 +392,18 @@ export interface BuildingRoofDiagnostics {
   readonly roofAccessCores: number;
   readonly heightExemptions: number;
   readonly averageUsableAreaSqM: number;
+}
+
+export interface CivicAnchorDiagnostics {
+  readonly total: number;
+  readonly byServiceType: Readonly<Partial<Record<CivicAnchorServiceType, number>>>;
+  readonly serviceTypes: number;
+  readonly dailyVisitors: number;
+  readonly staff: number;
+  readonly emergencyAccessAnchors: number;
+  readonly arrivalModes: readonly string[];
+  readonly scheduleProfiles: readonly string[];
+  readonly averageCatchmentRadiusMeters: number;
 }
 
 export interface RoadNetworkDiagnostics {
@@ -651,6 +670,7 @@ export function createCityDiagnostics(
   const buildingStructureShells = createBuildingStructureShellDiagnostics(city);
   const buildingFacades = createBuildingFacadeDiagnostics(city);
   const buildingRoofs = createBuildingRoofDiagnostics(city);
+  const civicAnchors = createCivicAnchorDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
@@ -698,6 +718,7 @@ export function createCityDiagnostics(
     buildingStructureShells,
     buildingFacades,
     buildingRoofs,
+    civicAnchors,
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
@@ -839,6 +860,11 @@ export function createCityDiagnostics(
       sidewalks: objectIndex.countsByKind.sidewalk ?? 0,
       parcels: city.parcels.length,
       buildings: city.buildings.length,
+      civicAnchors: civicAnchors.total,
+      civicAnchorServiceTypes: civicAnchors.serviceTypes,
+      civicAnchorDailyVisitors: civicAnchors.dailyVisitors,
+      civicAnchorStaff: civicAnchors.staff,
+      civicAnchorEmergencyAccess: civicAnchors.emergencyAccessAnchors,
       buildingTypologyKinds: buildingTypologies.typologyKinds,
       buildingsWithTypology: buildingTypologies.buildingsWithTypology,
       buildingFootprintGrammarKinds: buildingFootprints.grammarKinds,
@@ -1056,6 +1082,44 @@ function createBuildingTypologyDiagnostics(city: GeneratedCity): BuildingTypolog
     storefrontEntrances,
     yardLoadingBuildings,
     scheduleProfiles: [...scheduleProfiles].sort()
+  };
+}
+
+function createCivicAnchorDiagnostics(city: GeneratedCity): CivicAnchorDiagnostics {
+  const byServiceType: Partial<Record<CivicAnchorServiceType, number>> = {};
+  const arrivalModes = new Set<string>();
+  const scheduleProfiles = new Set<string>();
+  let dailyVisitors = 0;
+  let staff = 0;
+  let emergencyAccessAnchors = 0;
+  let catchmentRadiusTotal = 0;
+
+  for (const anchor of city.civicAnchors) {
+    byServiceType[anchor.serviceType] = (byServiceType[anchor.serviceType] ?? 0) + 1;
+    dailyVisitors += anchor.capacity.dailyVisitors;
+    staff += anchor.capacity.staff;
+    catchmentRadiusTotal += anchor.catchment.radiusMeters;
+    scheduleProfiles.add(anchor.schedule.scheduleProfileId);
+
+    if (anchor.schedule.emergencyAccess) {
+      emergencyAccessAnchors += 1;
+    }
+
+    for (const mode of anchor.arrivalModes) {
+      arrivalModes.add(mode);
+    }
+  }
+
+  return {
+    total: city.civicAnchors.length,
+    byServiceType,
+    serviceTypes: Object.keys(byServiceType).length,
+    dailyVisitors,
+    staff,
+    emergencyAccessAnchors,
+    arrivalModes: [...arrivalModes].sort(),
+    scheduleProfiles: [...scheduleProfiles].sort(),
+    averageCatchmentRadiusMeters: Number((catchmentRadiusTotal / Math.max(1, city.civicAnchors.length)).toFixed(2))
   };
 }
 

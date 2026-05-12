@@ -31,7 +31,7 @@ test('scene layer diagnostics are deterministic and match current city data', ()
     city.roads.length + city.trafficCalmingDevices.length + traffic.markings.length
   );
   expect(layers.find((layer) => layer.id === 'buildings')?.objectCount).toBe(
-    city.buildings.length + roofDetailCount + city.activeFrontages.length
+    city.buildings.length + city.civicAnchors.length + roofDetailCount + city.activeFrontages.length
   );
   expect(layers.find((layer) => layer.id === 'public-realm')?.objectCount).toBe(
     city.parks.length +

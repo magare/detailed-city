@@ -1595,6 +1595,48 @@ export type BuildingEntranceStrategy = 'public-lobby' | 'storefront' | 'campus-e
 
 export type BuildingServiceAccessProfile = 'curb-loading' | 'internal-service' | 'yard-loading' | 'public-service' | 'utility-only';
 
+export type CivicAnchorServiceType =
+  | 'community'
+  | 'culture'
+  | 'education'
+  | 'emergency'
+  | 'government'
+  | 'healthcare';
+
+export type CivicAnchorArrivalMode = 'bike' | 'emergency' | 'pedestrian' | 'service' | 'transit' | 'vehicle';
+
+export interface CivicAnchorContract extends CityObjectBase<'civic-anchor'> {
+  readonly serviceType: CivicAnchorServiceType;
+  readonly buildingId: CityId;
+  readonly districtId: CityId;
+  readonly blockId: CityId;
+  readonly parcelId: CityId;
+  readonly administrativeBoundaryIds: readonly CityId[];
+  readonly serviceAreaBoundaryId: CityId;
+  readonly center: Point2D;
+  readonly catchment: {
+    readonly radiusMeters: number;
+    readonly populationCapacity: number;
+    readonly serviceAreaSqM: number;
+    readonly targetDistrictIds: readonly CityId[];
+  };
+  readonly capacity: {
+    readonly dailyVisitors: number;
+    readonly staff: number;
+    readonly emergencyOccupancy?: number;
+  };
+  readonly arrivalModes: readonly CivicAnchorArrivalMode[];
+  readonly publicEntranceIds: readonly CityId[];
+  readonly serviceEntranceIds: readonly CityId[];
+  readonly schedule: {
+    readonly scheduleProfileId: string;
+    readonly openHour: number;
+    readonly closeHour: number;
+    readonly emergencyAccess: boolean;
+  };
+  readonly renderBindingId: CityId;
+}
+
 export interface BuildingTypologyContract {
   readonly typologyId: string;
   readonly kind: BuildingTypologyKind;

@@ -12,6 +12,8 @@ import type {
   BuildingStructuralSystemKind,
   BuildingServiceAccessProfile,
   BuildingTypologyKind,
+  CivicAnchorArrivalMode,
+  CivicAnchorServiceType,
   CityId,
   CityObjectKind,
   ConstraintKind,
@@ -54,6 +56,7 @@ type GeneratedCityForValidation = Pick<
   | 'administrativeBoundaries'
   | 'blocks'
   | 'buildings'
+  | 'civicAnchors'
   | 'cityMetrics'
   | 'developmentPhases'
   | 'constraints'
@@ -87,6 +90,7 @@ type GeneratedCityForValidation = Pick<
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
+type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
@@ -147,6 +151,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:facade:sign',
   'binding:facade:entrance-door',
   'binding:facade:night-window',
+  'binding:civic:anchor',
   'binding:waterfront:edge',
   'binding:waterfront:open-space',
   'binding:vehicle:traffic-car'
@@ -159,6 +164,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'park-feature',
   'plaza-zone',
   'building',
+  'civic-anchor',
   'facade',
   'tree-planting',
   'street-light',
@@ -185,6 +191,22 @@ const WATERFRONT_OPEN_SPACE_SURFACES = [
   'stone-quay',
   'timber-boardwalk'
 ] as const;
+const CIVIC_ANCHOR_SERVICE_TYPES = [
+  'community',
+  'culture',
+  'education',
+  'emergency',
+  'government',
+  'healthcare'
+] as const satisfies readonly CivicAnchorServiceType[];
+const CIVIC_ANCHOR_ARRIVAL_MODES = [
+  'bike',
+  'emergency',
+  'pedestrian',
+  'service',
+  'transit',
+  'vehicle'
+] as const satisfies readonly CivicAnchorArrivalMode[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -2106,6 +2128,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateParkExpansion(city, issues, assetBindingsById);
   validatePlazaModel(city, issues, assetBindingsById);
   validateWaterfrontOpenSpaces(city, issues, assetBindingsById);
+  validateCivicAnchors(city, issues, assetBindingsById);
 
   for (const tree of city.trees) {
     if (tree.plantingContext === 'park' && (!tree.parkId || !hasObjectId(city, tree.parkId) || tree.parentId !== tree.parkId)) {
@@ -4667,6 +4690,10 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
     validateHeightValue(city.geospatial, building.id, 'heightMeters', building.heightMeters, issues);
   }
 
+  for (const anchor of city.civicAnchors) {
+    validatePoint2D(city.geospatial, anchor.id, 'center', anchor.center, issues);
+  }
+
   for (const activeFrontage of city.activeFrontages) {
     validatePoint2D(city.geospatial, activeFrontage.id, 'position', activeFrontage.position, issues);
     validateHeightValue(city.geospatial, activeFrontage.id, 'heightMeters', activeFrontage.heightMeters, issues);
@@ -5955,6 +5982,150 @@ function createWaterfrontOpenSpaceIssue(
       openSpace.center,
       `Regenerate ${openSpace.id} from current waterfront edge, public realm, tree, and furniture references.`
     ),
+    message
+  };
+}
+
+function validateCivicAnchors(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const anchorsByService = new Map<CivicAnchorServiceType, ValidationCivicAnchor[]>();
+  const civicBuildings = city.buildings.filter((building) => building.typology.kind === 'civic');
+
+  for (const anchor of city.civicAnchors) {
+    const building = city.buildings.find((candidate) => candidate.id === anchor.buildingId);
+    const parcel = city.parcels.find((candidate) => candidate.id === anchor.parcelId);
+    const district = city.districts.find((candidate) => candidate.id === anchor.districtId);
+    const serviceArea = city.administrativeBoundaries.find((candidate) => candidate.id === anchor.serviceAreaBoundaryId);
+    const binding = assetBindingsById.get(anchor.renderBindingId);
+
+    if (CIVIC_ANCHOR_SERVICE_TYPES.includes(anchor.serviceType)) {
+      anchorsByService.set(anchor.serviceType, [...(anchorsByService.get(anchor.serviceType) ?? []), anchor]);
+    } else {
+      issues.push(createCivicAnchorIssue(anchor, 'invalid-service-type', `Civic anchor ${anchor.id} must declare a supported service type.`));
+    }
+
+    if (!building || anchor.parentId !== anchor.buildingId || building.kind !== 'building') {
+      issues.push(createCivicAnchorIssue(anchor, 'missing-building', `Civic anchor ${anchor.id} must be parented to building ${anchor.buildingId}.`));
+      continue;
+    }
+
+    if (building.typology.kind !== 'civic') {
+      issues.push(createCivicAnchorIssue(anchor, 'non-civic-building', `Civic anchor ${anchor.id} must attach to a civic building typology.`));
+    }
+
+    if (!parcel || parcel.id !== building.parcelId || parcel.blockId !== anchor.blockId) {
+      issues.push(createCivicAnchorIssue(anchor, 'parcel-block-mismatch', `Civic anchor ${anchor.id} must reference its building parcel and block.`));
+    }
+
+    if (!district || (parcel && parcel.districtId !== district.id)) {
+      issues.push(createCivicAnchorIssue(anchor, 'district-mismatch', `Civic anchor ${anchor.id} must reference the district of its parcel.`));
+    }
+
+    if (!serviceArea || serviceArea.boundaryKind !== 'service-area') {
+      issues.push(createCivicAnchorIssue(anchor, 'missing-service-area', `Civic anchor ${anchor.id} must reference an administrative service-area boundary.`));
+    }
+
+    if (anchor.administrativeBoundaryIds.length === 0) {
+      issues.push(createCivicAnchorIssue(anchor, 'missing-boundary-membership', `Civic anchor ${anchor.id} must expose administrative boundary memberships.`));
+    }
+
+    for (const boundaryId of anchor.administrativeBoundaryIds) {
+      if (!city.administrativeBoundaries.some((boundary) => boundary.id === boundaryId)) {
+        issues.push(createCivicAnchorIssue(anchor, `missing-boundary-${toIssueIdToken(boundaryId)}`, `Civic anchor ${anchor.id} references missing boundary ${boundaryId}.`));
+      }
+    }
+
+    if (
+      anchor.catchment.radiusMeters <= 0 ||
+      anchor.catchment.populationCapacity <= 0 ||
+      anchor.catchment.serviceAreaSqM <= 0 ||
+      anchor.catchment.targetDistrictIds.length === 0
+    ) {
+      issues.push(createCivicAnchorIssue(anchor, 'invalid-catchment', `Civic anchor ${anchor.id} must define positive catchment radius, capacity, service area, and target districts.`));
+    }
+
+    for (const districtId of anchor.catchment.targetDistrictIds) {
+      if (!city.districts.some((candidate) => candidate.id === districtId)) {
+        issues.push(createCivicAnchorIssue(anchor, `missing-target-district-${toIssueIdToken(districtId)}`, `Civic anchor ${anchor.id} references missing catchment target district ${districtId}.`));
+      }
+    }
+
+    if (anchor.capacity.dailyVisitors <= 0 || anchor.capacity.staff <= 0) {
+      issues.push(createCivicAnchorIssue(anchor, 'invalid-capacity', `Civic anchor ${anchor.id} must define positive visitor and staff capacity.`));
+    }
+
+    if (anchor.arrivalModes.length === 0 || anchor.arrivalModes.some((mode) => !CIVIC_ANCHOR_ARRIVAL_MODES.includes(mode))) {
+      issues.push(createCivicAnchorIssue(anchor, 'invalid-arrival-modes', `Civic anchor ${anchor.id} must expose supported arrival modes.`));
+    }
+
+    if (anchor.serviceType === 'emergency' && !anchor.arrivalModes.includes('emergency')) {
+      issues.push(createCivicAnchorIssue(anchor, 'missing-emergency-arrival', `Emergency civic anchor ${anchor.id} must expose emergency arrival mode.`));
+    }
+
+    if (anchor.publicEntranceIds.length === 0 || anchor.publicEntranceIds.some((entranceId) => !building.publicEntranceIds.includes(entranceId))) {
+      issues.push(createCivicAnchorIssue(anchor, 'invalid-public-entrances', `Civic anchor ${anchor.id} must reuse public entrances from its building.`));
+    }
+
+    if (anchor.serviceEntranceIds.length === 0) {
+      issues.push(createCivicAnchorIssue(anchor, 'missing-service-entrances', `Civic anchor ${anchor.id} must expose service entrance identifiers.`));
+    }
+
+    if (
+      anchor.schedule.scheduleProfileId.length === 0 ||
+      anchor.schedule.openHour < 0 ||
+      anchor.schedule.closeHour > 24 ||
+      anchor.schedule.openHour >= anchor.schedule.closeHour
+    ) {
+      issues.push(createCivicAnchorIssue(anchor, 'invalid-schedule', `Civic anchor ${anchor.id} must define a valid schedule profile and open/close hours.`));
+    }
+
+    if ((anchor.serviceType === 'emergency' || anchor.serviceType === 'healthcare') && !anchor.schedule.emergencyAccess) {
+      issues.push(createCivicAnchorIssue(anchor, 'missing-emergency-access', `Emergency and healthcare civic anchor ${anchor.id} must keep emergency access enabled.`));
+    }
+
+    if (!binding || binding.objectKind !== 'civic-anchor') {
+      issues.push(createCivicAnchorIssue(anchor, 'missing-render-binding', `Civic anchor ${anchor.id} must reference a civic-anchor render binding.`));
+    }
+  }
+
+  if (civicBuildings.length > 0 && city.civicAnchors.length === 0) {
+    issues.push({
+      id: 'missing-civic-anchor-base-contracts',
+      severity: 'error',
+      category: 'zoning',
+      objectId: civicBuildings[0].id,
+      ...createIssueFocus(civicBuildings[0].center, 'Generate civic anchors from civic building typology and administrative service areas.'),
+      message: 'Civic buildings must expose civic anchor base contracts.'
+    });
+  }
+
+  for (const serviceType of ['education', 'emergency', 'government', 'healthcare'] as const satisfies readonly CivicAnchorServiceType[]) {
+    if (!anchorsByService.has(serviceType)) {
+      issues.push({
+        id: `missing-civic-anchor-service-${serviceType}`,
+        severity: 'error',
+        category: 'zoning',
+        ...createIssueFocus(civicBuildings[0]?.center, `Create a ${serviceType} civic anchor from an existing civic building.`),
+        message: `Civic anchor base contracts must include a ${serviceType} service type.`
+      });
+    }
+  }
+}
+
+function createCivicAnchorIssue(
+  anchor: ValidationCivicAnchor,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `civic-anchor-${issueIdSuffix}-${toIssueIdToken(anchor.id)}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: anchor.id,
+    ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from current civic buildings and administrative service areas.`),
     message
   };
 }

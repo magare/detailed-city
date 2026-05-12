@@ -222,6 +222,10 @@ export class DebugPanel {
         `${diagnostics.buildingTypologies.typologyKinds} kinds, ${diagnostics.buildingTypologies.storefrontEntrances} storefront, ${diagnostics.buildingTypologies.yardLoadingBuildings} yard`
       ),
       createMetric(
+        'Civic',
+        `${diagnostics.civicAnchors.total} anchors, ${diagnostics.civicAnchors.serviceTypes} services, ${diagnostics.civicAnchors.emergencyAccessAnchors} emergency`
+      ),
+      createMetric(
         'Footprints',
         `${diagnostics.buildingFootprints.grammarKinds} kinds, ${diagnostics.buildingFootprints.offsetFootprints} offset, ${diagnostics.buildingFootprints.towers} towers`
       ),

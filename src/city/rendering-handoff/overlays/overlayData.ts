@@ -23,6 +23,7 @@ export type CityOverlayId =
   | 'soil-geology'
   | 'phasing'
   | 'city-metrics'
+  | 'civic-anchors'
   | 'constraints'
   | 'resilience-goals'
   | 'parcels'
@@ -79,6 +80,7 @@ export function createCityOverlayDatasets(
     createDataset('soil-geology', 'Soil Geology', 'domain-data', createSoilGeologyFeatures(city)),
     createDataset('phasing', 'Phasing', 'domain-data', createDevelopmentPhaseFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
+    createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('parcels', 'Parcels', 'domain-data', createParcelFeatures(city)),
@@ -458,6 +460,27 @@ function createCityMetricFeatures(city: GeneratedCity): CityOverlayFeature[] {
       unit: metric.unit,
       status: metric.status,
       inputs: metric.computedFromObjectIds.length
+    }
+  }));
+}
+
+function createCivicAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.civicAnchors.map((anchor) => ({
+    id: `overlay:civic-anchors:${anchor.id}`,
+    overlayId: 'civic-anchors',
+    objectId: anchor.id,
+    objectKind: anchor.kind,
+    ownerDomain: anchor.ownerDomain,
+    label: anchor.name ?? anchor.id,
+    geometry: { type: 'point', point: anchor.center },
+    metadata: {
+      serviceType: anchor.serviceType,
+      buildingId: anchor.buildingId,
+      serviceAreaBoundaryId: anchor.serviceAreaBoundaryId,
+      catchmentRadiusMeters: anchor.catchment.radiusMeters,
+      dailyVisitors: anchor.capacity.dailyVisitors,
+      staff: anchor.capacity.staff,
+      emergencyAccess: anchor.schedule.emergencyAccess
     }
   }));
 }

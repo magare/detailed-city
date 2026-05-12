@@ -11,6 +11,7 @@ import type { CityConfig, GeneratedCity } from '../types/city';
 import { SeededRandom } from '../utils/random';
 import { ActiveFrontageGenerator } from './buildings/ActiveFrontageGenerator';
 import { BuildingGenerator } from './buildings/BuildingGenerator';
+import { CivicAnchorGenerator } from './civic/CivicAnchorGenerator';
 import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
@@ -169,6 +170,12 @@ export class CityGenerator {
       streetFurniture,
       trees
     });
+    const civicAnchors = new CivicAnchorGenerator().create({
+      administrativeBoundaries: administrativeLand.administrativeBoundaries,
+      districts: landAndBuildingsWithTopography.districts,
+      parcels: soilGeology.parcels,
+      buildings: sliceTagged.buildings
+    });
     const cityMetrics = new CityMetricGenerator(this.config).create({
       bounds,
       roads: sliceTagged.roads,
@@ -209,6 +216,7 @@ export class CityGenerator {
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
       buildings: sliceTagged.buildings,
+      civicAnchors,
       activeFrontages,
       parks: parksWithFeatures,
       parkFeatures,

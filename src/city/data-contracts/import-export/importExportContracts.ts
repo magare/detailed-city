@@ -244,6 +244,7 @@ export interface ProceduralSeedDomainSections {
   readonly sidewalkGraph: GeneratedCity['sidewalkGraph'];
   readonly parcels: GeneratedCity['parcels'];
   readonly buildings: GeneratedCity['buildings'];
+  readonly civicAnchors: GeneratedCity['civicAnchors'];
   readonly activeFrontages: GeneratedCity['activeFrontages'];
   readonly parks: GeneratedCity['parks'];
   readonly parkFeatures: GeneratedCity['parkFeatures'];
@@ -280,6 +281,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly sidewalkGraphEdges: number;
   readonly parcels: number;
   readonly buildings: number;
+  readonly civicAnchors: number;
   readonly activeFrontages: number;
   readonly parks: number;
   readonly parkFeatures: number;
@@ -388,6 +390,7 @@ export function createProceduralSeedJsonExport(
       sidewalkGraph: city.sidewalkGraph,
       parcels: city.parcels,
       buildings: city.buildings,
+      civicAnchors: city.civicAnchors,
       activeFrontages: city.activeFrontages,
       parks: city.parks,
       parkFeatures: city.parkFeatures,
@@ -504,6 +507,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'assetCatalog'
     | 'blocks'
     | 'buildings'
+    | 'civicAnchors'
     | 'cityMetrics'
     | 'developmentPhases'
     | 'constraints'
@@ -558,6 +562,7 @@ export function createProceduralSeedDomainSectionCounts(
     sidewalkGraphEdges: city.sidewalkGraph.edges.length,
     parcels: city.parcels.length,
     buildings: city.buildings.length,
+    civicAnchors: city.civicAnchors.length,
     activeFrontages: city.activeFrontages.length,
     parks: city.parks.length,
     parkFeatures: city.parkFeatures.length,
@@ -603,6 +608,7 @@ export function countProceduralSeedDomainObjects(
     getNestedArrayLength(city, 'sidewalkGraph', 'edges') +
     getArrayLength(city, 'parcels') +
     getArrayLength(city, 'buildings') +
+    getArrayLength(city, 'civicAnchors') +
     getArrayLength(city, 'activeFrontages') +
     getArrayLength(city, 'parks') +
     getArrayLength(city, 'parkFeatures') +

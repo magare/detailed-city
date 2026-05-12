@@ -64,6 +64,7 @@ type PickableObjectSource = Pick<
   GeneratedCity,
   | 'activeFrontages'
   | 'buildings'
+  | 'civicAnchors'
   | 'parks'
   | 'parkFeatures'
   | 'plazaZones'
@@ -85,6 +86,7 @@ export function createCityPickingMetadataCatalog(
   const pickableObjects: GeneratedRuntimeCityObject[] = [
     ...city.roads,
     ...city.buildings,
+    ...city.civicAnchors,
     ...city.activeFrontages,
     ...city.parks,
     ...city.parkFeatures,
@@ -213,6 +215,8 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
 
   if (object.kind === 'road-segment') {
     references.roadId = object.id;
+  } else if (object.kind === 'civic-anchor') {
+    references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : object.parentId;
   } else if (object.kind === 'park') {
     references.parkId = object.id;
   } else if (object.kind === 'plaza-zone') {

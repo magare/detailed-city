@@ -5,6 +5,7 @@ import type {
   BuildingContract,
   BuildingFrontageSide,
   BlockContract,
+  CivicAnchorContract,
   CityMetricContract,
   CityObjectIndex,
   CityLodPolicy,
@@ -191,6 +192,8 @@ export interface BuildingPlan extends BuildingContract {
   roofStyle: RoofStyle;
 }
 
+export interface CivicAnchor extends CivicAnchorContract {}
+
 export interface ActiveFrontage extends ActiveFrontageContract {
   frontageSide: BuildingFrontageSide;
 }
@@ -296,6 +299,7 @@ export type GeneratedCityObject =
   | SidewalkContract
   | Parcel
   | BuildingPlan
+  | CivicAnchor
   | ActiveFrontage
   | ParkPatch
   | ParkFeature
@@ -340,6 +344,7 @@ export interface GeneratedCity {
   sidewalkGraph: SidewalkGraph;
   parcels: Parcel[];
   buildings: BuildingPlan[];
+  civicAnchors: CivicAnchor[];
   activeFrontages: ActiveFrontage[];
   parks: ParkPatch[];
   parkFeatures: ParkFeature[];
