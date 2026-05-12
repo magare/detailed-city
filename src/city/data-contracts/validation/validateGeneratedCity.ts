@@ -138,6 +138,9 @@ const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service
 const CROSSING_LOCATIONS = ['intersection', 'midblock'] as const;
 const CROSSWALK_TYPES = ['zebra', 'continental', 'raised-table'] as const;
 const CROSSING_PRIORITIES = ['signal-protected', 'pedestrian-priority', 'yield-controlled', 'uncontrolled'] as const;
+const MIN_ACCESSIBLE_CLEAR_PATH_METERS = 1.8;
+const MAX_ACCESSIBLE_RUNNING_GRADE_PERCENT = 5;
+const MAX_ACCESSIBLE_CROSS_SLOPE_PERCENT = 2;
 const ASSET_CATEGORIES = [
   'building',
   'effect',
@@ -395,6 +398,41 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
           objectId: sidewalk.id,
           ...createIssueFocus(road.center, 'Attach the sidewalk to its parent road and assign a positive clear width.'),
           message: 'Sidewalk must reference its parent road and have a positive clear width.'
+        });
+      }
+
+      if (
+        sidewalk.frontageZoneMeters < 0 ||
+        sidewalk.furnishingZoneMeters < 0 ||
+        sidewalk.accessibleClearPathMeters < MIN_ACCESSIBLE_CLEAR_PATH_METERS ||
+        sidewalk.accessibleClearPathMeters > sidewalk.clearWidthMeters + 0.001
+      ) {
+        issues.push({
+          id: `invalid-sidewalk-clear-path-${sidewalk.id}`,
+          severity: 'error',
+          category: 'geometry',
+          objectId: sidewalk.id,
+          ...createIssueFocus(road.center, 'Keep frontage and furnishing zones outside a minimum 1.8m accessible clear path.'),
+          message: `Sidewalk ${sidewalk.id} must preserve a minimum accessible clear path.`
+        });
+      }
+
+      if (
+        !sidewalk.accessibility.stepFree ||
+        !sidewalk.accessibility.clearPathContinuous ||
+        !sidewalk.accessibility.wheelchairPassable ||
+        sidewalk.runningGradePercent > sidewalk.accessibility.maxRunningGradePercent + 0.001 ||
+        sidewalk.crossSlopePercent > sidewalk.accessibility.maxCrossSlopePercent + 0.001 ||
+        sidewalk.accessibility.maxRunningGradePercent > MAX_ACCESSIBLE_RUNNING_GRADE_PERCENT ||
+        sidewalk.accessibility.maxCrossSlopePercent > MAX_ACCESSIBLE_CROSS_SLOPE_PERCENT
+      ) {
+        issues.push({
+          id: `inaccessible-sidewalk-${sidewalk.id}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: sidewalk.id,
+          ...createIssueFocus(road.center, 'Regenerate sidewalk accessibility metadata with step-free continuous routing and compliant grades.'),
+          message: `Sidewalk ${sidewalk.id} must expose step-free continuous accessibility metadata.`
         });
       }
     }
@@ -1030,6 +1068,16 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
+    if (!node.accessible || !node.curbRampId || !node.tactileCueId) {
+      issues.push({
+        id: `inaccessible-sidewalk-node-${node.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: node.id,
+        message: 'Sidewalk graph nodes must expose accessible curb-ramp and tactile-cue anchors.'
+      });
+    }
+
     if (!isFiniteNumber(node.position.x) || !isFiniteNumber(node.position.z)) {
       issues.push({
         id: `invalid-sidewalk-node-position-${node.id}`,
@@ -1062,6 +1110,20 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
+    if (
+      !edge.accessible ||
+      edge.minClearWidthMeters < MIN_ACCESSIBLE_CLEAR_PATH_METERS ||
+      edge.maxGradePercent > MAX_ACCESSIBLE_RUNNING_GRADE_PERCENT
+    ) {
+      issues.push({
+        id: `inaccessible-sidewalk-edge-${edge.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: edge.id,
+        message: 'Sidewalk graph edges must preserve accessible clear width and running grade continuity.'
+      });
+    }
+
     if (edge.mode === 'crossing' && (!edge.crossingId || edge.parentId !== edge.crossingId || !hasObjectId(city, edge.crossingId))) {
       issues.push({
         id: `invalid-crossing-edge-${edge.id}`,
@@ -1069,6 +1131,16 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         category: 'graph',
         objectId: edge.id,
         message: 'Crossing graph edge must reference an existing parent crossing.'
+      });
+    }
+
+    if (edge.mode === 'crossing' && (!edge.hasCurbRampConnection || !edge.hasTactileCueConnection)) {
+      issues.push({
+        id: `inaccessible-crossing-edge-${edge.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: edge.id,
+        message: 'Crossing graph edges must connect curb ramps and tactile cues on both sidewalk endpoints.'
       });
     }
 
@@ -1126,6 +1198,21 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         category: 'graph',
         objectId: crossing.id,
         message: `Crossing ${crossing.id} must connect both sidewalks with left and right curb ramps.`
+      });
+    }
+
+    if (
+      crossing.curbRampIds.length !== 2 ||
+      crossing.tactileCueIds.length !== 2 ||
+      new Set(crossing.curbRampIds).size !== 2 ||
+      new Set(crossing.tactileCueIds).size !== 2
+    ) {
+      targetIssues.push({
+        id: `invalid-crossing-accessibility-fixtures-${crossing.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: crossing.id,
+        message: `Crossing ${crossing.id} must expose stable curb-ramp and tactile-cue IDs for both sidewalk endpoints.`
       });
     }
 

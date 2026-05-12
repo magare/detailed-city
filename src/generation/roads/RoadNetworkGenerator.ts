@@ -521,17 +521,45 @@ function createSidewalks(roadId: string, profile: StreetProfile): SidewalkContra
     return [];
   }
 
-  return ['left', 'right'].map((side) => ({
-    id: `${roadId}-sidewalk-${side}`,
-    kind: 'sidewalk',
-    ownerDomain: 'mobility',
-    parentId: roadId,
-    lod: 'lod2',
-    roadSegmentId: roadId,
-    clearWidthMeters: profile.sidewalkWidthMeters,
-    frontageZoneMeters: Math.min(1.2, profile.sidewalkWidthMeters * 0.28),
-    furnishingZoneMeters: profile.treeZone ? Math.min(1.6, profile.sidewalkWidthMeters * 0.32) : 0
-  }));
+  return ['left', 'right'].map((side) => {
+    const frontageZoneMeters = roundMeters(Math.min(1.2, profile.sidewalkWidthMeters * 0.28));
+    const furnishingZoneMeters = roundMeters(profile.treeZone ? Math.min(1.6, profile.sidewalkWidthMeters * 0.32) : 0);
+    const accessibleClearPathMeters = getAccessibleClearPathMeters(
+      profile.sidewalkWidthMeters,
+      frontageZoneMeters,
+      furnishingZoneMeters
+    );
+
+    return {
+      id: `${roadId}-sidewalk-${side}`,
+      kind: 'sidewalk',
+      ownerDomain: 'mobility',
+      parentId: roadId,
+      lod: 'lod2',
+      roadSegmentId: roadId,
+      clearWidthMeters: profile.sidewalkWidthMeters,
+      frontageZoneMeters,
+      furnishingZoneMeters,
+      accessibleClearPathMeters,
+      runningGradePercent: 0,
+      crossSlopePercent: 1.5,
+      accessibility: {
+        stepFree: true,
+        clearPathContinuous: true,
+        wheelchairPassable: accessibleClearPathMeters >= 1.8,
+        maxRunningGradePercent: 5,
+        maxCrossSlopePercent: 2
+      }
+    };
+  });
+}
+
+function getAccessibleClearPathMeters(
+  sidewalkWidthMeters: number,
+  frontageZoneMeters: number,
+  furnishingZoneMeters: number
+): number {
+  return roundMeters(Math.min(sidewalkWidthMeters, Math.max(1.8, sidewalkWidthMeters - frontageZoneMeters * 0.4 - furnishingZoneMeters * 0.5)));
 }
 
 function getCarriagewayWidth(profile: StreetProfile, fallbackWidth: number): number {

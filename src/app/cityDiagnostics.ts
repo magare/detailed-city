@@ -55,6 +55,7 @@ export interface CityDiagnostics {
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
   readonly crossingDetails: CrossingDetailDiagnostics;
+  readonly sidewalkAccessibility: SidewalkAccessibilityDiagnostics;
   readonly trafficCalming: TrafficCalmingDiagnostics;
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly waterfrontModel: WaterfrontModelDiagnostics;
@@ -290,6 +291,19 @@ export interface CrossingDetailDiagnostics {
   readonly signalPhases: number;
 }
 
+export interface SidewalkAccessibilityDiagnostics {
+  readonly sidewalks: number;
+  readonly accessibleSidewalks: number;
+  readonly graphNodes: number;
+  readonly accessibleGraphNodes: number;
+  readonly graphEdges: number;
+  readonly accessibleGraphEdges: number;
+  readonly curbRampAnchors: number;
+  readonly tactileCueAnchors: number;
+  readonly minimumClearPathMeters: number;
+  readonly maximumRunningGradePercent: number;
+}
+
 export interface TrafficCalmingDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -409,6 +423,7 @@ export function createCityDiagnostics(
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
   const crossingDetails = createCrossingDetailDiagnostics(city);
+  const sidewalkAccessibility = createSidewalkAccessibilityDiagnostics(city);
   const trafficCalming = createTrafficCalmingDiagnostics(city);
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
@@ -444,6 +459,7 @@ export function createCityDiagnostics(
     laneRestrictions,
     intersectionBehavior,
     crossingDetails,
+    sidewalkAccessibility,
     trafficCalming,
     waterwayNetwork,
     waterfrontModel,
@@ -793,6 +809,25 @@ function createCrossingDetailDiagnostics(city: GeneratedCity): CrossingDetailDia
     tactileCrossings: city.crossings.filter((crossing) => crossing.tactileCues).length,
     refugeIslandCrossings: city.crossings.filter((crossing) => crossing.hasRefugeIsland).length,
     signalPhases: city.crossings.filter((crossing) => crossing.signalPhase).length
+  };
+}
+
+function createSidewalkAccessibilityDiagnostics(city: GeneratedCity): SidewalkAccessibilityDiagnostics {
+  const sidewalks = city.roads.flatMap((road) => road.sidewalks);
+  const clearPaths = sidewalks.map((sidewalk) => sidewalk.accessibleClearPathMeters);
+  const runningGrades = sidewalks.map((sidewalk) => sidewalk.runningGradePercent);
+
+  return {
+    sidewalks: sidewalks.length,
+    accessibleSidewalks: sidewalks.filter((sidewalk) => sidewalk.accessibility.wheelchairPassable).length,
+    graphNodes: city.sidewalkGraph.nodes.length,
+    accessibleGraphNodes: city.sidewalkGraph.nodes.filter((node) => node.accessible).length,
+    graphEdges: city.sidewalkGraph.edges.length,
+    accessibleGraphEdges: city.sidewalkGraph.edges.filter((edge) => edge.accessible).length,
+    curbRampAnchors: city.crossings.reduce((sum, crossing) => sum + crossing.curbRampIds.length, 0),
+    tactileCueAnchors: city.crossings.reduce((sum, crossing) => sum + crossing.tactileCueIds.length, 0),
+    minimumClearPathMeters: Number(Math.min(...clearPaths).toFixed(1)),
+    maximumRunningGradePercent: Number(Math.max(...runningGrades).toFixed(1))
   };
 }
 

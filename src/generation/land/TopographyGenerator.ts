@@ -99,6 +99,19 @@ export class TopographyGenerator {
 
     return {
       ...road,
+      sidewalks: road.sidewalks.map((sidewalk) => ({
+        ...sidewalk,
+        runningGradePercent: Math.min(5, maxGradePercent),
+        crossSlopePercent: Math.min(2, roundPercent(centerSample.slopePercent * 0.15)),
+        accessibility: {
+          ...sidewalk.accessibility,
+          stepFree: true,
+          clearPathContinuous: true,
+          wheelchairPassable: sidewalk.accessibleClearPathMeters >= 1.8,
+          maxRunningGradePercent: 5,
+          maxCrossSlopePercent: 2
+        }
+      })),
       groundProfile: {
         startElevationMeters: startSample.elevationMeters,
         endElevationMeters: endSample.elevationMeters,

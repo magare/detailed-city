@@ -1198,6 +1198,18 @@ export interface SidewalkContract extends CityObjectBase<'sidewalk'> {
   readonly clearWidthMeters: number;
   readonly frontageZoneMeters: number;
   readonly furnishingZoneMeters: number;
+  readonly accessibleClearPathMeters: number;
+  readonly runningGradePercent: number;
+  readonly crossSlopePercent: number;
+  readonly accessibility: SidewalkAccessibilityContract;
+}
+
+export interface SidewalkAccessibilityContract {
+  readonly stepFree: boolean;
+  readonly clearPathContinuous: boolean;
+  readonly wheelchairPassable: boolean;
+  readonly maxRunningGradePercent: number;
+  readonly maxCrossSlopePercent: number;
 }
 
 export interface RoadSegmentContract extends CityObjectBase<'road-segment'> {
@@ -1308,6 +1320,8 @@ export interface CrossingContract extends CityObjectBase<'crossing'> {
   readonly raisedCrossing: boolean;
   readonly tactileCues: boolean;
   readonly curbRamps: readonly ['left', 'right'];
+  readonly curbRampIds: readonly [CityId, CityId];
+  readonly tactileCueIds: readonly [CityId, CityId];
   readonly signalPhase?: CrossingSignalPhase;
 }
 
@@ -1327,6 +1341,9 @@ export interface SidewalkGraphNodeContract extends CityObjectBase<'sidewalk-grap
   readonly crossingId?: CityId;
   readonly sidewalkId: CityId;
   readonly position: Point2D;
+  readonly accessible: boolean;
+  readonly curbRampId?: CityId;
+  readonly tactileCueId?: CityId;
 }
 
 export type SidewalkGraphEdgeMode = 'sidewalk' | 'crossing';
@@ -1338,6 +1355,11 @@ export interface SidewalkGraphEdgeContract extends CityObjectBase<'sidewalk-grap
   readonly lengthMeters: number;
   readonly crossingId?: CityId;
   readonly sidewalkId?: CityId;
+  readonly accessible: boolean;
+  readonly minClearWidthMeters: number;
+  readonly maxGradePercent: number;
+  readonly hasCurbRampConnection: boolean;
+  readonly hasTactileCueConnection: boolean;
 }
 
 export type BuildingFrontageSide = 'north' | 'east' | 'south' | 'west';

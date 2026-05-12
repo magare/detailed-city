@@ -50,7 +50,12 @@ export class PedestrianNetworkGenerator {
           toNodeId: secondNode.id,
           mode: 'crossing',
           crossingId: crossing.id,
-          lengthMeters: crossing.lengthMeters
+          lengthMeters: crossing.lengthMeters,
+          accessible: true,
+          minClearWidthMeters: Math.min(firstSidewalk.accessibleClearPathMeters, secondSidewalk.accessibleClearPathMeters),
+          maxGradePercent: crossing.raisedCrossing ? 2 : 0,
+          hasCurbRampConnection: crossing.curbRampIds.length === 2,
+          hasTactileCueConnection: crossing.tactileCueIds.length === 2
         });
       }
     }
@@ -77,7 +82,12 @@ export class PedestrianNetworkGenerator {
         toNodeId: secondNode.id,
         mode: 'crossing',
         crossingId: crossing.id,
-        lengthMeters: crossing.lengthMeters
+        lengthMeters: crossing.lengthMeters,
+        accessible: true,
+        minClearWidthMeters: Math.min(firstSidewalk.accessibleClearPathMeters, secondSidewalk.accessibleClearPathMeters),
+        maxGradePercent: crossing.raisedCrossing ? 2 : 0,
+        hasCurbRampConnection: crossing.curbRampIds.length === 2,
+        hasTactileCueConnection: crossing.tactileCueIds.length === 2
       });
     }
 
@@ -118,6 +128,8 @@ function createCrossing(
     raisedCrossing: intersection.raisedJunction,
     tactileCues: true,
     curbRamps: ['left', 'right'],
+    curbRampIds: [getCurbRampId(intersection.id, firstSidewalk.id), getCurbRampId(intersection.id, secondSidewalk.id)],
+    tactileCueIds: [getTactileCueId(intersection.id, firstSidewalk.id), getTactileCueId(intersection.id, secondSidewalk.id)],
     ...(intersection.signalExpectation === 'signalized' ? { signalPhase: createSignalPhase(intersection.id) } : {})
   };
 }
@@ -154,7 +166,9 @@ function createMidblockCrossings(roads: readonly RoadSegment[]): CrossingPlan[] 
       hasRefugeIsland: false,
       raisedCrossing: true,
       tactileCues: true,
-      curbRamps: ['left', 'right']
+      curbRamps: ['left', 'right'],
+      curbRampIds: [getCurbRampId(`midblock-${promenade.id}-${index}`, firstSidewalk.id), getCurbRampId(`midblock-${promenade.id}-${index}`, secondSidewalk.id)],
+      tactileCueIds: [getTactileCueId(`midblock-${promenade.id}-${index}`, firstSidewalk.id), getTactileCueId(`midblock-${promenade.id}-${index}`, secondSidewalk.id)]
     };
   });
 }
@@ -180,7 +194,10 @@ function getOrCreateMidblockNode(
     lod: 'lod2',
     crossingId: crossing.id,
     sidewalkId: sidewalk.id,
-    position: getNodePosition(crossing.center, road, sidewalk)
+    position: getNodePosition(crossing.center, road, sidewalk),
+    accessible: sidewalk.accessibility.wheelchairPassable,
+    curbRampId: getCurbRampId(crossing.id.replace(/^crossing-/, ''), sidewalk.id),
+    tactileCueId: getTactileCueId(crossing.id.replace(/^crossing-/, ''), sidewalk.id)
   } satisfies SidewalkGraphNode;
   nodesById.set(id, node);
   return node;
@@ -207,7 +224,10 @@ function getOrCreateNode(
     lod: 'lod2',
     intersectionId: intersection.id,
     sidewalkId: sidewalk.id,
-    position: getNodePosition(intersection.center, road, sidewalk)
+    position: getNodePosition(intersection.center, road, sidewalk),
+    accessible: sidewalk.accessibility.wheelchairPassable,
+    curbRampId: getCurbRampId(intersection.id, sidewalk.id),
+    tactileCueId: getTactileCueId(intersection.id, sidewalk.id)
   } satisfies SidewalkGraphNode;
   nodesById.set(id, node);
   return node;
@@ -296,7 +316,12 @@ function createSidewalkEdges(
           toNodeId: toNode.id,
           mode: 'sidewalk',
           sidewalkId: sidewalk.id,
-          lengthMeters: distance2D(fromNode.position, toNode.position)
+          lengthMeters: distance2D(fromNode.position, toNode.position),
+          accessible: sidewalk.accessibility.wheelchairPassable && sidewalk.accessibility.clearPathContinuous,
+          minClearWidthMeters: sidewalk.accessibleClearPathMeters,
+          maxGradePercent: sidewalk.runningGradePercent,
+          hasCurbRampConnection: true,
+          hasTactileCueConnection: true
         });
       }
     }
@@ -328,4 +353,16 @@ function getNodePosition(intersectionCenter: Point2D, road: RoadSegment, sidewal
 
 function distance2D(start: Point2D, end: Point2D): number {
   return Math.hypot(end.x - start.x, end.z - start.z);
+}
+
+function getCurbRampId(anchorId: string, sidewalkId: string): string {
+  return `curb-ramp-${anchorId}-${getSidewalkSide(sidewalkId)}`;
+}
+
+function getTactileCueId(anchorId: string, sidewalkId: string): string {
+  return `tactile-cue-${anchorId}-${getSidewalkSide(sidewalkId)}`;
+}
+
+function getSidewalkSide(sidewalkId: string): 'left' | 'right' {
+  return sidewalkId.endsWith('-left') ? 'left' : 'right';
 }
