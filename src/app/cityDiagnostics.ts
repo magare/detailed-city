@@ -15,6 +15,7 @@ import type {
   BuildingTypologyKind,
   CivicAnchorServiceType,
   CityObjectIndex,
+  CultureAnchorKind,
   GovernmentAnchorKind,
   SourceType
 } from '../city/data-contracts/cityContracts';
@@ -68,6 +69,7 @@ export interface CityDiagnostics {
   readonly buildingFacades: BuildingFacadeDiagnostics;
   readonly buildingRoofs: BuildingRoofDiagnostics;
   readonly civicAnchors: CivicAnchorDiagnostics;
+  readonly cultureAnchors: CultureAnchorDiagnostics;
   readonly governmentAnchors: GovernmentAnchorDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
@@ -224,6 +226,13 @@ export interface CityDiagnostics {
     readonly civicAnchorDailyVisitors: number;
     readonly civicAnchorStaff: number;
     readonly civicAnchorEmergencyAccess: number;
+    readonly cultureAnchors: number;
+    readonly cultureAnchorKinds: number;
+    readonly cultureFootfallDaily: number;
+    readonly cultureEventCapacity: number;
+    readonly cultureTourismScore: number;
+    readonly cultureEveningAnchors: number;
+    readonly cultureHeritageAnchors: number;
     readonly governmentAnchors: number;
     readonly governmentAnchorKinds: number;
     readonly governmentServiceCounters: number;
@@ -426,6 +435,20 @@ export interface GovernmentAnchorDiagnostics {
   readonly plazaLinkedAnchors: number;
   readonly securityScreenedAnchors: number;
   readonly publicAccessAnchors: number;
+}
+
+export interface CultureAnchorDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Partial<Record<CultureAnchorKind, number>>>;
+  readonly anchorKinds: number;
+  readonly culturalFootfallDaily: number;
+  readonly staffCapacity: number;
+  readonly eventCapacityPeople: number;
+  readonly tourismAttractionScore: number;
+  readonly eveningActivityAnchors: number;
+  readonly heritageAnchors: number;
+  readonly plazaLinkedAnchors: number;
+  readonly scheduleProfiles: readonly string[];
 }
 
 export interface RoadNetworkDiagnostics {
@@ -693,6 +716,7 @@ export function createCityDiagnostics(
   const buildingFacades = createBuildingFacadeDiagnostics(city);
   const buildingRoofs = createBuildingRoofDiagnostics(city);
   const civicAnchors = createCivicAnchorDiagnostics(city);
+  const cultureAnchors = createCultureAnchorDiagnostics(city);
   const governmentAnchors = createGovernmentAnchorDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
@@ -742,6 +766,7 @@ export function createCityDiagnostics(
     buildingFacades,
     buildingRoofs,
     civicAnchors,
+    cultureAnchors,
     governmentAnchors,
     roadNetwork,
     laneRestrictions,
@@ -889,6 +914,13 @@ export function createCityDiagnostics(
       civicAnchorDailyVisitors: civicAnchors.dailyVisitors,
       civicAnchorStaff: civicAnchors.staff,
       civicAnchorEmergencyAccess: civicAnchors.emergencyAccessAnchors,
+      cultureAnchors: cultureAnchors.total,
+      cultureAnchorKinds: cultureAnchors.anchorKinds,
+      cultureFootfallDaily: cultureAnchors.culturalFootfallDaily,
+      cultureEventCapacity: cultureAnchors.eventCapacityPeople,
+      cultureTourismScore: cultureAnchors.tourismAttractionScore,
+      cultureEveningAnchors: cultureAnchors.eveningActivityAnchors,
+      cultureHeritageAnchors: cultureAnchors.heritageAnchors,
       governmentAnchors: governmentAnchors.total,
       governmentAnchorKinds: governmentAnchors.anchorKinds,
       governmentServiceCounters: governmentAnchors.serviceCounters,
@@ -1197,6 +1229,53 @@ function createGovernmentAnchorDiagnostics(city: GeneratedCity): GovernmentAncho
     plazaLinkedAnchors,
     securityScreenedAnchors,
     publicAccessAnchors
+  };
+}
+
+function createCultureAnchorDiagnostics(city: GeneratedCity): CultureAnchorDiagnostics {
+  const byKind: Partial<Record<CultureAnchorKind, number>> = {};
+  const scheduleProfiles = new Set<string>();
+  let culturalFootfallDaily = 0;
+  let staffCapacity = 0;
+  let eventCapacityPeople = 0;
+  let tourismAttractionScore = 0;
+  let eveningActivityAnchors = 0;
+  let heritageAnchors = 0;
+  let plazaLinkedAnchors = 0;
+
+  for (const anchor of city.cultureAnchors) {
+    byKind[anchor.anchorKind] = (byKind[anchor.anchorKind] ?? 0) + 1;
+    culturalFootfallDaily += anchor.culturalFootfallDaily;
+    staffCapacity += anchor.staffCapacity;
+    eventCapacityPeople += anchor.eventCapacityPeople;
+    tourismAttractionScore += anchor.tourismAttractionScore;
+    scheduleProfiles.add(anchor.scheduleProfileId);
+
+    if (anchor.eveningActivity) {
+      eveningActivityAnchors += 1;
+    }
+
+    if (anchor.heritageProtected) {
+      heritageAnchors += 1;
+    }
+
+    if (anchor.plazaZoneIds.length > 0) {
+      plazaLinkedAnchors += 1;
+    }
+  }
+
+  return {
+    total: city.cultureAnchors.length,
+    byKind,
+    anchorKinds: Object.keys(byKind).length,
+    culturalFootfallDaily,
+    staffCapacity,
+    eventCapacityPeople,
+    tourismAttractionScore,
+    eveningActivityAnchors,
+    heritageAnchors,
+    plazaLinkedAnchors,
+    scheduleProfiles: [...scheduleProfiles].sort()
   };
 }
 

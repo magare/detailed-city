@@ -79,6 +79,7 @@ test('city object groups provide deterministic query paths for domains, slices, 
   expect(getCityObjectsByRenderLayer(first.groupIndex, 'buildings')).toHaveLength(
     first.city.buildings.length +
       first.city.civicAnchors.length +
+      first.city.cultureAnchors.length +
       first.city.governmentAnchors.length +
       first.city.activeFrontages.length
   );
@@ -174,7 +175,7 @@ test('browser diagnostics expose grouped object counts for debug tools', async (
     districtGroups: 5,
     renderLayerGroups: 6,
     networkRenderLayerObjects: 988,
-    baselineScenarioObjects: 5265
+    baselineScenarioObjects: 5273
   });
   expect(groupDiagnostics.emptyGroups).toBeGreaterThan(0);
   expect(groupDiagnostics.sliceGroupObjects).toBeGreaterThan(1000);

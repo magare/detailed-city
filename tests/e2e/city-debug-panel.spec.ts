@@ -42,7 +42,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('5265/5265 tagged');
+  expect(panelText).toContain('5273/5273 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -60,24 +60,26 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('208 citywide, 6 railings, 19 shelters');
   expect(panelText).toContain('583 buildings, 44 frontages');
   expect(panelText).toContain('Civic');
-  expect(panelText).toContain('4 anchors, 4 services, 3 emergency');
+  expect(panelText).toContain('5 anchors, 5 services, 3 emergency');
+  expect(panelText).toContain('Culture');
+  expect(panelText).toContain('6 anchors, 1680 footfall, 4 evening');
   expect(panelText).toContain('Government');
   expect(panelText).toContain('5 anchors, 29 counters, 5 plaza links');
   expect(panelText).toContain('Assets');
-  expect(panelText).toContain('44 assets, 44 bindings');
+  expect(panelText).toContain('45 assets, 45 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 4308 objects');
+  expect(panelText).toContain('6 formats, 4316 objects');
   expect(panelText).toContain('Registry');
-  expect(panelText).toContain('42 kinds');
+  expect(panelText).toContain('43 kinds');
   expect(panelText).toContain('Groups');
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
   expect(panelText).toContain(
-    '18: administrative-boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil-geology, phasing, city-metrics, civic-anchors, government-anchors, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
+    '19: administrative-boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil-geology, phasing, city-metrics, civic-anchors, culture-anchors, government-anchors, constraints, resilience-goals, parcels, roads, validation-issues, owner-domains'
   );
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');
-  expect(panelText).toContain('42 policies');
+  expect(panelText).toContain('43 policies');
   expect(panelText).toContain('Performance');
   expect(panelText).toContain('Frame');
   await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');

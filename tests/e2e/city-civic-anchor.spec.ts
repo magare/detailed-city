@@ -37,10 +37,11 @@ test('civic anchor base contracts are deterministic and attach to civic building
     'civic-anchor-government-base',
     'civic-anchor-education-base',
     'civic-anchor-healthcare-base',
-    'civic-anchor-emergency-base'
+    'civic-anchor-emergency-base',
+    'civic-anchor-culture-base'
   ]);
   expect(firstCity.validation.issues.filter((issue) => issue.id.includes('civic-anchor'))).toEqual([]);
-  expect(firstCity.objectIndex.countsByKind['civic-anchor']).toBe(4);
+  expect(firstCity.objectIndex.countsByKind['civic-anchor']).toBe(5);
   expect(firstCity.civicAnchors.every((anchor) => anchor.ownerDomain === 'civic')).toBe(true);
   expect(firstCity.civicAnchors.every((anchor) => anchor.renderBindingId === 'binding:civic:anchor')).toBe(true);
   expect(firstCity.civicAnchors.every((anchor) => anchor.publicEntranceIds.length > 0)).toBe(true);
@@ -56,12 +57,13 @@ test('civic anchor base contracts are deterministic and attach to civic building
     })
   });
   expect(diagnostics.civicAnchors).toMatchObject({
-    total: 4,
-    serviceTypes: 4,
-    dailyVisitors: 2140,
-    staff: 454,
+    total: 5,
+    serviceTypes: 5,
+    dailyVisitors: 2620,
+    staff: 502,
     emergencyAccessAnchors: 3,
     byServiceType: {
+      culture: 1,
       education: 1,
       emergency: 1,
       government: 1,
@@ -69,14 +71,14 @@ test('civic anchor base contracts are deterministic and attach to civic building
     }
   });
   expect(diagnostics.objectCounts).toMatchObject({
-    civicAnchors: 4,
-    civicAnchorServiceTypes: 4,
-    civicAnchorDailyVisitors: 2140,
-    civicAnchorStaff: 454,
+    civicAnchors: 5,
+    civicAnchorServiceTypes: 5,
+    civicAnchorDailyVisitors: 2620,
+    civicAnchorStaff: 502,
     civicAnchorEmergencyAccess: 3
   });
   const civicOverlay = overlays.find((overlay) => overlay.id === 'civic-anchors');
-  expect(civicOverlay?.featureCount).toBe(4);
+  expect(civicOverlay?.featureCount).toBe(5);
   expect(civicOverlay?.features).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -162,22 +164,22 @@ test('browser diagnostics expose civic anchors and debug panel metric', async ({
 
   expect(diagnostics.validationPassed).toBe(true);
   expect(diagnostics.civicAnchors).toMatchObject({
-    total: 4,
-    serviceTypes: 4,
+    total: 5,
+    serviceTypes: 5,
     emergencyAccessAnchors: 3
   });
   expect(diagnostics.objectCounts).toMatchObject({
-    civicAnchors: 4,
-    civicAnchorDailyVisitors: 2140,
-    civicAnchorStaff: 454
+    civicAnchors: 5,
+    civicAnchorDailyVisitors: 2620,
+    civicAnchorStaff: 502
   });
   expect(diagnostics.civicOverlay).toMatchObject({
     id: 'civic-anchors',
-    featureCount: 4
+    featureCount: 5
   });
-  expect(diagnostics.pickingKindCount).toBe(4);
+  expect(diagnostics.pickingKindCount).toBe(5);
   expect(diagnostics.debugText).toContain('Civic');
-  expect(diagnostics.debugText).toContain('4 anchors, 4 services, 3 emergency');
+  expect(diagnostics.debugText).toContain('5 anchors, 5 services, 3 emergency');
 });
 
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {

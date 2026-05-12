@@ -17,6 +17,7 @@ import type {
   CityId,
   CityObjectKind,
   ConstraintKind,
+  CultureAnchorKind,
   GeospatialFrame,
   GovernmentAnchorKind,
   HazardMitigationKind,
@@ -58,6 +59,7 @@ type GeneratedCityForValidation = Pick<
   | 'blocks'
   | 'buildings'
   | 'civicAnchors'
+  | 'cultureAnchors'
   | 'governmentAnchors'
   | 'cityMetrics'
   | 'developmentPhases'
@@ -93,6 +95,7 @@ type GeneratedCityForValidation = Pick<
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
+type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
 type ValidationGovernmentAnchor = GeneratedCityForValidation['governmentAnchors'][number];
 type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
@@ -155,6 +158,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:facade:entrance-door',
   'binding:facade:night-window',
   'binding:civic:anchor',
+  'binding:civic:culture-anchor',
   'binding:civic:government-anchor',
   'binding:waterfront:edge',
   'binding:waterfront:open-space',
@@ -169,6 +173,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'plaza-zone',
   'building',
   'civic-anchor',
+  'culture-anchor',
   'government-anchor',
   'facade',
   'tree-planting',
@@ -219,6 +224,14 @@ const GOVERNMENT_ANCHOR_KINDS = [
   'court',
   'service-counter'
 ] as const satisfies readonly GovernmentAnchorKind[];
+const CULTURE_ANCHOR_KINDS = [
+  'event-space',
+  'gallery',
+  'heritage-site',
+  'museum',
+  'theater',
+  'venue'
+] as const satisfies readonly CultureAnchorKind[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -2141,6 +2154,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validatePlazaModel(city, issues, assetBindingsById);
   validateWaterfrontOpenSpaces(city, issues, assetBindingsById);
   validateCivicAnchors(city, issues, assetBindingsById);
+  validateCultureAnchors(city, issues, assetBindingsById);
   validateGovernmentAnchors(city, issues, assetBindingsById);
 
   for (const tree of city.trees) {
@@ -4707,6 +4721,10 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
     validatePoint2D(city.geospatial, anchor.id, 'center', anchor.center, issues);
   }
 
+  for (const anchor of city.cultureAnchors) {
+    validatePoint2D(city.geospatial, anchor.id, 'center', anchor.center, issues);
+  }
+
   for (const anchor of city.governmentAnchors) {
     validatePoint2D(city.geospatial, anchor.id, 'center', anchor.center, issues);
   }
@@ -6119,7 +6137,7 @@ function validateCivicAnchors(
     });
   }
 
-  for (const serviceType of ['education', 'emergency', 'government', 'healthcare'] as const satisfies readonly CivicAnchorServiceType[]) {
+  for (const serviceType of ['culture', 'education', 'emergency', 'government', 'healthcare'] as const satisfies readonly CivicAnchorServiceType[]) {
     if (!anchorsByService.has(serviceType)) {
       issues.push({
         id: `missing-civic-anchor-service-${serviceType}`,
@@ -6143,6 +6161,118 @@ function createCivicAnchorIssue(
     category: 'zoning',
     objectId: anchor.id,
     ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from current civic buildings and administrative service areas.`),
+    message
+  };
+}
+
+function validateCultureAnchors(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const anchorsByKind = new Map<CultureAnchorKind, ValidationCultureAnchor[]>();
+  const cultureBaseAnchor = city.civicAnchors.find((anchor) => anchor.serviceType === 'culture');
+
+  for (const anchor of city.cultureAnchors) {
+    const civicAnchor = city.civicAnchors.find((candidate) => candidate.id === anchor.civicAnchorId);
+    const building = city.buildings.find((candidate) => candidate.id === anchor.buildingId);
+    const district = city.districts.find((candidate) => candidate.id === anchor.districtId);
+    const binding = assetBindingsById.get(anchor.renderBindingId);
+
+    if (CULTURE_ANCHOR_KINDS.includes(anchor.anchorKind)) {
+      anchorsByKind.set(anchor.anchorKind, [...(anchorsByKind.get(anchor.anchorKind) ?? []), anchor]);
+    } else {
+      issues.push(createCultureAnchorIssue(anchor, 'invalid-kind', `Culture anchor ${anchor.id} must declare a supported culture anchor kind.`));
+    }
+
+    if (!civicAnchor || civicAnchor.serviceType !== 'culture' || anchor.parentId !== anchor.civicAnchorId) {
+      issues.push(createCultureAnchorIssue(anchor, 'missing-civic-anchor', `Culture anchor ${anchor.id} must be parented to a culture civic anchor.`));
+    }
+
+    if (!building || (civicAnchor && building.id !== civicAnchor.buildingId)) {
+      issues.push(createCultureAnchorIssue(anchor, 'building-mismatch', `Culture anchor ${anchor.id} must reuse the culture civic anchor building.`));
+    }
+
+    if (!district || (civicAnchor && district.id !== civicAnchor.districtId)) {
+      issues.push(createCultureAnchorIssue(anchor, 'district-mismatch', `Culture anchor ${anchor.id} must stay in the culture civic anchor district.`));
+    }
+
+    if (anchor.plazaZoneIds.length === 0) {
+      issues.push(createCultureAnchorIssue(anchor, 'missing-plaza-relationship', `Culture anchor ${anchor.id} must link to civic plaza zones.`));
+    }
+
+    for (const plazaZoneId of anchor.plazaZoneIds) {
+      const plazaZone = city.plazaZones.find((zone) => zone.id === plazaZoneId);
+
+      if (!plazaZone || plazaZone.plazaId !== 'civic-plaza') {
+        issues.push(createCultureAnchorIssue(anchor, `missing-plaza-zone-${toIssueIdToken(plazaZoneId)}`, `Culture anchor ${anchor.id} references missing civic plaza zone ${plazaZoneId}.`));
+      }
+    }
+
+    if (
+      anchor.culturalProgram.length === 0 ||
+      anchor.culturalFootfallDaily <= 0 ||
+      anchor.staffCapacity <= 0 ||
+      anchor.eventCapacityPeople < 0 ||
+      anchor.tourismAttractionScore <= 0 ||
+      anchor.scheduleProfileId.length === 0
+    ) {
+      issues.push(createCultureAnchorIssue(anchor, 'invalid-capacity', `Culture anchor ${anchor.id} must expose positive cultural demand, tourism, schedule, and staffing metrics.`));
+    }
+
+    if ((anchor.anchorKind === 'event-space' || anchor.anchorKind === 'theater') && !anchor.eveningActivity) {
+      issues.push(createCultureAnchorIssue(anchor, 'missing-evening-activity', `Event space and theater culture anchors must expose evening activity.`));
+    }
+
+    if (anchor.anchorKind === 'event-space' && anchor.eventCapacityPeople === 0) {
+      issues.push(createCultureAnchorIssue(anchor, 'missing-event-capacity', `Event space culture anchors must expose event capacity.`));
+    }
+
+    if (anchor.anchorKind === 'heritage-site' && !anchor.heritageProtected) {
+      issues.push(createCultureAnchorIssue(anchor, 'missing-heritage-protection', `Heritage site culture anchors must expose heritage protection.`));
+    }
+
+    if (!binding || binding.objectKind !== 'culture-anchor') {
+      issues.push(createCultureAnchorIssue(anchor, 'missing-render-binding', `Culture anchor ${anchor.id} must reference a culture-anchor render binding.`));
+    }
+  }
+
+  if (cultureBaseAnchor && city.cultureAnchors.length === 0) {
+    issues.push({
+      id: 'missing-culture-anchors',
+      severity: 'error',
+      category: 'zoning',
+      objectId: cultureBaseAnchor.id,
+      ...createIssueFocus(cultureBaseAnchor.center, 'Generate culture anchors from the culture civic anchor and civic plaza zones.'),
+      message: 'Culture civic anchors must expose museums, theaters, galleries, venues, heritage sites, event spaces, tourism hooks, and evening activity.'
+    });
+  }
+
+  for (const anchorKind of CULTURE_ANCHOR_KINDS) {
+    if (!anchorsByKind.has(anchorKind)) {
+      issues.push({
+        id: `missing-culture-anchor-${anchorKind}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: cultureBaseAnchor?.id,
+        ...createIssueFocus(cultureBaseAnchor?.center, `Create the ${anchorKind} culture anchor from the culture civic anchor.`),
+        message: `Culture anchors must include ${anchorKind}.`
+      });
+    }
+  }
+}
+
+function createCultureAnchorIssue(
+  anchor: ValidationCultureAnchor,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `culture-anchor-${issueIdSuffix}-${toIssueIdToken(anchor.id)}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: anchor.id,
+    ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from the culture civic anchor and civic plaza zones.`),
     message
   };
 }

@@ -42,6 +42,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:building:entrance-door:primitive', 'building', 'Entrance Door Primitive', 'entrance-door', 2.2, 'lod4'),
   createProceduralAsset('asset:building:night-window:primitive', 'building', 'Night Window Primitive', 'night-window', 2.4, 'lod3'),
   createProceduralAsset('asset:building:civic-anchor:primitive', 'building', 'Civic Anchor Primitive', 'civic-anchor', 12, 'lod2'),
+  createProceduralAsset('asset:building:culture-anchor:primitive', 'building', 'Culture Anchor Primitive', 'culture-anchor', 9, 'lod2'),
   createProceduralAsset('asset:building:government-anchor:primitive', 'building', 'Government Anchor Primitive', 'government-anchor', 10, 'lod2'),
   createProceduralAsset('asset:street-prop:waterfront-edge:primitive', 'street-prop', 'Waterfront Edge Primitive', 'waterfront-edge', 18, 'lod2'),
   createProceduralAsset('asset:street-prop:waterfront-open-space:primitive', 'street-prop', 'Waterfront Open Space Primitive', 'waterfront-open-space', 18, 'lod3'),
@@ -323,7 +324,7 @@ export const DEFAULT_RENDER_BINDINGS = [
     semanticTag: 'storefront-sign',
     assetId: 'asset:building:storefront-sign:primitive',
     materialZone: 'storefront-sign',
-    fallbackMaterial: 'storefrontSign',
+    fallbackMaterial: 'building',
     fallbackGeometry: 'storefront-sign-box'
   },
   {
@@ -361,6 +362,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'civic',
     fallbackMaterial: 'building',
     fallbackGeometry: 'government-anchor-marker'
+  },
+  {
+    id: 'binding:civic:culture-anchor',
+    objectKind: 'culture-anchor',
+    semanticTag: 'culture-anchor',
+    assetId: 'asset:building:culture-anchor:primitive',
+    materialZone: 'civic',
+    fallbackMaterial: 'storefrontSign',
+    fallbackGeometry: 'culture-anchor-marker'
   },
   {
     id: 'binding:waterfront:edge',

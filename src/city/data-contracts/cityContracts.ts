@@ -14,6 +14,7 @@ export type CityObjectKind =
   | 'constraint'
   | 'crossing'
   | 'curb-zone'
+  | 'culture-anchor'
   | 'development-phase'
   | 'district'
   | 'economy-anchor'
@@ -417,6 +418,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2', 'lod3'],
       description: 'Civic anchors render as named building or place markers until dedicated assets exist.'
+    },
+    {
+      objectKind: 'culture-anchor',
+      scope: 'building',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Culture anchors expose museums, theaters, galleries, venues, heritage sites, and event spaces for tourism and event hooks.'
     },
     {
       objectKind: 'government-anchor',
@@ -1667,6 +1675,32 @@ export interface GovernmentAnchorContract extends CityObjectBase<'government-anc
   readonly ceremonialCapacityPeople: number;
   readonly securityScreening: boolean;
   readonly publicAccess: boolean;
+  readonly scheduleProfileId: string;
+  readonly renderBindingId: CityId;
+}
+
+export type CultureAnchorKind =
+  | 'event-space'
+  | 'gallery'
+  | 'heritage-site'
+  | 'museum'
+  | 'theater'
+  | 'venue';
+
+export interface CultureAnchorContract extends CityObjectBase<'culture-anchor'> {
+  readonly anchorKind: CultureAnchorKind;
+  readonly civicAnchorId: CityId;
+  readonly buildingId: CityId;
+  readonly districtId: CityId;
+  readonly plazaZoneIds: readonly CityId[];
+  readonly center: Point2D;
+  readonly culturalProgram: string;
+  readonly culturalFootfallDaily: number;
+  readonly staffCapacity: number;
+  readonly eventCapacityPeople: number;
+  readonly tourismAttractionScore: number;
+  readonly eveningActivity: boolean;
+  readonly heritageProtected: boolean;
   readonly scheduleProfileId: string;
   readonly renderBindingId: CityId;
 }

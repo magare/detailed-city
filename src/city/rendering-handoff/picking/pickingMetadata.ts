@@ -66,6 +66,7 @@ type PickableObjectSource = Pick<
   | 'activeFrontages'
   | 'buildings'
   | 'civicAnchors'
+  | 'cultureAnchors'
   | 'governmentAnchors'
   | 'parks'
   | 'parkFeatures'
@@ -89,6 +90,7 @@ export function createCityPickingMetadataCatalog(
     ...city.roads,
     ...city.buildings,
     ...city.civicAnchors,
+    ...city.cultureAnchors,
     ...city.governmentAnchors,
     ...city.activeFrontages,
     ...city.parks,
@@ -221,6 +223,8 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.roadId = object.id;
   } else if (object.kind === 'civic-anchor') {
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : object.parentId;
+  } else if (object.kind === 'culture-anchor') {
+    references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
   } else if (object.kind === 'government-anchor') {
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
   } else if (object.kind === 'park') {

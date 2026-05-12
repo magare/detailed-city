@@ -20,11 +20,11 @@ test('asset binding diagnostics expose current fallback coverage', () => {
   expect(city.validation.issues.filter((issue) => issue.category === 'asset')).toEqual([]);
   expect(city.validation.issues.filter((issue) => issue.category === 'metadata')).toEqual([]);
   expect(diagnostics.assetBindingDiagnostics).toMatchObject({
-    assetDefinitions: 44,
-    renderBindings: 44,
-    bindingsWithAssets: 44,
+    assetDefinitions: 45,
+    renderBindings: 45,
+    bindingsWithAssets: 45,
     bindingsMissingAssets: 0,
-    bindingsWithFallbacks: 44,
+    bindingsWithFallbacks: 45,
     bindingsMissingFallbacks: 0,
     unboundAssetDefinitions: 0
   });
@@ -32,6 +32,7 @@ test('asset binding diagnostics expose current fallback coverage', () => {
     expect.arrayContaining([
       'building',
       'civic-anchor',
+      'culture-anchor',
       'facade',
       'government-anchor',
       'lane-marking',
@@ -51,6 +52,7 @@ test('asset binding diagnostics expose current fallback coverage', () => {
   expect(diagnostics.assetBindingDiagnostics.materialZones.length).toBeGreaterThan(20);
   expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('railing');
   expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('civic-anchor');
+  expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('culture-anchor');
   expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('government-anchor');
   expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('waterfront-open-space');
   expect(diagnostics.assetBindingDiagnostics.semanticTags).toContain('traffic-car');

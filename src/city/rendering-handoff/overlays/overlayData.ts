@@ -24,6 +24,7 @@ export type CityOverlayId =
   | 'phasing'
   | 'city-metrics'
   | 'civic-anchors'
+  | 'culture-anchors'
   | 'government-anchors'
   | 'constraints'
   | 'resilience-goals'
@@ -82,6 +83,7 @@ export function createCityOverlayDatasets(
     createDataset('phasing', 'Phasing', 'domain-data', createDevelopmentPhaseFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
+    createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
@@ -483,6 +485,29 @@ function createCivicAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
       dailyVisitors: anchor.capacity.dailyVisitors,
       staff: anchor.capacity.staff,
       emergencyAccess: anchor.schedule.emergencyAccess
+    }
+  }));
+}
+
+function createCultureAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.cultureAnchors.map((anchor) => ({
+    id: `overlay:culture-anchors:${anchor.id}`,
+    overlayId: 'culture-anchors',
+    objectId: anchor.id,
+    objectKind: anchor.kind,
+    ownerDomain: anchor.ownerDomain,
+    label: anchor.name ?? anchor.id,
+    geometry: { type: 'point', point: anchor.center },
+    metadata: {
+      anchorKind: anchor.anchorKind,
+      civicAnchorId: anchor.civicAnchorId,
+      buildingId: anchor.buildingId,
+      plazaZones: anchor.plazaZoneIds.length,
+      culturalFootfallDaily: anchor.culturalFootfallDaily,
+      eventCapacityPeople: anchor.eventCapacityPeople,
+      tourismAttractionScore: anchor.tourismAttractionScore,
+      eveningActivity: anchor.eveningActivity,
+      heritageProtected: anchor.heritageProtected
     }
   }));
 }

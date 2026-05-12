@@ -44,6 +44,7 @@ const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|railing|regulatory-sign|street-name-sign|wayfinding-sign)`;
 const TRAFFIC_CALMING_KIND = String.raw`(?:curb-extension|bus-bulb|chicane|pinchpoint|speed-hump|speed-table|speed-cushion|neighborhood-gateway)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
+const CULTURE_ANCHOR_KIND = String.raw`(?:event-space|gallery|heritage-site|museum|theater|venue)`;
 const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
 const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|landslide-risk|restricted-area)`;
 const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
@@ -79,6 +80,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ['curb-zone-<road-id>-<side>-intersection-<index>-no-stopping', 'curb-zone-<road-id>-<side>-segment-<index>-<use>'],
     [exact(String.raw`curb-zone-${ROAD_ID}-${SIDEWALK_SIDE}-(?:intersection-\d+-no-stopping|segment-\d+-${CURB_USE})`)],
     required(['sidewalk'])
+  ),
+  entry(
+    'culture-anchor',
+    ['culture-anchor-<culture-anchor-kind>'],
+    [exact(String.raw`culture-anchor-${CULTURE_ANCHOR_KIND}`)],
+    required(['civic-anchor'])
   ),
   entry(
     'development-phase',

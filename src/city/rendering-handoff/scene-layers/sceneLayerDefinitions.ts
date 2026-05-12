@@ -81,6 +81,7 @@ export function createCitySceneLayerDiagnostics(
     buildings:
       city.buildings.length +
       city.civicAnchors.length +
+      city.cultureAnchors.length +
       city.governmentAnchors.length +
       roofDetailCount +
       city.activeFrontages.length,

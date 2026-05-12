@@ -61,6 +61,7 @@ test('constraint layer is deterministic, indexed, and visible in overlays', () =
     'phasing',
     'city-metrics',
     'civic-anchors',
+    'culture-anchors',
     'government-anchors',
     'constraints',
     'resilience-goals',

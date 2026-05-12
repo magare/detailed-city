@@ -68,6 +68,16 @@ const CIVIC_ANCHOR_TEMPLATES = [
     staff: 72,
     emergencyAccess: true,
     emergencyOccupancy: 320
+  },
+  {
+    serviceType: 'culture',
+    name: 'Cultural Commons Service Anchor',
+    scheduleProfileId: 'schedule:civic:culture-evening',
+    arrivalModes: ['pedestrian', 'bike', 'transit', 'vehicle'],
+    catchmentRadiusMeters: 560,
+    dailyVisitors: 480,
+    staff: 48,
+    emergencyAccess: false
   }
 ] as const satisfies readonly CivicAnchorTemplate[];
 

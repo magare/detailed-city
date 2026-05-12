@@ -43,6 +43,7 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     parcels: city.parcels.map((parcel) => withProceduralMetadata(parcel, 'building-parcels')),
     buildings: city.buildings.map((building) => withProceduralMetadata(building, 'building-massing')),
     civicAnchors: city.civicAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-anchor-base')),
+    cultureAnchors: city.cultureAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-culture-anchors')),
     governmentAnchors: city.governmentAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-government-anchors')),
     activeFrontages: city.activeFrontages.map((frontage) =>
       withProceduralMetadata(frontage, 'building-active-frontages')

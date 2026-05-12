@@ -245,6 +245,7 @@ export interface ProceduralSeedDomainSections {
   readonly parcels: GeneratedCity['parcels'];
   readonly buildings: GeneratedCity['buildings'];
   readonly civicAnchors: GeneratedCity['civicAnchors'];
+  readonly cultureAnchors: GeneratedCity['cultureAnchors'];
   readonly governmentAnchors: GeneratedCity['governmentAnchors'];
   readonly activeFrontages: GeneratedCity['activeFrontages'];
   readonly parks: GeneratedCity['parks'];
@@ -283,6 +284,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly parcels: number;
   readonly buildings: number;
   readonly civicAnchors: number;
+  readonly cultureAnchors: number;
   readonly governmentAnchors: number;
   readonly activeFrontages: number;
   readonly parks: number;
@@ -393,6 +395,7 @@ export function createProceduralSeedJsonExport(
       parcels: city.parcels,
       buildings: city.buildings,
       civicAnchors: city.civicAnchors,
+      cultureAnchors: city.cultureAnchors,
       governmentAnchors: city.governmentAnchors,
       activeFrontages: city.activeFrontages,
       parks: city.parks,
@@ -511,6 +514,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'blocks'
     | 'buildings'
     | 'civicAnchors'
+    | 'cultureAnchors'
     | 'governmentAnchors'
     | 'cityMetrics'
     | 'developmentPhases'
@@ -567,6 +571,7 @@ export function createProceduralSeedDomainSectionCounts(
     parcels: city.parcels.length,
     buildings: city.buildings.length,
     civicAnchors: city.civicAnchors.length,
+    cultureAnchors: city.cultureAnchors.length,
     governmentAnchors: city.governmentAnchors.length,
     activeFrontages: city.activeFrontages.length,
     parks: city.parks.length,
@@ -614,6 +619,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'parcels') +
     getArrayLength(city, 'buildings') +
     getArrayLength(city, 'civicAnchors') +
+    getArrayLength(city, 'cultureAnchors') +
     getArrayLength(city, 'governmentAnchors') +
     getArrayLength(city, 'activeFrontages') +
     getArrayLength(city, 'parks') +
