@@ -5,9 +5,13 @@ Use this prompt with Codex Gold when you want it to implement the entire city Ka
 ```text
 You are Codex working in the repository `/Users/magare/Dev/three/detailed-city`.
 
+All changes must be done on the `main` branch.
+
 Your mission is to implement the entire city described by `docs/city-kanban.md` without compromising architecture, visual quality, determinism, performance, or test coverage.
 
 You must work on exactly one active Kanban card at a time.
+
+Continue from the currently unimplemented part of `docs/city-kanban.md`; do not restart or rework cards that are already complete unless a selected card explicitly requires it.
 
 Do not batch multiple cards. Do not start a second card until the current card is implemented, tested, browser-verified, fixed if needed, documented, moved to the correct board status, and explicitly reported as complete. After one card is complete, select the next single dependency-ready card and repeat the same full process. Continue this one-card-at-a-time loop until the whole Kanban board is complete or until you hit a blocker that requires human input.
 
@@ -52,6 +56,8 @@ Non-negotiable working rules:
 18. The long-term goal is the whole board, but the active work scope is always exactly one card.
 19. If the selected card reveals hidden prerequisite work, create or identify the prerequisite card, report the dependency, and stop instead of folding prerequisite work into the current card.
 20. Treat each per-card report as an interim progress checkpoint when running autonomously, not as permission to batch the next card into the same implementation scope.
+21. Keep code efficient so the city does not consume excessive CPU, GPU, memory, or battery resources on my machine.
+22. When moving to the next card, compact the working context before starting, even if the default context compaction threshold has not been reached. Each new card must start from a compacted context focused on the board, current repo state, and the next selected card.
 
 Task selection:
 
@@ -176,6 +182,7 @@ Quality bar:
 - Prefer semantic placement zones over arbitrary coordinates.
 - Prefer existing patterns already used in the repo.
 - Avoid broad abstractions unless they directly reduce complexity.
+- Keep runtime and generation code efficient enough that the city remains responsive on my machine.
 - Keep comments sparse and only explain non-obvious logic.
 - Keep files ASCII unless an existing file already uses non-ASCII.
 
@@ -191,9 +198,10 @@ Before reporting completion:
    - Move the completed card to `Done`, or update its status in the existing board format.
    - Add concise acceptance evidence for the completed card.
    - Do not move or mark any other card done.
-6. If the completed card unblocks another card, leave the newly unblocked card in its current lane unless the board format already has a clear status-change rule for it.
-7. In full-board mode, after the per-card report, select exactly one next dependency-ready card and repeat, unless blocked or unless I ask you to pause.
-8. In strict pause mode, stop after the per-card report and wait for my explicit `continue`.
+6. Create a git commit containing the completed card's scoped code, tests, docs, and board update before moving to another card.
+7. If the completed card unblocks another card, leave the newly unblocked card in its current lane unless the board format already has a clear status-change rule for it.
+8. In full-board mode, after the per-card report and git commit, compact context first, then select exactly one next dependency-ready card and repeat, unless blocked or unless I ask you to pause.
+9. In strict pause mode, stop after the per-card report and git commit, then wait for my explicit `continue`.
 
 Per-card report format:
 
@@ -208,6 +216,8 @@ Per-card report format:
   - Any added unit/property tests: pass/fail
 - Remaining risks or follow-up:
   - Only mention real risks, not generic possibilities
+- Git commit:
+  - Commit hash and message for the completed card
 - Next recommended card:
   - One card ID only
   - If continuing autonomously, say that you will start only that one card next.
