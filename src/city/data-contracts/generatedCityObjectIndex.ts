@@ -30,6 +30,7 @@ type GeneratedCityObjectSource = Pick<
   | 'streetFurniture'
   | 'streetLights'
   | 'trafficCalmingDevices'
+  | 'topographyZones'
   | 'trees'
   | 'verticalSlices'
   | 'waterfrontEdges'
@@ -45,6 +46,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.cityMetrics,
     ...city.constraints,
     ...city.hazardZones,
+    ...city.topographyZones,
     ...city.resilienceGoals,
     ...city.verticalSlices,
     ...city.blocks,

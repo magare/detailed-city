@@ -47,6 +47,7 @@ const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-s
 const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
 const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|landslide-risk|restricted-area)`;
 const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
+const TOPOGRAPHY_ZONE_KIND = String.raw`(?:elevation-band|slope-area|retaining-condition|buildability-area)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -109,6 +110,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   ),
   entry('street-furniture', ['street-furniture-<road-id>-<side>-<index>-<type>'], [exact(String.raw`street-furniture-${ROAD_ID}-${SIDEWALK_SIDE}-\d+-${STREET_FURNITURE_TYPE}`)], required(['sidewalk'])),
   entry('street-light', ['street-light-<road-id>-<side>-<index>'], [exact(String.raw`street-light-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)], required(['sidewalk'])),
+  entry(
+    'topography-zone',
+    ['topography-zone-<zone-kind>-<index>'],
+    [exact(String.raw`topography-zone-${TOPOGRAPHY_ZONE_KIND}-\d+`)],
+    none()
+  ),
   entry('traffic-vehicle', ['traffic-vehicle-<index>'], [exact(String.raw`traffic-vehicle-\d+`)], required(['road-segment'])),
   entry(
     'traffic-calming-device',

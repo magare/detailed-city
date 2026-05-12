@@ -58,6 +58,7 @@ type GeneratedCityForValidation = Pick<
   | 'sidewalkGraph'
   | 'streetFurniture'
   | 'streetLights'
+  | 'topographyZones'
   | 'trafficCalmingDevices'
   | 'trees'
   | 'verticalSlices'
@@ -72,6 +73,7 @@ type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationConstraint = GeneratedCityForValidation['constraints'][number];
 type ValidationDistrict = GeneratedCityForValidation['districts'][number];
 type ValidationHazardZone = GeneratedCityForValidation['hazardZones'][number];
+type ValidationTopographyZone = GeneratedCityForValidation['topographyZones'][number];
 type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][number];
 type ValidationCrossing = GeneratedCityForValidation['crossings'][number];
 type ValidationIntersection = GeneratedCityForValidation['intersections'][number];
@@ -208,6 +210,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateWaterways(city, issues);
   validateWaterfrontEdges(city, issues);
   validateHazardZones(city, issues);
+  validateTopographyZones(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
   );
@@ -234,6 +237,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         message: `Road declares ${road.laneCount} lanes but generated ${road.lanes.length}.`
       });
     }
+
+    validateRoadGroundProfile(road, city.topographyZones, issues);
 
     const profile = streetProfilesById.get(road.streetProfileId);
     if (!profile) {
@@ -1776,6 +1781,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     }
   }
 
+  validateBuildingTopography(city, issues);
+
   validateConstraints(city, issues, { parcelsById, roadsById });
   validateHazardZoneConflicts(city, issues);
   validateResilienceGoals(city, issues, { roadsById });
@@ -2511,6 +2518,20 @@ function validateAdministrativeBoundaries(city: GeneratedCityForValidation, issu
     validateLandObjectBoundaryMembership(block, block.center, boundariesById, issues);
   }
 
+  for (const topographyZone of city.topographyZones) {
+    validatePoint2D(city.geospatial, topographyZone.id, 'center', topographyZone.center, issues);
+    validatePolygon2D(city.geospatial, topographyZone.id, 'boundary', topographyZone.boundary, issues);
+    validateHeightValue(city.geospatial, topographyZone.id, 'minElevationMeters', topographyZone.minElevationMeters, issues);
+    validateHeightValue(city.geospatial, topographyZone.id, 'maxElevationMeters', topographyZone.maxElevationMeters, issues);
+    validateHeightValue(
+      city.geospatial,
+      topographyZone.id,
+      'averageElevationMeters',
+      topographyZone.averageElevationMeters,
+      issues
+    );
+  }
+
   for (const parcel of city.parcels) {
     validateLandObjectBoundaryMembership(parcel, parcel.center, boundariesById, issues);
   }
@@ -2604,6 +2625,187 @@ function createAdministrativeBoundaryIssue(
     affectedPoint: boundary.center,
     affectedBoundary: boundary.boundary,
     suggestedFix: `Regenerate ${boundary.id} from deterministic land administrative boundary rules.`,
+    message
+  };
+}
+
+function validateTopographyZones(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const roadIds = new Set(city.roads.map((road) => road.id));
+  const buildingIds = new Set(city.buildings.map((building) => building.id));
+
+  if (city.topographyZones.length === 0) {
+    issues.push({
+      id: 'missing-topography-zones',
+      severity: 'error',
+      category: 'land',
+      message: 'Generated city must include topography zones before grade-aware mobility and building validation can run.'
+    });
+  }
+
+  for (const zone of city.topographyZones) {
+    if (
+      zone.minElevationMeters > zone.averageElevationMeters ||
+      zone.averageElevationMeters > zone.maxElevationMeters ||
+      zone.maxElevationMeters < zone.minElevationMeters
+    ) {
+      issues.push(createTopographyIssue(zone, 'invalid-elevation-range', 'Topography zone elevation min, average, and max must be ordered.'));
+    }
+
+    if (!isFiniteNumber(zone.slopePercent) || zone.slopePercent < 0 || zone.slopePercent > 45) {
+      issues.push(createTopographyIssue(zone, 'invalid-slope', 'Topography zone slope must be finite and below 45%.'));
+    }
+
+    if (!isFiniteNumber(zone.gradeLimitPercent) || zone.gradeLimitPercent <= 0 || zone.gradeLimitPercent > 20) {
+      issues.push(createTopographyIssue(zone, 'invalid-grade-limit', 'Topography zone grade limit must be positive and realistic.'));
+    }
+
+    for (const roadId of zone.relatedRoadIds) {
+      if (!roadIds.has(roadId)) {
+        issues.push(createTopographyIssue(zone, `missing-road-${roadId}`, `Topography zone references missing road ${roadId}.`));
+      }
+    }
+
+    for (const buildingId of zone.relatedBuildingIds) {
+      if (!buildingIds.has(buildingId)) {
+        issues.push(
+          createTopographyIssue(zone, `missing-building-${buildingId}`, `Topography zone references missing building ${buildingId}.`)
+        );
+      }
+    }
+  }
+}
+
+function validateRoadGroundProfile(
+  road: ValidationRoad,
+  topographyZones: readonly ValidationTopographyZone[],
+  issues: ValidationIssue[]
+): void {
+  const profile = road.groundProfile;
+  const topographyZoneIds = new Set(topographyZones.map((zone) => zone.id));
+
+  if (!profile) {
+    issues.push({
+      id: `missing-road-ground-profile-${road.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: road.id,
+      ...createIssueFocus(road.center, 'Sample road centerline endpoints against the generated topography model.'),
+      message: `Road ${road.id} must carry a topography-derived ground profile.`
+    });
+    return;
+  }
+
+  if (
+    !isFiniteNumber(profile.startElevationMeters) ||
+    !isFiniteNumber(profile.endElevationMeters) ||
+    !isFiniteNumber(profile.averageElevationMeters) ||
+    profile.minElevationMeters > profile.averageElevationMeters ||
+    profile.averageElevationMeters > profile.maxElevationMeters
+  ) {
+    issues.push({
+      id: `invalid-road-ground-elevation-${road.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: road.id,
+      ...createIssueFocus(road.center, 'Regenerate road ground elevations from deterministic topography samples.'),
+      message: `Road ${road.id} has an invalid ground elevation profile.`
+    });
+  }
+
+  if (!isFiniteNumber(profile.maxGradePercent) || profile.maxGradePercent < 0 || profile.maxGradePercent > 12) {
+    issues.push({
+      id: `impossible-road-grade-${road.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: road.id,
+      ...createIssueFocus(road.center, 'Regrade the road or assign retaining/topography mitigation before routing.'),
+      message: `Road ${road.id} grade ${profile.maxGradePercent}% exceeds the maximum supported generated road grade.`
+    });
+  }
+
+  if (profile.topographyZoneIds.length === 0 || profile.topographyZoneIds.some((zoneId) => !topographyZoneIds.has(zoneId))) {
+    issues.push({
+      id: `invalid-road-topography-zone-reference-${road.id}`,
+      severity: 'error',
+      category: 'land',
+      objectId: road.id,
+      ...createIssueFocus(road.center, 'Reference existing topography zones from each road ground profile.'),
+      message: `Road ${road.id} must reference existing topography zones.`
+    });
+  }
+}
+
+function validateBuildingTopography(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const topographyZoneIds = new Set(city.topographyZones.map((zone) => zone.id));
+
+  for (const building of city.buildings) {
+    const groundElevationMeters = building.groundElevationMeters;
+    const finishedFloorElevationMeters = building.finishedFloorElevationMeters;
+    const maxFootprintGradePercent = building.maxFootprintGradePercent;
+
+    if (
+      typeof groundElevationMeters !== 'number' ||
+      typeof finishedFloorElevationMeters !== 'number' ||
+      typeof maxFootprintGradePercent !== 'number' ||
+      !isFiniteNumber(groundElevationMeters) ||
+      !isFiniteNumber(finishedFloorElevationMeters) ||
+      !isFiniteNumber(maxFootprintGradePercent)
+    ) {
+      issues.push({
+        id: `missing-building-ground-profile-${building.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Sample building footprint against deterministic topography before massing validation.'),
+        message: `Building ${building.id} must carry ground elevation, finished floor elevation, and footprint grade.`
+      });
+      continue;
+    }
+
+    if (finishedFloorElevationMeters < groundElevationMeters) {
+      issues.push({
+        id: `invalid-building-finished-floor-elevation-${building.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Raise the finished floor above the sampled ground elevation.'),
+        message: `Building ${building.id} finished floor cannot be below ground elevation.`
+      });
+    }
+
+    if (maxFootprintGradePercent > 14 || building.buildabilityFromLandform === 'restricted') {
+      issues.push({
+        id: `impossible-building-footprint-grade-${building.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Move the building footprint or add a retaining/buildability mitigation before construction.'),
+        message: `Building ${building.id} is on a restricted or too-steep landform.`
+      });
+    }
+
+    if (!building.topographyZoneIds?.length || building.topographyZoneIds.some((zoneId) => !topographyZoneIds.has(zoneId))) {
+      issues.push({
+        id: `invalid-building-topography-zone-reference-${building.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: building.id,
+        ...createIssueFocus(building.center, 'Reference existing topography zones from each building ground profile.'),
+        message: `Building ${building.id} must reference existing topography zones.`
+      });
+    }
+  }
+}
+
+function createTopographyIssue(zone: ValidationTopographyZone, suffix: string, message: string): ValidationIssue {
+  return {
+    id: `topography-${suffix}-${toIssueIdToken(zone.id)}`,
+    severity: 'error',
+    category: 'land',
+    objectId: zone.id,
+    affectedPoint: zone.center,
+    affectedBoundary: zone.boundary,
+    suggestedFix: `Regenerate ${zone.id} from deterministic land topography rules.`,
     message
   };
 }

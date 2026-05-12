@@ -16,6 +16,7 @@ import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
 import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
 import { HazardZoneGenerator } from './land/HazardZoneGenerator';
+import { TopographyGenerator } from './land/TopographyGenerator';
 import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
 import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
@@ -50,47 +51,57 @@ export class CityGenerator {
     const constraints = new ConstraintGenerator(this.config).create({ bounds, parks, waterways, roads });
     const excludedBlocks = terrainGenerator.getExcludedBlocks(bounds, constraints);
     const landAndBuildings = applyConstraintFilters(buildingGenerator.generate(bounds, excludedBlocks), constraints);
+    const topography = new TopographyGenerator().create({
+      bounds,
+      roads,
+      buildings: landAndBuildings.buildings
+    });
+    const roadsWithTopography = topography.roads;
+    const landAndBuildingsWithTopography = {
+      ...landAndBuildings,
+      buildings: topography.buildings
+    };
     const administrativeLand = new AdministrativeBoundaryGenerator().create({
       bounds,
-      districts: landAndBuildings.districts,
-      blocks: landAndBuildings.blocks,
-      parcels: landAndBuildings.parcels
+      districts: landAndBuildingsWithTopography.districts,
+      blocks: landAndBuildingsWithTopography.blocks,
+      parcels: landAndBuildingsWithTopography.parcels
     });
     const resilienceGoals = new ResilienceGoalGenerator(this.config).create({
       bounds,
       parks,
-      roads,
+      roads: roadsWithTopography,
       waterways
     });
     const waterfrontEdges = new WaterfrontGenerator().create({
       waterways,
-      roads,
+      roads: roadsWithTopography,
       parks
     });
     const hazardZones = new HazardZoneGenerator().create({
       bounds,
       constraints,
-      roads,
+      roads: roadsWithTopography,
       waterways,
-      zoningDistricts: landAndBuildings.zoningDistricts
+      zoningDistricts: landAndBuildingsWithTopography.zoningDistricts
     });
     const parkTrees = terrainGenerator.generateTreePlantings(parks);
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
-      roads,
+      roads: roadsWithTopography,
       intersections,
       crossings: pedestrianNetwork.crossings,
       sidewalkGraph: pedestrianNetwork.sidewalkGraph,
       parcels: administrativeLand.parcels,
-      buildings: landAndBuildings.buildings
+      buildings: landAndBuildingsWithTopography.buildings
     });
     const sliceTagged = applyDetailedStreetSliceTags(
       {
-        roads,
+        roads: roadsWithTopography,
         intersections,
         crossings: pedestrianNetwork.crossings,
         sidewalkGraph: pedestrianNetwork.sidewalkGraph,
         parcels: administrativeLand.parcels,
-        buildings: landAndBuildings.buildings
+        buildings: landAndBuildingsWithTopography.buildings
       },
       verticalSlices
     );
@@ -148,11 +159,12 @@ export class CityGenerator {
       performanceBudget: DEFAULT_PERFORMANCE_BUDGET,
       bounds,
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
-      districts: landAndBuildings.districts,
-      zoningDistricts: landAndBuildings.zoningDistricts,
+      districts: landAndBuildingsWithTopography.districts,
+      zoningDistricts: landAndBuildingsWithTopography.zoningDistricts,
       cityMetrics,
       constraints,
       hazardZones,
+      topographyZones: topography.topographyZones,
       resilienceGoals,
       blocks: administrativeLand.blocks,
       verticalSlices: verticalSlicesWithCurbs,

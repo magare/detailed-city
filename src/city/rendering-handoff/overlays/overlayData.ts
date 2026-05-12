@@ -19,6 +19,7 @@ export type CityOverlayId =
   | 'waterways'
   | 'waterfront'
   | 'hazards'
+  | 'topography'
   | 'city-metrics'
   | 'constraints'
   | 'resilience-goals'
@@ -72,6 +73,7 @@ export function createCityOverlayDatasets(
     createDataset('waterways', 'Waterways', 'domain-data', createWaterwayFeatures(city)),
     createDataset('waterfront', 'Waterfront', 'domain-data', createWaterfrontFeatures(city)),
     createDataset('hazards', 'Hazards', 'domain-data', createHazardFeatures(city)),
+    createDataset('topography', 'Topography', 'domain-data', createTopographyFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
@@ -280,6 +282,29 @@ function createWaterwayFeatures(city: GeneratedCity): CityOverlayFeature[] {
       }
     }))
   ]);
+}
+
+function createTopographyFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.topographyZones.map((zone) => ({
+    id: `overlay:topography:${zone.id}`,
+    overlayId: 'topography',
+    objectId: zone.id,
+    objectKind: zone.kind,
+    ownerDomain: zone.ownerDomain,
+    label: zone.name ?? zone.id,
+    geometry: { type: 'polygon', points: zone.boundary },
+    metadata: {
+      zoneKind: zone.zoneKind,
+      minElevationMeters: zone.minElevationMeters,
+      maxElevationMeters: zone.maxElevationMeters,
+      averageElevationMeters: zone.averageElevationMeters,
+      slopePercent: zone.slopePercent,
+      buildability: zone.buildability,
+      retainingCondition: zone.retainingCondition,
+      roads: zone.relatedRoadIds.length,
+      buildings: zone.relatedBuildingIds.length
+    }
+  }));
 }
 
 function createWaterfrontFeatures(city: GeneratedCity): CityOverlayFeature[] {

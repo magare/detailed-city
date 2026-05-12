@@ -33,6 +33,7 @@ import type {
   StreetLightContract,
   StreetHierarchy,
   ParcelContract,
+  TopographyZoneContract,
   TrafficVehicleContract,
   TrafficCalmingDeviceContract,
   ValidationResult,
@@ -194,6 +195,8 @@ export interface ResilienceGoalPlan extends ResilienceGoalContract {}
 
 export interface CityMetricPlan extends CityMetricContract {}
 
+export interface TopographyZonePlan extends TopographyZoneContract {}
+
 export interface ParkPatch extends CityObjectBase<'park'> {
   center: Point2D;
   size: { x: number; z: number };
@@ -241,6 +244,7 @@ export type GeneratedCityObject =
   | CityMetricPlan
   | ConstraintPlan
   | HazardZonePlan
+  | TopographyZonePlan
   | ResilienceGoalPlan
   | DistrictPlan
   | ZoningDistrictPlan
@@ -284,6 +288,7 @@ export interface GeneratedCity {
   hazardZones: HazardZonePlan[];
   resilienceGoals: ResilienceGoalPlan[];
   cityMetrics: CityMetricPlan[];
+  topographyZones: TopographyZonePlan[];
   blocks: BlockPlan[];
   verticalSlices: DetailedStreetSlice[];
   roads: RoadSegment[];

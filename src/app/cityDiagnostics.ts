@@ -59,6 +59,7 @@ export interface CityDiagnostics {
   readonly waterwayNetwork: WaterwayNetworkDiagnostics;
   readonly waterfrontModel: WaterfrontModelDiagnostics;
   readonly hazardLayer: HazardLayerDiagnostics;
+  readonly topography: TopographyDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly constraintLayer: ConstraintLayerDiagnostics;
@@ -138,6 +139,9 @@ export interface CityDiagnostics {
     readonly criticalHazards: number;
     readonly noBuildHazards: number;
     readonly mitigationHazards: number;
+    readonly topographyZones: number;
+    readonly roadsWithGroundProfiles: number;
+    readonly buildingsWithGroundProfiles: number;
     readonly districtUseMixRules: number;
     readonly districtLandmarkTargets: number;
     readonly districtTransitionBuffers: number;
@@ -333,6 +337,20 @@ export interface HazardLayerDiagnostics {
   readonly mitigationKinds: readonly string[];
 }
 
+export interface TopographyDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<string, number>>;
+  readonly minElevationMeters: number;
+  readonly maxElevationMeters: number;
+  readonly averageSlopePercent: number;
+  readonly maxRoadGradePercent: number;
+  readonly maxBuildingFootprintGradePercent: number;
+  readonly retainingRequiredZones: number;
+  readonly limitedBuildabilityZones: number;
+  readonly roadsWithGroundProfiles: number;
+  readonly buildingsWithGroundProfiles: number;
+}
+
 export interface ConstraintLayerDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -395,6 +413,7 @@ export function createCityDiagnostics(
   const waterwayNetwork = createWaterwayNetworkDiagnostics(city);
   const waterfrontModel = createWaterfrontModelDiagnostics(city);
   const hazardLayer = createHazardLayerDiagnostics(city);
+  const topography = createTopographyDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const constraintLayer = createConstraintLayerDiagnostics(city);
@@ -429,6 +448,7 @@ export function createCityDiagnostics(
     waterwayNetwork,
     waterfrontModel,
     hazardLayer,
+    topography,
     districtCharacter,
     cityMetrics,
     constraintLayer,
@@ -499,6 +519,9 @@ export function createCityDiagnostics(
       criticalHazards: hazardLayer.criticalHazards,
       noBuildHazards: hazardLayer.noBuildHazards,
       mitigationHazards: hazardLayer.mitigationRequiredHazards,
+      topographyZones: topography.total,
+      roadsWithGroundProfiles: topography.roadsWithGroundProfiles,
+      buildingsWithGroundProfiles: topography.buildingsWithGroundProfiles,
       districtUseMixRules: districtCharacter.useMixRules,
       districtLandmarkTargets: districtCharacter.landmarkTargets,
       districtTransitionBuffers: districtCharacter.transitionBuffers,
@@ -897,6 +920,41 @@ function createHazardLayerDiagnostics(city: GeneratedCity): HazardLayerDiagnosti
     relatedWaterwayHazards: city.hazardZones.filter((hazard) => hazard.relatedWaterwayIds.length > 0).length,
     relatedZoningHazards: city.hazardZones.filter((hazard) => hazard.relatedZoningDistrictIds.length > 0).length,
     mitigationKinds: [...mitigationKinds].sort()
+  };
+}
+
+function createTopographyDiagnostics(city: GeneratedCity): TopographyDiagnostics {
+  const byKind: Record<string, number> = {};
+  let minElevationMeters = Number.POSITIVE_INFINITY;
+  let maxElevationMeters = Number.NEGATIVE_INFINITY;
+  let slopeTotal = 0;
+
+  for (const zone of city.topographyZones) {
+    byKind[zone.zoneKind] = (byKind[zone.zoneKind] ?? 0) + 1;
+    minElevationMeters = Math.min(minElevationMeters, zone.minElevationMeters);
+    maxElevationMeters = Math.max(maxElevationMeters, zone.maxElevationMeters);
+    slopeTotal += zone.slopePercent;
+  }
+
+  const roadGrades = city.roads.flatMap((road) => (road.groundProfile ? [road.groundProfile.maxGradePercent] : []));
+  const buildingGrades = city.buildings.flatMap((building) =>
+    building.maxFootprintGradePercent !== undefined ? [building.maxFootprintGradePercent] : []
+  );
+
+  return {
+    total: city.topographyZones.length,
+    byKind,
+    minElevationMeters: Number((Number.isFinite(minElevationMeters) ? minElevationMeters : 0).toFixed(2)),
+    maxElevationMeters: Number((Number.isFinite(maxElevationMeters) ? maxElevationMeters : 0).toFixed(2)),
+    averageSlopePercent: Number((slopeTotal / Math.max(1, city.topographyZones.length)).toFixed(2)),
+    maxRoadGradePercent: Number(Math.max(0, ...roadGrades).toFixed(2)),
+    maxBuildingFootprintGradePercent: Number(Math.max(0, ...buildingGrades).toFixed(2)),
+    retainingRequiredZones: city.topographyZones.filter((zone) => zone.retainingCondition === 'required').length,
+    limitedBuildabilityZones: city.topographyZones.filter(
+      (zone) => zone.buildability === 'limited' || zone.buildability === 'restricted'
+    ).length,
+    roadsWithGroundProfiles: city.roads.filter((road) => road.groundProfile).length,
+    buildingsWithGroundProfiles: city.buildings.filter((building) => building.groundElevationMeters !== undefined).length
   };
 }
 

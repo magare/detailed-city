@@ -31,6 +31,7 @@ export type CityObjectKind =
   | 'sidewalk-graph-node'
   | 'street-furniture'
   | 'street-light'
+  | 'topography-zone'
   | 'traffic-vehicle'
   | 'traffic-calming-device'
   | 'tree-planting'
@@ -475,6 +476,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Traffic agents render at route-aware network detail and can gain near-view variants later.'
+    },
+    {
+      objectKind: 'topography-zone',
+      scope: 'terrain',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0', 'lod1'],
+      description: 'Topography zones define elevation bands, slopes, retaining conditions, and buildability hooks for land, roads, and buildings.'
     },
     {
       objectKind: 'traffic-calming-device',
@@ -1205,6 +1213,37 @@ export interface RoadSegmentContract extends CityObjectBase<'road-segment'> {
   readonly transitEligible: boolean;
   readonly lanes: readonly LaneContract[];
   readonly sidewalks: readonly SidewalkContract[];
+  readonly groundProfile?: GroundProfileContract;
+}
+
+export type TopographyZoneKind = 'elevation-band' | 'slope-area' | 'retaining-condition' | 'buildability-area';
+export type LandformBuildability = 'high' | 'moderate' | 'limited' | 'restricted';
+export type RetainingCondition = 'none' | 'recommended' | 'required';
+
+export interface GroundProfileContract {
+  readonly startElevationMeters: number;
+  readonly endElevationMeters: number;
+  readonly averageElevationMeters: number;
+  readonly minElevationMeters: number;
+  readonly maxElevationMeters: number;
+  readonly maxGradePercent: number;
+  readonly topographyZoneIds: readonly CityId[];
+}
+
+export interface TopographyZoneContract extends CityObjectBase<'topography-zone'> {
+  readonly zoneKind: TopographyZoneKind;
+  readonly center: Point2D;
+  readonly boundary: Polygon2D;
+  readonly minElevationMeters: number;
+  readonly maxElevationMeters: number;
+  readonly averageElevationMeters: number;
+  readonly slopePercent: number;
+  readonly aspectDegrees: number;
+  readonly buildability: LandformBuildability;
+  readonly retainingCondition: RetainingCondition;
+  readonly gradeLimitPercent: number;
+  readonly relatedRoadIds: readonly CityId[];
+  readonly relatedBuildingIds: readonly CityId[];
 }
 
 export type IntersectionControlExpectation = 'signalized' | 'stop-controlled' | 'uncontrolled';
@@ -1316,6 +1355,11 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly primaryFrontageSide: BuildingFrontageSide;
   readonly entranceIds: readonly CityId[];
   readonly publicEntranceIds: readonly CityId[];
+  readonly groundElevationMeters?: number;
+  readonly finishedFloorElevationMeters?: number;
+  readonly maxFootprintGradePercent?: number;
+  readonly topographyZoneIds?: readonly CityId[];
+  readonly buildabilityFromLandform?: LandformBuildability;
 }
 
 export type ActiveFrontageUse = Extract<LandUse, 'hospitality' | 'mixed-use' | 'retail'>;

@@ -21,7 +21,7 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'terrain',
     name: 'Terrain Render Layer',
-    objectKinds: ['waterway'] as const
+    objectKinds: ['waterway', 'topography-zone'] as const
   },
   {
     id: 'networks',
