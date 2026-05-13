@@ -23,7 +23,7 @@ test('street lights are deterministic and bind to detailed street curb zones', (
     heightMeters: 6.2,
     coverageRadiusMeters: 18,
     colorTemperatureKelvin: 3000,
-    powerCircuitId: 'power-circuit-placeholder-road-v-6',
+    powerCircuitId: 'power-circuit-road-v-6-street-lighting',
     nightLighting: {
       enabledByDefault: false,
       emissiveIntensity: 0.82,
@@ -67,12 +67,18 @@ test('validation warns when street light power circuit placeholders are missing'
     })
   });
 
-  expect(validation.passed).toBe(true);
+  expect(validation.passed).toBe(false);
   expect(validation.issues).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         id: `missing-street-light-power-circuit-${city.streetLights[0].id}`,
         severity: 'warning',
+        category: 'utility-coverage',
+        objectId: city.streetLights[0].id
+      }),
+      expect.objectContaining({
+        id: `unserved-street-light-power-${city.streetLights[0].id}`,
+        severity: 'error',
         category: 'utility-coverage',
         objectId: city.streetLights[0].id
       })

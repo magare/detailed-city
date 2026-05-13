@@ -1326,6 +1326,41 @@ export type UtilityNodeRole =
 export type UtilityEdgeRole = 'collection-route' | 'conduit' | 'feeder' | 'main' | 'service-lateral';
 export type UtilityAccessPointKind = 'building-service' | 'parcel-easement' | 'roadside-vault' | 'surface-cover';
 export type UtilityCapacityUnit = 'kva' | 'liters-per-second' | 'mbps' | 'tons-per-day';
+export type PowerGridEquipmentKind =
+  | 'backup-supply'
+  | 'meter'
+  | 'street-light-circuit'
+  | 'substation'
+  | 'switchgear'
+  | 'transformer';
+
+export interface PowerGridNodeContract {
+  readonly equipmentKind: PowerGridEquipmentKind;
+  readonly voltageKv: number;
+  readonly circuitId: CityId;
+  readonly feederId?: CityId;
+  readonly backupSupplyId?: CityId;
+  readonly servedObjectIds: readonly CityId[];
+}
+
+export interface PowerGridEdgeContract {
+  readonly circuitId: CityId;
+  readonly fromEquipmentKind: PowerGridEquipmentKind;
+  readonly toEquipmentKind: PowerGridEquipmentKind;
+  readonly voltageKv: number;
+  readonly phase: 'single' | 'three';
+  readonly normallyOpen: boolean;
+}
+
+export interface BuildingPowerServiceContract {
+  readonly serviceNodeId: CityId;
+  readonly transformerNodeId: CityId;
+  readonly meterId: CityId;
+  readonly serviceLateralEdgeId: CityId;
+  readonly circuitId: CityId;
+  readonly outageDomainId: CityId;
+  readonly estimatedPeakKva: number;
+}
 
 export interface UtilityCapacityContract {
   readonly value: number;
@@ -1365,6 +1400,7 @@ export interface UtilityNodeContract extends CityObjectBase<'utility-node'> {
   readonly ownerEntityId: CityId;
   readonly connectedEdgeIds: readonly CityId[];
   readonly renderBindingId: CityId;
+  readonly powerGrid?: PowerGridNodeContract;
 }
 
 export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
@@ -1380,6 +1416,7 @@ export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
   readonly outageDomainId: CityId;
   readonly ownerEntityId: CityId;
   readonly renderBindingId: CityId;
+  readonly powerGrid?: PowerGridEdgeContract;
 }
 
 export interface ParcelFrontagePriorityContract {
@@ -2167,6 +2204,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly topographyZoneIds?: readonly CityId[];
   readonly buildabilityFromLandform?: LandformBuildability;
   readonly soilGeologyZoneIds?: readonly CityId[];
+  readonly powerService?: BuildingPowerServiceContract;
 }
 
 export type ActiveFrontageUse = Extract<LandUse, 'hospitality' | 'mixed-use' | 'retail'>;

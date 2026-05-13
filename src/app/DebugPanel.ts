@@ -132,6 +132,10 @@ export class DebugPanel {
         `${diagnostics.utilityBase.nodes} nodes, ${diagnostics.utilityBase.edges} edges, ${diagnostics.utilityBase.networkTypes} networks`
       ),
       createMetric(
+        'Power',
+        `${diagnostics.powerGrid.nodes} nodes, ${diagnostics.powerGrid.transformers} transformers, ${diagnostics.powerGrid.streetLightsServed} lights`
+      ),
+      createMetric(
         'Zoning',
         `${diagnostics.zoningModel.total} districts, ${diagnostics.zoningModel.formBasedDistricts} form, ${diagnostics.zoningModel.parcelsWithZoning} parcels`
       ),

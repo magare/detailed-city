@@ -467,6 +467,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateSoilGeologyZones(city, issues);
   validateCadastreRecords(city, issues);
   validateUtilityBase(city, issues);
+  validatePowerGrid(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -3510,6 +3511,122 @@ function createUtilityEdgeIssue(edge: ValidationUtilityEdge, suffix: string, mes
     affectedPoint: edge.centerline[0],
     message
   };
+}
+
+function validatePowerGrid(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const powerNodes = city.utilityNodes.filter((node) => node.utilityType === 'power');
+  const powerEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'power');
+  const powerNodesById = new Map(powerNodes.map((node) => [node.id, node]));
+  const powerEdgesById = new Map(powerEdges.map((edge) => [edge.id, edge]));
+  const circuitIds = new Set<string>();
+  const equipmentKinds = new Set(powerNodes.map((node) => node.powerGrid?.equipmentKind).filter(Boolean));
+  const streetLightCircuitNode = powerNodes.find((node) => node.powerGrid?.equipmentKind === 'street-light-circuit');
+
+  for (const node of powerNodes) {
+    if (!node.powerGrid) {
+      issues.push(createUtilityNodeIssue(node, 'missing-power-grid-metadata', `Power node ${node.id} must expose power grid metadata.`));
+      continue;
+    }
+    circuitIds.add(node.powerGrid.circuitId);
+    if (node.powerGrid.voltageKv <= 0 || node.capacity.unit !== 'kva') {
+      issues.push(createUtilityNodeIssue(node, 'invalid-power-capacity', `Power node ${node.id} must expose positive kVA capacity and voltage.`));
+    }
+    if (node.powerGrid.servedObjectIds.length === 0 && node.powerGrid.equipmentKind !== 'switchgear') {
+      issues.push(createUtilityNodeIssue(node, 'missing-served-objects', `Power node ${node.id} must list served equipment or service objects.`));
+    }
+    if (node.powerGrid.backupSupplyId && !powerNodesById.has(node.powerGrid.backupSupplyId)) {
+      issues.push(createUtilityNodeIssue(node, 'missing-backup-supply', `Power node ${node.id} references missing backup supply ${node.powerGrid.backupSupplyId}.`));
+    }
+  }
+
+  for (const edge of powerEdges) {
+    if (!edge.powerGrid) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-power-grid-metadata', `Power edge ${edge.id} must expose power grid metadata.`));
+      continue;
+    }
+    circuitIds.add(edge.powerGrid.circuitId);
+    const fromNode = powerNodesById.get(edge.fromNodeId);
+    const toNode = powerNodesById.get(edge.toNodeId);
+    if (!fromNode || !toNode) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-power-node-reference', `Power edge ${edge.id} must connect generated power nodes.`));
+      continue;
+    }
+    if (edge.powerGrid.voltageKv <= 0 || edge.capacity.unit !== 'kva') {
+      issues.push(createUtilityEdgeIssue(edge, 'invalid-power-capacity', `Power edge ${edge.id} must expose positive kVA capacity and voltage.`));
+    }
+    if (
+      edge.powerGrid.fromEquipmentKind !== fromNode.powerGrid?.equipmentKind ||
+      edge.powerGrid.toEquipmentKind !== toNode.powerGrid?.equipmentKind
+    ) {
+      issues.push(createUtilityEdgeIssue(edge, 'equipment-kind-mismatch', `Power edge ${edge.id} equipment metadata must match endpoint nodes.`));
+    }
+  }
+
+  const requiredPowerEquipmentKinds = ['substation', 'switchgear', 'transformer', 'meter', 'street-light-circuit', 'backup-supply'] as const;
+  for (const requiredKind of requiredPowerEquipmentKinds) {
+    if (!equipmentKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-power-equipment-${requiredKind}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        message: `Power grid must include ${requiredKind} equipment.`
+      });
+    }
+  }
+
+  for (const streetLight of city.streetLights) {
+    if (!streetLight.powerCircuitId || !circuitIds.has(streetLight.powerCircuitId)) {
+      issues.push({
+        id: `unserved-street-light-power-${streetLight.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: streetLight.id,
+        ...createIssueFocus(streetLight.position, `Assign ${streetLight.id} to a generated street-light power circuit.`),
+        message: `Street light ${streetLight.id} must reference a generated power circuit.`
+      });
+    }
+    if (streetLightCircuitNode && !streetLightCircuitNode.powerGrid?.servedObjectIds.includes(streetLight.id)) {
+      issues.push({
+        id: `street-light-not-served-by-power-circuit-${streetLight.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: streetLight.id,
+        ...createIssueFocus(streetLight.position, `Add ${streetLight.id} to the street-light circuit served object list.`),
+        message: `Street light ${streetLight.id} must be listed by the street-light circuit node.`
+      });
+    }
+  }
+
+  for (const building of city.buildings) {
+    const powerService = building.powerService;
+    if (!powerService) {
+      issues.push({
+        id: `missing-building-power-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Attach ${building.id} to generated power service metadata.`),
+        message: `Building ${building.id} must reference generated power service.`
+      });
+      continue;
+    }
+    if (
+      !powerNodesById.has(powerService.serviceNodeId) ||
+      !powerNodesById.has(powerService.transformerNodeId) ||
+      !powerEdgesById.has(powerService.serviceLateralEdgeId) ||
+      !circuitIds.has(powerService.circuitId) ||
+      powerService.estimatedPeakKva <= 0
+    ) {
+      issues.push({
+        id: `invalid-building-power-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Regenerate power service references for ${building.id}.`),
+        message: `Building ${building.id} must reference valid power nodes, lateral edge, circuit, and positive demand.`
+      });
+    }
+  }
 }
 
 function isPointInsideUtilityServiceArea(

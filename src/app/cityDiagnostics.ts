@@ -67,6 +67,7 @@ export interface CityDiagnostics {
   readonly parcelModel: ParcelModelDiagnostics;
   readonly cadastreModel: CadastreModelDiagnostics;
   readonly utilityBase: UtilityBaseDiagnostics;
+  readonly powerGrid: PowerGridDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -156,6 +157,13 @@ export interface CityDiagnostics {
     readonly utilityCriticalObjects: number;
     readonly utilityBackupNodes: number;
     readonly utilityHighCriticalityNodes: number;
+    readonly powerGridNodes: number;
+    readonly powerGridEdges: number;
+    readonly powerTransformers: number;
+    readonly powerMeters: number;
+    readonly powerStreetLightCircuits: number;
+    readonly buildingsWithPowerService: number;
+    readonly streetLightsWithPowerCircuit: number;
     readonly parcelsWithConstraints: number;
     readonly primaryFrontageParcels: number;
     readonly zoningDistricts: number;
@@ -393,6 +401,21 @@ export interface UtilityBaseDiagnostics {
   readonly totalCapacityByUnit: Readonly<Record<string, number>>;
   readonly serviceAreaBoundaryIds: readonly string[];
   readonly ownerEntityIds: readonly string[];
+}
+
+export interface PowerGridDiagnostics {
+  readonly nodes: number;
+  readonly edges: number;
+  readonly transformers: number;
+  readonly switchgear: number;
+  readonly meters: number;
+  readonly streetLightCircuits: number;
+  readonly backupSupplyNodes: number;
+  readonly buildingsServed: number;
+  readonly streetLightsServed: number;
+  readonly totalCapacityKva: number;
+  readonly circuitIds: readonly string[];
+  readonly outageDomainIds: readonly string[];
 }
 
 export interface ZoningModelDiagnostics {
@@ -840,6 +863,7 @@ export function createCityDiagnostics(
   const parcelModel = createParcelModelDiagnostics(city);
   const cadastreModel = createCadastreModelDiagnostics(city);
   const utilityBase = createUtilityBaseDiagnostics(city);
+  const powerGrid = createPowerGridDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -896,6 +920,7 @@ export function createCityDiagnostics(
     parcelModel,
     cadastreModel,
     utilityBase,
+    powerGrid,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -976,6 +1001,13 @@ export function createCityDiagnostics(
       utilityCriticalObjects: utilityBase.criticalObjects,
       utilityBackupNodes: utilityBase.backupNodes,
       utilityHighCriticalityNodes: utilityBase.highCriticalityNodes,
+      powerGridNodes: powerGrid.nodes,
+      powerGridEdges: powerGrid.edges,
+      powerTransformers: powerGrid.transformers,
+      powerMeters: powerGrid.meters,
+      powerStreetLightCircuits: powerGrid.streetLightCircuits,
+      buildingsWithPowerService: powerGrid.buildingsServed,
+      streetLightsWithPowerCircuit: powerGrid.streetLightsServed,
       parcelsWithConstraints: parcelModel.parcelsWithConstraints,
       primaryFrontageParcels: parcelModel.primaryFrontageParcels,
       zoningDistricts: zoningModel.total,
@@ -1321,6 +1353,41 @@ function createUtilityBaseDiagnostics(city: GeneratedCity): UtilityBaseDiagnosti
     totalCapacityByUnit,
     serviceAreaBoundaryIds: [...serviceAreaBoundaryIds].sort(),
     ownerEntityIds: [...ownerEntityIds].sort()
+  };
+}
+
+function createPowerGridDiagnostics(city: GeneratedCity): PowerGridDiagnostics {
+  const powerNodes = city.utilityNodes.filter((node) => node.utilityType === 'power');
+  const powerEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'power');
+  const circuitIds = new Set<string>();
+  const outageDomainIds = new Set<string>();
+
+  for (const node of powerNodes) {
+    if (node.powerGrid) {
+      circuitIds.add(node.powerGrid.circuitId);
+    }
+    outageDomainIds.add(node.outage.outageDomainId);
+  }
+  for (const edge of powerEdges) {
+    if (edge.powerGrid) {
+      circuitIds.add(edge.powerGrid.circuitId);
+    }
+    outageDomainIds.add(edge.outageDomainId);
+  }
+
+  return {
+    nodes: powerNodes.length,
+    edges: powerEdges.length,
+    transformers: powerNodes.filter((node) => node.powerGrid?.equipmentKind === 'transformer').length,
+    switchgear: powerNodes.filter((node) => node.powerGrid?.equipmentKind === 'switchgear').length,
+    meters: powerNodes.filter((node) => node.powerGrid?.equipmentKind === 'meter').length,
+    streetLightCircuits: powerNodes.filter((node) => node.powerGrid?.equipmentKind === 'street-light-circuit').length,
+    backupSupplyNodes: powerNodes.filter((node) => node.powerGrid?.equipmentKind === 'backup-supply').length,
+    buildingsServed: city.buildings.filter((building) => Boolean(building.powerService)).length,
+    streetLightsServed: city.streetLights.filter((light) => light.powerCircuitId && circuitIds.has(light.powerCircuitId)).length,
+    totalCapacityKva: powerNodes.reduce((sum, node) => sum + (node.capacity.unit === 'kva' ? node.capacity.value : 0), 0),
+    circuitIds: [...circuitIds].sort(),
+    outageDomainIds: [...outageDomainIds].sort()
   };
 }
 

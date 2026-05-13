@@ -26,7 +26,9 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('18 admin, 4 wards, 5 neighborhoods');
   expect(panelText).toContain('Blocks');
   expect(panelText).toContain('Utilities');
-  expect(panelText).toContain('6 nodes, 5 edges, 6 networks');
+  expect(panelText).toContain('13 nodes, 11 edges, 6 networks');
+  expect(panelText).toContain('Power');
+  expect(panelText).toContain('8 nodes, 3 transformers, 12 lights');
   expect(panelText).toContain('Constraints');
   expect(panelText).toContain('11 rules, 3 no-build');
   expect(panelText).toContain('Hazards');
@@ -50,7 +52,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('5923/5923 tagged');
+  expect(panelText).toContain('5936/5936 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -78,7 +80,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Assets');
   expect(panelText).toContain('46 assets, 46 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 4966 objects');
+  expect(panelText).toContain('6 formats, 4979 objects');
   expect(panelText).toContain('Registry');
   expect(panelText).toContain('48 kinds');
   expect(panelText).toContain('Groups');
