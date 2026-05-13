@@ -45,8 +45,9 @@ test('generated city object index is deterministic and resolves road children', 
   expect(firstCity.objectIndex.countsByKind['traffic-calming-device']).toBe(12);
   expect(firstCity.objectIndex.countsByKind['weather-preset']).toBe(5);
   expect(firstCity.objectIndex.countsByKind['solar-shading-sample']).toBe(24);
-  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(46);
-  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(46);
+  expect(firstCity.objectIndex.countsByKind['urban-heat-zone']).toBe(17);
+  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(47);
+  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(47);
   expect(firstCity.objectIndex.objectsById['slice-detailed-street-road-v-6']).toMatchObject({
     id: 'slice-detailed-street-road-v-6',
     kind: 'vertical-slice',
@@ -73,7 +74,8 @@ test('generated city object index is deterministic and resolves road children', 
     'road-v-0-lane-2',
     'road-v-0-lane-3',
     'road-v-0-sidewalk-left',
-    'road-v-0-sidewalk-right'
+    'road-v-0-sidewalk-right',
+    'urban-heat-public-route-risk-0'
   ]);
 
   const [firstParcel] = firstCity.parcels;

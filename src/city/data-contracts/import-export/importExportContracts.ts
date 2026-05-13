@@ -229,6 +229,7 @@ export interface ProceduralSeedDomainSections {
   readonly developmentPhases: GeneratedCity['developmentPhases'];
   readonly weatherPresets: GeneratedCity['weatherPresets'];
   readonly solarShadingSamples: GeneratedCity['solarShadingSamples'];
+  readonly urbanHeatZones: GeneratedCity['urbanHeatZones'];
   readonly constraints: GeneratedCity['constraints'];
   readonly hazardZones: GeneratedCity['hazardZones'];
   readonly topographyZones: GeneratedCity['topographyZones'];
@@ -268,6 +269,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly developmentPhases: number;
   readonly weatherPresets: number;
   readonly solarShadingSamples: number;
+  readonly urbanHeatZones: number;
   readonly constraints: number;
   readonly hazardZones: number;
   readonly topographyZones: number;
@@ -385,6 +387,7 @@ export function createProceduralSeedJsonExport(
       developmentPhases: city.developmentPhases,
       weatherPresets: city.weatherPresets,
       solarShadingSamples: city.solarShadingSamples,
+      urbanHeatZones: city.urbanHeatZones,
       constraints: city.constraints,
       hazardZones: city.hazardZones,
       topographyZones: city.topographyZones,
@@ -530,6 +533,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'developmentPhases'
     | 'weatherPresets'
     | 'solarShadingSamples'
+    | 'urbanHeatZones'
     | 'constraints'
     | 'hazardZones'
     | 'topographyZones'
@@ -564,6 +568,7 @@ export function createProceduralSeedDomainSectionCounts(
     developmentPhases: city.developmentPhases.length,
     weatherPresets: city.weatherPresets.length,
     solarShadingSamples: city.solarShadingSamples.length,
+    urbanHeatZones: city.urbanHeatZones.length,
     constraints: city.constraints.length,
     hazardZones: city.hazardZones.length,
     topographyZones: city.topographyZones.length,
@@ -615,6 +620,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'developmentPhases') +
     getArrayLength(city, 'weatherPresets') +
     getArrayLength(city, 'solarShadingSamples') +
+    getArrayLength(city, 'urbanHeatZones') +
     getArrayLength(city, 'constraints') +
     getArrayLength(city, 'hazardZones') +
     getArrayLength(city, 'topographyZones') +

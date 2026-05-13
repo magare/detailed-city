@@ -27,6 +27,7 @@ test('debug overlay datasets are generated from domain data', () => {
     'phasing',
     'weather-presets',
     'solar-shading',
+    'urban-heat',
     'city-metrics',
     'civic-anchors',
     'community-anchors',
@@ -83,6 +84,19 @@ test('debug overlay datasets are generated from domain data', () => {
         metadata: expect.objectContaining({
           sampleKind: 'roof-solar',
           weatherPresetId: 'weather-preset-coastal-clear'
+        })
+      })
+    ])
+  );
+  expect(overlays.find((overlay) => overlay.id === 'urban-heat')?.featureCount).toBe(17);
+  expect(overlays.find((overlay) => overlay.id === 'urban-heat')?.features).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        objectKind: 'urban-heat-zone',
+        ownerDomain: 'environment',
+        metadata: expect.objectContaining({
+          zoneKind: 'heat-island',
+          riskLevel: 'high'
         })
       })
     ])

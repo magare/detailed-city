@@ -52,6 +52,7 @@ const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|prome
 const WATERFRONT_OPEN_SPACE_KIND = String.raw`(?:boardwalk|ecological-edge|overlook|pier-landing|promenade|water-access)`;
 const WEATHER_PRESET_KIND = String.raw`(?:clear|cloudy|rain|fog|monsoon)`;
 const SOLAR_SHADING_SAMPLE_KIND = String.raw`(?:roof-solar|plaza-comfort|park-comfort|waterfront-comfort)`;
+const URBAN_HEAT_ZONE_KIND = String.raw`(?:heat-island|cool-roof|canopy-cooling|water-cooling|public-route-risk)`;
 const TOPOGRAPHY_ZONE_KIND = String.raw`(?:elevation-band|slope-area|retaining-condition|buildability-area)`;
 const SOIL_GEOLOGY_KIND = String.raw`(?:alluvial-silt|engineered-fill|shallow-bedrock|sandy-loam|contaminated-fill|waterfront-clay)`;
 const DEVELOPMENT_PHASE_KIND = String.raw`(?:baseline|future-expansion|temporary-condition)`;
@@ -147,6 +148,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ['solar-shading-<sample-kind>-<index>'],
     [exact(String.raw`solar-shading-${SOLAR_SHADING_SAMPLE_KIND}-\d+`)],
     required(['building', 'plaza-zone', 'park', 'waterfront-open-space'])
+  ),
+  entry(
+    'urban-heat-zone',
+    ['urban-heat-<zone-kind>-<index>'],
+    [exact(String.raw`urban-heat-${URBAN_HEAT_ZONE_KIND}-\d+`)],
+    required(['building', 'district', 'road-segment', 'tree-planting', 'waterfront-open-space'])
   ),
   entry(
     'sidewalk-graph-edge',

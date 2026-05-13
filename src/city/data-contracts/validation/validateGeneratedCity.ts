@@ -33,6 +33,8 @@ import type {
   SoilGeologyKind,
   StreetProfile,
   TravelMode,
+  UrbanHeatRiskLevel,
+  UrbanHeatZoneKind,
   ValidationIssue,
   ValidationResult,
   WeatherPrecipitationKind,
@@ -72,6 +74,7 @@ type GeneratedCityForValidation = Pick<
   | 'developmentPhases'
   | 'weatherPresets'
   | 'solarShadingSamples'
+  | 'urbanHeatZones'
   | 'constraints'
   | 'crossings'
   | 'curbZones'
@@ -113,6 +116,7 @@ type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'][number];
 type ValidationWeatherPreset = GeneratedCityForValidation['weatherPresets'][number];
 type ValidationSolarShadingSample = GeneratedCityForValidation['solarShadingSamples'][number];
+type ValidationUrbanHeatZone = GeneratedCityForValidation['urbanHeatZones'][number];
 type ValidationPark = GeneratedCityForValidation['parks'][number];
 type ValidationParkFeature = GeneratedCityForValidation['parkFeatures'][number];
 type ValidationPlazaZone = GeneratedCityForValidation['plazaZones'][number];
@@ -266,6 +270,14 @@ const SOLAR_SHADING_SAMPLE_KINDS = [
   'waterfront-comfort'
 ] as const satisfies readonly SolarShadingSampleKind[];
 const SOLAR_GLARE_RISKS = ['low', 'medium', 'high'] as const satisfies readonly SolarGlareRisk[];
+const URBAN_HEAT_ZONE_KINDS = [
+  'heat-island',
+  'cool-roof',
+  'canopy-cooling',
+  'water-cooling',
+  'public-route-risk'
+] as const satisfies readonly UrbanHeatZoneKind[];
+const URBAN_HEAT_RISK_LEVELS = ['low', 'moderate', 'high', 'critical'] as const satisfies readonly UrbanHeatRiskLevel[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -440,6 +452,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateCityMetrics(city, issues);
   validateWeatherPresets(city.weatherPresets, issues);
   validateSolarShadingSamples(city, issues);
+  validateUrbanHeatZones(city, issues);
   validateZoningDistricts(city, issues);
   validateWaterways(city, issues);
   validateWaterfrontEdges(city, issues);
@@ -5716,6 +5729,157 @@ function createSolarShadingIssue(
     objectId: sample.id,
     suggestedFix: `Regenerate ${sample.id} from solar and shading rules.`,
     ...createIssueFocus(sample.center, `Review solar and shading sample ${sample.id}.`),
+    message
+  };
+}
+
+function validateUrbanHeatZones(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const zoneKinds = new Set<UrbanHeatZoneKind>();
+  const weatherPresetIds = new Set(city.weatherPresets.map((preset) => preset.id));
+
+  if (city.urbanHeatZones.length === 0) {
+    issues.push({
+      id: 'missing-urban-heat-zones',
+      severity: 'error',
+      category: 'environment',
+      message: 'Urban heat generation must expose deterministic heat-risk and cooling zones.'
+    });
+  }
+
+  for (const zone of city.urbanHeatZones) {
+    if (!URBAN_HEAT_ZONE_KINDS.includes(zone.zoneKind)) {
+      issues.push(createUrbanHeatIssue(zone, 'invalid-kind', `Urban heat zone ${zone.id} uses unsupported kind ${zone.zoneKind}.`));
+    } else {
+      zoneKinds.add(zone.zoneKind);
+    }
+
+    if (!URBAN_HEAT_RISK_LEVELS.includes(zone.riskLevel)) {
+      issues.push(createUrbanHeatIssue(zone, 'invalid-risk-level', `Urban heat zone ${zone.id} uses unsupported risk level ${zone.riskLevel}.`));
+    }
+
+    if (!hasObjectId(city, zone.parentObjectId)) {
+      issues.push(createUrbanHeatIssue(zone, 'missing-parent-object', `Urban heat zone ${zone.id} references missing parent object ${zone.parentObjectId}.`));
+    }
+
+    if (!weatherPresetIds.has(zone.weatherPresetId)) {
+      issues.push(createUrbanHeatIssue(zone, 'missing-weather-preset', `Urban heat zone ${zone.id} references missing weather preset ${zone.weatherPresetId}.`));
+    }
+
+    if (
+      zone.boundary.length < 4 ||
+      !isUnitInterval(zone.surfaceAlbedo) ||
+      !isUnitInterval(zone.shadeCoverageRatio) ||
+      !isUnitInterval(zone.treeCanopyCoolingScore) ||
+      !isUnitInterval(zone.waterCoolingScore) ||
+      !isUnitInterval(zone.coolRoofCoverageRatio) ||
+      !isUnitInterval(zone.mitigationEffectScore) ||
+      !isUnitInterval(zone.heatRiskScore) ||
+      !isUnitInterval(zone.routeExposureScore) ||
+      zone.daytimeTemperatureDeltaCelsius < -5 ||
+      zone.daytimeTemperatureDeltaCelsius > 12 ||
+      zone.nightTemperatureDeltaCelsius < -5 ||
+      zone.nightTemperatureDeltaCelsius > 10
+    ) {
+      issues.push(createUrbanHeatIssue(zone, 'invalid-values', `Urban heat zone ${zone.id} must keep heat, albedo, cooling, and risk values in supported ranges.`));
+    }
+
+    validateUrbanHeatReferences(city, zone, issues);
+
+    if (
+      zone.zoneKind === 'public-route-risk' &&
+      zone.routeExposureScore >= 0.72 &&
+      (zone.references.roadIds?.length ?? 0) === 0
+    ) {
+      issues.push(createUrbanHeatIssue(zone, 'missing-high-risk-route', `High-risk public route heat zone ${zone.id} must reference at least one route road.`));
+    }
+
+    if (zone.zoneKind === 'public-route-risk' && zone.heatRiskScore >= 0.7 && zone.mitigationEffectScore < 0.2) {
+      issues.push(createUrbanHeatIssue(zone, 'unmitigated-public-route-risk', `High-risk public route heat zone ${zone.id} must expose shade, tree, water, or roof mitigation.`));
+    }
+  }
+
+  for (const requiredKind of URBAN_HEAT_ZONE_KINDS) {
+    if (!zoneKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-urban-heat-zone-${requiredKind}`,
+        severity: 'error',
+        category: 'environment',
+        objectId: `urban-heat-${requiredKind}-0`,
+        message: `Urban heat zones must include ${requiredKind}.`
+      });
+    }
+  }
+}
+
+function validateUrbanHeatReferences(
+  city: GeneratedCityForValidation,
+  zone: ValidationUrbanHeatZone,
+  issues: ValidationIssue[]
+): void {
+  const references = zone.references;
+
+  if (zone.zoneKind === 'heat-island' && (!references.districtId || !hasObjectId(city, references.districtId))) {
+    issues.push(createUrbanHeatIssue(zone, 'missing-district-reference', `Heat island zone ${zone.id} must reference an existing district.`));
+  }
+
+  if (zone.zoneKind === 'cool-roof' && (references.buildingIds?.length ?? 0) === 0) {
+    issues.push(createUrbanHeatIssue(zone, 'missing-building-reference', `Cool roof zone ${zone.id} must reference at least one building.`));
+  }
+
+  if (zone.zoneKind === 'canopy-cooling' && (references.treeIds?.length ?? 0) === 0) {
+    issues.push(createUrbanHeatIssue(zone, 'missing-tree-reference', `Canopy cooling zone ${zone.id} must reference tree plantings.`));
+  }
+
+  if (
+    zone.zoneKind === 'water-cooling' &&
+    (!references.waterfrontOpenSpaceId || !hasObjectId(city, references.waterfrontOpenSpaceId))
+  ) {
+    issues.push(createUrbanHeatIssue(zone, 'missing-waterfront-reference', `Water cooling zone ${zone.id} must reference an existing waterfront open space.`));
+  }
+
+  for (const buildingId of references.buildingIds ?? []) {
+    if (!hasObjectId(city, buildingId)) {
+      issues.push(createUrbanHeatIssue(zone, 'missing-building-reference', `Urban heat zone ${zone.id} references missing building ${buildingId}.`));
+    }
+  }
+
+  for (const roadId of references.roadIds ?? []) {
+    if (!hasObjectId(city, roadId)) {
+      issues.push(createUrbanHeatIssue(zone, 'missing-road-reference', `Urban heat zone ${zone.id} references missing road ${roadId}.`));
+    }
+  }
+
+  for (const treeId of references.treeIds ?? []) {
+    if (!hasObjectId(city, treeId)) {
+      issues.push(createUrbanHeatIssue(zone, 'missing-tree-reference', `Urban heat zone ${zone.id} references missing tree ${treeId}.`));
+    }
+  }
+
+  for (const sampleId of references.solarShadingSampleIds ?? []) {
+    if (!hasObjectId(city, sampleId)) {
+      issues.push(createUrbanHeatIssue(zone, 'missing-solar-reference', `Urban heat zone ${zone.id} references missing solar shading sample ${sampleId}.`));
+    }
+  }
+
+  for (const hazardId of references.hazardZoneIds ?? []) {
+    if (!hasObjectId(city, hazardId)) {
+      issues.push(createUrbanHeatIssue(zone, 'missing-hazard-reference', `Urban heat zone ${zone.id} references missing hazard zone ${hazardId}.`));
+    }
+  }
+}
+
+function createUrbanHeatIssue(
+  zone: ValidationUrbanHeatZone,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `urban-heat-${issueIdSuffix}-${toIssueIdToken(zone.id)}`,
+    severity: 'error',
+    category: 'environment',
+    objectId: zone.id,
+    suggestedFix: `Regenerate ${zone.id} from urban heat layer rules.`,
+    ...createIssueFocus(zone.center, `Review urban heat zone ${zone.id}.`),
     message
   };
 }

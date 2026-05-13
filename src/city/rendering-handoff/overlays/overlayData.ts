@@ -24,6 +24,7 @@ export type CityOverlayId =
   | 'phasing'
   | 'weather-presets'
   | 'solar-shading'
+  | 'urban-heat'
   | 'city-metrics'
   | 'civic-anchors'
   | 'community-anchors'
@@ -86,6 +87,7 @@ export function createCityOverlayDatasets(
     createDataset('phasing', 'Phasing', 'domain-data', createDevelopmentPhaseFeatures(city)),
     createDataset('weather-presets', 'Weather Presets', 'domain-data', createWeatherPresetFeatures(city)),
     createDataset('solar-shading', 'Solar Shading', 'domain-data', createSolarShadingFeatures(city)),
+    createDataset('urban-heat', 'Urban Heat', 'domain-data', createUrbanHeatFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
@@ -537,6 +539,32 @@ function createSolarShadingFeatures(city: GeneratedCity): CityOverlayFeature[] {
       solarPotentialKwhPerDay: sample.solarPotentialKwhPerDay,
       roofSuitabilityScore: sample.roofSuitabilityScore,
       daylightHours: sample.daylightHours
+    }
+  }));
+}
+
+function createUrbanHeatFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.urbanHeatZones.map((zone) => ({
+    id: `overlay:urban-heat:${zone.id}`,
+    overlayId: 'urban-heat',
+    objectId: zone.id,
+    objectKind: zone.kind,
+    ownerDomain: zone.ownerDomain,
+    label: zone.name ?? zone.id,
+    geometry: { type: 'polygon', points: zone.boundary },
+    metadata: {
+      zoneKind: zone.zoneKind,
+      riskLevel: zone.riskLevel,
+      parentObjectId: zone.parentObjectId,
+      weatherPresetId: zone.weatherPresetId,
+      heatRiskScore: zone.heatRiskScore,
+      routeExposureScore: zone.routeExposureScore,
+      shadeCoverageRatio: zone.shadeCoverageRatio,
+      treeCanopyCoolingScore: zone.treeCanopyCoolingScore,
+      waterCoolingScore: zone.waterCoolingScore,
+      coolRoofCoverageRatio: zone.coolRoofCoverageRatio,
+      mitigationEffectScore: zone.mitigationEffectScore,
+      daytimeTemperatureDeltaCelsius: zone.daytimeTemperatureDeltaCelsius
     }
   }));
 }

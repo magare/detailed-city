@@ -43,6 +43,7 @@ export type CityObjectKind =
   | 'traffic-vehicle'
   | 'traffic-calming-device'
   | 'tree-planting'
+  | 'urban-heat-zone'
   | 'utility-edge'
   | 'utility-node'
   | 'vertical-slice'
@@ -694,6 +695,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod0',
       allowedTiers: ['lod0'],
       description: 'Solar and shading samples expose sun path, shade comfort, glare, and roof solar suitability for debug overlays and environmental simulation.'
+    },
+    {
+      objectKind: 'urban-heat-zone',
+      scope: 'overlay',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'Urban heat zones expose heat islands, cool roofs, canopy and water cooling, albedo, and route heat risk for environmental overlays.'
     },
     {
       objectKind: 'weather-preset',
@@ -2298,6 +2306,8 @@ export interface WeatherPresetContract extends CityObjectBase<'weather-preset'> 
 
 export type SolarShadingSampleKind = 'roof-solar' | 'plaza-comfort' | 'park-comfort' | 'waterfront-comfort';
 export type SolarGlareRisk = 'low' | 'medium' | 'high';
+export type UrbanHeatZoneKind = 'heat-island' | 'cool-roof' | 'canopy-cooling' | 'water-cooling' | 'public-route-risk';
+export type UrbanHeatRiskLevel = 'low' | 'moderate' | 'high' | 'critical';
 
 export interface SolarPathSampleContract {
   readonly hour: number;
@@ -2329,6 +2339,34 @@ export interface SolarShadingSampleContract extends CityObjectBase<'solar-shadin
     readonly parkFeatureIds?: readonly CityId[];
     readonly waterfrontOpenSpaceId?: CityId;
     readonly shadeTreeIds?: readonly CityId[];
+  };
+}
+
+export interface UrbanHeatZoneContract extends CityObjectBase<'urban-heat-zone'> {
+  readonly zoneKind: UrbanHeatZoneKind;
+  readonly riskLevel: UrbanHeatRiskLevel;
+  readonly parentObjectId: CityId;
+  readonly center: Point2D;
+  readonly boundary: Polygon2D;
+  readonly weatherPresetId: CityId;
+  readonly daytimeTemperatureDeltaCelsius: number;
+  readonly nightTemperatureDeltaCelsius: number;
+  readonly surfaceAlbedo: number;
+  readonly shadeCoverageRatio: number;
+  readonly treeCanopyCoolingScore: number;
+  readonly waterCoolingScore: number;
+  readonly coolRoofCoverageRatio: number;
+  readonly mitigationEffectScore: number;
+  readonly heatRiskScore: number;
+  readonly routeExposureScore: number;
+  readonly references: {
+    readonly districtId?: CityId;
+    readonly buildingIds?: readonly CityId[];
+    readonly roadIds?: readonly CityId[];
+    readonly treeIds?: readonly CityId[];
+    readonly solarShadingSampleIds?: readonly CityId[];
+    readonly waterfrontOpenSpaceId?: CityId;
+    readonly hazardZoneIds?: readonly CityId[];
   };
 }
 

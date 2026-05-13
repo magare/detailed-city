@@ -91,6 +91,7 @@ export interface CityDiagnostics {
   readonly cityMetrics: CityMetricDiagnostics;
   readonly climateWeather: ClimateWeatherDiagnostics;
   readonly solarShading: SolarShadingDiagnostics;
+  readonly urbanHeat: UrbanHeatDiagnostics;
   readonly developmentPhasing: DevelopmentPhasingDiagnostics;
   readonly parkExpansion: ParkExpansionDiagnostics;
   readonly plazaModel: PlazaModelDiagnostics;
@@ -199,6 +200,9 @@ export interface CityDiagnostics {
     readonly solarShadingSamples: number;
     readonly roofSolarSamples: number;
     readonly shadeComfortSamples: number;
+    readonly urbanHeatZones: number;
+    readonly urbanHeatHighRiskZones: number;
+    readonly urbanHeatPublicRouteRiskZones: number;
     readonly developmentPhases: number;
     readonly activeDevelopmentPhases: number;
     readonly temporaryRoadClosures: number;
@@ -694,6 +698,24 @@ export interface SolarShadingDiagnostics {
   readonly weatherPresetIds: readonly string[];
 }
 
+export interface UrbanHeatDiagnostics {
+  readonly total: number;
+  readonly heatIslandZones: number;
+  readonly coolRoofZones: number;
+  readonly canopyCoolingZones: number;
+  readonly waterCoolingZones: number;
+  readonly publicRouteRiskZones: number;
+  readonly highRiskZones: number;
+  readonly criticalRiskZones: number;
+  readonly averageHeatRiskScore: number;
+  readonly averageMitigationEffectScore: number;
+  readonly averageShadeCoverage: number;
+  readonly averageTreeCanopyCoolingScore: number;
+  readonly averageWaterCoolingScore: number;
+  readonly maxDaytimeTemperatureDeltaCelsius: number;
+  readonly weatherPresetIds: readonly string[];
+}
+
 export interface DevelopmentPhasingDiagnostics {
   readonly total: number;
   readonly active: number;
@@ -808,6 +830,7 @@ export function createCityDiagnostics(
   const cityMetrics = createCityMetricDiagnostics(city);
   const climateWeather = createClimateWeatherDiagnostics(city);
   const solarShading = createSolarShadingDiagnostics(city);
+  const urbanHeat = createUrbanHeatDiagnostics(city);
   const developmentPhasing = createDevelopmentPhasingDiagnostics(city);
   const parkExpansion = createParkExpansionDiagnostics(city);
   const plazaModel = createPlazaModelDiagnostics(city);
@@ -861,6 +884,7 @@ export function createCityDiagnostics(
     cityMetrics,
     climateWeather,
     solarShading,
+    urbanHeat,
     developmentPhasing,
     parkExpansion,
     plazaModel,
@@ -960,6 +984,9 @@ export function createCityDiagnostics(
       solarShadingSamples: solarShading.total,
       roofSolarSamples: solarShading.roofSolarSamples,
       shadeComfortSamples: solarShading.shadeComfortSamples,
+      urbanHeatZones: urbanHeat.total,
+      urbanHeatHighRiskZones: urbanHeat.highRiskZones,
+      urbanHeatPublicRouteRiskZones: urbanHeat.publicRouteRiskZones,
       developmentPhases: developmentPhasing.total,
       activeDevelopmentPhases: developmentPhasing.active,
       temporaryRoadClosures: developmentPhasing.closureRoads,
@@ -2112,6 +2139,45 @@ function createSolarShadingDiagnostics(city: GeneratedCity): SolarShadingDiagnos
     totalSolarPotentialKwhPerDay: Math.round(totalSolarPotentialKwhPerDay * 100) / 100,
     maxRoofSuitabilityScore: roundDiagnosticRatio(maxRoofSuitabilityScore),
     peakSunHour,
+    weatherPresetIds: [...weatherPresetIds].sort()
+  };
+}
+
+function createUrbanHeatDiagnostics(city: GeneratedCity): UrbanHeatDiagnostics {
+  const total = city.urbanHeatZones.length;
+  const weatherPresetIds = new Set<string>();
+  let heatRiskScore = 0;
+  let mitigationEffectScore = 0;
+  let shadeCoverage = 0;
+  let treeCanopyCooling = 0;
+  let waterCooling = 0;
+  let maxDaytimeTemperatureDeltaCelsius = 0;
+
+  for (const zone of city.urbanHeatZones) {
+    weatherPresetIds.add(zone.weatherPresetId);
+    heatRiskScore += zone.heatRiskScore;
+    mitigationEffectScore += zone.mitigationEffectScore;
+    shadeCoverage += zone.shadeCoverageRatio;
+    treeCanopyCooling += zone.treeCanopyCoolingScore;
+    waterCooling += zone.waterCoolingScore;
+    maxDaytimeTemperatureDeltaCelsius = Math.max(maxDaytimeTemperatureDeltaCelsius, zone.daytimeTemperatureDeltaCelsius);
+  }
+
+  return {
+    total,
+    heatIslandZones: city.urbanHeatZones.filter((zone) => zone.zoneKind === 'heat-island').length,
+    coolRoofZones: city.urbanHeatZones.filter((zone) => zone.zoneKind === 'cool-roof').length,
+    canopyCoolingZones: city.urbanHeatZones.filter((zone) => zone.zoneKind === 'canopy-cooling').length,
+    waterCoolingZones: city.urbanHeatZones.filter((zone) => zone.zoneKind === 'water-cooling').length,
+    publicRouteRiskZones: city.urbanHeatZones.filter((zone) => zone.zoneKind === 'public-route-risk').length,
+    highRiskZones: city.urbanHeatZones.filter((zone) => zone.riskLevel === 'high' || zone.riskLevel === 'critical').length,
+    criticalRiskZones: city.urbanHeatZones.filter((zone) => zone.riskLevel === 'critical').length,
+    averageHeatRiskScore: roundDiagnosticRatio(heatRiskScore / Math.max(1, total)),
+    averageMitigationEffectScore: roundDiagnosticRatio(mitigationEffectScore / Math.max(1, total)),
+    averageShadeCoverage: roundDiagnosticRatio(shadeCoverage / Math.max(1, total)),
+    averageTreeCanopyCoolingScore: roundDiagnosticRatio(treeCanopyCooling / Math.max(1, total)),
+    averageWaterCoolingScore: roundDiagnosticRatio(waterCooling / Math.max(1, total)),
+    maxDaytimeTemperatureDeltaCelsius: Math.round(maxDaytimeTemperatureDeltaCelsius * 10) / 10,
     weatherPresetIds: [...weatherPresetIds].sort()
   };
 }

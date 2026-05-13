@@ -187,6 +187,10 @@ export class DebugPanel {
         'Solar',
         `${diagnostics.solarShading.total} samples, ${diagnostics.solarShading.roofSolarSamples} roofs, ${diagnostics.solarShading.highGlareSamples} glare`
       ),
+      createMetric(
+        'Heat',
+        `${diagnostics.urbanHeat.total} zones, ${diagnostics.urbanHeat.highRiskZones} high, ${diagnostics.urbanHeat.publicRouteRiskZones} routes`
+      ),
       createMetric('Validation', getStatusLabel(diagnostics.validation.passed, diagnostics.validation.issues.length)),
       createMetric('Geo', `${diagnostics.geospatial.coordinateSystem}, ${coordinatePrecision}m`),
       createMetric(

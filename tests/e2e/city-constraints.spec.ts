@@ -61,6 +61,7 @@ test('constraint layer is deterministic, indexed, and visible in overlays', () =
     'phasing',
     'weather-presets',
     'solar-shading',
+    'urban-heat',
     'city-metrics',
     'civic-anchors',
     'community-anchors',
