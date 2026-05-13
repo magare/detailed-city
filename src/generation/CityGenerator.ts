@@ -40,6 +40,7 @@ import { RoadNetworkGenerator } from './roads/RoadNetworkGenerator';
 import { applyDetailedStreetSliceTags, DetailedStreetSliceGenerator } from './slices/DetailedStreetSliceGenerator';
 import { TerrainGenerator } from './terrain/TerrainGenerator';
 import { TrafficCalmingGenerator } from './traffic/TrafficCalmingGenerator';
+import { UtilityBaseGenerator } from './utilities/UtilityBaseGenerator';
 import { applyGeneratedCitySourceMetadata } from './applySourceMetadata';
 
 export class CityGenerator {
@@ -198,6 +199,12 @@ export class CityGenerator {
       weatherPresets,
       waterfrontOpenSpaces
     });
+    const utilityBase = new UtilityBaseGenerator().create({
+      administrativeBoundaries: administrativeLand.administrativeBoundaries,
+      districts: landAndBuildingsWithTopography.districts,
+      parcels: soilGeology.parcels,
+      roads: sliceTagged.roads
+    });
     const civicAnchors = new CivicAnchorGenerator().create({
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildingsWithTopography.districts,
@@ -245,6 +252,8 @@ export class CityGenerator {
       weatherPresets,
       solarShadingSamples,
       urbanHeatZones,
+      utilityNodes: utilityBase.utilityNodes,
+      utilityEdges: utilityBase.utilityEdges,
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,

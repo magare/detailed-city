@@ -128,6 +128,10 @@ export class DebugPanel {
         `${diagnostics.cadastreModel.total} records, ${diagnostics.cadastreModel.easements} easements, ${diagnostics.cadastreModel.recordsWithBuildRights} build rights`
       ),
       createMetric(
+        'Utilities',
+        `${diagnostics.utilityBase.nodes} nodes, ${diagnostics.utilityBase.edges} edges, ${diagnostics.utilityBase.networkTypes} networks`
+      ),
+      createMetric(
         'Zoning',
         `${diagnostics.zoningModel.total} districts, ${diagnostics.zoningModel.formBasedDistricts} form, ${diagnostics.zoningModel.parcelsWithZoning} parcels`
       ),

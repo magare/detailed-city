@@ -41,6 +41,8 @@ import type {
   SoilGeologyZoneContract,
   SolarShadingSampleContract,
   UrbanHeatZoneContract,
+  UtilityEdgeContract,
+  UtilityNodeContract,
   StreetFurnitureContract,
   StreetLightContract,
   StreetHierarchy,
@@ -290,6 +292,8 @@ export interface TrafficCalmingDevice extends TrafficCalmingDeviceContract {}
 export interface WeatherPreset extends WeatherPresetContract {}
 export interface SolarShadingSample extends SolarShadingSampleContract {}
 export interface UrbanHeatZone extends UrbanHeatZoneContract {}
+export interface UtilityNode extends UtilityNodeContract {}
+export interface UtilityEdge extends UtilityEdgeContract {}
 
 export type GeneratedCityObject =
   | AssetDefinition
@@ -315,6 +319,8 @@ export type GeneratedCityObject =
   | WeatherPreset
   | SolarShadingSample
   | UrbanHeatZone
+  | UtilityNode
+  | UtilityEdge
   | SidewalkGraphNode
   | SidewalkGraphEdge
   | LaneContract
@@ -370,6 +376,8 @@ export interface GeneratedCity {
   weatherPresets: WeatherPreset[];
   solarShadingSamples: SolarShadingSample[];
   urbanHeatZones: UrbanHeatZone[];
+  utilityNodes: UtilityNode[];
+  utilityEdges: UtilityEdge[];
   sidewalkGraph: SidewalkGraph;
   parcels: Parcel[];
   cadastreRecords: CadastreRecord[];

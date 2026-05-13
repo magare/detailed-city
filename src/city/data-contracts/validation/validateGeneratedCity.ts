@@ -76,6 +76,8 @@ type GeneratedCityForValidation = Pick<
   | 'weatherPresets'
   | 'solarShadingSamples'
   | 'urbanHeatZones'
+  | 'utilityNodes'
+  | 'utilityEdges'
   | 'constraints'
   | 'crossings'
   | 'curbZones'
@@ -119,6 +121,8 @@ type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'
 type ValidationWeatherPreset = GeneratedCityForValidation['weatherPresets'][number];
 type ValidationSolarShadingSample = GeneratedCityForValidation['solarShadingSamples'][number];
 type ValidationUrbanHeatZone = GeneratedCityForValidation['urbanHeatZones'][number];
+type ValidationUtilityNode = GeneratedCityForValidation['utilityNodes'][number];
+type ValidationUtilityEdge = GeneratedCityForValidation['utilityEdges'][number];
 type ValidationPark = GeneratedCityForValidation['parks'][number];
 type ValidationParkFeature = GeneratedCityForValidation['parkFeatures'][number];
 type ValidationPlazaZone = GeneratedCityForValidation['plazaZones'][number];
@@ -462,6 +466,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateTopographyZones(city, issues);
   validateSoilGeologyZones(city, issues);
   validateCadastreRecords(city, issues);
+  validateUtilityBase(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -3392,6 +3397,128 @@ function createCadastreIssue(
   };
 }
 
+function validateUtilityBase(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const serviceAreasById = new Map(
+    city.administrativeBoundaries
+      .filter((boundary) => boundary.boundaryKind === 'service-area' && boundary.serviceTypes.includes('utilities'))
+      .map((boundary) => [boundary.id, boundary])
+  );
+  const utilityNodesById = new Map(city.utilityNodes.map((node) => [node.id, node]));
+  const utilityEdgeIds = new Set(city.utilityEdges.map((edge) => edge.id));
+  const utilityTypes = new Set<string>();
+
+  for (const node of city.utilityNodes) {
+    utilityTypes.add(node.utilityType);
+
+    if (!serviceAreasById.has(node.serviceArea.serviceAreaBoundaryId)) {
+      issues.push(createUtilityNodeIssue(node, 'missing-service-area', `Utility node ${node.id} must reference a utilities service area.`));
+    }
+
+    if (node.capacity.value <= 0 || node.capacity.peakLoadFactor <= 0 || node.capacity.peakLoadFactor > 1) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-capacity', `Utility node ${node.id} must expose positive capacity and a peak load factor from 0 to 1.`));
+    }
+
+    if (!node.ownerEntityId || !node.outage.outageDomainId || !node.outage.isolationGroupId || !node.renderBindingId) {
+      issues.push(createUtilityNodeIssue(node, 'missing-ownership-outage-rendering', `Utility node ${node.id} must include owner, outage, isolation, and render binding metadata.`));
+    }
+
+    if (
+      node.accessPoint.clearAccessMeters <= 0 ||
+      !hasObjectId(city, node.accessPoint.objectId) ||
+      !isPointInsideUtilityServiceArea(node.accessPoint.position, serviceAreasById.get(node.serviceArea.serviceAreaBoundaryId))
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-access-point', `Utility node ${node.id} must expose a reachable access point inside its service area.`));
+    }
+
+    for (const edgeId of node.connectedEdgeIds) {
+      if (!utilityEdgeIds.has(edgeId)) {
+        issues.push(createUtilityNodeIssue(node, `missing-connected-edge-${toIssueIdToken(edgeId)}`, `Utility node ${node.id} references missing connected edge ${edgeId}.`));
+      }
+    }
+
+    for (const parcelId of node.serviceArea.parcelIds) {
+      const parcel = city.objectIndex.objectsById[parcelId];
+      if (!parcel || parcel.kind !== 'parcel') {
+        issues.push(createUtilityNodeIssue(node, `missing-service-parcel-${toIssueIdToken(parcelId)}`, `Utility node ${node.id} service area references missing parcel ${parcelId}.`));
+      }
+    }
+
+    for (const criticalObjectId of node.serviceArea.criticalObjectIds) {
+      if (!hasObjectId(city, criticalObjectId)) {
+        issues.push(createUtilityNodeIssue(node, `missing-critical-object-${toIssueIdToken(criticalObjectId)}`, `Utility node ${node.id} references missing critical service object ${criticalObjectId}.`));
+      }
+    }
+  }
+
+  for (const edge of city.utilityEdges) {
+    const fromNode = utilityNodesById.get(edge.fromNodeId);
+    const toNode = utilityNodesById.get(edge.toNodeId);
+
+    if (!fromNode || !toNode) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-node-reference', `Utility edge ${edge.id} must connect two generated utility nodes.`));
+      continue;
+    }
+
+    if (edge.utilityType !== fromNode.utilityType || edge.serviceAreaBoundaryId !== fromNode.serviceArea.serviceAreaBoundaryId) {
+      issues.push(createUtilityEdgeIssue(edge, 'node-network-mismatch', `Utility edge ${edge.id} must match the source node utility type and service area.`));
+    }
+
+    if (edge.lengthMeters <= 0 || edge.centerline.length < 2) {
+      issues.push(createUtilityEdgeIssue(edge, 'invalid-centerline', `Utility edge ${edge.id} must expose a positive-length centerline.`));
+    }
+
+    if (edge.capacity.value <= 0 || edge.capacity.peakLoadFactor <= 0 || edge.capacity.peakLoadFactor > 1) {
+      issues.push(createUtilityEdgeIssue(edge, 'invalid-capacity', `Utility edge ${edge.id} must expose positive capacity and a peak load factor from 0 to 1.`));
+    }
+
+    if (!edge.accessPointIds.includes(edge.fromNodeId) || !edge.accessPointIds.includes(edge.toNodeId)) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-access-point-links', `Utility edge ${edge.id} must list both endpoint nodes as access points.`));
+    }
+
+    if (!edge.ownerEntityId || !edge.outageDomainId || !edge.renderBindingId) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-ownership-outage-rendering', `Utility edge ${edge.id} must include owner, outage, and render binding metadata.`));
+    }
+  }
+
+  if (utilityTypes.size < 4) {
+    issues.push({
+      id: 'missing-utility-network-coverage',
+      severity: 'error',
+      category: 'utility-coverage',
+      message: 'Utility base must seed multiple utility network types before specialized systems are generated.'
+    });
+  }
+}
+
+function createUtilityNodeIssue(node: ValidationUtilityNode, suffix: string, message: string): ValidationIssue {
+  return {
+    id: `invalid-utility-node-${node.id}-${suffix}`,
+    severity: 'error',
+    category: 'utility-coverage',
+    objectId: node.id,
+    affectedPoint: node.center,
+    message
+  };
+}
+
+function createUtilityEdgeIssue(edge: ValidationUtilityEdge, suffix: string, message: string): ValidationIssue {
+  return {
+    id: `invalid-utility-edge-${edge.id}-${suffix}`,
+    severity: 'error',
+    category: 'utility-coverage',
+    objectId: edge.id,
+    affectedPoint: edge.centerline[0],
+    message
+  };
+}
+
+function isPointInsideUtilityServiceArea(
+  point: Point2D,
+  serviceArea: ValidationAdministrativeBoundary | undefined
+): boolean {
+  return serviceArea ? isPointInsidePolygon(point, serviceArea.boundary) : false;
+}
+
 function validateBuildingTopography(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
   const topographyZoneIds = new Set(city.topographyZones.map((zone) => zone.id));
 
@@ -4848,6 +4975,15 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
 
   for (const curbZone of city.curbZones) {
     validatePoint2D(city.geospatial, curbZone.id, 'center', curbZone.center, issues);
+  }
+
+  for (const utilityNode of city.utilityNodes) {
+    validatePoint2D(city.geospatial, utilityNode.id, 'center', utilityNode.center, issues);
+    validatePoint2D(city.geospatial, utilityNode.id, 'accessPoint.position', utilityNode.accessPoint.position, issues);
+  }
+
+  for (const utilityEdge of city.utilityEdges) {
+    validatePolyline2D(city.geospatial, utilityEdge.id, 'centerline', utilityEdge.centerline, issues);
   }
 
   for (const node of city.sidewalkGraph.nodes) {

@@ -230,6 +230,8 @@ export interface ProceduralSeedDomainSections {
   readonly weatherPresets: GeneratedCity['weatherPresets'];
   readonly solarShadingSamples: GeneratedCity['solarShadingSamples'];
   readonly urbanHeatZones: GeneratedCity['urbanHeatZones'];
+  readonly utilityNodes: GeneratedCity['utilityNodes'];
+  readonly utilityEdges: GeneratedCity['utilityEdges'];
   readonly constraints: GeneratedCity['constraints'];
   readonly hazardZones: GeneratedCity['hazardZones'];
   readonly topographyZones: GeneratedCity['topographyZones'];
@@ -271,6 +273,8 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly weatherPresets: number;
   readonly solarShadingSamples: number;
   readonly urbanHeatZones: number;
+  readonly utilityNodes: number;
+  readonly utilityEdges: number;
   readonly constraints: number;
   readonly hazardZones: number;
   readonly topographyZones: number;
@@ -390,6 +394,8 @@ export function createProceduralSeedJsonExport(
       weatherPresets: city.weatherPresets,
       solarShadingSamples: city.solarShadingSamples,
       urbanHeatZones: city.urbanHeatZones,
+      utilityNodes: city.utilityNodes,
+      utilityEdges: city.utilityEdges,
       constraints: city.constraints,
       hazardZones: city.hazardZones,
       topographyZones: city.topographyZones,
@@ -538,6 +544,8 @@ export function createProceduralSeedDomainSectionCounts(
     | 'weatherPresets'
     | 'solarShadingSamples'
     | 'urbanHeatZones'
+    | 'utilityNodes'
+    | 'utilityEdges'
     | 'constraints'
     | 'hazardZones'
     | 'topographyZones'
@@ -573,6 +581,8 @@ export function createProceduralSeedDomainSectionCounts(
     weatherPresets: city.weatherPresets.length,
     solarShadingSamples: city.solarShadingSamples.length,
     urbanHeatZones: city.urbanHeatZones.length,
+    utilityNodes: city.utilityNodes.length,
+    utilityEdges: city.utilityEdges.length,
     constraints: city.constraints.length,
     hazardZones: city.hazardZones.length,
     topographyZones: city.topographyZones.length,
@@ -626,6 +636,8 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'weatherPresets') +
     getArrayLength(city, 'solarShadingSamples') +
     getArrayLength(city, 'urbanHeatZones') +
+    getArrayLength(city, 'utilityNodes') +
+    getArrayLength(city, 'utilityEdges') +
     getArrayLength(city, 'constraints') +
     getArrayLength(city, 'hazardZones') +
     getArrayLength(city, 'topographyZones') +

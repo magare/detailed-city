@@ -1305,6 +1305,83 @@ export interface CadastreRecordContract extends CityObjectBase<'cadastre-record'
   readonly permitReferenceIds: readonly CityId[];
 }
 
+export type UtilityNetworkKind =
+  | 'district-energy'
+  | 'power'
+  | 'stormwater'
+  | 'telecom'
+  | 'waste'
+  | 'wastewater'
+  | 'water';
+export type UtilityNodeRole =
+  | 'cabinet'
+  | 'collection-point'
+  | 'distribution-node'
+  | 'meter-bank'
+  | 'outfall'
+  | 'plant'
+  | 'pump'
+  | 'substation'
+  | 'valve';
+export type UtilityEdgeRole = 'collection-route' | 'conduit' | 'feeder' | 'main' | 'service-lateral';
+export type UtilityAccessPointKind = 'building-service' | 'parcel-easement' | 'roadside-vault' | 'surface-cover';
+export type UtilityCapacityUnit = 'kva' | 'liters-per-second' | 'mbps' | 'tons-per-day';
+
+export interface UtilityCapacityContract {
+  readonly value: number;
+  readonly unit: UtilityCapacityUnit;
+  readonly peakLoadFactor: number;
+}
+
+export interface UtilityServiceAreaContract {
+  readonly serviceAreaBoundaryId: CityId;
+  readonly districtIds: readonly CityId[];
+  readonly parcelIds: readonly CityId[];
+  readonly criticalObjectIds: readonly CityId[];
+}
+
+export interface UtilityAccessPointContract {
+  readonly accessPointKind: UtilityAccessPointKind;
+  readonly objectId: CityId;
+  readonly position: Point2D;
+  readonly clearAccessMeters: number;
+}
+
+export interface UtilityOutageDomainContract {
+  readonly outageDomainId: CityId;
+  readonly isolationGroupId: CityId;
+  readonly backupAvailable: boolean;
+  readonly criticality: 'low' | 'medium' | 'high';
+}
+
+export interface UtilityNodeContract extends CityObjectBase<'utility-node'> {
+  readonly utilityType: UtilityNetworkKind;
+  readonly nodeRole: UtilityNodeRole;
+  readonly center: Point2D;
+  readonly serviceArea: UtilityServiceAreaContract;
+  readonly capacity: UtilityCapacityContract;
+  readonly accessPoint: UtilityAccessPointContract;
+  readonly outage: UtilityOutageDomainContract;
+  readonly ownerEntityId: CityId;
+  readonly connectedEdgeIds: readonly CityId[];
+  readonly renderBindingId: CityId;
+}
+
+export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
+  readonly utilityType: UtilityNetworkKind;
+  readonly edgeRole: UtilityEdgeRole;
+  readonly fromNodeId: CityId;
+  readonly toNodeId: CityId;
+  readonly centerline: Polyline2D;
+  readonly lengthMeters: number;
+  readonly serviceAreaBoundaryId: CityId;
+  readonly capacity: UtilityCapacityContract;
+  readonly accessPointIds: readonly CityId[];
+  readonly outageDomainId: CityId;
+  readonly ownerEntityId: CityId;
+  readonly renderBindingId: CityId;
+}
+
 export interface ParcelFrontagePriorityContract {
   readonly roadId: CityId;
   readonly side: BlockFrontageSide;

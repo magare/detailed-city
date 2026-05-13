@@ -43,6 +43,8 @@ type GeneratedCityObjectSource = Pick<
   | 'topographyZones'
   | 'trees'
   | 'urbanHeatZones'
+  | 'utilityEdges'
+  | 'utilityNodes'
   | 'verticalSlices'
   | 'waterfrontEdges'
   | 'waterfrontOpenSpaces'
@@ -74,6 +76,8 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.weatherPresets,
     ...city.solarShadingSamples,
     ...city.urbanHeatZones,
+    ...city.utilityNodes,
+    ...city.utilityEdges,
     ...city.streetLights,
     ...city.streetFurniture,
     ...city.sidewalkGraph.nodes,

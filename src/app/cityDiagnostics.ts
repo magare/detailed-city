@@ -66,6 +66,7 @@ export interface CityDiagnostics {
   readonly blockModel: BlockModelDiagnostics;
   readonly parcelModel: ParcelModelDiagnostics;
   readonly cadastreModel: CadastreModelDiagnostics;
+  readonly utilityBase: UtilityBaseDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -148,6 +149,13 @@ export interface CityDiagnostics {
     readonly cadastreRecords: number;
     readonly parcelsWithCadastre: number;
     readonly cadastreEasements: number;
+    readonly utilityNodes: number;
+    readonly utilityEdges: number;
+    readonly utilityNetworkTypes: number;
+    readonly utilityServiceParcels: number;
+    readonly utilityCriticalObjects: number;
+    readonly utilityBackupNodes: number;
+    readonly utilityHighCriticalityNodes: number;
     readonly parcelsWithConstraints: number;
     readonly primaryFrontageParcels: number;
     readonly zoningDistricts: number;
@@ -372,6 +380,19 @@ export interface CadastreModelDiagnostics {
   readonly recordsWithBuildRights: number;
   readonly tenureCounts: Readonly<Record<string, number>>;
   readonly totalAssessedLandValue: number;
+}
+
+export interface UtilityBaseDiagnostics {
+  readonly nodes: number;
+  readonly edges: number;
+  readonly networkTypes: number;
+  readonly serviceParcels: number;
+  readonly criticalObjects: number;
+  readonly backupNodes: number;
+  readonly highCriticalityNodes: number;
+  readonly totalCapacityByUnit: Readonly<Record<string, number>>;
+  readonly serviceAreaBoundaryIds: readonly string[];
+  readonly ownerEntityIds: readonly string[];
 }
 
 export interface ZoningModelDiagnostics {
@@ -818,6 +839,7 @@ export function createCityDiagnostics(
   const blockModel = createBlockModelDiagnostics(city);
   const parcelModel = createParcelModelDiagnostics(city);
   const cadastreModel = createCadastreModelDiagnostics(city);
+  const utilityBase = createUtilityBaseDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -873,6 +895,7 @@ export function createCityDiagnostics(
     blockModel,
     parcelModel,
     cadastreModel,
+    utilityBase,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -946,6 +969,13 @@ export function createCityDiagnostics(
       cadastreRecords: cadastreModel.total,
       parcelsWithCadastre: cadastreModel.parcelsWithCadastre,
       cadastreEasements: cadastreModel.easements,
+      utilityNodes: utilityBase.nodes,
+      utilityEdges: utilityBase.edges,
+      utilityNetworkTypes: utilityBase.networkTypes,
+      utilityServiceParcels: utilityBase.serviceParcels,
+      utilityCriticalObjects: utilityBase.criticalObjects,
+      utilityBackupNodes: utilityBase.backupNodes,
+      utilityHighCriticalityNodes: utilityBase.highCriticalityNodes,
       parcelsWithConstraints: parcelModel.parcelsWithConstraints,
       primaryFrontageParcels: parcelModel.primaryFrontageParcels,
       zoningDistricts: zoningModel.total,
@@ -1240,6 +1270,57 @@ function createCadastreModelDiagnostics(city: GeneratedCity): CadastreModelDiagn
     ).length,
     tenureCounts,
     totalAssessedLandValue: city.cadastreRecords.reduce((sum, record) => sum + record.assessedLandValue, 0)
+  };
+}
+
+function createUtilityBaseDiagnostics(city: GeneratedCity): UtilityBaseDiagnostics {
+  const networkTypes = new Set<string>();
+  const serviceParcels = new Set<string>();
+  const criticalObjects = new Set<string>();
+  const serviceAreaBoundaryIds = new Set<string>();
+  const ownerEntityIds = new Set<string>();
+  const totalCapacityByUnit: Record<string, number> = {};
+
+  let backupNodes = 0;
+  let highCriticalityNodes = 0;
+
+  for (const node of city.utilityNodes) {
+    networkTypes.add(node.utilityType);
+    serviceAreaBoundaryIds.add(node.serviceArea.serviceAreaBoundaryId);
+    ownerEntityIds.add(node.ownerEntityId);
+    totalCapacityByUnit[node.capacity.unit] = (totalCapacityByUnit[node.capacity.unit] ?? 0) + node.capacity.value;
+
+    for (const parcelId of node.serviceArea.parcelIds) {
+      serviceParcels.add(parcelId);
+    }
+    for (const objectId of node.serviceArea.criticalObjectIds) {
+      criticalObjects.add(objectId);
+    }
+    if (node.outage.backupAvailable) {
+      backupNodes += 1;
+    }
+    if (node.outage.criticality === 'high') {
+      highCriticalityNodes += 1;
+    }
+  }
+
+  for (const edge of city.utilityEdges) {
+    networkTypes.add(edge.utilityType);
+    serviceAreaBoundaryIds.add(edge.serviceAreaBoundaryId);
+    ownerEntityIds.add(edge.ownerEntityId);
+  }
+
+  return {
+    nodes: city.utilityNodes.length,
+    edges: city.utilityEdges.length,
+    networkTypes: networkTypes.size,
+    serviceParcels: serviceParcels.size,
+    criticalObjects: criticalObjects.size,
+    backupNodes,
+    highCriticalityNodes,
+    totalCapacityByUnit,
+    serviceAreaBoundaryIds: [...serviceAreaBoundaryIds].sort(),
+    ownerEntityIds: [...ownerEntityIds].sort()
   };
 }
 
