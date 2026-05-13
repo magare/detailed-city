@@ -78,6 +78,17 @@ const CIVIC_ANCHOR_TEMPLATES = [
     dailyVisitors: 480,
     staff: 48,
     emergencyAccess: false
+  },
+  {
+    serviceType: 'community',
+    name: 'Community Care Service Anchor',
+    scheduleProfileId: 'schedule:civic:community-all-day',
+    arrivalModes: ['pedestrian', 'bike', 'transit', 'vehicle', 'service'],
+    catchmentRadiusMeters: 600,
+    dailyVisitors: 540,
+    staff: 56,
+    emergencyAccess: false,
+    emergencyOccupancy: 180
   }
 ] as const satisfies readonly CivicAnchorTemplate[];
 

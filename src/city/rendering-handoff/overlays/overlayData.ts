@@ -24,6 +24,7 @@ export type CityOverlayId =
   | 'phasing'
   | 'city-metrics'
   | 'civic-anchors'
+  | 'community-anchors'
   | 'culture-anchors'
   | 'government-anchors'
   | 'constraints'
@@ -83,6 +84,7 @@ export function createCityOverlayDatasets(
     createDataset('phasing', 'Phasing', 'domain-data', createDevelopmentPhaseFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
+    createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
@@ -508,6 +510,31 @@ function createCultureAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] 
       tourismAttractionScore: anchor.tourismAttractionScore,
       eveningActivity: anchor.eveningActivity,
       heritageProtected: anchor.heritageProtected
+    }
+  }));
+}
+
+function createCommunityAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.communityAnchors.map((anchor) => ({
+    id: `overlay:community-anchors:${anchor.id}`,
+    overlayId: 'community-anchors',
+    objectId: anchor.id,
+    objectKind: anchor.kind,
+    ownerDomain: anchor.ownerDomain,
+    label: anchor.name ?? anchor.id,
+    geometry: { type: 'point', point: anchor.center },
+    metadata: {
+      anchorKind: anchor.anchorKind,
+      civicAnchorId: anchor.civicAnchorId,
+      buildingId: anchor.buildingId,
+      plazaZones: anchor.plazaZoneIds.length,
+      dailyVisitors: anchor.dailyVisitors,
+      eventCapacityPeople: anchor.eventCapacityPeople,
+      socialServiceCapacityPeople: anchor.socialServiceCapacityPeople,
+      shelterCapacityPeople: anchor.shelterCapacityPeople,
+      communityCoverageScore: anchor.communityCoverageScore,
+      crowdEventReady: anchor.crowdEventReady,
+      foodDistribution: anchor.foodDistribution
     }
   }));
 }

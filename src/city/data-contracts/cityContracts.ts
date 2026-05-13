@@ -11,6 +11,7 @@ export type CityObjectKind =
   | 'building'
   | 'city-metric'
   | 'civic-anchor'
+  | 'community-anchor'
   | 'constraint'
   | 'crossing'
   | 'curb-zone'
@@ -425,6 +426,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Culture anchors expose museums, theaters, galleries, venues, heritage sites, and event spaces for tourism and event hooks.'
+    },
+    {
+      objectKind: 'community-anchor',
+      scope: 'building',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Community anchors expose worship places, cemeteries, processional space, social services, recreation centers, food banks, shelters, and community halls.'
     },
     {
       objectKind: 'government-anchor',
@@ -1701,6 +1709,37 @@ export interface CultureAnchorContract extends CityObjectBase<'culture-anchor'> 
   readonly tourismAttractionScore: number;
   readonly eveningActivity: boolean;
   readonly heritageProtected: boolean;
+  readonly scheduleProfileId: string;
+  readonly renderBindingId: CityId;
+}
+
+export type CommunityAnchorKind =
+  | 'cemetery'
+  | 'community-hall'
+  | 'food-bank'
+  | 'processional-space'
+  | 'recreation-center'
+  | 'shelter'
+  | 'social-service'
+  | 'worship-place';
+
+export interface CommunityAnchorContract extends CityObjectBase<'community-anchor'> {
+  readonly anchorKind: CommunityAnchorKind;
+  readonly civicAnchorId: CityId;
+  readonly buildingId: CityId;
+  readonly districtId: CityId;
+  readonly plazaZoneIds: readonly CityId[];
+  readonly center: Point2D;
+  readonly serviceProgram: string;
+  readonly dailyVisitors: number;
+  readonly staffCapacity: number;
+  readonly eventCapacityPeople: number;
+  readonly socialServiceCapacityPeople: number;
+  readonly shelterCapacityPeople: number;
+  readonly communityCoverageScore: number;
+  readonly crowdEventReady: boolean;
+  readonly foodDistribution: boolean;
+  readonly cemeteryCapacityPlots: number;
   readonly scheduleProfileId: string;
   readonly renderBindingId: CityId;
 }

@@ -29,6 +29,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.roads.length +
       city.buildings.length +
       city.civicAnchors.length +
+      city.communityAnchors.length +
       city.cultureAnchors.length +
       city.governmentAnchors.length +
       city.activeFrontages.length +
@@ -48,6 +49,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind['road-segment']).toBe(city.roads.length);
   expect(catalog.countsByKind.building).toBe(city.buildings.length);
   expect(catalog.countsByKind['civic-anchor']).toBe(city.civicAnchors.length);
+  expect(catalog.countsByKind['community-anchor']).toBe(city.communityAnchors.length);
   expect(catalog.countsByKind['culture-anchor']).toBe(city.cultureAnchors.length);
   expect(catalog.countsByKind['government-anchor']).toBe(city.governmentAnchors.length);
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
@@ -174,6 +176,17 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       civicAnchorId: city.cultureAnchors[0].civicAnchorId,
       buildingId: city.cultureAnchors[0].buildingId,
       districtId: city.cultureAnchors[0].districtId
+    }
+  });
+  expect(catalog.metadataByObjectId[city.communityAnchors[0].id]).toMatchObject({
+    objectId: city.communityAnchors[0].id,
+    kind: 'community-anchor',
+    ownerDomain: 'civic',
+    parentId: city.communityAnchors[0].civicAnchorId,
+    references: {
+      civicAnchorId: city.communityAnchors[0].civicAnchorId,
+      buildingId: city.communityAnchors[0].buildingId,
+      districtId: city.communityAnchors[0].districtId
     }
   });
   expect(catalog.metadataByObjectId[zebraCrossing?.id ?? '']).toMatchObject({

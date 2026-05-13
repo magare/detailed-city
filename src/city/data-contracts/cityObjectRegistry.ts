@@ -44,6 +44,7 @@ const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|railing|regulatory-sign|street-name-sign|wayfinding-sign)`;
 const TRAFFIC_CALMING_KIND = String.raw`(?:curb-extension|bus-bulb|chicane|pinchpoint|speed-hump|speed-table|speed-cushion|neighborhood-gateway)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
+const COMMUNITY_ANCHOR_KIND = String.raw`(?:cemetery|community-hall|food-bank|processional-space|recreation-center|shelter|social-service|worship-place)`;
 const CULTURE_ANCHOR_KIND = String.raw`(?:event-space|gallery|heritage-site|museum|theater|venue)`;
 const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
 const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|landslide-risk|restricted-area)`;
@@ -68,6 +69,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('building', ['building-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(BUILDING_ID)], required(['parcel'])),
   entry('city-metric', ['city-metric-<metric-kind>'], [exact(String.raw`city-metric-${NAMED_ID}`)], none()),
   entry('civic-anchor', ['civic-anchor-<slug>'], [exact(String.raw`civic-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
+  entry(
+    'community-anchor',
+    ['community-anchor-<community-anchor-kind>'],
+    [exact(String.raw`community-anchor-${COMMUNITY_ANCHOR_KIND}`)],
+    required(['civic-anchor'])
+  ),
   entry('constraint', ['constraint-<slug>'], [exact(String.raw`constraint-${NAMED_ID}`)], none()),
   entry(
     'crossing',

@@ -46,7 +46,7 @@ test('culture anchors are deterministic and link plaza/tourism relationships', (
     'culture-anchor-event-space'
   ]);
   expect(firstCity.validation.issues.filter((issue) => issue.id.includes('culture-anchor'))).toEqual([]);
-  expect(firstCity.objectIndex.countsByKind['civic-anchor']).toBe(5);
+  expect(firstCity.objectIndex.countsByKind['civic-anchor']).toBe(6);
   expect(firstCity.objectIndex.countsByKind['culture-anchor']).toBe(6);
   expect(firstCity.cultureAnchors.every((anchor) => anchor.ownerDomain === 'civic')).toBe(true);
   expect(firstCity.cultureAnchors.every((anchor) => anchor.civicAnchorId === 'civic-anchor-culture-base')).toBe(true);

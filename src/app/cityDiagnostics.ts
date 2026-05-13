@@ -15,6 +15,7 @@ import type {
   BuildingTypologyKind,
   CivicAnchorServiceType,
   CityObjectIndex,
+  CommunityAnchorKind,
   CultureAnchorKind,
   GovernmentAnchorKind,
   SourceType
@@ -69,6 +70,7 @@ export interface CityDiagnostics {
   readonly buildingFacades: BuildingFacadeDiagnostics;
   readonly buildingRoofs: BuildingRoofDiagnostics;
   readonly civicAnchors: CivicAnchorDiagnostics;
+  readonly communityAnchors: CommunityAnchorDiagnostics;
   readonly cultureAnchors: CultureAnchorDiagnostics;
   readonly governmentAnchors: GovernmentAnchorDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
@@ -226,6 +228,15 @@ export interface CityDiagnostics {
     readonly civicAnchorDailyVisitors: number;
     readonly civicAnchorStaff: number;
     readonly civicAnchorEmergencyAccess: number;
+    readonly communityAnchors: number;
+    readonly communityAnchorKinds: number;
+    readonly communityDailyVisitors: number;
+    readonly communityEventCapacity: number;
+    readonly communitySocialServiceCapacity: number;
+    readonly communityShelterCapacity: number;
+    readonly communityCoverageScore: number;
+    readonly communityCrowdReadyAnchors: number;
+    readonly communityFoodDistributionAnchors: number;
     readonly cultureAnchors: number;
     readonly cultureAnchorKinds: number;
     readonly cultureFootfallDaily: number;
@@ -447,6 +458,23 @@ export interface CultureAnchorDiagnostics {
   readonly tourismAttractionScore: number;
   readonly eveningActivityAnchors: number;
   readonly heritageAnchors: number;
+  readonly plazaLinkedAnchors: number;
+  readonly scheduleProfiles: readonly string[];
+}
+
+export interface CommunityAnchorDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Partial<Record<CommunityAnchorKind, number>>>;
+  readonly anchorKinds: number;
+  readonly dailyVisitors: number;
+  readonly staffCapacity: number;
+  readonly eventCapacityPeople: number;
+  readonly socialServiceCapacityPeople: number;
+  readonly shelterCapacityPeople: number;
+  readonly communityCoverageScore: number;
+  readonly crowdEventReadyAnchors: number;
+  readonly foodDistributionAnchors: number;
+  readonly cemeteryCapacityPlots: number;
   readonly plazaLinkedAnchors: number;
   readonly scheduleProfiles: readonly string[];
 }
@@ -716,6 +744,7 @@ export function createCityDiagnostics(
   const buildingFacades = createBuildingFacadeDiagnostics(city);
   const buildingRoofs = createBuildingRoofDiagnostics(city);
   const civicAnchors = createCivicAnchorDiagnostics(city);
+  const communityAnchors = createCommunityAnchorDiagnostics(city);
   const cultureAnchors = createCultureAnchorDiagnostics(city);
   const governmentAnchors = createGovernmentAnchorDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
@@ -766,6 +795,7 @@ export function createCityDiagnostics(
     buildingFacades,
     buildingRoofs,
     civicAnchors,
+    communityAnchors,
     cultureAnchors,
     governmentAnchors,
     roadNetwork,
@@ -914,6 +944,15 @@ export function createCityDiagnostics(
       civicAnchorDailyVisitors: civicAnchors.dailyVisitors,
       civicAnchorStaff: civicAnchors.staff,
       civicAnchorEmergencyAccess: civicAnchors.emergencyAccessAnchors,
+      communityAnchors: communityAnchors.total,
+      communityAnchorKinds: communityAnchors.anchorKinds,
+      communityDailyVisitors: communityAnchors.dailyVisitors,
+      communityEventCapacity: communityAnchors.eventCapacityPeople,
+      communitySocialServiceCapacity: communityAnchors.socialServiceCapacityPeople,
+      communityShelterCapacity: communityAnchors.shelterCapacityPeople,
+      communityCoverageScore: communityAnchors.communityCoverageScore,
+      communityCrowdReadyAnchors: communityAnchors.crowdEventReadyAnchors,
+      communityFoodDistributionAnchors: communityAnchors.foodDistributionAnchors,
       cultureAnchors: cultureAnchors.total,
       cultureAnchorKinds: cultureAnchors.anchorKinds,
       cultureFootfallDaily: cultureAnchors.culturalFootfallDaily,
@@ -1274,6 +1313,62 @@ function createCultureAnchorDiagnostics(city: GeneratedCity): CultureAnchorDiagn
     tourismAttractionScore,
     eveningActivityAnchors,
     heritageAnchors,
+    plazaLinkedAnchors,
+    scheduleProfiles: [...scheduleProfiles].sort()
+  };
+}
+
+function createCommunityAnchorDiagnostics(city: GeneratedCity): CommunityAnchorDiagnostics {
+  const byKind: Partial<Record<CommunityAnchorKind, number>> = {};
+  const scheduleProfiles = new Set<string>();
+  let dailyVisitors = 0;
+  let staffCapacity = 0;
+  let eventCapacityPeople = 0;
+  let socialServiceCapacityPeople = 0;
+  let shelterCapacityPeople = 0;
+  let communityCoverageScore = 0;
+  let crowdEventReadyAnchors = 0;
+  let foodDistributionAnchors = 0;
+  let cemeteryCapacityPlots = 0;
+  let plazaLinkedAnchors = 0;
+
+  for (const anchor of city.communityAnchors) {
+    byKind[anchor.anchorKind] = (byKind[anchor.anchorKind] ?? 0) + 1;
+    dailyVisitors += anchor.dailyVisitors;
+    staffCapacity += anchor.staffCapacity;
+    eventCapacityPeople += anchor.eventCapacityPeople;
+    socialServiceCapacityPeople += anchor.socialServiceCapacityPeople;
+    shelterCapacityPeople += anchor.shelterCapacityPeople;
+    communityCoverageScore += anchor.communityCoverageScore;
+    cemeteryCapacityPlots += anchor.cemeteryCapacityPlots;
+    scheduleProfiles.add(anchor.scheduleProfileId);
+
+    if (anchor.crowdEventReady) {
+      crowdEventReadyAnchors += 1;
+    }
+
+    if (anchor.foodDistribution) {
+      foodDistributionAnchors += 1;
+    }
+
+    if (anchor.plazaZoneIds.length > 0) {
+      plazaLinkedAnchors += 1;
+    }
+  }
+
+  return {
+    total: city.communityAnchors.length,
+    byKind,
+    anchorKinds: Object.keys(byKind).length,
+    dailyVisitors,
+    staffCapacity,
+    eventCapacityPeople,
+    socialServiceCapacityPeople,
+    shelterCapacityPeople,
+    communityCoverageScore,
+    crowdEventReadyAnchors,
+    foodDistributionAnchors,
+    cemeteryCapacityPlots,
     plazaLinkedAnchors,
     scheduleProfiles: [...scheduleProfiles].sort()
   };

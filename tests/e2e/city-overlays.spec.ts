@@ -27,6 +27,7 @@ test('debug overlay datasets are generated from domain data', () => {
     'phasing',
     'city-metrics',
     'civic-anchors',
+    'community-anchors',
     'culture-anchors',
     'government-anchors',
     'constraints',
@@ -58,7 +59,7 @@ test('debug overlay datasets are generated from domain data', () => {
   expect(overlays.find((overlay) => overlay.id === 'soil-geology')?.featureCount).toBe(5);
   expect(overlays.find((overlay) => overlay.id === 'phasing')?.featureCount).toBe(3);
   expect(overlays.find((overlay) => overlay.id === 'city-metrics')?.featureCount).toBe(8);
-  expect(overlays.find((overlay) => overlay.id === 'civic-anchors')?.featureCount).toBe(5);
+  expect(overlays.find((overlay) => overlay.id === 'civic-anchors')?.featureCount).toBe(6);
   expect(overlays.find((overlay) => overlay.id === 'civic-anchors')?.features).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -66,6 +67,19 @@ test('debug overlay datasets are generated from domain data', () => {
         ownerDomain: 'civic',
         metadata: expect.objectContaining({
           serviceType: 'government'
+        })
+      })
+    ])
+  );
+  expect(overlays.find((overlay) => overlay.id === 'community-anchors')?.featureCount).toBe(8);
+  expect(overlays.find((overlay) => overlay.id === 'community-anchors')?.features).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        objectKind: 'community-anchor',
+        ownerDomain: 'civic',
+        metadata: expect.objectContaining({
+          anchorKind: 'food-bank',
+          foodDistribution: true
         })
       })
     ])

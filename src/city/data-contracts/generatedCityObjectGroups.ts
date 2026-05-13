@@ -31,7 +31,7 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'buildings',
     name: 'Buildings Render Layer',
-    objectKinds: ['building', 'civic-anchor', 'culture-anchor', 'government-anchor', 'facade'] as const
+    objectKinds: ['building', 'civic-anchor', 'community-anchor', 'culture-anchor', 'government-anchor', 'facade'] as const
   },
   {
     id: 'public-realm',
@@ -141,6 +141,10 @@ function createDistrictGroups(city: GeneratedCity): CityObjectGroupDefinition[] 
   }
 
   for (const anchor of city.civicAnchors) {
+    objectIdsByDistrictId.get(anchor.districtId)?.push(anchor.id);
+  }
+
+  for (const anchor of city.communityAnchors) {
     objectIdsByDistrictId.get(anchor.districtId)?.push(anchor.id);
   }
 

@@ -73,22 +73,24 @@ test('procedural seed export is deterministic JSON without renderer-only fields'
     sidewalks: 52,
     trafficCalmingDevices: 12,
     buildings: 583,
-    civicAnchors: 5,
+    civicAnchors: 6,
+    communityAnchors: 8,
     cultureAnchors: 6,
     governmentAnchors: 5,
     activeFrontages: 44,
     parkFeatures: 24,
     plazaZones: 6,
     waterfrontOpenSpaces: 8,
-    assetCatalog: 45,
-    renderBindings: 45
+    assetCatalog: 46,
+    renderBindings: 46
   });
-  expect(firstExport.city.civicAnchors).toHaveLength(5);
+  expect(firstExport.city.civicAnchors).toHaveLength(6);
+  expect(firstExport.city.communityAnchors).toHaveLength(8);
   expect(firstExport.city.cultureAnchors).toHaveLength(6);
   expect(firstExport.city.governmentAnchors).toHaveLength(5);
   expect(firstExport.city.waterfrontOpenSpaces).toHaveLength(8);
-  expect(firstExport.assets.catalog).toHaveLength(45);
-  expect(firstExport.assets.bindings).toHaveLength(45);
+  expect(firstExport.assets.catalog).toHaveLength(46);
+  expect(firstExport.assets.bindings).toHaveLength(46);
 
   const jsonText = JSON.stringify(firstExport);
   const jsonArtifact = JSON.parse(jsonText) as Record<string, unknown>;
@@ -154,8 +156,8 @@ test('city diagnostics expose procedural export readiness without embedding the 
     proceduralSeedExport: {
       format: 'procedural-seed-json',
       objectCount: city.objectIndex.objectIds.length,
-      exportedAssetDefinitions: 45,
-      exportedRenderBindings: 45,
+      exportedAssetDefinitions: 46,
+      exportedRenderBindings: 46,
       validationPassed: true,
       jsonSerializable: true,
       rendererOnlyFieldsDetected: [],

@@ -245,6 +245,7 @@ export interface ProceduralSeedDomainSections {
   readonly parcels: GeneratedCity['parcels'];
   readonly buildings: GeneratedCity['buildings'];
   readonly civicAnchors: GeneratedCity['civicAnchors'];
+  readonly communityAnchors: GeneratedCity['communityAnchors'];
   readonly cultureAnchors: GeneratedCity['cultureAnchors'];
   readonly governmentAnchors: GeneratedCity['governmentAnchors'];
   readonly activeFrontages: GeneratedCity['activeFrontages'];
@@ -284,6 +285,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly parcels: number;
   readonly buildings: number;
   readonly civicAnchors: number;
+  readonly communityAnchors: number;
   readonly cultureAnchors: number;
   readonly governmentAnchors: number;
   readonly activeFrontages: number;
@@ -395,6 +397,7 @@ export function createProceduralSeedJsonExport(
       parcels: city.parcels,
       buildings: city.buildings,
       civicAnchors: city.civicAnchors,
+      communityAnchors: city.communityAnchors,
       cultureAnchors: city.cultureAnchors,
       governmentAnchors: city.governmentAnchors,
       activeFrontages: city.activeFrontages,
@@ -514,6 +517,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'blocks'
     | 'buildings'
     | 'civicAnchors'
+    | 'communityAnchors'
     | 'cultureAnchors'
     | 'governmentAnchors'
     | 'cityMetrics'
@@ -571,6 +575,7 @@ export function createProceduralSeedDomainSectionCounts(
     parcels: city.parcels.length,
     buildings: city.buildings.length,
     civicAnchors: city.civicAnchors.length,
+    communityAnchors: city.communityAnchors.length,
     cultureAnchors: city.cultureAnchors.length,
     governmentAnchors: city.governmentAnchors.length,
     activeFrontages: city.activeFrontages.length,
@@ -619,6 +624,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'parcels') +
     getArrayLength(city, 'buildings') +
     getArrayLength(city, 'civicAnchors') +
+    getArrayLength(city, 'communityAnchors') +
     getArrayLength(city, 'cultureAnchors') +
     getArrayLength(city, 'governmentAnchors') +
     getArrayLength(city, 'activeFrontages') +

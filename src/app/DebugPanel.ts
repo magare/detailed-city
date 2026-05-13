@@ -226,6 +226,10 @@ export class DebugPanel {
         `${diagnostics.civicAnchors.total} anchors, ${diagnostics.civicAnchors.serviceTypes} services, ${diagnostics.civicAnchors.emergencyAccessAnchors} emergency`
       ),
       createMetric(
+        'Community',
+        `${diagnostics.communityAnchors.total} anchors, ${diagnostics.communityAnchors.dailyVisitors} visits, ${diagnostics.communityAnchors.crowdEventReadyAnchors} crowd`
+      ),
+      createMetric(
         'Culture',
         `${diagnostics.cultureAnchors.total} anchors, ${diagnostics.cultureAnchors.culturalFootfallDaily} footfall, ${diagnostics.cultureAnchors.eveningActivityAnchors} evening`
       ),

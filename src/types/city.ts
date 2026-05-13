@@ -6,6 +6,7 @@ import type {
   BuildingFrontageSide,
   BlockContract,
   CivicAnchorContract,
+  CommunityAnchorContract,
   CultureAnchorContract,
   GovernmentAnchorContract,
   CityMetricContract,
@@ -196,6 +197,8 @@ export interface BuildingPlan extends BuildingContract {
 
 export interface CivicAnchor extends CivicAnchorContract {}
 
+export interface CommunityAnchor extends CommunityAnchorContract {}
+
 export interface CultureAnchor extends CultureAnchorContract {}
 
 export interface GovernmentAnchor extends GovernmentAnchorContract {}
@@ -306,6 +309,7 @@ export type GeneratedCityObject =
   | Parcel
   | BuildingPlan
   | CivicAnchor
+  | CommunityAnchor
   | CultureAnchor
   | GovernmentAnchor
   | ActiveFrontage
@@ -353,6 +357,7 @@ export interface GeneratedCity {
   parcels: Parcel[];
   buildings: BuildingPlan[];
   civicAnchors: CivicAnchor[];
+  communityAnchors: CommunityAnchor[];
   cultureAnchors: CultureAnchor[];
   governmentAnchors: GovernmentAnchor[];
   activeFrontages: ActiveFrontage[];
