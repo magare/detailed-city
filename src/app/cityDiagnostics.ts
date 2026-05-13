@@ -18,7 +18,9 @@ import type {
   CommunityAnchorKind,
   CultureAnchorKind,
   GovernmentAnchorKind,
-  SourceType
+  SourceType,
+  WeatherPresetKind,
+  WeatherSeason
 } from '../city/data-contracts/cityContracts';
 import { createGeneratedRuntimeObjectIndex } from '../city/data-contracts/generatedCityObjectIndex';
 import { createGeneratedCityObjectGroupIndex } from '../city/data-contracts/generatedCityObjectGroups';
@@ -87,6 +89,7 @@ export interface CityDiagnostics {
   readonly soilGeology: SoilGeologyDiagnostics;
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
+  readonly climateWeather: ClimateWeatherDiagnostics;
   readonly developmentPhasing: DevelopmentPhasingDiagnostics;
   readonly parkExpansion: ParkExpansionDiagnostics;
   readonly plazaModel: PlazaModelDiagnostics;
@@ -187,6 +190,11 @@ export interface CityDiagnostics {
     readonly districtTransitionBuffers: number;
     readonly districtStylePalettes: number;
     readonly cityMetrics: number;
+    readonly weatherPresets: number;
+    readonly activeWeatherPresets: number;
+    readonly rainyWeatherPresets: number;
+    readonly fogWeatherPresets: number;
+    readonly monsoonWeatherPresets: number;
     readonly developmentPhases: number;
     readonly activeDevelopmentPhases: number;
     readonly temporaryRoadClosures: number;
@@ -649,6 +657,26 @@ export interface CityMetricDiagnostics {
   readonly valuesByKind: Readonly<Record<string, number>>;
 }
 
+export interface ClimateWeatherDiagnostics {
+  readonly total: number;
+  readonly activePresetId: string;
+  readonly activePresetKind: WeatherPresetKind;
+  readonly activeSeason: WeatherSeason;
+  readonly activeVisibilityMeters: number;
+  readonly activeSurfaceWetness: number;
+  readonly activeTrafficSpeedMultiplier: number;
+  readonly rainyPresets: number;
+  readonly fogPresets: number;
+  readonly monsoonPresets: number;
+  readonly seasons: readonly WeatherSeason[];
+  readonly maxCloudCover: number;
+  readonly maxSurfaceWetness: number;
+  readonly maxPuddleCoverage: number;
+  readonly minVisibilityMeters: number;
+  readonly maxWindSpeedKph: number;
+  readonly highDrainagePresets: number;
+}
+
 export interface DevelopmentPhasingDiagnostics {
   readonly total: number;
   readonly active: number;
@@ -761,6 +789,7 @@ export function createCityDiagnostics(
   const soilGeology = createSoilGeologyDiagnostics(city);
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
+  const climateWeather = createClimateWeatherDiagnostics(city);
   const developmentPhasing = createDevelopmentPhasingDiagnostics(city);
   const parkExpansion = createParkExpansionDiagnostics(city);
   const plazaModel = createPlazaModelDiagnostics(city);
@@ -812,6 +841,7 @@ export function createCityDiagnostics(
     soilGeology,
     districtCharacter,
     cityMetrics,
+    climateWeather,
     developmentPhasing,
     parkExpansion,
     plazaModel,
@@ -903,6 +933,11 @@ export function createCityDiagnostics(
       districtTransitionBuffers: districtCharacter.transitionBuffers,
       districtStylePalettes: districtCharacter.stylePalettes.length,
       cityMetrics: city.cityMetrics.length,
+      weatherPresets: climateWeather.total,
+      activeWeatherPresets: city.weatherPresets.filter((preset) => preset.active).length,
+      rainyWeatherPresets: climateWeather.rainyPresets,
+      fogWeatherPresets: climateWeather.fogPresets,
+      monsoonWeatherPresets: climateWeather.monsoonPresets,
       developmentPhases: developmentPhasing.total,
       activeDevelopmentPhases: developmentPhasing.active,
       temporaryRoadClosures: developmentPhasing.closureRoads,
@@ -1978,6 +2013,50 @@ function createCityMetricDiagnostics(city: GeneratedCity): CityMetricDiagnostics
         (scoreMetrics.reduce((sum, metric) => sum + metric.value, 0) / Math.max(1, scoreMetrics.length)) * 100
       ) / 100,
     valuesByKind
+  };
+}
+
+function createClimateWeatherDiagnostics(city: GeneratedCity): ClimateWeatherDiagnostics {
+  const seasons = new Set<WeatherSeason>();
+  let maxCloudCover = 0;
+  let maxSurfaceWetness = 0;
+  let maxPuddleCoverage = 0;
+  let minVisibilityMeters = Number.POSITIVE_INFINITY;
+  let maxWindSpeedKph = 0;
+  let highDrainagePresets = 0;
+
+  for (const preset of city.weatherPresets) {
+    seasons.add(preset.season);
+    maxCloudCover = Math.max(maxCloudCover, preset.cloudCover);
+    maxSurfaceWetness = Math.max(maxSurfaceWetness, preset.surfaceWetness);
+    maxPuddleCoverage = Math.max(maxPuddleCoverage, preset.puddleCoverage);
+    minVisibilityMeters = Math.min(minVisibilityMeters, preset.visibilityMeters);
+    maxWindSpeedKph = Math.max(maxWindSpeedKph, preset.windSpeedKph);
+    if (preset.simulationHooks.drainageLoad === 'high') {
+      highDrainagePresets += 1;
+    }
+  }
+
+  const activePreset = city.weatherPresets.find((preset) => preset.active) ?? city.weatherPresets[0];
+
+  return {
+    total: city.weatherPresets.length,
+    activePresetId: activePreset?.id ?? '',
+    activePresetKind: activePreset?.presetKind ?? 'clear',
+    activeSeason: activePreset?.season ?? 'summer',
+    activeVisibilityMeters: activePreset?.visibilityMeters ?? 0,
+    activeSurfaceWetness: activePreset?.surfaceWetness ?? 0,
+    activeTrafficSpeedMultiplier: activePreset?.simulationHooks.trafficSpeedMultiplier ?? 1,
+    rainyPresets: city.weatherPresets.filter((preset) => preset.precipitation !== 'none').length,
+    fogPresets: city.weatherPresets.filter((preset) => preset.presetKind === 'fog').length,
+    monsoonPresets: city.weatherPresets.filter((preset) => preset.presetKind === 'monsoon').length,
+    seasons: [...seasons].sort(),
+    maxCloudCover,
+    maxSurfaceWetness,
+    maxPuddleCoverage,
+    minVisibilityMeters: Number.isFinite(minVisibilityMeters) ? minVisibilityMeters : 0,
+    maxWindSpeedKph,
+    highDrainagePresets
   };
 }
 

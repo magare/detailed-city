@@ -50,6 +50,7 @@ import type {
   TrafficVehicleContract,
   TrafficCalmingDeviceContract,
   ValidationResult,
+  WeatherPresetContract,
   WaterfrontEdgeContract,
   WaterfrontOpenSpaceContract,
   WaterwayContract,
@@ -281,6 +282,8 @@ export interface TrafficVehiclePlan extends TrafficVehicleContract {}
 
 export interface TrafficCalmingDevice extends TrafficCalmingDeviceContract {}
 
+export interface WeatherPreset extends WeatherPresetContract {}
+
 export type GeneratedCityObject =
   | AssetDefinition
   | AdministrativeBoundaryPlan
@@ -302,6 +305,7 @@ export type GeneratedCityObject =
   | StreetLight
   | StreetFurniture
   | TrafficCalmingDevice
+  | WeatherPreset
   | SidewalkGraphNode
   | SidewalkGraphEdge
   | LaneContract
@@ -353,6 +357,7 @@ export interface GeneratedCity {
   streetLights: StreetLight[];
   streetFurniture: StreetFurniture[];
   trafficCalmingDevices: TrafficCalmingDevice[];
+  weatherPresets: WeatherPreset[];
   sidewalkGraph: SidewalkGraph;
   parcels: Parcel[];
   buildings: BuildingPlan[];

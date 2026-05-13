@@ -179,6 +179,10 @@ export class DebugPanel {
         'Metrics',
         `${diagnostics.cityMetrics.total} metrics, ${diagnostics.cityMetrics.passing} pass, ${diagnostics.cityMetrics.warnings} warn`
       ),
+      createMetric(
+        'Weather',
+        `${diagnostics.climateWeather.activePresetKind}, ${diagnostics.climateWeather.total} presets, ${diagnostics.climateWeather.rainyPresets} rain`
+      ),
       createMetric('Validation', getStatusLabel(diagnostics.validation.passed, diagnostics.validation.issues.length)),
       createMetric('Geo', `${diagnostics.geospatial.coordinateSystem}, ${coordinatePrecision}m`),
       createMetric(

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { DistrictKind } from '../../types/city';
+import type { DistrictKind, WeatherPreset } from '../../types/city';
 
 export class MaterialLibrary {
   readonly terrain = new THREE.MeshStandardMaterial({
@@ -201,6 +201,18 @@ export class MaterialLibrary {
     new THREE.MeshStandardMaterial({ color: 0xd8dee8, roughness: 0.48 }),
     new THREE.MeshStandardMaterial({ color: 0x2e6a9e, roughness: 0.55 })
   ] as const;
+
+  applyWeatherPreset(preset: WeatherPreset): void {
+    const wetness = preset.surfaceWetness;
+    this.asphalt.color.lerpColors(new THREE.Color(0x22282d), new THREE.Color(0x171c21), wetness);
+    this.asphalt.roughness = 0.88 - wetness * 0.18;
+    this.plazaHardscape.color.lerpColors(new THREE.Color(0xc8c0ad), new THREE.Color(0xaeb0aa), wetness * 0.55);
+    this.plazaHardscape.roughness = 0.8 - wetness * 0.1;
+    this.water.color.lerpColors(new THREE.Color(0x2c6f86), new THREE.Color(0x24596d), preset.cloudCover * 0.45);
+    this.water.roughness = 0.28 + preset.precipitationIntensity * 0.18;
+    this.water.opacity = 0.82 + Math.min(preset.precipitationIntensity * 0.08, 0.1);
+    this.storefrontGlass.roughness = 0.2 + wetness * 0.08;
+  }
 
   getBuildingColor(district: DistrictKind, height: number): THREE.Color {
     const color = new THREE.Color(this.baseDistrictColor(district));

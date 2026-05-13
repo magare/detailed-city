@@ -5,6 +5,7 @@ import { Viewport } from '../core/Viewport';
 import { cityConfig } from '../config/cityConfig';
 import { renderConfig } from '../config/renderConfig';
 import { CityGenerator } from '../generation/CityGenerator';
+import { getActiveWeatherPreset } from '../generation/environment/ClimateWeatherGenerator';
 import { TrafficLaneGenerator } from '../generation/traffic/TrafficLaneGenerator';
 import { MaterialLibrary } from '../rendering/materials/MaterialLibrary';
 import { CameraRig } from '../systems/camera/CameraRig';
@@ -52,12 +53,14 @@ export class App {
     });
     this.activeAgentCount = trafficPlan.vehicles.length;
     this.diagnostics = createCityDiagnostics(generatedCity, trafficPlan, renderConfig, cityConfig);
-    this.bootstrap = new SceneBootstrap(container, renderConfig);
+    const activeWeatherPreset = getActiveWeatherPreset(generatedCity.weatherPresets);
+    this.bootstrap = new SceneBootstrap(container, renderConfig, activeWeatherPreset);
 
     CameraRig.applyOverview(this.bootstrap.camera, cityConfig);
-    createCityLighting(this.bootstrap.scene);
+    createCityLighting(this.bootstrap.scene, activeWeatherPreset);
 
-    this.atmosphere = new Atmosphere(this.bootstrap.scene);
+    this.atmosphere = new Atmosphere(this.bootstrap.scene, activeWeatherPreset);
+    this.materials.applyWeatherPreset(activeWeatherPreset);
     this.city = new City(generatedCity, trafficPlan, this.materials);
     this.bootstrap.scene.add(this.city.group);
 

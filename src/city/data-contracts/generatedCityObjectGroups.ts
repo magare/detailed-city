@@ -53,6 +53,7 @@ const RENDER_LAYER_KIND_GROUPS = [
       'hazard-zone',
       'resilience-goal',
       'vertical-slice',
+      'weather-preset',
       'zoning-district'
     ] as const
   }

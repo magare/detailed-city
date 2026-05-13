@@ -48,6 +48,7 @@ export type CityObjectKind =
   | 'waterfront-edge'
   | 'waterfront-open-space'
   | 'waterway'
+  | 'weather-preset'
   | 'zoning-district';
 
 export type LandUse =
@@ -685,6 +686,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod3',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Waterfront open spaces describe public promenades, overlooks, boardwalks, ecological terraces, seating, railings, and water access.'
+    },
+    {
+      objectKind: 'weather-preset',
+      scope: 'overlay',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'Weather presets define deterministic climate state, visibility, surface wetness, and rendering hooks for readable environment changes.'
     }
   ]
 };
@@ -2242,6 +2250,44 @@ export interface TrafficCalmingDeviceContract extends CityObjectBase<'traffic-ca
   readonly assetBindingId: CityId;
 }
 
+export type WeatherPresetKind = 'clear' | 'cloudy' | 'rain' | 'fog' | 'monsoon';
+export type WeatherSeason = 'spring' | 'summer' | 'monsoon' | 'autumn' | 'winter';
+export type WeatherPrecipitationKind = 'none' | 'drizzle' | 'rain' | 'heavy-rain';
+
+export interface WeatherPresetRenderingContract {
+  readonly backgroundColor: number;
+  readonly fogColor: number;
+  readonly fogDensity: number;
+  readonly skyColor: number;
+  readonly skyOpacity: number;
+  readonly sunIntensity: number;
+  readonly hemisphereIntensity: number;
+  readonly fillIntensity: number;
+  readonly exposure: number;
+}
+
+export interface WeatherPresetContract extends CityObjectBase<'weather-preset'> {
+  readonly presetKind: WeatherPresetKind;
+  readonly season: WeatherSeason;
+  readonly active: boolean;
+  readonly cloudCover: number;
+  readonly precipitation: WeatherPrecipitationKind;
+  readonly precipitationIntensity: number;
+  readonly visibilityMeters: number;
+  readonly surfaceWetness: number;
+  readonly puddleCoverage: number;
+  readonly humidity: number;
+  readonly temperatureCelsius: number;
+  readonly windSpeedKph: number;
+  readonly transitionSeconds: number;
+  readonly rendering: WeatherPresetRenderingContract;
+  readonly simulationHooks: {
+    readonly trafficSpeedMultiplier: number;
+    readonly pedestrianComfort: 'comfortable' | 'warm' | 'humid' | 'reduced-visibility' | 'storm';
+    readonly drainageLoad: 'none' | 'low' | 'medium' | 'high';
+  };
+}
+
 export type AssetFormat = 'glb' | 'gltf' | 'png' | 'jpg' | 'webp' | 'ktx2' | 'hdr' | 'exr' | 'procedural';
 
 export interface AssetDefinition extends CityObjectBase<'asset'> {
@@ -2283,6 +2329,7 @@ export interface ValidationIssue {
   readonly category:
     | 'asset'
     | 'config'
+    | 'environment'
     | 'graph'
     | 'geometry'
     | 'identifier'

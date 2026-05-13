@@ -227,6 +227,7 @@ export interface ProceduralSeedDomainSections {
   readonly zoningDistricts: GeneratedCity['zoningDistricts'];
   readonly cityMetrics: GeneratedCity['cityMetrics'];
   readonly developmentPhases: GeneratedCity['developmentPhases'];
+  readonly weatherPresets: GeneratedCity['weatherPresets'];
   readonly constraints: GeneratedCity['constraints'];
   readonly hazardZones: GeneratedCity['hazardZones'];
   readonly topographyZones: GeneratedCity['topographyZones'];
@@ -264,6 +265,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly zoningDistricts: number;
   readonly cityMetrics: number;
   readonly developmentPhases: number;
+  readonly weatherPresets: number;
   readonly constraints: number;
   readonly hazardZones: number;
   readonly topographyZones: number;
@@ -379,6 +381,7 @@ export function createProceduralSeedJsonExport(
       zoningDistricts: city.zoningDistricts,
       cityMetrics: city.cityMetrics,
       developmentPhases: city.developmentPhases,
+      weatherPresets: city.weatherPresets,
       constraints: city.constraints,
       hazardZones: city.hazardZones,
       topographyZones: city.topographyZones,
@@ -522,6 +525,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'governmentAnchors'
     | 'cityMetrics'
     | 'developmentPhases'
+    | 'weatherPresets'
     | 'constraints'
     | 'hazardZones'
     | 'topographyZones'
@@ -554,6 +558,7 @@ export function createProceduralSeedDomainSectionCounts(
     zoningDistricts: city.zoningDistricts.length,
     cityMetrics: city.cityMetrics.length,
     developmentPhases: city.developmentPhases.length,
+    weatherPresets: city.weatherPresets.length,
     constraints: city.constraints.length,
     hazardZones: city.hazardZones.length,
     topographyZones: city.topographyZones.length,
@@ -603,6 +608,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'zoningDistricts') +
     getArrayLength(city, 'cityMetrics') +
     getArrayLength(city, 'developmentPhases') +
+    getArrayLength(city, 'weatherPresets') +
     getArrayLength(city, 'constraints') +
     getArrayLength(city, 'hazardZones') +
     getArrayLength(city, 'topographyZones') +

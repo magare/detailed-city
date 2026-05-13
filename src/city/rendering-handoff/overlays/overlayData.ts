@@ -22,6 +22,7 @@ export type CityOverlayId =
   | 'topography'
   | 'soil-geology'
   | 'phasing'
+  | 'weather-presets'
   | 'city-metrics'
   | 'civic-anchors'
   | 'community-anchors'
@@ -82,6 +83,7 @@ export function createCityOverlayDatasets(
     createDataset('topography', 'Topography', 'domain-data', createTopographyFeatures(city)),
     createDataset('soil-geology', 'Soil Geology', 'domain-data', createSoilGeologyFeatures(city)),
     createDataset('phasing', 'Phasing', 'domain-data', createDevelopmentPhaseFeatures(city)),
+    createDataset('weather-presets', 'Weather Presets', 'domain-data', createWeatherPresetFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
@@ -487,6 +489,29 @@ function createCivicAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
       dailyVisitors: anchor.capacity.dailyVisitors,
       staff: anchor.capacity.staff,
       emergencyAccess: anchor.schedule.emergencyAccess
+    }
+  }));
+}
+
+function createWeatherPresetFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.weatherPresets.map((preset) => ({
+    id: `overlay:weather-presets:${preset.id}`,
+    overlayId: 'weather-presets',
+    objectId: preset.id,
+    objectKind: preset.kind,
+    ownerDomain: preset.ownerDomain,
+    label: preset.name ?? preset.id,
+    geometry: { type: 'none' },
+    metadata: {
+      presetKind: preset.presetKind,
+      season: preset.season,
+      active: preset.active,
+      cloudCover: preset.cloudCover,
+      precipitation: preset.precipitation,
+      precipitationIntensity: preset.precipitationIntensity,
+      visibilityMeters: preset.visibilityMeters,
+      surfaceWetness: preset.surfaceWetness,
+      drainageLoad: preset.simulationHooks.drainageLoad
     }
   }));
 }

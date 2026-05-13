@@ -32,7 +32,10 @@ import type {
   StreetProfile,
   TravelMode,
   ValidationIssue,
-  ValidationResult
+  ValidationResult,
+  WeatherPrecipitationKind,
+  WeatherPresetKind,
+  WeatherSeason
 } from '../cityContracts';
 import {
   CITY_ADMINISTRATIVE_BOUNDARY_KINDS,
@@ -65,6 +68,7 @@ type GeneratedCityForValidation = Pick<
   | 'governmentAnchors'
   | 'cityMetrics'
   | 'developmentPhases'
+  | 'weatherPresets'
   | 'constraints'
   | 'crossings'
   | 'curbZones'
@@ -104,6 +108,7 @@ type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'][number];
+type ValidationWeatherPreset = GeneratedCityForValidation['weatherPresets'][number];
 type ValidationPark = GeneratedCityForValidation['parks'][number];
 type ValidationParkFeature = GeneratedCityForValidation['parkFeatures'][number];
 type ValidationPlazaZone = GeneratedCityForValidation['plazaZones'][number];
@@ -247,6 +252,9 @@ const COMMUNITY_ANCHOR_KINDS = [
   'social-service',
   'worship-place'
 ] as const satisfies readonly CommunityAnchorKind[];
+const WEATHER_PRESET_KINDS = ['clear', 'cloudy', 'rain', 'fog', 'monsoon'] as const satisfies readonly WeatherPresetKind[];
+const WEATHER_SEASONS = ['spring', 'summer', 'monsoon', 'autumn', 'winter'] as const satisfies readonly WeatherSeason[];
+const WEATHER_PRECIPITATION_KINDS = ['none', 'drizzle', 'rain', 'heavy-rain'] as const satisfies readonly WeatherPrecipitationKind[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -419,6 +427,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateRenderBindings(city.assetCatalog, city.assetBindings, issues);
   validateAdministrativeBoundaries(city, issues);
   validateCityMetrics(city, issues);
+  validateWeatherPresets(city.weatherPresets, issues);
   validateZoningDistricts(city, issues);
   validateWaterways(city, issues);
   validateWaterfrontEdges(city, issues);
@@ -5444,6 +5453,114 @@ function validateCityMetrics(city: GeneratedCityForValidation, issues: Validatio
   }
 }
 
+function validateWeatherPresets(weatherPresets: readonly ValidationWeatherPreset[], issues: ValidationIssue[]): void {
+  const presetKinds = new Set<WeatherPresetKind>();
+  const activePresets = weatherPresets.filter((preset) => preset.active);
+
+  if (weatherPresets.length === 0) {
+    issues.push({
+      id: 'missing-weather-presets',
+      severity: 'error',
+      category: 'environment',
+      message: 'Climate and weather generation must expose deterministic weather presets.'
+    });
+  }
+
+  if (activePresets.length !== 1) {
+    issues.push({
+      id: 'invalid-active-weather-preset-count',
+      severity: 'error',
+      category: 'environment',
+      objectId: activePresets[0]?.id,
+      message: 'Exactly one weather preset must be active for deterministic rendering and simulation state.'
+    });
+  }
+
+  for (const preset of weatherPresets) {
+    if (!WEATHER_PRESET_KINDS.includes(preset.presetKind)) {
+      issues.push(createWeatherPresetIssue(preset, 'invalid-kind', `Weather preset ${preset.id} uses unsupported kind ${preset.presetKind}.`));
+    } else {
+      presetKinds.add(preset.presetKind);
+    }
+
+    if (!WEATHER_SEASONS.includes(preset.season)) {
+      issues.push(createWeatherPresetIssue(preset, 'invalid-season', `Weather preset ${preset.id} uses unsupported season ${preset.season}.`));
+    }
+
+    if (!WEATHER_PRECIPITATION_KINDS.includes(preset.precipitation)) {
+      issues.push(createWeatherPresetIssue(preset, 'invalid-precipitation', `Weather preset ${preset.id} uses unsupported precipitation ${preset.precipitation}.`));
+    }
+
+    if (
+      !isUnitInterval(preset.cloudCover) ||
+      !isUnitInterval(preset.precipitationIntensity) ||
+      !isUnitInterval(preset.surfaceWetness) ||
+      !isUnitInterval(preset.puddleCoverage) ||
+      !isUnitInterval(preset.humidity)
+    ) {
+      issues.push(createWeatherPresetIssue(preset, 'invalid-normalized-values', `Weather preset ${preset.id} must keep cloud, precipitation, wetness, puddle, and humidity values in 0..1.`));
+    }
+
+    if (
+      preset.visibilityMeters < 450 ||
+      preset.rendering.fogDensity > 0.006 ||
+      preset.rendering.skyOpacity > 0.6
+    ) {
+      issues.push(createWeatherPresetIssue(preset, 'visibility-hides-city', `Weather preset ${preset.id} must preserve enough visibility to inspect the city.`));
+    }
+
+    if (
+      !isFiniteNumber(preset.temperatureCelsius) ||
+      !isFiniteNumber(preset.windSpeedKph) ||
+      preset.windSpeedKph < 0 ||
+      preset.transitionSeconds <= 0 ||
+      preset.rendering.sunIntensity < 0 ||
+      preset.rendering.hemisphereIntensity < 0 ||
+      preset.rendering.fillIntensity < 0 ||
+      preset.rendering.exposure <= 0 ||
+      preset.simulationHooks.trafficSpeedMultiplier <= 0 ||
+      preset.simulationHooks.trafficSpeedMultiplier > 1.2
+    ) {
+      issues.push(createWeatherPresetIssue(preset, 'invalid-runtime-values', `Weather preset ${preset.id} has invalid rendering or simulation values.`));
+    }
+
+    if (preset.precipitation === 'none' && (preset.precipitationIntensity > 0 || preset.puddleCoverage > 0.05)) {
+      issues.push(createWeatherPresetIssue(preset, 'dry-preset-has-rain-effects', `Dry weather preset ${preset.id} must not expose rain or large puddle coverage.`));
+    }
+
+    if ((preset.precipitation === 'rain' || preset.precipitation === 'heavy-rain') && preset.surfaceWetness < 0.5) {
+      issues.push(createWeatherPresetIssue(preset, 'rain-without-wetness', `Rain weather preset ${preset.id} must expose wet surface hooks.`));
+    }
+  }
+
+  for (const requiredKind of WEATHER_PRESET_KINDS) {
+    if (!presetKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-weather-preset-${requiredKind}`,
+        severity: 'error',
+        category: 'environment',
+        objectId: `weather-preset-${requiredKind}`,
+        message: `Weather presets must include ${requiredKind}.`
+      });
+    }
+  }
+}
+
+function createWeatherPresetIssue(
+  preset: ValidationWeatherPreset,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `weather-preset-${issueIdSuffix}-${toIssueIdToken(preset.id)}`,
+    severity: 'error',
+    category: 'environment',
+    objectId: preset.id,
+    suggestedFix: `Regenerate ${preset.id} from climate/weather preset rules.`,
+    message
+  };
+}
+
 function validateWaterways(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
   const waterwayIds = new Set(city.waterways.map((waterway) => waterway.id));
 
@@ -7603,6 +7720,10 @@ function getFinitePoint(value: unknown): Point2D | undefined {
 
 function isFiniteNumber(value: number): boolean {
   return Number.isFinite(value);
+}
+
+function isUnitInterval(value: number): boolean {
+  return Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -55,6 +55,7 @@ test('hazard layer is deterministic, indexed, and connected to land context', ()
     'topography',
     'soil-geology',
     'phasing',
+    'weather-presets',
     'city-metrics',
     'civic-anchors',
     'community-anchors',

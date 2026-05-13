@@ -25,6 +25,7 @@ test('debug overlay datasets are generated from domain data', () => {
     'topography',
     'soil-geology',
     'phasing',
+    'weather-presets',
     'city-metrics',
     'civic-anchors',
     'community-anchors',
@@ -58,6 +59,20 @@ test('debug overlay datasets are generated from domain data', () => {
   expect(overlays.find((overlay) => overlay.id === 'topography')?.featureCount).toBe(5);
   expect(overlays.find((overlay) => overlay.id === 'soil-geology')?.featureCount).toBe(5);
   expect(overlays.find((overlay) => overlay.id === 'phasing')?.featureCount).toBe(3);
+  expect(overlays.find((overlay) => overlay.id === 'weather-presets')?.featureCount).toBe(5);
+  expect(overlays.find((overlay) => overlay.id === 'weather-presets')?.features).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        objectKind: 'weather-preset',
+        ownerDomain: 'environment',
+        metadata: expect.objectContaining({
+          active: true,
+          presetKind: 'clear',
+          precipitation: 'none'
+        })
+      })
+    ])
+  );
   expect(overlays.find((overlay) => overlay.id === 'city-metrics')?.featureCount).toBe(8);
   expect(overlays.find((overlay) => overlay.id === 'civic-anchors')?.featureCount).toBe(6);
   expect(overlays.find((overlay) => overlay.id === 'civic-anchors')?.features).toEqual(

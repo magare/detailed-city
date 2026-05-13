@@ -18,6 +18,7 @@ import { GovernmentAnchorGenerator } from './civic/GovernmentAnchorGenerator';
 import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
+import { ClimateWeatherGenerator } from './environment/ClimateWeatherGenerator';
 import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
 import { HazardZoneGenerator } from './land/HazardZoneGenerator';
 import { SoilGeologyGenerator } from './land/SoilGeologyGenerator';
@@ -106,6 +107,7 @@ export class CityGenerator {
       waterways
     });
     const developmentPhases = new PhasingGenerator().create({ bounds });
+    const weatherPresets = new ClimateWeatherGenerator().create();
     const parkTrees = terrainGenerator.generateTreePlantings(parksWithFeatures);
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
       roads: roadsWithTopography,
@@ -217,6 +219,7 @@ export class CityGenerator {
       zoningDistricts: landAndBuildingsWithTopography.zoningDistricts,
       cityMetrics,
       developmentPhases,
+      weatherPresets,
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,

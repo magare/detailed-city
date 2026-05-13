@@ -50,6 +50,7 @@ const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|o
 const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|landslide-risk|restricted-area)`;
 const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
 const WATERFRONT_OPEN_SPACE_KIND = String.raw`(?:boardwalk|ecological-edge|overlook|pier-landing|promenade|water-access)`;
+const WEATHER_PRESET_KIND = String.raw`(?:clear|cloudy|rain|fog|monsoon)`;
 const TOPOGRAPHY_ZONE_KIND = String.raw`(?:elevation-band|slope-area|retaining-condition|buildability-area)`;
 const SOIL_GEOLOGY_KIND = String.raw`(?:alluvial-silt|engineered-fill|shallow-bedrock|sandy-loam|contaminated-fill|waterfront-clay)`;
 const DEVELOPMENT_PHASE_KIND = String.raw`(?:baseline|future-expansion|temporary-condition)`;
@@ -185,6 +186,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     required(['waterfront-edge'])
   ),
   entry('waterway', ['<waterway-slug>'], [exact(NAMED_ID)], none()),
+  entry(
+    'weather-preset',
+    ['weather-preset-<weather-preset-kind-or-slug>'],
+    [exact(String.raw`weather-preset-(?:${WEATHER_PRESET_KIND}|${NAMED_ID})(?:-${NAMED_ID})?`)],
+    none()
+  ),
   entry('zoning-district', ['zoning-district-<district-slug>'], [exact(String.raw`zoning-district-${NAMED_ID}`)], required(['district']))
 ] as const satisfies readonly CityObjectKindRegistryEntry[];
 
