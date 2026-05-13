@@ -4,6 +4,7 @@ import type {
   AdministrativeBoundaryContract,
   BuildingContract,
   BuildingFrontageSide,
+  CadastreRecordContract,
   BlockContract,
   CivicAnchorContract,
   CommunityAnchorContract,
@@ -191,6 +192,8 @@ export interface Parcel extends ParcelContract {
   maxCoverageRatio: number;
 }
 
+export interface CadastreRecord extends CadastreRecordContract {}
+
 export interface BuildingPlan extends BuildingContract {
   center: Point2D;
   size: { x: number; z: number };
@@ -318,6 +321,7 @@ export type GeneratedCityObject =
   | SidewalkContract
   | Parcel
   | BuildingPlan
+  | CadastreRecord
   | CivicAnchor
   | CommunityAnchor
   | CultureAnchor
@@ -368,6 +372,7 @@ export interface GeneratedCity {
   urbanHeatZones: UrbanHeatZone[];
   sidewalkGraph: SidewalkGraph;
   parcels: Parcel[];
+  cadastreRecords: CadastreRecord[];
   buildings: BuildingPlan[];
   civicAnchors: CivicAnchor[];
   communityAnchors: CommunityAnchor[];

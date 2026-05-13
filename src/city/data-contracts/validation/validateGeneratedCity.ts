@@ -66,6 +66,7 @@ type GeneratedCityForValidation = Pick<
   | 'administrativeBoundaries'
   | 'blocks'
   | 'buildings'
+  | 'cadastreRecords'
   | 'civicAnchors'
   | 'communityAnchors'
   | 'cultureAnchors'
@@ -106,6 +107,7 @@ type GeneratedCityForValidation = Pick<
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
+type ValidationCadastreRecord = GeneratedCityForValidation['cadastreRecords'][number];
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
@@ -459,6 +461,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateHazardZones(city, issues);
   validateTopographyZones(city, issues);
   validateSoilGeologyZones(city, issues);
+  validateCadastreRecords(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -1930,6 +1933,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
   const blocksById = new Map(city.blocks.map((block) => [block.id, block]));
   const zoningById = new Map(city.zoningDistricts.map((zoning) => [zoning.id, zoning]));
+  const cadastreRecordsById = new Map(city.cadastreRecords.map((record) => [record.id, record]));
 
   for (const parcel of city.parcels) {
     if (!hasObjectId(city, parcel.districtId) || !hasObjectId(city, parcel.blockId)) {
@@ -1987,6 +1991,18 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         category: 'zoning',
         objectId: parcel.id,
         message: 'Parcel must carry at least one allowed land use.'
+      });
+    }
+
+    const cadastreRecord = cadastreRecordsById.get(parcel.cadastreRecordId);
+    if (!cadastreRecord || cadastreRecord.parcelId !== parcel.id) {
+      issues.push({
+        id: `missing-parcel-cadastre-record-${parcel.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: parcel.id,
+        ...createIssueFocus(parcel.center, `Generate cadastre-record-${parcel.id} and link ${parcel.id}.cadastreRecordId to it.`),
+        message: `Parcel ${parcel.id} must reference a cadastre record that points back to the parcel.`
       });
     }
 
@@ -3292,6 +3308,88 @@ function validateRoadGroundProfile(
       message: `Road ${road.id} must reference existing topography zones.`
     });
   }
+}
+
+function validateCadastreRecords(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
+  const recordIdsByParcelId = new Map<string, string[]>();
+
+  for (const record of city.cadastreRecords) {
+    const parcel = parcelsById.get(record.parcelId);
+    recordIdsByParcelId.set(record.parcelId, [...(recordIdsByParcelId.get(record.parcelId) ?? []), record.id]);
+
+    if (!parcel || record.parentId !== record.parcelId) {
+      issues.push(createCadastreIssue(record, 'invalid-parcel-reference', `Cadastre record ${record.id} must be parented to an existing parcel.`));
+      continue;
+    }
+
+    if (
+      record.id !== parcel.cadastreRecordId ||
+      record.id !== `cadastre-record-${parcel.id}` ||
+      record.districtId !== parcel.districtId ||
+      record.blockId !== parcel.blockId ||
+      record.developmentRightStatus !== parcel.developmentRights.status
+    ) {
+      issues.push(createCadastreIssue(record, 'parcel-mismatch', `Cadastre record ${record.id} must mirror parcel ${parcel.id} legal references and development-right status.`));
+    }
+
+    if (!record.ownerEntityId || !record.ownerName || !record.legalDescription || !record.titleReference) {
+      issues.push(createCadastreIssue(record, 'missing-legal-fields', `Cadastre record ${record.id} must include owner, title, and legal description fields.`));
+    }
+
+    if (!Number.isFinite(record.assessedLandValue) || record.assessedLandValue <= 0) {
+      issues.push(createCadastreIssue(record, 'invalid-assessed-value', `Cadastre record ${record.id} must include a positive assessed land value.`));
+    }
+
+    if (record.rights.length === 0 || !record.rights.some((right) => right.rightKind === 'build')) {
+      issues.push(createCadastreIssue(record, 'missing-rights', `Cadastre record ${record.id} must include at least one build right.`));
+    }
+
+    const easementIds = new Set<string>();
+    for (const easement of record.easements) {
+      if (easementIds.has(easement.id)) {
+        issues.push(createCadastreIssue(record, `duplicate-easement-${toIssueIdToken(easement.id)}`, `Cadastre record ${record.id} has duplicate easement ${easement.id}.`));
+      }
+      easementIds.add(easement.id);
+
+      if (
+        !easement.beneficiaryId ||
+        easement.widthMeters <= 0 ||
+        easement.boundary.length < 4 ||
+        !isPolygonWithinPolygonBounds(easement.boundary, parcel.boundary)
+      ) {
+        issues.push(createCadastreIssue(record, `invalid-easement-${toIssueIdToken(easement.id)}`, `Cadastre easement ${easement.id} must have a beneficiary, positive width, and boundary inside parcel ${parcel.id}.`));
+      }
+    }
+  }
+
+  for (const parcel of city.parcels) {
+    const recordIds = recordIdsByParcelId.get(parcel.id) ?? [];
+    if (recordIds.length !== 1) {
+      issues.push({
+        id: `invalid-cadastre-record-count-${parcel.id}`,
+        severity: 'error',
+        category: 'land',
+        objectId: parcel.id,
+        ...createIssueFocus(parcel.center, `Generate exactly one cadastre record for ${parcel.id}.`),
+        message: `Parcel ${parcel.id} must have exactly one cadastre record.`
+      });
+    }
+  }
+}
+
+function createCadastreIssue(
+  record: ValidationCadastreRecord,
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `invalid-cadastre-${record.id}-${suffix}`,
+    severity: 'error',
+    category: 'land',
+    objectId: record.id,
+    message
+  };
 }
 
 function validateBuildingTopography(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {

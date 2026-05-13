@@ -22,6 +22,7 @@ import { ClimateWeatherGenerator } from './environment/ClimateWeatherGenerator';
 import { SolarShadingGenerator } from './environment/SolarShadingGenerator';
 import { UrbanHeatGenerator } from './environment/UrbanHeatGenerator';
 import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
+import { CadastreGenerator } from './land/CadastreGenerator';
 import { HazardZoneGenerator } from './land/HazardZoneGenerator';
 import { SoilGeologyGenerator } from './land/SoilGeologyGenerator';
 import { TopographyGenerator } from './land/TopographyGenerator';
@@ -108,6 +109,7 @@ export class CityGenerator {
       hazardZones,
       waterways
     });
+    const cadastreRecords = new CadastreGenerator().create(soilGeology.parcels);
     const developmentPhases = new PhasingGenerator().create({ bounds });
     const weatherPresets = new ClimateWeatherGenerator().create();
     const parkTrees = terrainGenerator.generateTreePlantings(parksWithFeatures);
@@ -247,6 +249,7 @@ export class CityGenerator {
       hazardZones,
       topographyZones: topography.topographyZones,
       soilGeologyZones: soilGeology.soilGeologyZones,
+      cadastreRecords,
       resilienceGoals,
       blocks: administrativeLand.blocks,
       verticalSlices: verticalSlicesWithCurbs,

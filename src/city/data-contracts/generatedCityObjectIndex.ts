@@ -15,6 +15,7 @@ type GeneratedCityObjectSource = Pick<
   | 'administrativeBoundaries'
   | 'blocks'
   | 'buildings'
+  | 'cadastreRecords'
   | 'civicAnchors'
   | 'communityAnchors'
   | 'cultureAnchors'
@@ -78,6 +79,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.sidewalkGraph.nodes,
     ...city.sidewalkGraph.edges,
     ...city.parcels,
+    ...city.cadastreRecords,
     ...city.buildings,
     ...city.civicAnchors,
     ...city.communityAnchors,

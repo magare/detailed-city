@@ -41,6 +41,7 @@ const SIDEWALK_SIDE = String.raw`(?:left|right)`;
 const SIDEWALK_ID = String.raw`${ROAD_ID}-sidewalk-${SIDEWALK_SIDE}`;
 const CROSSING_ID = String.raw`crossing-(?:${INTERSECTION_ID}-${ROAD_ID}|midblock-${ROAD_ID}-\d+)`;
 const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
+const PARCEL_ID = String.raw`parcel-\d+-\d+-\d+-\d+`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|railing|regulatory-sign|street-name-sign|wayfinding-sign)`;
 const TRAFFIC_CALMING_KIND = String.raw`(?:curb-extension|bus-bulb|chicane|pinchpoint|speed-hump|speed-table|speed-cushion|neighborhood-gateway)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
@@ -70,6 +71,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('asset', ['asset:<category>:<semantic-name>:primitive'], [exact(String.raw`asset:${NAMED_ID}(?::${NAMED_ID})+:primitive`)], none()),
   entry('block', ['block-<grid-x>-<grid-z>'], [exact(String.raw`block-\d+-\d+`)], required(['district'])),
   entry('building', ['building-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(BUILDING_ID)], required(['parcel'])),
+  entry('cadastre-record', ['cadastre-record-<parcel-id>'], [exact(String.raw`cadastre-record-${PARCEL_ID}`)], required(['parcel'])),
   entry('city-metric', ['city-metric-<metric-kind>'], [exact(String.raw`city-metric-${NAMED_ID}`)], none()),
   entry('civic-anchor', ['civic-anchor-<slug>'], [exact(String.raw`civic-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
   entry(
@@ -125,7 +127,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ],
     required(['road-segment', 'lane', 'crossing'])
   ),
-  entry('parcel', ['parcel-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(String.raw`parcel-\d+-\d+-\d+-\d+`)], required(['block'])),
+  entry('parcel', ['parcel-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(PARCEL_ID)], required(['block'])),
   entry('park', ['<park-slug>'], [exact(NAMED_ID)], none()),
   entry(
     'park-feature',

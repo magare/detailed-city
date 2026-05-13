@@ -46,6 +46,7 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
       edges: city.sidewalkGraph.edges.map((edge) => withProceduralMetadata(edge, 'mobility-sidewalk-graph'))
     },
     parcels: city.parcels.map((parcel) => withProceduralMetadata(parcel, 'building-parcels')),
+    cadastreRecords: city.cadastreRecords.map((record) => withProceduralMetadata(record, 'land-cadastre')),
     buildings: city.buildings.map((building) => withProceduralMetadata(building, 'building-massing')),
     civicAnchors: city.civicAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-anchor-base')),
     communityAnchors: city.communityAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-community-anchors')),

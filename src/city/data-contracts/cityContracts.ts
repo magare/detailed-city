@@ -9,6 +9,7 @@ export type CityObjectKind =
   | 'asset'
   | 'block'
   | 'building'
+  | 'cadastre-record'
   | 'city-metric'
   | 'civic-anchor'
   | 'community-anchor'
@@ -443,6 +444,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Government anchors expose city hall, administrative, court, service counter, and civic plaza public-administration nodes.'
+    },
+    {
+      objectKind: 'cadastre-record',
+      scope: 'land',
+      defaultTier: 'lod1',
+      allowedTiers: ['lod1'],
+      description: 'Cadastre records are inspectable land ownership, rights, and easement metadata for parcels.'
     },
     {
       objectKind: 'city-metric',
@@ -1262,6 +1270,41 @@ export interface ParcelDevelopmentRightsContract {
   readonly status: 'as-of-right' | 'limited' | 'constrained';
 }
 
+export type CadastreTenureKind = 'public-freehold' | 'private-freehold' | 'leasehold' | 'civic-trust';
+export type CadastreRightKind = 'build' | 'access' | 'service' | 'transfer' | 'operate';
+export type CadastreEasementKind = 'access' | 'drainage' | 'utility' | 'view-corridor';
+
+export interface CadastreRightContract {
+  readonly rightKind: CadastreRightKind;
+  readonly holderId: CityId;
+  readonly transferable: boolean;
+  readonly expiresYear?: number;
+}
+
+export interface CadastreEasementContract {
+  readonly id: CityId;
+  readonly easementKind: CadastreEasementKind;
+  readonly beneficiaryId: CityId;
+  readonly widthMeters: number;
+  readonly boundary: Polygon2D;
+}
+
+export interface CadastreRecordContract extends CityObjectBase<'cadastre-record'> {
+  readonly parcelId: CityId;
+  readonly districtId: CityId;
+  readonly blockId: CityId;
+  readonly tenure: CadastreTenureKind;
+  readonly ownerEntityId: CityId;
+  readonly ownerName: string;
+  readonly legalDescription: string;
+  readonly titleReference: string;
+  readonly assessedLandValue: number;
+  readonly rights: readonly CadastreRightContract[];
+  readonly easements: readonly CadastreEasementContract[];
+  readonly developmentRightStatus: ParcelDevelopmentRightsContract['status'];
+  readonly permitReferenceIds: readonly CityId[];
+}
+
 export interface ParcelFrontagePriorityContract {
   readonly roadId: CityId;
   readonly side: BlockFrontageSide;
@@ -1352,6 +1395,7 @@ export interface ParcelContract extends CityObjectBase<'parcel'> {
   readonly setbacks: ParcelSetbackContract;
   readonly lotSplit: ParcelLotSplitContract;
   readonly developmentRights: ParcelDevelopmentRightsContract;
+  readonly cadastreRecordId: CityId;
   readonly frontagePriority: readonly ParcelFrontagePriorityContract[];
   readonly parcelConstraintIds: readonly CityId[];
   readonly fit: ParcelFitContract;

@@ -261,6 +261,7 @@ export class BuildingGenerator {
               zoningDistrictId: zoning.zoningDistrictId,
               zoning,
               ...parcelModel,
+              cadastreRecordId: `cadastre-record-${id}`,
               administrativeBoundaryIds: [],
               wardId: '',
               neighborhoodId: '',

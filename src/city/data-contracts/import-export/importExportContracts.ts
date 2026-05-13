@@ -246,6 +246,7 @@ export interface ProceduralSeedDomainSections {
   readonly streetFurniture: GeneratedCity['streetFurniture'];
   readonly sidewalkGraph: GeneratedCity['sidewalkGraph'];
   readonly parcels: GeneratedCity['parcels'];
+  readonly cadastreRecords: GeneratedCity['cadastreRecords'];
   readonly buildings: GeneratedCity['buildings'];
   readonly civicAnchors: GeneratedCity['civicAnchors'];
   readonly communityAnchors: GeneratedCity['communityAnchors'];
@@ -289,6 +290,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly sidewalkGraphNodes: number;
   readonly sidewalkGraphEdges: number;
   readonly parcels: number;
+  readonly cadastreRecords: number;
   readonly buildings: number;
   readonly civicAnchors: number;
   readonly communityAnchors: number;
@@ -404,6 +406,7 @@ export function createProceduralSeedJsonExport(
       streetFurniture: city.streetFurniture,
       sidewalkGraph: city.sidewalkGraph,
       parcels: city.parcels,
+      cadastreRecords: city.cadastreRecords,
       buildings: city.buildings,
       civicAnchors: city.civicAnchors,
       communityAnchors: city.communityAnchors,
@@ -525,6 +528,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'assetCatalog'
     | 'blocks'
     | 'buildings'
+    | 'cadastreRecords'
     | 'civicAnchors'
     | 'communityAnchors'
     | 'cultureAnchors'
@@ -588,6 +592,7 @@ export function createProceduralSeedDomainSectionCounts(
     sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
     sidewalkGraphEdges: city.sidewalkGraph.edges.length,
     parcels: city.parcels.length,
+    cadastreRecords: city.cadastreRecords.length,
     buildings: city.buildings.length,
     civicAnchors: city.civicAnchors.length,
     communityAnchors: city.communityAnchors.length,
@@ -640,6 +645,7 @@ export function countProceduralSeedDomainObjects(
     getNestedArrayLength(city, 'sidewalkGraph', 'nodes') +
     getNestedArrayLength(city, 'sidewalkGraph', 'edges') +
     getArrayLength(city, 'parcels') +
+    getArrayLength(city, 'cadastreRecords') +
     getArrayLength(city, 'buildings') +
     getArrayLength(city, 'civicAnchors') +
     getArrayLength(city, 'communityAnchors') +

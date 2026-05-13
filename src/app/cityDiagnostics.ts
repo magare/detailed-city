@@ -65,6 +65,7 @@ export interface CityDiagnostics {
   readonly administrativeBoundaries: AdministrativeBoundaryDiagnostics;
   readonly blockModel: BlockModelDiagnostics;
   readonly parcelModel: ParcelModelDiagnostics;
+  readonly cadastreModel: CadastreModelDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -144,6 +145,9 @@ export interface CityDiagnostics {
     readonly blockFrontages: number;
     readonly blockBuildableEnvelopes: number;
     readonly parcelBuildableEnvelopes: number;
+    readonly cadastreRecords: number;
+    readonly parcelsWithCadastre: number;
+    readonly cadastreEasements: number;
     readonly parcelsWithConstraints: number;
     readonly primaryFrontageParcels: number;
     readonly zoningDistricts: number;
@@ -359,6 +363,15 @@ export interface ParcelModelDiagnostics {
   readonly primaryFrontageParcels: number;
   readonly averageBuildableAreaSqM: number;
   readonly developmentStatuses: Readonly<Record<string, number>>;
+}
+
+export interface CadastreModelDiagnostics {
+  readonly total: number;
+  readonly parcelsWithCadastre: number;
+  readonly easements: number;
+  readonly recordsWithBuildRights: number;
+  readonly tenureCounts: Readonly<Record<string, number>>;
+  readonly totalAssessedLandValue: number;
 }
 
 export interface ZoningModelDiagnostics {
@@ -804,6 +817,7 @@ export function createCityDiagnostics(
   const administrativeBoundaries = createAdministrativeBoundaryDiagnostics(city);
   const blockModel = createBlockModelDiagnostics(city);
   const parcelModel = createParcelModelDiagnostics(city);
+  const cadastreModel = createCadastreModelDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -858,6 +872,7 @@ export function createCityDiagnostics(
     administrativeBoundaries,
     blockModel,
     parcelModel,
+    cadastreModel,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -928,6 +943,9 @@ export function createCityDiagnostics(
       blockFrontages: blockModel.frontageClasses,
       blockBuildableEnvelopes: blockModel.buildableEnvelopes,
       parcelBuildableEnvelopes: parcelModel.buildableEnvelopes,
+      cadastreRecords: cadastreModel.total,
+      parcelsWithCadastre: cadastreModel.parcelsWithCadastre,
+      cadastreEasements: cadastreModel.easements,
       parcelsWithConstraints: parcelModel.parcelsWithConstraints,
       primaryFrontageParcels: parcelModel.primaryFrontageParcels,
       zoningDistricts: zoningModel.total,
@@ -1202,6 +1220,26 @@ function createParcelModelDiagnostics(city: GeneratedCity): ParcelModelDiagnosti
     ).length,
     averageBuildableAreaSqM: Number((buildableAreaTotal / Math.max(1, city.parcels.length)).toFixed(2)),
     developmentStatuses
+  };
+}
+
+function createCadastreModelDiagnostics(city: GeneratedCity): CadastreModelDiagnostics {
+  const tenureCounts: Record<string, number> = {};
+  const recordIds = new Set(city.cadastreRecords.map((record) => record.id));
+
+  for (const record of city.cadastreRecords) {
+    tenureCounts[record.tenure] = (tenureCounts[record.tenure] ?? 0) + 1;
+  }
+
+  return {
+    total: city.cadastreRecords.length,
+    parcelsWithCadastre: city.parcels.filter((parcel) => recordIds.has(parcel.cadastreRecordId)).length,
+    easements: city.cadastreRecords.reduce((sum, record) => sum + record.easements.length, 0),
+    recordsWithBuildRights: city.cadastreRecords.filter((record) =>
+      record.rights.some((right) => right.rightKind === 'build')
+    ).length,
+    tenureCounts,
+    totalAssessedLandValue: city.cadastreRecords.reduce((sum, record) => sum + record.assessedLandValue, 0)
   };
 }
 

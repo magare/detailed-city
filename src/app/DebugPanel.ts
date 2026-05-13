@@ -124,6 +124,10 @@ export class DebugPanel {
         `${diagnostics.parcelModel.total} parcels, ${diagnostics.parcelModel.buildableEnvelopes} envelopes, ${diagnostics.parcelModel.primaryFrontageParcels} primary`
       ),
       createMetric(
+        'Cadastre',
+        `${diagnostics.cadastreModel.total} records, ${diagnostics.cadastreModel.easements} easements, ${diagnostics.cadastreModel.recordsWithBuildRights} build rights`
+      ),
+      createMetric(
         'Zoning',
         `${diagnostics.zoningModel.total} districts, ${diagnostics.zoningModel.formBasedDistricts} form, ${diagnostics.zoningModel.parcelsWithZoning} parcels`
       ),
