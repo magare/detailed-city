@@ -100,6 +100,8 @@ export function createCitySceneLayerDiagnostics(
       city.administrativeBoundaries.length +
       city.verticalSlices.length +
       city.cityMetrics.length +
+      city.weatherPresets.length +
+      city.solarShadingSamples.length +
       city.constraints.length +
       city.hazardZones.length +
       city.resilienceGoals.length +

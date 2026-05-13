@@ -90,6 +90,7 @@ export interface CityDiagnostics {
   readonly districtCharacter: DistrictCharacterDiagnostics;
   readonly cityMetrics: CityMetricDiagnostics;
   readonly climateWeather: ClimateWeatherDiagnostics;
+  readonly solarShading: SolarShadingDiagnostics;
   readonly developmentPhasing: DevelopmentPhasingDiagnostics;
   readonly parkExpansion: ParkExpansionDiagnostics;
   readonly plazaModel: PlazaModelDiagnostics;
@@ -195,6 +196,9 @@ export interface CityDiagnostics {
     readonly rainyWeatherPresets: number;
     readonly fogWeatherPresets: number;
     readonly monsoonWeatherPresets: number;
+    readonly solarShadingSamples: number;
+    readonly roofSolarSamples: number;
+    readonly shadeComfortSamples: number;
     readonly developmentPhases: number;
     readonly activeDevelopmentPhases: number;
     readonly temporaryRoadClosures: number;
@@ -677,6 +681,19 @@ export interface ClimateWeatherDiagnostics {
   readonly highDrainagePresets: number;
 }
 
+export interface SolarShadingDiagnostics {
+  readonly total: number;
+  readonly roofSolarSamples: number;
+  readonly shadeComfortSamples: number;
+  readonly highGlareSamples: number;
+  readonly averageComfortScore: number;
+  readonly averageShadeCoverage: number;
+  readonly totalSolarPotentialKwhPerDay: number;
+  readonly maxRoofSuitabilityScore: number;
+  readonly peakSunHour: number;
+  readonly weatherPresetIds: readonly string[];
+}
+
 export interface DevelopmentPhasingDiagnostics {
   readonly total: number;
   readonly active: number;
@@ -790,6 +807,7 @@ export function createCityDiagnostics(
   const districtCharacter = createDistrictCharacterDiagnostics();
   const cityMetrics = createCityMetricDiagnostics(city);
   const climateWeather = createClimateWeatherDiagnostics(city);
+  const solarShading = createSolarShadingDiagnostics(city);
   const developmentPhasing = createDevelopmentPhasingDiagnostics(city);
   const parkExpansion = createParkExpansionDiagnostics(city);
   const plazaModel = createPlazaModelDiagnostics(city);
@@ -842,6 +860,7 @@ export function createCityDiagnostics(
     districtCharacter,
     cityMetrics,
     climateWeather,
+    solarShading,
     developmentPhasing,
     parkExpansion,
     plazaModel,
@@ -938,6 +957,9 @@ export function createCityDiagnostics(
       rainyWeatherPresets: climateWeather.rainyPresets,
       fogWeatherPresets: climateWeather.fogPresets,
       monsoonWeatherPresets: climateWeather.monsoonPresets,
+      solarShadingSamples: solarShading.total,
+      roofSolarSamples: solarShading.roofSolarSamples,
+      shadeComfortSamples: solarShading.shadeComfortSamples,
       developmentPhases: developmentPhasing.total,
       activeDevelopmentPhases: developmentPhasing.active,
       temporaryRoadClosures: developmentPhasing.closureRoads,
@@ -2060,6 +2082,40 @@ function createClimateWeatherDiagnostics(city: GeneratedCity): ClimateWeatherDia
   };
 }
 
+function createSolarShadingDiagnostics(city: GeneratedCity): SolarShadingDiagnostics {
+  const total = city.solarShadingSamples.length;
+  const roofSolarSamples = city.solarShadingSamples.filter((sample) => sample.sampleKind === 'roof-solar').length;
+  const shadeComfortSamples = city.solarShadingSamples.filter((sample) => sample.sampleKind !== 'roof-solar').length;
+  const weatherPresetIds = new Set<string>();
+  let comfortScore = 0;
+  let shadeCoverage = 0;
+  let totalSolarPotentialKwhPerDay = 0;
+  let maxRoofSuitabilityScore = 0;
+  let peakSunHour = 0;
+
+  for (const sample of city.solarShadingSamples) {
+    weatherPresetIds.add(sample.weatherPresetId);
+    comfortScore += sample.comfortScore;
+    shadeCoverage += sample.shadeCoverageRatio;
+    totalSolarPotentialKwhPerDay += sample.solarPotentialKwhPerDay;
+    maxRoofSuitabilityScore = Math.max(maxRoofSuitabilityScore, sample.roofSuitabilityScore);
+    peakSunHour = Math.max(peakSunHour, sample.peakSunHour);
+  }
+
+  return {
+    total,
+    roofSolarSamples,
+    shadeComfortSamples,
+    highGlareSamples: city.solarShadingSamples.filter((sample) => sample.glareRisk === 'high').length,
+    averageComfortScore: roundDiagnosticRatio(comfortScore / Math.max(1, total)),
+    averageShadeCoverage: roundDiagnosticRatio(shadeCoverage / Math.max(1, total)),
+    totalSolarPotentialKwhPerDay: Math.round(totalSolarPotentialKwhPerDay * 100) / 100,
+    maxRoofSuitabilityScore: roundDiagnosticRatio(maxRoofSuitabilityScore),
+    peakSunHour,
+    weatherPresetIds: [...weatherPresetIds].sort()
+  };
+}
+
 function createDevelopmentPhasingDiagnostics(city: GeneratedCity): DevelopmentPhasingDiagnostics {
   const closureRoads = new Set<string>();
   const temporaryRoads = new Set<string>();
@@ -2274,4 +2330,8 @@ function createSourceMetadataDiagnostics(
     objectsRequiringReview,
     sourceTypes
   };
+}
+
+function roundDiagnosticRatio(value: number): number {
+  return Math.round(value * 100) / 100;
 }

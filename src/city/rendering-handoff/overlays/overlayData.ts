@@ -23,6 +23,7 @@ export type CityOverlayId =
   | 'soil-geology'
   | 'phasing'
   | 'weather-presets'
+  | 'solar-shading'
   | 'city-metrics'
   | 'civic-anchors'
   | 'community-anchors'
@@ -84,6 +85,7 @@ export function createCityOverlayDatasets(
     createDataset('soil-geology', 'Soil Geology', 'domain-data', createSoilGeologyFeatures(city)),
     createDataset('phasing', 'Phasing', 'domain-data', createDevelopmentPhaseFeatures(city)),
     createDataset('weather-presets', 'Weather Presets', 'domain-data', createWeatherPresetFeatures(city)),
+    createDataset('solar-shading', 'Solar Shading', 'domain-data', createSolarShadingFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
@@ -512,6 +514,29 @@ function createWeatherPresetFeatures(city: GeneratedCity): CityOverlayFeature[] 
       visibilityMeters: preset.visibilityMeters,
       surfaceWetness: preset.surfaceWetness,
       drainageLoad: preset.simulationHooks.drainageLoad
+    }
+  }));
+}
+
+function createSolarShadingFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.solarShadingSamples.map((sample) => ({
+    id: `overlay:solar-shading:${sample.id}`,
+    overlayId: 'solar-shading',
+    objectId: sample.id,
+    objectKind: sample.kind,
+    ownerDomain: sample.ownerDomain,
+    label: sample.name ?? sample.id,
+    geometry: { type: 'point', point: sample.center },
+    metadata: {
+      sampleKind: sample.sampleKind,
+      parentObjectId: sample.parentObjectId,
+      weatherPresetId: sample.weatherPresetId,
+      shadeCoverageRatio: sample.shadeCoverageRatio,
+      comfortScore: sample.comfortScore,
+      glareRisk: sample.glareRisk,
+      solarPotentialKwhPerDay: sample.solarPotentialKwhPerDay,
+      roofSuitabilityScore: sample.roofSuitabilityScore,
+      daylightHours: sample.daylightHours
     }
   }));
 }

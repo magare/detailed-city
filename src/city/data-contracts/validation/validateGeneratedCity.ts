@@ -28,6 +28,8 @@ import type {
   Point3D,
   Polygon2D,
   RenderBinding,
+  SolarGlareRisk,
+  SolarShadingSampleKind,
   SoilGeologyKind,
   StreetProfile,
   TravelMode,
@@ -69,6 +71,7 @@ type GeneratedCityForValidation = Pick<
   | 'cityMetrics'
   | 'developmentPhases'
   | 'weatherPresets'
+  | 'solarShadingSamples'
   | 'constraints'
   | 'crossings'
   | 'curbZones'
@@ -109,6 +112,7 @@ type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrati
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'][number];
 type ValidationWeatherPreset = GeneratedCityForValidation['weatherPresets'][number];
+type ValidationSolarShadingSample = GeneratedCityForValidation['solarShadingSamples'][number];
 type ValidationPark = GeneratedCityForValidation['parks'][number];
 type ValidationParkFeature = GeneratedCityForValidation['parkFeatures'][number];
 type ValidationPlazaZone = GeneratedCityForValidation['plazaZones'][number];
@@ -255,6 +259,13 @@ const COMMUNITY_ANCHOR_KINDS = [
 const WEATHER_PRESET_KINDS = ['clear', 'cloudy', 'rain', 'fog', 'monsoon'] as const satisfies readonly WeatherPresetKind[];
 const WEATHER_SEASONS = ['spring', 'summer', 'monsoon', 'autumn', 'winter'] as const satisfies readonly WeatherSeason[];
 const WEATHER_PRECIPITATION_KINDS = ['none', 'drizzle', 'rain', 'heavy-rain'] as const satisfies readonly WeatherPrecipitationKind[];
+const SOLAR_SHADING_SAMPLE_KINDS = [
+  'roof-solar',
+  'plaza-comfort',
+  'park-comfort',
+  'waterfront-comfort'
+] as const satisfies readonly SolarShadingSampleKind[];
+const SOLAR_GLARE_RISKS = ['low', 'medium', 'high'] as const satisfies readonly SolarGlareRisk[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -428,6 +439,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateAdministrativeBoundaries(city, issues);
   validateCityMetrics(city, issues);
   validateWeatherPresets(city.weatherPresets, issues);
+  validateSolarShadingSamples(city, issues);
   validateZoningDistricts(city, issues);
   validateWaterways(city, issues);
   validateWaterfrontEdges(city, issues);
@@ -5557,6 +5569,153 @@ function createWeatherPresetIssue(
     category: 'environment',
     objectId: preset.id,
     suggestedFix: `Regenerate ${preset.id} from climate/weather preset rules.`,
+    message
+  };
+}
+
+function validateSolarShadingSamples(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const sampleKinds = new Set<SolarShadingSampleKind>();
+  const weatherPresetIds = new Set(city.weatherPresets.map((preset) => preset.id));
+
+  if (city.solarShadingSamples.length === 0) {
+    issues.push({
+      id: 'missing-solar-shading-samples',
+      severity: 'error',
+      category: 'environment',
+      message: 'Solar and shading generation must expose deterministic analysis samples.'
+    });
+  }
+
+  for (const sample of city.solarShadingSamples) {
+    if (!SOLAR_SHADING_SAMPLE_KINDS.includes(sample.sampleKind)) {
+      issues.push(createSolarShadingIssue(sample, 'invalid-kind', `Solar shading sample ${sample.id} uses unsupported kind ${sample.sampleKind}.`));
+    } else {
+      sampleKinds.add(sample.sampleKind);
+    }
+
+    if (!SOLAR_GLARE_RISKS.includes(sample.glareRisk)) {
+      issues.push(createSolarShadingIssue(sample, 'invalid-glare-risk', `Solar shading sample ${sample.id} uses unsupported glare risk ${sample.glareRisk}.`));
+    }
+
+    if (!hasObjectId(city, sample.parentObjectId)) {
+      issues.push(createSolarShadingIssue(sample, 'missing-parent-object', `Solar shading sample ${sample.id} references missing parent object ${sample.parentObjectId}.`));
+    }
+
+    if (!weatherPresetIds.has(sample.weatherPresetId)) {
+      issues.push(createSolarShadingIssue(sample, 'missing-weather-preset', `Solar shading sample ${sample.id} references missing weather preset ${sample.weatherPresetId}.`));
+    }
+
+    if (
+      sample.analysisRadiusMeters <= 0 ||
+      sample.daylightHours <= 0 ||
+      sample.daylightHours > 24 ||
+      sample.peakSunHour < 0 ||
+      sample.peakSunHour > 23 ||
+      !isUnitInterval(sample.shadeCoverageRatio) ||
+      !isUnitInterval(sample.comfortScore) ||
+      !isUnitInterval(sample.roofSuitabilityScore) ||
+      sample.solarPotentialKwhPerDay < 0 ||
+      sample.sunPath.length < 3
+    ) {
+      issues.push(createSolarShadingIssue(sample, 'invalid-values', `Solar shading sample ${sample.id} must keep daylight, shade, comfort, and solar values in supported ranges.`));
+    }
+
+    for (const pathSample of sample.sunPath) {
+      if (
+        pathSample.hour < 0 ||
+        pathSample.hour > 23 ||
+        pathSample.altitudeDegrees < 0 ||
+        pathSample.altitudeDegrees > 90 ||
+        pathSample.azimuthDegrees < 0 ||
+        pathSample.azimuthDegrees > 360 ||
+        pathSample.shadowLengthMultiplier < 0 ||
+        pathSample.irradianceWattsPerSqM < 0 ||
+        pathSample.irradianceWattsPerSqM > 1100
+      ) {
+        issues.push(createSolarShadingIssue(sample, 'invalid-sun-path', `Solar shading sample ${sample.id} has an invalid sun path sample.`));
+        break;
+      }
+    }
+
+    validateSolarShadingReferences(city, sample, issues);
+  }
+
+  for (const requiredKind of SOLAR_SHADING_SAMPLE_KINDS) {
+    if (!sampleKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-solar-shading-sample-${requiredKind}`,
+        severity: 'error',
+        category: 'environment',
+        objectId: `solar-shading-${requiredKind}-0`,
+        message: `Solar and shading samples must include ${requiredKind}.`
+      });
+    }
+  }
+}
+
+function validateSolarShadingReferences(
+  city: GeneratedCityForValidation,
+  sample: ValidationSolarShadingSample,
+  issues: ValidationIssue[]
+): void {
+  const references = sample.references;
+
+  if (sample.sampleKind === 'roof-solar') {
+    if (!references.buildingId || !hasObjectId(city, references.buildingId)) {
+      issues.push(createSolarShadingIssue(sample, 'missing-building-reference', `Roof solar sample ${sample.id} must reference an existing building.`));
+    }
+
+    for (const detailId of references.roofDetailIds ?? []) {
+      if (!city.buildings.some((building) => building.roofGrammar.details.some((detail) => detail.detailId === detailId))) {
+        issues.push(createSolarShadingIssue(sample, 'missing-roof-detail-reference', `Roof solar sample ${sample.id} references missing roof detail ${detailId}.`));
+      }
+    }
+
+    if (sample.solarPotentialKwhPerDay <= 0 || sample.roofSuitabilityScore <= 0) {
+      issues.push(createSolarShadingIssue(sample, 'invalid-roof-solar-potential', `Roof solar sample ${sample.id} must expose positive solar potential and suitability.`));
+    }
+  }
+
+  if (sample.sampleKind === 'plaza-comfort' && (!references.plazaZoneId || !hasObjectId(city, references.plazaZoneId))) {
+    issues.push(createSolarShadingIssue(sample, 'missing-plaza-reference', `Plaza comfort sample ${sample.id} must reference an existing plaza zone.`));
+  }
+
+  if (sample.sampleKind === 'park-comfort' && (!references.parkId || !hasObjectId(city, references.parkId))) {
+    issues.push(createSolarShadingIssue(sample, 'missing-park-reference', `Park comfort sample ${sample.id} must reference an existing park.`));
+  }
+
+  if (
+    sample.sampleKind === 'waterfront-comfort' &&
+    (!references.waterfrontOpenSpaceId || !hasObjectId(city, references.waterfrontOpenSpaceId))
+  ) {
+    issues.push(createSolarShadingIssue(sample, 'missing-waterfront-reference', `Waterfront comfort sample ${sample.id} must reference an existing waterfront open space.`));
+  }
+
+  for (const featureId of references.parkFeatureIds ?? []) {
+    if (!hasObjectId(city, featureId)) {
+      issues.push(createSolarShadingIssue(sample, 'missing-feature-reference', `Solar shading sample ${sample.id} references missing park feature ${featureId}.`));
+    }
+  }
+
+  for (const treeId of references.shadeTreeIds ?? []) {
+    if (!hasObjectId(city, treeId)) {
+      issues.push(createSolarShadingIssue(sample, 'missing-tree-reference', `Solar shading sample ${sample.id} references missing shade tree ${treeId}.`));
+    }
+  }
+}
+
+function createSolarShadingIssue(
+  sample: ValidationSolarShadingSample,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `solar-shading-${issueIdSuffix}-${toIssueIdToken(sample.id)}`,
+    severity: 'error',
+    category: 'environment',
+    objectId: sample.id,
+    suggestedFix: `Regenerate ${sample.id} from solar and shading rules.`,
+    ...createIssueFocus(sample.center, `Review solar and shading sample ${sample.id}.`),
     message
   };
 }

@@ -183,6 +183,10 @@ export class DebugPanel {
         'Weather',
         `${diagnostics.climateWeather.activePresetKind}, ${diagnostics.climateWeather.total} presets, ${diagnostics.climateWeather.rainyPresets} rain`
       ),
+      createMetric(
+        'Solar',
+        `${diagnostics.solarShading.total} samples, ${diagnostics.solarShading.roofSolarSamples} roofs, ${diagnostics.solarShading.highGlareSamples} glare`
+      ),
       createMetric('Validation', getStatusLabel(diagnostics.validation.passed, diagnostics.validation.issues.length)),
       createMetric('Geo', `${diagnostics.geospatial.coordinateSystem}, ${coordinatePrecision}m`),
       createMetric(

@@ -19,6 +19,7 @@ import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
 import { ClimateWeatherGenerator } from './environment/ClimateWeatherGenerator';
+import { SolarShadingGenerator } from './environment/SolarShadingGenerator';
 import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
 import { HazardZoneGenerator } from './land/HazardZoneGenerator';
 import { SoilGeologyGenerator } from './land/SoilGeologyGenerator';
@@ -175,6 +176,15 @@ export class CityGenerator {
       streetFurniture,
       trees
     });
+    const solarShadingSamples = new SolarShadingGenerator().create({
+      buildings: sliceTagged.buildings,
+      plazaZones,
+      parks: parksWithFeatures,
+      parkFeatures,
+      waterfrontOpenSpaces,
+      trees,
+      weatherPresets
+    });
     const civicAnchors = new CivicAnchorGenerator().create({
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildingsWithTopography.districts,
@@ -220,6 +230,7 @@ export class CityGenerator {
       cityMetrics,
       developmentPhases,
       weatherPresets,
+      solarShadingSamples,
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,

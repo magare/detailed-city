@@ -57,6 +57,8 @@ test('scene layer diagnostics are deterministic and match current city data', ()
       city.constraints.length +
       city.hazardZones.length +
       city.resilienceGoals.length +
-      city.zoningDistricts.length
+      city.zoningDistricts.length +
+      city.weatherPresets.length +
+      city.solarShadingSamples.length
   );
 });

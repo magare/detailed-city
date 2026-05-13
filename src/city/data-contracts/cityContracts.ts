@@ -35,6 +35,7 @@ export type CityObjectKind =
   | 'sidewalk'
   | 'sidewalk-graph-edge'
   | 'sidewalk-graph-node'
+  | 'solar-shading-sample'
   | 'soil-geology-zone'
   | 'street-furniture'
   | 'street-light'
@@ -686,6 +687,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod3',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Waterfront open spaces describe public promenades, overlooks, boardwalks, ecological terraces, seating, railings, and water access.'
+    },
+    {
+      objectKind: 'solar-shading-sample',
+      scope: 'overlay',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'Solar and shading samples expose sun path, shade comfort, glare, and roof solar suitability for debug overlays and environmental simulation.'
     },
     {
       objectKind: 'weather-preset',
@@ -2285,6 +2293,42 @@ export interface WeatherPresetContract extends CityObjectBase<'weather-preset'> 
     readonly trafficSpeedMultiplier: number;
     readonly pedestrianComfort: 'comfortable' | 'warm' | 'humid' | 'reduced-visibility' | 'storm';
     readonly drainageLoad: 'none' | 'low' | 'medium' | 'high';
+  };
+}
+
+export type SolarShadingSampleKind = 'roof-solar' | 'plaza-comfort' | 'park-comfort' | 'waterfront-comfort';
+export type SolarGlareRisk = 'low' | 'medium' | 'high';
+
+export interface SolarPathSampleContract {
+  readonly hour: number;
+  readonly altitudeDegrees: number;
+  readonly azimuthDegrees: number;
+  readonly shadowLengthMultiplier: number;
+  readonly irradianceWattsPerSqM: number;
+}
+
+export interface SolarShadingSampleContract extends CityObjectBase<'solar-shading-sample'> {
+  readonly sampleKind: SolarShadingSampleKind;
+  readonly parentObjectId: CityId;
+  readonly center: Point2D;
+  readonly analysisRadiusMeters: number;
+  readonly weatherPresetId: CityId;
+  readonly daylightHours: number;
+  readonly peakSunHour: number;
+  readonly shadeCoverageRatio: number;
+  readonly comfortScore: number;
+  readonly glareRisk: SolarGlareRisk;
+  readonly solarPotentialKwhPerDay: number;
+  readonly roofSuitabilityScore: number;
+  readonly sunPath: readonly SolarPathSampleContract[];
+  readonly references: {
+    readonly buildingId?: CityId;
+    readonly roofDetailIds?: readonly CityId[];
+    readonly plazaZoneId?: CityId;
+    readonly parkId?: CityId;
+    readonly parkFeatureIds?: readonly CityId[];
+    readonly waterfrontOpenSpaceId?: CityId;
+    readonly shadeTreeIds?: readonly CityId[];
   };
 }
 

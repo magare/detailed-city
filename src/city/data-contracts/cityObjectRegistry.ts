@@ -51,6 +51,7 @@ const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|l
 const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
 const WATERFRONT_OPEN_SPACE_KIND = String.raw`(?:boardwalk|ecological-edge|overlook|pier-landing|promenade|water-access)`;
 const WEATHER_PRESET_KIND = String.raw`(?:clear|cloudy|rain|fog|monsoon)`;
+const SOLAR_SHADING_SAMPLE_KIND = String.raw`(?:roof-solar|plaza-comfort|park-comfort|waterfront-comfort)`;
 const TOPOGRAPHY_ZONE_KIND = String.raw`(?:elevation-band|slope-area|retaining-condition|buildability-area)`;
 const SOIL_GEOLOGY_KIND = String.raw`(?:alluvial-silt|engineered-fill|shallow-bedrock|sandy-loam|contaminated-fill|waterfront-clay)`;
 const DEVELOPMENT_PHASE_KIND = String.raw`(?:baseline|future-expansion|temporary-condition)`;
@@ -141,6 +142,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('road-segment', ['road-v-<index>', 'road-h-<index>'], [exact(ROAD_ID)], none()),
   entry('sensor', ['sensor-<slug>'], [exact(String.raw`sensor-${NAMED_ID}`)], optional(['building', 'road-segment', 'street-light', 'utility-node'])),
   entry('sidewalk', ['<road-id>-sidewalk-left', '<road-id>-sidewalk-right'], [exact(SIDEWALK_ID)], required(['road-segment'])),
+  entry(
+    'solar-shading-sample',
+    ['solar-shading-<sample-kind>-<index>'],
+    [exact(String.raw`solar-shading-${SOLAR_SHADING_SAMPLE_KIND}-\d+`)],
+    required(['building', 'plaza-zone', 'park', 'waterfront-open-space'])
+  ),
   entry(
     'sidewalk-graph-edge',
     ['sidewalk-edge-<crossing-id>', 'sidewalk-edge-<sidewalk-id>-<from-intersection-id>-<to-intersection-id>'],

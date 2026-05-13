@@ -15,6 +15,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     cityMetrics: city.cityMetrics.map((metric) => withProceduralMetadata(metric, 'blueprint-city-metrics')),
     developmentPhases: city.developmentPhases.map((phase) => withProceduralMetadata(phase, 'blueprint-phasing')),
     weatherPresets: city.weatherPresets.map((preset) => withProceduralMetadata(preset, 'environment-climate-weather')),
+    solarShadingSamples: city.solarShadingSamples.map((sample) =>
+      withProceduralMetadata(sample, 'environment-solar-shading')
+    ),
     constraints: city.constraints.map((constraint) => withProceduralMetadata(constraint, 'blueprint-constraints')),
     hazardZones: city.hazardZones.map((hazard) => withProceduralMetadata(hazard, 'land-hazards')),
     topographyZones: city.topographyZones.map((zone) => withProceduralMetadata(zone, 'land-topography')),

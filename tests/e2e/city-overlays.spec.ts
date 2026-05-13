@@ -26,6 +26,7 @@ test('debug overlay datasets are generated from domain data', () => {
     'soil-geology',
     'phasing',
     'weather-presets',
+    'solar-shading',
     'city-metrics',
     'civic-anchors',
     'community-anchors',
@@ -69,6 +70,19 @@ test('debug overlay datasets are generated from domain data', () => {
           active: true,
           presetKind: 'clear',
           precipitation: 'none'
+        })
+      })
+    ])
+  );
+  expect(overlays.find((overlay) => overlay.id === 'solar-shading')?.featureCount).toBe(24);
+  expect(overlays.find((overlay) => overlay.id === 'solar-shading')?.features).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        objectKind: 'solar-shading-sample',
+        ownerDomain: 'environment',
+        metadata: expect.objectContaining({
+          sampleKind: 'roof-solar',
+          weatherPresetId: 'weather-preset-coastal-clear'
         })
       })
     ])

@@ -44,8 +44,9 @@ test('generated city object index is deterministic and resolves road children', 
   expect(firstCity.objectIndex.countsByKind.asset).toBe(46);
   expect(firstCity.objectIndex.countsByKind['traffic-calming-device']).toBe(12);
   expect(firstCity.objectIndex.countsByKind['weather-preset']).toBe(5);
-  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(45);
-  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(45);
+  expect(firstCity.objectIndex.countsByKind['solar-shading-sample']).toBe(24);
+  expect(CITY_OBJECT_KIND_REGISTRY_ENTRIES).toHaveLength(46);
+  expect(new Set(CITY_OBJECT_KIND_REGISTRY_ENTRIES.map((entry) => entry.kind)).size).toBe(46);
   expect(firstCity.objectIndex.objectsById['slice-detailed-street-road-v-6']).toMatchObject({
     id: 'slice-detailed-street-road-v-6',
     kind: 'vertical-slice',
