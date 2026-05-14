@@ -70,6 +70,7 @@ export interface CityDiagnostics {
   readonly powerGrid: PowerGridDiagnostics;
   readonly waterSupply: WaterSupplyDiagnostics;
   readonly wastewater: WastewaterDiagnostics;
+  readonly stormwater: StormwaterDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -179,6 +180,12 @@ export interface CityDiagnostics {
     readonly wastewaterLiftStations: number;
     readonly wastewaterOutfalls: number;
     readonly buildingsWithWastewaterService: number;
+    readonly stormwaterNodes: number;
+    readonly stormwaterEdges: number;
+    readonly stormwaterInlets: number;
+    readonly stormwaterBioswales: number;
+    readonly stormwaterCulverts: number;
+    readonly roadsWithStormwaterDrainage: number;
     readonly parcelsWithConstraints: number;
     readonly primaryFrontageParcels: number;
     readonly zoningDistricts: number;
@@ -460,6 +467,24 @@ export interface WastewaterDiagnostics {
   readonly pretreatmentBuildings: number;
   readonly totalCapacityLitersPerSecond: number;
   readonly sewerBasinIds: readonly string[];
+  readonly receivingWaterwayIds: readonly string[];
+  readonly outageDomainIds: readonly string[];
+}
+
+export interface StormwaterDiagnostics {
+  readonly nodes: number;
+  readonly edges: number;
+  readonly inlets: number;
+  readonly drains: number;
+  readonly bioswales: number;
+  readonly detentionBasins: number;
+  readonly culverts: number;
+  readonly outfalls: number;
+  readonly perviousAreas: number;
+  readonly roadsDrained: number;
+  readonly hazardZonesReferenced: number;
+  readonly totalCapacityLitersPerSecond: number;
+  readonly catchmentIds: readonly string[];
   readonly receivingWaterwayIds: readonly string[];
   readonly outageDomainIds: readonly string[];
 }
@@ -912,6 +937,7 @@ export function createCityDiagnostics(
   const powerGrid = createPowerGridDiagnostics(city);
   const waterSupply = createWaterSupplyDiagnostics(city);
   const wastewater = createWastewaterDiagnostics(city);
+  const stormwater = createStormwaterDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -971,6 +997,7 @@ export function createCityDiagnostics(
     powerGrid,
     waterSupply,
     wastewater,
+    stormwater,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -1071,6 +1098,12 @@ export function createCityDiagnostics(
       wastewaterLiftStations: wastewater.liftStations,
       wastewaterOutfalls: wastewater.outfalls,
       buildingsWithWastewaterService: wastewater.buildingsServed,
+      stormwaterNodes: stormwater.nodes,
+      stormwaterEdges: stormwater.edges,
+      stormwaterInlets: stormwater.inlets,
+      stormwaterBioswales: stormwater.bioswales,
+      stormwaterCulverts: stormwater.culverts,
+      roadsWithStormwaterDrainage: stormwater.roadsDrained,
       parcelsWithConstraints: parcelModel.parcelsWithConstraints,
       primaryFrontageParcels: parcelModel.primaryFrontageParcels,
       zoningDistricts: zoningModel.total,
@@ -1533,6 +1566,63 @@ function createWastewaterDiagnostics(city: GeneratedCity): WastewaterDiagnostics
       0
     ),
     sewerBasinIds: [...sewerBasinIds].sort(),
+    receivingWaterwayIds: [...receivingWaterwayIds].sort(),
+    outageDomainIds: [...outageDomainIds].sort()
+  };
+}
+
+function createStormwaterDiagnostics(city: GeneratedCity): StormwaterDiagnostics {
+  const stormwaterNodes = city.utilityNodes.filter((node) => node.utilityType === 'stormwater');
+  const stormwaterEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'stormwater');
+  const catchmentIds = new Set<string>();
+  const receivingWaterwayIds = new Set<string>();
+  const outageDomainIds = new Set<string>();
+  const hazardZoneIds = new Set<string>();
+
+  for (const node of stormwaterNodes) {
+    if (node.stormwater) {
+      catchmentIds.add(node.stormwater.drainageCatchmentId);
+      if (node.stormwater.receivingWaterwayId) {
+        receivingWaterwayIds.add(node.stormwater.receivingWaterwayId);
+      }
+      for (const hazardZoneId of node.stormwater.servedHazardZoneIds) {
+        hazardZoneIds.add(hazardZoneId);
+      }
+    }
+    outageDomainIds.add(node.outage.outageDomainId);
+  }
+  for (const edge of stormwaterEdges) {
+    if (edge.stormwater) {
+      catchmentIds.add(edge.stormwater.drainageCatchmentId);
+      if (edge.stormwater.receivingWaterwayId) {
+        receivingWaterwayIds.add(edge.stormwater.receivingWaterwayId);
+      }
+    }
+    outageDomainIds.add(edge.outageDomainId);
+  }
+  for (const road of city.roads) {
+    for (const hazardZoneId of road.stormwaterDrainage?.floodHazardZoneIds ?? []) {
+      hazardZoneIds.add(hazardZoneId);
+    }
+  }
+
+  return {
+    nodes: stormwaterNodes.length,
+    edges: stormwaterEdges.length,
+    inlets: stormwaterNodes.filter((node) => node.stormwater?.equipmentKind === 'inlet').length,
+    drains: stormwaterNodes.filter((node) => node.stormwater?.equipmentKind === 'drain').length,
+    bioswales: stormwaterNodes.filter((node) => node.stormwater?.equipmentKind === 'bioswale').length,
+    detentionBasins: stormwaterNodes.filter((node) => node.stormwater?.equipmentKind === 'detention-basin').length,
+    culverts: stormwaterNodes.filter((node) => node.stormwater?.equipmentKind === 'culvert').length,
+    outfalls: stormwaterNodes.filter((node) => node.stormwater?.equipmentKind === 'outfall').length,
+    perviousAreas: stormwaterNodes.filter((node) => node.stormwater?.equipmentKind === 'pervious-area').length,
+    roadsDrained: city.roads.filter((road) => Boolean(road.stormwaterDrainage)).length,
+    hazardZonesReferenced: hazardZoneIds.size,
+    totalCapacityLitersPerSecond: stormwaterNodes.reduce(
+      (sum, node) => sum + (node.capacity.unit === 'liters-per-second' ? node.capacity.value : 0),
+      0
+    ),
+    catchmentIds: [...catchmentIds].sort(),
     receivingWaterwayIds: [...receivingWaterwayIds].sort(),
     outageDomainIds: [...outageDomainIds].sort()
   };

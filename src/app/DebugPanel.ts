@@ -144,6 +144,10 @@ export class DebugPanel {
         `${diagnostics.wastewater.nodes} nodes, ${diagnostics.wastewater.manholes} manholes, ${diagnostics.wastewater.buildingsServed} buildings`
       ),
       createMetric(
+        'Stormwater',
+        `${diagnostics.stormwater.nodes} nodes, ${diagnostics.stormwater.inlets} inlets, ${diagnostics.stormwater.roadsDrained} roads`
+      ),
+      createMetric(
         'Zoning',
         `${diagnostics.zoningModel.total} districts, ${diagnostics.zoningModel.formBasedDistricts} form, ${diagnostics.zoningModel.parcelsWithZoning} parcels`
       ),

@@ -470,6 +470,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validatePowerGrid(city, issues);
   validateWaterSupply(city, issues);
   validateWastewater(city, issues);
+  validateStormwater(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -3867,6 +3868,170 @@ function validateWastewater(city: GeneratedCityForValidation, issues: Validation
         objectId: building.id,
         ...createIssueFocus(getObjectAffectedPoint(building), `Regenerate wastewater service references for ${building.id}.`),
         message: `Building ${building.id} must reference valid wastewater service, sewer basin, manhole, lateral edge, and positive demand.`
+      });
+    }
+  }
+}
+
+function validateStormwater(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const stormwaterNodes = city.utilityNodes.filter((node) => node.utilityType === 'stormwater');
+  const stormwaterEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'stormwater');
+  const stormwaterNodesById = new Map(stormwaterNodes.map((node) => [node.id, node]));
+  const stormwaterEdgesById = new Map(stormwaterEdges.map((edge) => [edge.id, edge]));
+  const roadIds = new Set(city.roads.map((road) => road.id));
+  const waterwayIds = new Set(city.waterways.map((waterway) => waterway.id));
+  const hazardZoneIds = new Set(city.hazardZones.map((hazard) => hazard.id));
+  const catchmentIds = new Set<string>();
+  const equipmentKinds = new Set(stormwaterNodes.map((node) => node.stormwater?.equipmentKind).filter(Boolean));
+  const inletNodes = stormwaterNodes.filter((node) => node.stormwater?.equipmentKind === 'inlet');
+  const outfallNodes = stormwaterNodes.filter((node) => node.stormwater?.equipmentKind === 'outfall');
+
+  for (const node of stormwaterNodes) {
+    if (!node.stormwater) {
+      issues.push(createUtilityNodeIssue(node, 'missing-stormwater-metadata', `Stormwater node ${node.id} must expose stormwater metadata.`));
+      continue;
+    }
+    catchmentIds.add(node.stormwater.drainageCatchmentId);
+    if (node.capacity.unit !== 'liters-per-second' || node.capacity.value <= 0 || node.stormwater.designStormMmPerHour <= 0) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-stormwater-capacity', `Stormwater node ${node.id} must expose positive liters-per-second capacity and design storm intensity.`));
+    }
+    if (node.stormwater.runoffCoefficient < 0 || node.stormwater.runoffCoefficient > 1 || node.stormwater.imperviousAreaSquareMeters < 0) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-runoff-model', `Stormwater node ${node.id} must expose a valid runoff coefficient and impervious area.`));
+    }
+    if (node.stormwater.servedRoadIds.length === 0 && node.stormwater.equipmentKind !== 'outfall') {
+      issues.push(createUtilityNodeIssue(node, 'missing-served-roads', `Stormwater node ${node.id} must list served roads.`));
+    }
+    for (const roadId of node.stormwater.servedRoadIds) {
+      if (!roadIds.has(roadId)) {
+        issues.push(createUtilityNodeIssue(node, `missing-served-road-${toIssueIdToken(roadId)}`, `Stormwater node ${node.id} references missing served road ${roadId}.`));
+      }
+    }
+    for (const hazardZoneId of node.stormwater.servedHazardZoneIds) {
+      if (!hazardZoneIds.has(hazardZoneId)) {
+        issues.push(createUtilityNodeIssue(node, `missing-served-hazard-${toIssueIdToken(hazardZoneId)}`, `Stormwater node ${node.id} references missing hazard zone ${hazardZoneId}.`));
+      }
+    }
+    if (
+      (node.stormwater.equipmentKind === 'bioswale' ||
+        node.stormwater.equipmentKind === 'detention-basin' ||
+        node.stormwater.equipmentKind === 'pervious-area') &&
+      (!node.stormwater.storageVolumeCubicMeters || node.stormwater.storageVolumeCubicMeters <= 0)
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-storage-volume', `Stormwater storage/treatment node ${node.id} must expose positive storage volume.`));
+    }
+    if (
+      (node.stormwater.equipmentKind === 'outfall' || node.stormwater.equipmentKind === 'culvert') &&
+      (!node.stormwater.receivingWaterwayId || !waterwayIds.has(node.stormwater.receivingWaterwayId))
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'missing-receiving-waterway', `Stormwater ${node.stormwater.equipmentKind} ${node.id} must reference a generated receiving waterway.`));
+    }
+  }
+
+  for (const edge of stormwaterEdges) {
+    if (!edge.stormwater) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-stormwater-metadata', `Stormwater edge ${edge.id} must expose stormwater metadata.`));
+      continue;
+    }
+    catchmentIds.add(edge.stormwater.drainageCatchmentId);
+    const fromNode = stormwaterNodesById.get(edge.fromNodeId);
+    const toNode = stormwaterNodesById.get(edge.toNodeId);
+    if (!fromNode || !toNode) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-stormwater-node-reference', `Stormwater edge ${edge.id} must connect generated stormwater nodes.`));
+      continue;
+    }
+    if (
+      edge.capacity.unit !== 'liters-per-second' ||
+      edge.capacity.value <= 0 ||
+      edge.stormwater.designStormMmPerHour <= 0 ||
+      edge.stormwater.slopePercent <= 0 ||
+      edge.stormwater.capacityReservePercent <= 0
+    ) {
+      issues.push(createUtilityEdgeIssue(edge, 'invalid-stormwater-capacity', `Stormwater edge ${edge.id} must expose positive capacity, design storm, slope, and reserve.`));
+    }
+    if (edge.stormwater.conveyanceKind !== 'surface-flow' && (!edge.stormwater.pipeDiameterMm || edge.stormwater.pipeDiameterMm <= 0)) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-pipe-diameter', `Pipe and culvert stormwater edge ${edge.id} must expose positive pipe diameter.`));
+    }
+    if (edge.stormwater.conveyanceKind === 'surface-flow' && (!edge.stormwater.channelWidthMeters || edge.stormwater.channelWidthMeters <= 0)) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-channel-width', `Surface-flow stormwater edge ${edge.id} must expose positive channel width.`));
+    }
+    if (
+      edge.stormwater.fromEquipmentKind !== fromNode.stormwater?.equipmentKind ||
+      edge.stormwater.toEquipmentKind !== toNode.stormwater?.equipmentKind
+    ) {
+      issues.push(createUtilityEdgeIssue(edge, 'equipment-kind-mismatch', `Stormwater edge ${edge.id} equipment metadata must match endpoint nodes.`));
+    }
+    if (edge.stormwater.receivingWaterwayId && !waterwayIds.has(edge.stormwater.receivingWaterwayId)) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-receiving-waterway', `Stormwater edge ${edge.id} references missing receiving waterway.`));
+    }
+  }
+
+  const requiredStormwaterEquipmentKinds = ['bioswale', 'culvert', 'detention-basin', 'drain', 'inlet', 'outfall', 'pervious-area'] as const;
+  for (const requiredKind of requiredStormwaterEquipmentKinds) {
+    if (!equipmentKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-stormwater-equipment-${requiredKind}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        message: `Stormwater network must include ${requiredKind} equipment.`
+      });
+    }
+  }
+
+  if (inletNodes.length === 0 || outfallNodes.length === 0) {
+    issues.push({
+      id: 'missing-stormwater-drainage-coverage',
+      severity: 'error',
+      category: 'utility-coverage',
+      message: 'Stormwater network must include inlets and outfalls before street drainage and flood checks can run.'
+    });
+  }
+
+  for (const road of city.roads) {
+    const drainage = road.stormwaterDrainage;
+    if (!drainage) {
+      issues.push({
+        id: `missing-road-stormwater-drainage-${road.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: road.id,
+        ...createIssueFocus(road.center, `Attach ${road.id} to generated stormwater drainage metadata.`),
+        message: `Road ${road.id} must reference stormwater drainage, low point, inlet, detention, and outfall metadata.`
+      });
+      continue;
+    }
+    const lowPointNode = stormwaterNodesById.get(drainage.lowPointNodeId);
+    const detentionNode = stormwaterNodesById.get(drainage.detentionNodeId);
+    const outfallNode = stormwaterNodesById.get(drainage.outfallNodeId);
+    const hasValidInlets = drainage.inletNodeIds.length > 0 && drainage.inletNodeIds.every((nodeId) => stormwaterNodesById.get(nodeId)?.stormwater?.equipmentKind === 'inlet');
+    const hasValidRunoffEdges = drainage.runoffPathEdgeIds.length > 0 && drainage.runoffPathEdgeIds.every((edgeId) => stormwaterEdgesById.has(edgeId));
+    const hasValidPerviousAreas =
+      drainage.perviousAreaNodeIds.length > 0 &&
+      drainage.perviousAreaNodeIds.every((nodeId) => {
+        const equipmentKind = stormwaterNodesById.get(nodeId)?.stormwater?.equipmentKind;
+        return equipmentKind === 'pervious-area' || equipmentKind === 'bioswale';
+      });
+    const hasValidHazards = drainage.floodHazardZoneIds.every((hazardZoneId) => hazardZoneIds.has(hazardZoneId));
+    if (
+      !catchmentIds.has(drainage.drainageCatchmentId) ||
+      !hasValidInlets ||
+      !hasValidRunoffEdges ||
+      lowPointNode?.stormwater?.equipmentKind !== 'inlet' ||
+      detentionNode?.stormwater?.equipmentKind !== 'detention-basin' ||
+      outfallNode?.stormwater?.equipmentKind !== 'outfall' ||
+      !hasValidPerviousAreas ||
+      !hasValidHazards ||
+      drainage.designStormMmPerHour <= 0 ||
+      drainage.imperviousAreaSquareMeters <= 0 ||
+      drainage.runoffCoefficient < 0 ||
+      drainage.runoffCoefficient > 1
+    ) {
+      issues.push({
+        id: `invalid-road-stormwater-drainage-${road.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: road.id,
+        ...createIssueFocus(road.center, `Regenerate stormwater drainage references for ${road.id}.`),
+        message: `Road ${road.id} must reference valid stormwater inlets, runoff paths, low point, detention, pervious area, hazard, and outfall metadata.`
       });
     }
   }

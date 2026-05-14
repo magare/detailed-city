@@ -41,6 +41,7 @@ import { applyDetailedStreetSliceTags, DetailedStreetSliceGenerator } from './sl
 import { TerrainGenerator } from './terrain/TerrainGenerator';
 import { TrafficCalmingGenerator } from './traffic/TrafficCalmingGenerator';
 import { PowerGridGenerator } from './utilities/PowerGridGenerator';
+import { StormwaterGenerator } from './utilities/StormwaterGenerator';
 import { UtilityBaseGenerator } from './utilities/UtilityBaseGenerator';
 import { WaterSupplyGenerator } from './utilities/WaterSupplyGenerator';
 import { WastewaterGenerator } from './utilities/WastewaterGenerator';
@@ -228,6 +229,13 @@ export class CityGenerator {
       buildings: waterSupply.buildings,
       waterways
     });
+    const stormwater = new StormwaterGenerator().create({
+      utilityNodes: wastewater.utilityNodes,
+      utilityEdges: wastewater.utilityEdges,
+      roads: sliceTagged.roads,
+      waterways,
+      hazardZones
+    });
     const civicAnchors = new CivicAnchorGenerator().create({
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildingsWithTopography.districts,
@@ -251,7 +259,7 @@ export class CityGenerator {
     });
     const cityMetrics = new CityMetricGenerator(this.config).create({
       bounds,
-      roads: sliceTagged.roads,
+      roads: stormwater.roads,
       crossings: sliceTagged.crossings,
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
@@ -275,8 +283,8 @@ export class CityGenerator {
       weatherPresets,
       solarShadingSamples,
       urbanHeatZones,
-      utilityNodes: wastewater.utilityNodes,
-      utilityEdges: wastewater.utilityEdges,
+      utilityNodes: stormwater.utilityNodes,
+      utilityEdges: stormwater.utilityEdges,
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,
@@ -285,7 +293,7 @@ export class CityGenerator {
       resilienceGoals,
       blocks: administrativeLand.blocks,
       verticalSlices: verticalSlicesWithCurbs,
-      roads: sliceTagged.roads,
+      roads: stormwater.roads,
       intersections: sliceTagged.intersections,
       crossings: sliceTagged.crossings,
       curbZones,

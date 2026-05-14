@@ -144,8 +144,8 @@ test('browser traffic vehicles move along route offsets', async ({ page }) => {
       return undefined;
     }
 
-    const vehicle = diagnostics.objectIndex.objectsById['traffic-vehicle-3'];
-    const mesh = cityApp.city?.group.getObjectByName('traffic-vehicle-3');
+    const vehicle = diagnostics.objectIndex.objectsById['traffic-vehicle-0'];
+    const mesh = cityApp.city?.group.getObjectByName('traffic-vehicle-0');
 
     if (!mesh) {
       return undefined;
@@ -161,11 +161,11 @@ test('browser traffic vehicles move along route offsets', async ({ page }) => {
 
   expect(sample).toMatchObject({
     vehicle: {
-      roadId: 'road-v-6',
-      laneId: 'road-v-6-lane-2',
+      roadId: 'road-v-0',
+      laneId: 'road-v-0-lane-1',
       route: {
-        spawnNodeId: 'intersection-v6-h12',
-        destinationNodeId: 'intersection-v6-h0'
+        spawnNodeId: 'intersection-v0-h0',
+        destinationNodeId: 'intersection-v0-h12'
       }
     }
   });
@@ -177,7 +177,7 @@ test('browser traffic vehicles move along route offsets', async ({ page }) => {
           const app = window.cityApp as unknown as {
             city?: { group: { getObjectByName(name: string): { position: { x: number; z: number } } | undefined } };
           };
-          const mesh = app.city?.group.getObjectByName('traffic-vehicle-3');
+          const mesh = app.city?.group.getObjectByName('traffic-vehicle-0');
 
           return mesh ? Math.abs(mesh.position.z - start.z) : 0;
         }, before),
@@ -188,7 +188,7 @@ test('browser traffic vehicles move along route offsets', async ({ page }) => {
     const app = window.cityApp as unknown as {
       city?: { group: { getObjectByName(name: string): { position: { x: number; z: number } } | undefined } };
     };
-    const mesh = app.city?.group.getObjectByName('traffic-vehicle-3');
+    const mesh = app.city?.group.getObjectByName('traffic-vehicle-0');
 
     return mesh ? { x: mesh.position.x, z: mesh.position.z } : undefined;
   });

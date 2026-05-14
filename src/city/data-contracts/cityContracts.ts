@@ -1314,10 +1314,15 @@ export type UtilityNetworkKind =
   | 'wastewater'
   | 'water';
 export type UtilityNodeRole =
+  | 'bioswale'
   | 'cabinet'
   | 'collection-point'
+  | 'culvert'
+  | 'detention'
   | 'distribution-node'
+  | 'drain'
   | 'hydrant'
+  | 'inlet'
   | 'lift-station'
   | 'manhole'
   | 'meter-bank'
@@ -1328,7 +1333,7 @@ export type UtilityNodeRole =
   | 'substation'
   | 'tank'
   | 'valve';
-export type UtilityEdgeRole = 'collection-route' | 'conduit' | 'feeder' | 'main' | 'service-lateral';
+export type UtilityEdgeRole = 'collection-route' | 'conduit' | 'drain' | 'feeder' | 'main' | 'runoff-path' | 'service-lateral';
 export type UtilityAccessPointKind = 'building-service' | 'parcel-easement' | 'roadside-vault' | 'surface-cover';
 export type UtilityCapacityUnit = 'kva' | 'liters-per-second' | 'mbps' | 'tons-per-day';
 export type PowerGridEquipmentKind =
@@ -1430,6 +1435,50 @@ export interface BuildingWastewaterServiceContract {
   readonly pretreatmentRequired: boolean;
 }
 
+export type StormwaterEquipmentKind = 'bioswale' | 'culvert' | 'detention-basin' | 'drain' | 'inlet' | 'outfall' | 'pervious-area';
+export type StormwaterConveyanceKind = 'culvert' | 'pipe' | 'surface-flow';
+
+export interface StormwaterNodeContract {
+  readonly equipmentKind: StormwaterEquipmentKind;
+  readonly drainageCatchmentId: CityId;
+  readonly designStormMmPerHour: number;
+  readonly runoffCoefficient: number;
+  readonly imperviousAreaSquareMeters: number;
+  readonly servedRoadIds: readonly CityId[];
+  readonly servedHazardZoneIds: readonly CityId[];
+  readonly storageVolumeCubicMeters?: number;
+  readonly treatmentVolumeCubicMeters?: number;
+  readonly receivingWaterwayId?: CityId;
+}
+
+export interface StormwaterEdgeContract {
+  readonly drainageLineId: CityId;
+  readonly fromEquipmentKind: StormwaterEquipmentKind;
+  readonly toEquipmentKind: StormwaterEquipmentKind;
+  readonly conveyanceKind: StormwaterConveyanceKind;
+  readonly drainageCatchmentId: CityId;
+  readonly designStormMmPerHour: number;
+  readonly slopePercent: number;
+  readonly pipeDiameterMm?: number;
+  readonly channelWidthMeters?: number;
+  readonly capacityReservePercent: number;
+  readonly receivingWaterwayId?: CityId;
+}
+
+export interface RoadStormwaterDrainageContract {
+  readonly drainageCatchmentId: CityId;
+  readonly inletNodeIds: readonly CityId[];
+  readonly runoffPathEdgeIds: readonly CityId[];
+  readonly lowPointNodeId: CityId;
+  readonly detentionNodeId: CityId;
+  readonly outfallNodeId: CityId;
+  readonly perviousAreaNodeIds: readonly CityId[];
+  readonly floodHazardZoneIds: readonly CityId[];
+  readonly designStormMmPerHour: number;
+  readonly imperviousAreaSquareMeters: number;
+  readonly runoffCoefficient: number;
+}
+
 export interface UtilityCapacityContract {
   readonly value: number;
   readonly unit: UtilityCapacityUnit;
@@ -1471,6 +1520,7 @@ export interface UtilityNodeContract extends CityObjectBase<'utility-node'> {
   readonly powerGrid?: PowerGridNodeContract;
   readonly waterSupply?: WaterSupplyNodeContract;
   readonly wastewater?: WastewaterNodeContract;
+  readonly stormwater?: StormwaterNodeContract;
 }
 
 export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
@@ -1489,6 +1539,7 @@ export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
   readonly powerGrid?: PowerGridEdgeContract;
   readonly waterSupply?: WaterSupplyEdgeContract;
   readonly wastewater?: WastewaterEdgeContract;
+  readonly stormwater?: StormwaterEdgeContract;
 }
 
 export interface ParcelFrontagePriorityContract {
@@ -1671,6 +1722,7 @@ export interface RoadSegmentContract extends CityObjectBase<'road-segment'> {
   readonly lanes: readonly LaneContract[];
   readonly sidewalks: readonly SidewalkContract[];
   readonly groundProfile?: GroundProfileContract;
+  readonly stormwaterDrainage?: RoadStormwaterDrainageContract;
 }
 
 export type TopographyZoneKind = 'elevation-band' | 'slope-area' | 'retaining-condition' | 'buildability-area';
