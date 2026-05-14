@@ -35,6 +35,9 @@ const RENDER_LAYER_KIND_GROUPS = [
       'bike-graph-edge',
       'bike-signal',
       'bike-conflict-zone',
+      'navigation-graph-node',
+      'navigation-graph-edge',
+      'navigation-route',
       'freight-loading-dock',
       'freight-route',
       'service-alley'

@@ -85,6 +85,9 @@ export function createCitySceneLayerDiagnostics(
       city.bikeGraphEdges.length +
       city.bikeSignals.length +
       city.bikeConflictZones.length +
+      city.navigationGraphNodes.length +
+      city.navigationGraphEdges.length +
+      city.navigationRoutes.length +
       city.freightLoadingDocks.length +
       city.freightRoutes.length +
       city.serviceAlleys.length +

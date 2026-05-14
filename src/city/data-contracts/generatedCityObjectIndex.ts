@@ -36,6 +36,9 @@ type GeneratedCityObjectSource = Pick<
   | 'freightRoutes'
   | 'hazardZones'
   | 'intersections'
+  | 'navigationGraphEdges'
+  | 'navigationGraphNodes'
+  | 'navigationRoutes'
   | 'parcels'
   | 'parks'
   | 'parkFeatures'
@@ -92,6 +95,9 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.bikeParking,
     ...city.bikeSignals,
     ...city.bikeConflictZones,
+    ...city.navigationGraphNodes,
+    ...city.navigationGraphEdges,
+    ...city.navigationRoutes,
     ...city.freightLoadingDocks,
     ...city.freightRoutes,
     ...city.serviceAlleys,

@@ -30,6 +30,7 @@ import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
 import { CyclingNetworkGenerator } from './mobility/CyclingNetworkGenerator';
 import { FreightLogisticsGenerator } from './mobility/FreightLogisticsGenerator';
+import { NavigationGraphGenerator } from './mobility/NavigationGraphGenerator';
 import { TransitGenerator } from './mobility/TransitGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
@@ -271,6 +272,20 @@ export class CityGenerator {
       roads: stormwater.roads,
       buildings: telecom.buildings
     });
+    const navigationGraphs = new NavigationGraphGenerator().create({
+      roads: stormwater.roads,
+      sidewalkGraph: sliceTagged.sidewalkGraph,
+      bikeSegments: cycling.bikeSegments,
+      bikeGraphNodes: cycling.bikeGraphNodes,
+      bikeGraphEdges: cycling.bikeGraphEdges,
+      bikeParking: cycling.bikeParking,
+      transitStops: transit.stops,
+      transitRoutes: transit.routes,
+      freightLoadingDocks: freightLogistics.loadingDocks,
+      freightRoutes: freightLogistics.routes,
+      serviceAlleys: freightLogistics.serviceAlleys,
+      utilityNodes: gasDistrictEnergy.utilityNodes
+    });
     const civicAnchors = new CivicAnchorGenerator().create({
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildingsWithTopography.districts,
@@ -341,6 +356,9 @@ export class CityGenerator {
       bikeParking: cycling.bikeParking,
       bikeSignals: cycling.bikeSignals,
       bikeConflictZones: cycling.bikeConflictZones,
+      navigationGraphNodes: navigationGraphs.navigationGraphNodes,
+      navigationGraphEdges: navigationGraphs.navigationGraphEdges,
+      navigationRoutes: navigationGraphs.navigationRoutes,
       freightLoadingDocks: freightLogistics.loadingDocks,
       freightRoutes: freightLogistics.routes,
       serviceAlleys: freightLogistics.serviceAlleys,

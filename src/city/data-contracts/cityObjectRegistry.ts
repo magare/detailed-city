@@ -62,6 +62,8 @@ const DEVELOPMENT_PHASE_KIND = String.raw`(?:baseline|future-expansion|temporary
 const PARK_FEATURE_KIND = String.raw`(?:lawn|path|planting|sports|seating|water-feature|shade)`;
 const PLAZA_ZONE_KIND = String.raw`(?:active-edge|event|hardscape|paving|seating|shade)`;
 const GOVERNMENT_ANCHOR_KIND = String.raw`(?:administrative-offices|city-hall|civic-plaza-interface|courts|service-counters)`;
+const NAVIGATION_MODE = String.raw`(?:vehicle|pedestrian|bike|transit|service|emergency|freight)`;
+const NAVIGATION_ROUTE_KIND = String.raw`(?:baseline|transfer|service|emergency|freight)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -166,6 +168,24 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
       exact(String.raw`${CROSSING_ID}-(?:zebra-stripe-\d+|stop-bar-\d+|tactile-pad-\d+|refuge-island)`)
     ],
     required(['road-segment', 'lane', 'crossing'])
+  ),
+  entry(
+    'navigation-graph-edge',
+    ['navigation-edge-<mode>-<source-object-id>'],
+    [exact(String.raw`navigation-edge-${NAVIGATION_MODE}-${NAMED_ID}(?:-${NAMED_ID})*(?:-\d+)?`)],
+    required(['road-segment', 'sidewalk-graph-edge', 'bike-graph-edge', 'transit-route', 'freight-route', 'service-alley'])
+  ),
+  entry(
+    'navigation-graph-node',
+    ['navigation-node-<mode>-<source-object-id>'],
+    [exact(String.raw`navigation-node-${NAVIGATION_MODE}-${NAMED_ID}(?:-${NAMED_ID})*(?:-(?:start|end))?`)],
+    required(['road-segment', 'sidewalk-graph-node', 'bike-graph-node', 'bike-parking', 'transit-stop', 'freight-loading-dock', 'service-alley', 'utility-node'])
+  ),
+  entry(
+    'navigation-route',
+    ['navigation-route-<mode>-<route-kind>-<index>'],
+    [exact(String.raw`navigation-route-${NAVIGATION_MODE}-${NAVIGATION_ROUTE_KIND}-\d+`)],
+    none()
   ),
   entry('parcel', ['parcel-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(PARCEL_ID)], required(['block'])),
   entry('park', ['<park-slug>'], [exact(NAMED_ID)], none()),

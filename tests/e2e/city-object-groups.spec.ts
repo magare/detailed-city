@@ -82,6 +82,9 @@ test('city object groups provide deterministic query paths for domains, slices, 
       first.city.bikeGraphEdges.length +
       first.city.bikeSignals.length +
       first.city.bikeConflictZones.length +
+      first.city.navigationGraphNodes.length +
+      first.city.navigationGraphEdges.length +
+      first.city.navigationRoutes.length +
       first.city.freightLoadingDocks.length +
       first.city.freightRoutes.length +
       first.city.serviceAlleys.length
@@ -112,6 +115,9 @@ test('city object groups provide deterministic query paths for domains, slices, 
       first.city.bikeGraphEdges.length +
       first.city.bikeSignals.length +
       first.city.bikeConflictZones.length +
+      first.city.navigationGraphNodes.length +
+      first.city.navigationGraphEdges.length +
+      first.city.navigationRoutes.length +
       first.city.freightLoadingDocks.length +
       first.city.freightRoutes.length +
       first.city.serviceAlleys.length
@@ -195,8 +201,8 @@ test('browser diagnostics expose grouped object counts for debug tools', async (
     ownerDomainGroups: 13,
     districtGroups: 5,
     renderLayerGroups: 6,
-    networkRenderLayerObjects: 2230,
-    baselineScenarioObjects: 8570
+    networkRenderLayerObjects: 4933,
+    baselineScenarioObjects: 11273
   });
   expect(groupDiagnostics.emptyGroups).toBeGreaterThan(0);
   expect(groupDiagnostics.sliceGroupObjects).toBeGreaterThan(1000);

@@ -307,6 +307,12 @@ export interface CityDiagnostics {
     readonly bikeSignals: number;
     readonly bikeConflictZones: number;
     readonly highSeverityBikeConflicts: number;
+    readonly navigationGraphNodes: number;
+    readonly navigationGraphEdges: number;
+    readonly navigationRoutes: number;
+    readonly navigationModes: number;
+    readonly navigationAgentRoutes: number;
+    readonly navigationOperationRoutes: number;
     readonly freightLoadingDocks: number;
     readonly freightRoutes: number;
     readonly serviceAlleys: number;
@@ -1306,6 +1312,12 @@ export function createCityDiagnostics(
       bikeSignals: city.bikeSignals.length,
       bikeConflictZones: city.bikeConflictZones.length,
       highSeverityBikeConflicts: city.bikeConflictZones.filter((zone) => zone.severity === 'high').length,
+      navigationGraphNodes: city.navigationGraphNodes.length,
+      navigationGraphEdges: city.navigationGraphEdges.length,
+      navigationRoutes: city.navigationRoutes.length,
+      navigationModes: new Set(city.navigationRoutes.map((route) => route.mode)).size,
+      navigationAgentRoutes: city.navigationRoutes.filter((route) => route.requestClass === 'agent').length,
+      navigationOperationRoutes: city.navigationRoutes.filter((route) => route.requestClass === 'operation').length,
       freightLoadingDocks: city.freightLoadingDocks.length,
       freightRoutes: city.freightRoutes.length,
       serviceAlleys: city.serviceAlleys.length,

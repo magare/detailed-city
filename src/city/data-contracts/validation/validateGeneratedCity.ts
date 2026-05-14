@@ -93,6 +93,9 @@ type GeneratedCityForValidation = Pick<
   | 'geospatial'
   | 'hazardZones'
   | 'intersections'
+  | 'navigationGraphEdges'
+  | 'navigationGraphNodes'
+  | 'navigationRoutes'
   | 'lodPolicy'
   | 'objectIndex'
   | 'parcels'
@@ -903,6 +906,8 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   const bikeGraphNodesById = new Map(city.bikeGraphNodes.map((node) => [node.id, node]));
   const bikeParkingById = new Map(city.bikeParking.map((parking) => [parking.id, parking]));
   const bikeConflictZonesById = new Map(city.bikeConflictZones.map((zone) => [zone.id, zone]));
+  const navigationGraphNodesById = new Map(city.navigationGraphNodes.map((node) => [node.id, node]));
+  const navigationGraphEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
   const sidewalkGraphNodeIds = new Set(city.sidewalkGraph.nodes.map((node) => node.id));
   const crossingGraphEdgeIds = new Set(
@@ -1455,6 +1460,154 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         objectId: conflict.id,
         message: `High-severity bike conflict ${conflict.id} cannot rely on paint-only mitigation.`
       });
+    }
+  }
+
+  for (const node of city.navigationGraphNodes) {
+    const source = city.objectIndex.objectsById[node.sourceObjectId];
+
+    if (!source || source.kind !== node.sourceObjectKind || node.parentId !== node.sourceObjectId) {
+      issues.push({
+        id: `invalid-navigation-node-source-${node.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: node.id,
+        message: `Navigation graph node ${node.id} must reference and parent to source object ${node.sourceObjectId}.`
+      });
+    }
+
+    if (node.roadId && !roadsById.has(node.roadId)) {
+      issues.push({
+        id: `invalid-navigation-node-road-${node.id}-${node.roadId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: node.id,
+        message: `Navigation graph node ${node.id} references missing road ${node.roadId}.`
+      });
+    }
+
+    if (node.intersectionId && !intersectionsById.has(node.intersectionId)) {
+      issues.push({
+        id: `invalid-navigation-node-intersection-${node.id}-${node.intersectionId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: node.id,
+        message: `Navigation graph node ${node.id} references missing intersection ${node.intersectionId}.`
+      });
+    }
+
+    for (const transferNodeId of node.transferNodeIds) {
+      if (!navigationGraphNodesById.has(transferNodeId)) {
+        issues.push({
+          id: `invalid-navigation-node-transfer-${node.id}-${transferNodeId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: node.id,
+          message: `Navigation graph node ${node.id} references missing transfer node ${transferNodeId}.`
+        });
+      }
+    }
+  }
+
+  for (const edge of city.navigationGraphEdges) {
+    const source = city.objectIndex.objectsById[edge.sourceObjectId];
+    const fromNode = navigationGraphNodesById.get(edge.fromNodeId);
+    const toNode = navigationGraphNodesById.get(edge.toNodeId);
+
+    if (!source || source.kind !== edge.sourceObjectKind || edge.parentId !== edge.sourceObjectId) {
+      issues.push({
+        id: `invalid-navigation-edge-source-${edge.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: edge.id,
+        message: `Navigation graph edge ${edge.id} must reference and parent to source object ${edge.sourceObjectId}.`
+      });
+    }
+
+    if (!fromNode || !toNode || fromNode.mode !== edge.mode || toNode.mode !== edge.mode || edge.lengthMeters <= 0 || edge.travelTimeSeconds <= 0) {
+      issues.push({
+        id: `invalid-navigation-edge-nodes-${edge.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: edge.id,
+        message: `Navigation graph edge ${edge.id} must connect existing same-mode nodes with positive length and travel time.`
+      });
+    }
+
+    for (const roadId of edge.roadIds) {
+      if (!roadsById.has(roadId)) {
+        issues.push({
+          id: `invalid-navigation-edge-road-${edge.id}-${roadId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: edge.id,
+          message: `Navigation graph edge ${edge.id} references missing road ${roadId}.`
+        });
+      }
+    }
+
+    for (const laneId of edge.laneIds) {
+      const lane = city.objectIndex.objectsById[laneId];
+      if (!lane || lane.kind !== 'lane') {
+        issues.push({
+          id: `invalid-navigation-edge-lane-${edge.id}-${laneId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: edge.id,
+          message: `Navigation graph edge ${edge.id} references missing lane ${laneId}.`
+        });
+      }
+    }
+  }
+
+  for (const route of city.navigationRoutes) {
+    const fromNode = navigationGraphNodesById.get(route.fromNodeId);
+    const toNode = navigationGraphNodesById.get(route.toNodeId);
+
+    if (!fromNode || !toNode || fromNode.mode !== route.mode || toNode.mode !== route.mode) {
+      issues.push({
+        id: `invalid-navigation-route-endpoints-${route.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: route.id,
+        message: `Navigation route ${route.id} must expose existing same-mode origin and destination nodes.`
+      });
+    }
+
+    if (route.nodeIds.length < 2 || route.edgeIds.length === 0 || route.lengthMeters <= 0 || route.estimatedTravelTimeSeconds <= 0) {
+      issues.push({
+        id: `invalid-navigation-route-shape-${route.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: route.id,
+        message: `Navigation route ${route.id} must expose route nodes, edges, positive length, and positive travel time.`
+      });
+    }
+
+    for (const nodeId of route.nodeIds) {
+      const node = navigationGraphNodesById.get(nodeId);
+      if (!node || node.mode !== route.mode) {
+        issues.push({
+          id: `invalid-navigation-route-node-${route.id}-${nodeId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: route.id,
+          message: `Navigation route ${route.id} references missing or wrong-mode node ${nodeId}.`
+        });
+      }
+    }
+
+    for (const edgeId of route.edgeIds) {
+      const edge = navigationGraphEdgesById.get(edgeId);
+      if (!edge || edge.mode !== route.mode) {
+        issues.push({
+          id: `invalid-navigation-route-edge-${route.id}-${edgeId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: route.id,
+          message: `Navigation route ${route.id} references missing or wrong-mode edge ${edgeId}.`
+        });
+      }
     }
   }
 

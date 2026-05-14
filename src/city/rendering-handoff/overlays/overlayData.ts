@@ -27,6 +27,7 @@ export type CityOverlayId =
   | 'urban-heat'
   | 'city-metrics'
   | 'cycling-network'
+  | 'navigation-graphs'
   | 'freight-logistics'
   | 'civic-anchors'
   | 'community-anchors'
@@ -94,6 +95,7 @@ export function createCityOverlayDatasets(
     createDataset('urban-heat', 'Urban Heat', 'domain-data', createUrbanHeatFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('cycling-network', 'Cycling Network', 'domain-data', createCyclingNetworkFeatures(city)),
+    createDataset('navigation-graphs', 'Navigation Graphs', 'domain-data', createNavigationGraphFeatures(city)),
     createDataset('freight-logistics', 'Freight Logistics', 'domain-data', createFreightLogisticsFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
@@ -745,6 +747,49 @@ function createRoadFeatures(city: GeneratedCity): CityOverlayFeature[] {
       turnPocketLanes: road.lanes.filter((lane) => lane.laneRole === 'turn-pocket').length
     }
   }));
+}
+
+function createNavigationGraphFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return [
+    ...city.navigationGraphEdges.map((edge) => {
+      const fromNode = city.navigationGraphNodes.find((node) => node.id === edge.fromNodeId);
+      const toNode = city.navigationGraphNodes.find((node) => node.id === edge.toNodeId);
+      return {
+        id: `overlay:navigation-graphs:${edge.id}`,
+        overlayId: 'navigation-graphs' as const,
+        objectId: edge.id,
+        objectKind: edge.kind,
+        ownerDomain: edge.ownerDomain,
+        label: `${edge.mode} edge`,
+        geometry: fromNode && toNode ? { type: 'polyline' as const, points: [fromNode.position, toNode.position] } : { type: 'none' as const },
+        metadata: {
+          mode: edge.mode,
+          sourceObjectKind: edge.sourceObjectKind,
+          lengthMeters: edge.lengthMeters,
+          travelTimeSeconds: edge.travelTimeSeconds,
+          accessible: edge.accessible,
+          restrictions: edge.restrictions.join(',')
+        }
+      } satisfies CityOverlayFeature;
+    }),
+    ...city.navigationRoutes.map((route) => ({
+      id: `overlay:navigation-graphs:${route.id}`,
+      overlayId: 'navigation-graphs' as const,
+      objectId: route.id,
+      objectKind: route.kind,
+      ownerDomain: route.ownerDomain,
+      label: `${route.mode} ${route.routeKind} route`,
+      geometry: { type: 'none' as const },
+      metadata: {
+        mode: route.mode,
+        routeKind: route.routeKind,
+        requestClass: route.requestClass,
+        edges: route.edgeIds.length,
+        lengthMeters: route.lengthMeters,
+        agentTypes: route.supportedAgentTypes.join(',')
+      }
+    }))
+  ];
 }
 
 function createFreightLogisticsFeatures(city: GeneratedCity): CityOverlayFeature[] {

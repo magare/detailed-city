@@ -34,6 +34,9 @@ export type CityObjectKind =
   | 'intersection'
   | 'lane'
   | 'lane-marking'
+  | 'navigation-graph-edge'
+  | 'navigation-graph-node'
+  | 'navigation-route'
   | 'parcel'
   | 'park'
   | 'park-feature'
@@ -609,6 +612,27 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Lane dashes render at LOD2 while tactile paving and close crosswalk detail can use LOD3.'
+    },
+    {
+      objectKind: 'navigation-graph-edge',
+      scope: 'network',
+      defaultTier: 'lod1',
+      allowedTiers: ['lod1', 'lod2'],
+      description: 'Navigation graph edges expose routeable continuity for vehicles, pedestrians, bikes, transit, service, emergency, and freight modes.'
+    },
+    {
+      objectKind: 'navigation-graph-node',
+      scope: 'network',
+      defaultTier: 'lod1',
+      allowedTiers: ['lod1', 'lod2'],
+      description: 'Navigation graph nodes normalize route endpoints across road, sidewalk, bike, transit, service, emergency, and freight sources.'
+    },
+    {
+      objectKind: 'navigation-route',
+      scope: 'network',
+      defaultTier: 'lod1',
+      allowedTiers: ['lod1', 'lod2'],
+      description: 'Navigation routes are deterministic route requests that agents and operations can resolve by mode.'
     },
     {
       objectKind: 'parcel',
@@ -1935,6 +1959,65 @@ export type FreightVehicleClass = 'cargo-van' | 'box-truck' | 'semi-truck';
 export type FreightRouteKind = 'industrial-haul' | 'retail-delivery' | 'warehouse-link';
 export type FreightLoadingDockKind = 'curbside' | 'service-bay' | 'yard';
 export type FreightDeliveryWindowKind = 'overnight' | 'morning' | 'midday' | 'off-peak';
+export type NavigationMode = 'vehicle' | 'pedestrian' | 'bike' | 'transit' | 'service' | 'emergency' | 'freight';
+export type NavigationRouteKind = 'baseline' | 'transfer' | 'service' | 'emergency' | 'freight';
+export type NavigationRequestClass = 'agent' | 'operation' | 'simulation';
+export type NavigationAgentType =
+  | 'driver'
+  | 'pedestrian'
+  | 'cyclist'
+  | 'transit-rider'
+  | 'service-crew'
+  | 'emergency-responder'
+  | 'freight-operator';
+
+export interface NavigationGraphNodeContract extends CityObjectBase<'navigation-graph-node'> {
+  readonly mode: NavigationMode;
+  readonly position: Point2D;
+  readonly sourceObjectId: CityId;
+  readonly sourceObjectKind: CityObjectKind;
+  readonly roadId?: CityId;
+  readonly laneId?: CityId;
+  readonly sidewalkGraphNodeId?: CityId;
+  readonly bikeGraphNodeId?: CityId;
+  readonly transitStopId?: CityId;
+  readonly loadingDockId?: CityId;
+  readonly serviceAlleyId?: CityId;
+  readonly intersectionId?: CityId;
+  readonly accessible: boolean;
+  readonly emergencyAccess: boolean;
+  readonly serviceAccess: boolean;
+  readonly transferNodeIds: readonly CityId[];
+}
+
+export interface NavigationGraphEdgeContract extends CityObjectBase<'navigation-graph-edge'> {
+  readonly mode: NavigationMode;
+  readonly fromNodeId: CityId;
+  readonly toNodeId: CityId;
+  readonly sourceObjectId: CityId;
+  readonly sourceObjectKind: CityObjectKind;
+  readonly roadIds: readonly CityId[];
+  readonly laneIds: readonly CityId[];
+  readonly lengthMeters: number;
+  readonly travelTimeSeconds: number;
+  readonly bidirectional: boolean;
+  readonly accessible: boolean;
+  readonly restrictions: readonly string[];
+}
+
+export interface NavigationRouteContract extends CityObjectBase<'navigation-route'> {
+  readonly mode: NavigationMode;
+  readonly routeKind: NavigationRouteKind;
+  readonly requestClass: NavigationRequestClass;
+  readonly fromNodeId: CityId;
+  readonly toNodeId: CityId;
+  readonly nodeIds: readonly CityId[];
+  readonly edgeIds: readonly CityId[];
+  readonly sourceObjectIds: readonly CityId[];
+  readonly lengthMeters: number;
+  readonly estimatedTravelTimeSeconds: number;
+  readonly supportedAgentTypes: readonly NavigationAgentType[];
+}
 
 export interface FreightDeliveryWindowContract {
   readonly windowKind: FreightDeliveryWindowKind;
