@@ -195,6 +195,12 @@ export class MaterialLibrary {
     roughness: 0.55
   });
 
+  readonly transitStop = new THREE.MeshStandardMaterial({
+    color: 0xd8b55b,
+    roughness: 0.5,
+    metalness: 0.08
+  });
+
   readonly vehicleBody = [
     new THREE.MeshStandardMaterial({ color: 0xbc3d36, roughness: 0.54 }),
     new THREE.MeshStandardMaterial({ color: 0xf0c14b, roughness: 0.52 }),
@@ -255,6 +261,7 @@ export class MaterialLibrary {
     this.signPanelWhite.dispose();
     this.signPanelGreen.dispose();
     this.signPanelBlue.dispose();
+    this.transitStop.dispose();
 
     for (const material of this.vehicleBody) {
       material.dispose();

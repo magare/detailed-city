@@ -176,6 +176,7 @@ function createStreetFurniture(
     clearPathWidthMeters: 2.4,
     crossingClearanceMeters: curbZone.crossingClearanceMeters,
     visibilityClearanceMeters: getVisibilityClearanceMeters(recipe.furnitureType),
+    transitStopId: recipe.furnitureType === 'bus-shelter' ? `transit-stop-${road.id}-${curbZone.side}-${curbZoneIndex}` : undefined,
     assetBindingId: recipe.assetBindingId,
     signFace: recipe.signRole
       ? {

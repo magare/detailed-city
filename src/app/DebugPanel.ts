@@ -223,6 +223,10 @@ export class DebugPanel {
         `${diagnostics.objectCounts.citywideStreetFurniture} citywide, ${diagnostics.objectCounts.railings} railings, ${diagnostics.objectCounts.transitShelters} shelters`
       ),
       createMetric(
+        'Transit',
+        `${diagnostics.objectCounts.transitRoutes} routes, ${diagnostics.objectCounts.transitStops} stops, ${diagnostics.objectCounts.transitPassengerDemand} demand`
+      ),
+      createMetric(
         'Metrics',
         `${diagnostics.cityMetrics.total} metrics, ${diagnostics.cityMetrics.passing} pass, ${diagnostics.cityMetrics.warnings} warn`
       ),

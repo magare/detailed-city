@@ -44,6 +44,7 @@ const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
 const PARCEL_ID = String.raw`parcel-\d+-\d+-\d+-\d+`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|railing|regulatory-sign|street-name-sign|wayfinding-sign)`;
 const TRAFFIC_CALMING_KIND = String.raw`(?:curb-extension|bus-bulb|chicane|pinchpoint|speed-hump|speed-table|speed-cushion|neighborhood-gateway)`;
+const TRANSIT_MODE = String.raw`(?:bus)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
 const COMMUNITY_ANCHOR_KIND = String.raw`(?:cemetery|community-hall|food-bank|processional-space|recreation-center|shelter|social-service|worship-place)`;
 const CULTURE_ANCHOR_KIND = String.raw`(?:event-space|gallery|heritage-site|museum|theater|venue)`;
@@ -189,6 +190,18 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ['traffic-calming-<road-id>-<device-kind>-<index>'],
     [exact(String.raw`traffic-calming-${ROAD_ID}-${TRAFFIC_CALMING_KIND}-\d+`)],
     required(['road-segment'])
+  ),
+  entry(
+    'transit-route',
+    ['transit-route-<mode>-<road-id>'],
+    [exact(String.raw`transit-route-${TRANSIT_MODE}-${ROAD_ID}`)],
+    none()
+  ),
+  entry(
+    'transit-stop',
+    ['transit-stop-<road-id>-<side>-<index>'],
+    [exact(String.raw`transit-stop-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)],
+    required(['sidewalk'])
   ),
   entry('tree-planting', ['<park-id>-tree-<index>', 'street-tree-<road-id>-<side>-<index>', 'citywide-tree-<road-id>-<side>-<index>'], [exact(String.raw`${NAMED_ID}-tree-\d+`), exact(String.raw`street-tree-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`), exact(String.raw`citywide-tree-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)], required(['park', 'sidewalk'])),
   entry('utility-edge', ['utility-edge-<slug>'], [exact(String.raw`utility-edge-${NAMED_ID}`)], optional(['utility-node'])),

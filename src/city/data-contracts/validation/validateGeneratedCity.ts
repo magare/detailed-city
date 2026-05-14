@@ -99,6 +99,8 @@ type GeneratedCityForValidation = Pick<
   | 'streetLights'
   | 'topographyZones'
   | 'trafficCalmingDevices'
+  | 'transitRoutes'
+  | 'transitStops'
   | 'trees'
   | 'verticalSlices'
   | 'waterfrontEdges'
@@ -174,6 +176,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:road:tactile-paving',
   'binding:road:refuge-island',
   'binding:road:traffic-calming',
+  'binding:transit:bus-stop',
   'binding:facade:storefront-window',
   'binding:facade:awning',
   'binding:facade:sign',
@@ -205,6 +208,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'street-furniture',
   'lane-marking',
   'traffic-calming-device',
+  'transit-stop',
   'waterfront-edge',
   'waterfront-open-space',
   'traffic-vehicle'
@@ -1941,6 +1945,10 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     }
   }
 
+
+
+
+  validateTransitNetwork(city, issues, roadsById, assetBindingsById);
   const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
   const blocksById = new Map(city.blocks.map((block) => [block.id, block]));
   const zoningById = new Map(city.zoningDistricts.map((zoning) => [zoning.id, zoning]));
@@ -2780,9 +2788,136 @@ function validateParcelModel(
   }
 }
 
+
+function validateTransitNetwork(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  roadsById: ReadonlyMap<string, ValidationRoad>,
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  for (const stop of city.transitStops) {
+    const road = roadsById.get(stop.roadId);
+    const sidewalk = city.objectIndex.objectsById[stop.sidewalkId];
+    const binding = assetBindingsById.get(stop.assetBindingId);
+
+    if (!road || !road.transitEligible) {
+      issues.push({
+        id: `invalid-transit-stop-road-${stop.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: stop.id,
+        message: `Transit stop ${stop.id} must reference an existing transit-eligible road.`
+      });
+    }
+
+    if (!sidewalk || sidewalk.kind !== 'sidewalk' || stop.parentId !== stop.sidewalkId) {
+      issues.push({
+        id: `invalid-transit-stop-sidewalk-${stop.id}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: stop.id,
+        message: `Transit stop ${stop.id} must attach to parent sidewalk ${stop.sidewalkId}.`
+      });
+    }
+
+    if (sidewalk && sidewalk.kind === 'sidewalk' && sidewalk.roadSegmentId !== stop.roadId) {
+      issues.push({
+        id: `transit-stop-sidewalk-road-mismatch-${stop.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: stop.id,
+        message: `Transit stop ${stop.id} sidewalk must belong to road ${stop.roadId}.`
+      });
+    }
+
+    if (
+      !isFiniteNumber(stop.center.x) ||
+      !isFiniteNumber(stop.center.z) ||
+      stop.alongRoadMeters < 0 ||
+      (road && stop.alongRoadMeters > road.length + 0.001) ||
+      stop.platformLengthMeters <= 0 ||
+      stop.passengerDemandSeed <= 0 ||
+      stop.serviceHeadwayMinutes <= 0 ||
+      !stop.accessible ||
+      stop.routeIds.length === 0
+    ) {
+      issues.push({
+        id: `invalid-transit-stop-service-${stop.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: stop.id,
+        message: 'Transit stops must have finite placement, positive service metadata, accessibility, and at least one route.'
+      });
+    }
+
+    if (!binding || binding.objectKind !== 'transit-stop') {
+      issues.push({
+        id: `invalid-transit-stop-asset-binding-${stop.id}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: stop.id,
+        message: `Transit stop ${stop.id} must reference a transit-stop render binding.`
+      });
+    }
+  }
+
+  const transitStopsById = new Map(city.transitStops.map((stop) => [stop.id, stop]));
+  for (const route of city.transitRoutes) {
+    if (route.mode !== 'bus' || route.roadIds.length === 0 || route.stopIds.length < 2 || route.laneIds.length === 0 || route.headwayMinutes <= 0) {
+      issues.push({
+        id: `invalid-transit-route-service-${route.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: route.id,
+        message: `Transit route ${route.id} must expose bus service, roads, at least two stops, bus-capable lanes, and a positive headway.`
+      });
+    }
+
+    for (const roadId of route.roadIds) {
+      const road = roadsById.get(roadId);
+      if (!road || !road.transitEligible) {
+        issues.push({
+          id: `invalid-transit-route-road-${route.id}-${roadId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: route.id,
+          message: `Transit route ${route.id} references a missing or transit-ineligible road ${roadId}.`
+        });
+      }
+    }
+
+    for (const stopId of route.stopIds) {
+      const stop = transitStopsById.get(stopId);
+      if (!stop || !stop.routeIds.includes(route.id)) {
+        issues.push({
+          id: `invalid-transit-route-stop-${route.id}-${stopId}`,
+          severity: 'error',
+          category: 'identifier',
+          objectId: route.id,
+          message: `Transit route ${route.id} references stop ${stopId} without reciprocal route metadata.`
+        });
+      }
+    }
+
+    for (const laneId of route.laneIds) {
+      const lane = city.objectIndex.objectsById[laneId];
+      if (!lane || lane.kind !== 'lane' || !lane.allowedModes.includes('bus')) {
+        issues.push({
+          id: `invalid-transit-route-lane-${route.id}-${laneId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: route.id,
+          message: `Transit route ${route.id} must use bus-capable lane ${laneId}.`
+        });
+      }
+    }
+  }
+}
+
 function validateZoningDistricts(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
   const districtsById = new Map(city.districts.map((district) => [district.id, district]));
   const blocksById = new Map(city.blocks.map((block) => [block.id, block]));
+
   const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
   const constraintsById = new Map(city.constraints.map((constraint) => [constraint.id, constraint]));
 
@@ -3322,6 +3457,7 @@ function validateRoadGroundProfile(
 }
 
 function validateCadastreRecords(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+
   const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
   const recordIdsByParcelId = new Map<string, string[]>();
 

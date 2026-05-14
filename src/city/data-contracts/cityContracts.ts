@@ -43,6 +43,8 @@ export type CityObjectKind =
   | 'topography-zone'
   | 'traffic-vehicle'
   | 'traffic-calming-device'
+  | 'transit-route'
+  | 'transit-stop'
   | 'tree-planting'
   | 'urban-heat-zone'
   | 'utility-edge'
@@ -647,6 +649,20 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod3',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Traffic calming devices are human-scale network details that slow approaches and improve crossing safety.'
+    },
+    {
+      objectKind: 'transit-route',
+      scope: 'network',
+      defaultTier: 'lod1',
+      allowedTiers: ['lod1', 'lod2'],
+      description: 'Transit routes bind bus service to eligible road corridors, route lanes, stops, headways, and passenger demand seeds.'
+    },
+    {
+      objectKind: 'transit-stop',
+      scope: 'network',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3', 'lod4'],
+      description: 'Transit stops are sidewalk-attached passenger access points with shelter, accessibility, transfer, and route metadata.'
     },
     {
       objectKind: 'tree-planting',
@@ -2591,6 +2607,41 @@ export interface StreetFurnitureContract extends CityObjectBase<'street-furnitur
     readonly textCode: string;
     readonly facing: 'road' | 'sidewalk';
   };
+}
+
+
+export type TransitMode = 'bus';
+export type TransitStopType = 'bus-stop';
+export type TransitServiceSpan = 'all-day' | 'peak-only' | 'night';
+
+export interface TransitStopContract extends CityObjectBase<'transit-stop'> {
+  readonly stopType: TransitStopType;
+  readonly mode: TransitMode;
+  readonly roadId: CityId;
+  readonly sidewalkId: CityId;
+  readonly shelterFurnitureId?: CityId;
+  readonly routeIds: readonly CityId[];
+  readonly side: CurbSide;
+  readonly center: Point2D;
+  readonly alongRoadMeters: number;
+  readonly platformLengthMeters: number;
+  readonly passengerDemandSeed: number;
+  readonly serviceHeadwayMinutes: number;
+  readonly accessible: boolean;
+  readonly transferRoadIds: readonly CityId[];
+  readonly assetBindingId: CityId;
+}
+
+export interface TransitRouteContract extends CityObjectBase<'transit-route'> {
+  readonly mode: TransitMode;
+  readonly routeShortName: string;
+  readonly roadIds: readonly CityId[];
+  readonly stopIds: readonly CityId[];
+  readonly laneIds: readonly CityId[];
+  readonly headwayMinutes: number;
+  readonly serviceSpan: TransitServiceSpan;
+  readonly passengerDemandSeed: number;
+  readonly colorHex: string;
 }
 
 export interface TrafficVehicleStopBehavior {

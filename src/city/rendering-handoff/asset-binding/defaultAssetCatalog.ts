@@ -24,6 +24,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:street-prop:bike-rack:primitive', 'street-prop', 'Bike Rack Primitive', 'bike-rack', 1.8, 'lod3'),
   createProceduralAsset('asset:street-prop:bollard:primitive', 'street-prop', 'Bollard Primitive', 'bollard', 0.95, 'lod3'),
   createProceduralAsset('asset:street-prop:bus-shelter:primitive', 'street-prop', 'Bus Shelter Primitive', 'bus-shelter', 4.8, 'lod3'),
+  createProceduralAsset('asset:transit:bus-stop:primitive', 'transit', 'Bus Stop Marker Primitive', 'bus-stop', 3.2, 'lod3'),
   createProceduralAsset('asset:street-prop:kiosk:primitive', 'street-prop', 'Kiosk Primitive', 'kiosk', 2.6, 'lod3'),
   createProceduralAsset('asset:street-prop:railing:primitive', 'street-prop', 'Railing Primitive', 'railing', 3.4, 'lod3'),
   createProceduralAsset('asset:street-prop:regulatory-sign:primitive', 'street-prop', 'Regulatory Sign Primitive', 'regulatory-sign', 2.4, 'lod4'),
@@ -399,6 +400,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'waterfront',
     fallbackMaterial: 'waterfrontEdge',
     fallbackGeometry: 'waterfront-open-space-promenade'
+  },
+  {
+    id: 'binding:transit:bus-stop',
+    objectKind: 'transit-stop',
+    semanticTag: 'bus-stop',
+    assetId: 'asset:transit:bus-stop:primitive',
+    materialZone: 'transit',
+    fallbackMaterial: 'transitStop',
+    fallbackGeometry: 'bus-stop-marker'
   },
   {
     id: 'binding:vehicle:traffic-car',

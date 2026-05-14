@@ -43,6 +43,8 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     streetFurniture: city.streetFurniture.map((streetFurniture) =>
       withProceduralMetadata(streetFurniture, 'public-realm-street-furniture')
     ),
+    transitStops: city.transitStops.map((stop) => withProceduralMetadata(stop, 'mobility-transit-stops')),
+    transitRoutes: city.transitRoutes.map((route) => withProceduralMetadata(route, 'mobility-transit-routes')),
     sidewalkGraph: {
       nodes: city.sidewalkGraph.nodes.map((node) => withProceduralMetadata(node, 'mobility-sidewalk-graph')),
       edges: city.sidewalkGraph.edges.map((edge) => withProceduralMetadata(edge, 'mobility-sidewalk-graph'))

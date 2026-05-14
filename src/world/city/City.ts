@@ -7,6 +7,7 @@ import { PlazaZoneMeshBuilder } from '../../city/rendering-handoff/mesh-builders
 import { StreetFurnitureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetFurnitureMeshBuilder';
 import { StreetLightMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetLightMeshBuilder';
 import { TrafficMeshBuilder, type TrafficVehicle } from '../../city/rendering-handoff/mesh-builders/TrafficMeshBuilder';
+import { TransitMeshBuilder } from '../../city/rendering-handoff/mesh-builders/TransitMeshBuilder';
 import { WaterfrontOpenSpaceMeshBuilder } from '../../city/rendering-handoff/mesh-builders/WaterfrontOpenSpaceMeshBuilder';
 import {
   CITY_SCENE_LAYER_DEFINITIONS,
@@ -81,6 +82,7 @@ export class City implements Updatable {
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
     this.addTrafficCalmingDevices(generated.trafficCalmingDevices);
+    this.addTransit(generated);
     this.addBuildings(generated);
     this.addBuildingFacades(generated);
     this.addActiveFrontages(generated.activeFrontages);
@@ -311,6 +313,15 @@ export class City implements Updatable {
     ).build(streetFurniture);
 
     this.layerGroups['public-realm'].add(streetFurnitureGroup);
+  }
+
+  private addTransit(generated: GeneratedCity): void {
+    const transitGroup = new TransitMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(generated.transitStops, generated.transitRoutes);
+
+    this.layerGroups.networks.add(transitGroup);
   }
 
   private addTrafficCalmingDevices(devices: readonly TrafficCalmingDevice[]): void {

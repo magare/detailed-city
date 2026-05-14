@@ -29,6 +29,8 @@ export interface CityPickingReferences {
   readonly intersectionId?: CityId;
   readonly crossingId?: CityId;
   readonly sidewalkId?: CityId;
+  readonly transitStopId?: CityId;
+  readonly transitRouteId?: CityId;
 }
 
 export interface CityPickingMetadata {
@@ -76,6 +78,8 @@ type PickableObjectSource = Pick<
   | 'streetFurniture'
   | 'streetLights'
   | 'trafficCalmingDevices'
+  | 'transitRoutes'
+  | 'transitStops'
   | 'trees'
   | 'waterfrontEdges'
   | 'waterfrontOpenSpaces'
@@ -104,6 +108,8 @@ export function createCityPickingMetadataCatalog(
     ...city.trees,
     ...city.streetLights,
     ...city.streetFurniture,
+    ...city.transitStops,
+    ...city.transitRoutes,
     ...city.trafficCalmingDevices,
     ...traffic.markings,
     ...traffic.vehicles
@@ -208,6 +214,8 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   copyStringReference(record, references, 'intersectionId');
   copyStringReference(record, references, 'crossingId');
   copyStringReference(record, references, 'sidewalkId');
+  copyStringReference(record, references, 'transitStopId');
+  copyStringReference(record, references, 'transitRouteId');
 
   if (object.kind === 'building') {
     references.buildingId = object.id;
@@ -231,6 +239,10 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
   } else if (object.kind === 'government-anchor') {
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
+  } else if (object.kind === 'transit-stop') {
+    references.transitStopId = object.id;
+  } else if (object.kind === 'transit-route') {
+    references.transitRouteId = object.id;
   } else if (object.kind === 'park') {
     references.parkId = object.id;
   } else if (object.kind === 'plaza-zone') {

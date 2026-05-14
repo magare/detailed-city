@@ -360,6 +360,10 @@ export interface CityDiagnostics {
     readonly citywideStreetFurniture: number;
     readonly railings: number;
     readonly transitShelters: number;
+    readonly transitStops: number;
+    readonly transitRoutes: number;
+    readonly transitRouteStops: number;
+    readonly transitPassengerDemand: number;
     readonly laneMarkings: number;
     readonly trafficVehicles: number;
     readonly indexedObjects: number;
@@ -1329,6 +1333,10 @@ export function createCityDiagnostics(
       citywideStreetFurniture: city.streetFurniture.filter((item) => item.placementContext === 'citywide-street').length,
       railings: city.streetFurniture.filter((item) => item.furnitureType === 'railing').length,
       transitShelters: city.streetFurniture.filter((item) => item.furnitureType === 'bus-shelter').length,
+      transitStops: city.transitStops.length,
+      transitRoutes: city.transitRoutes.length,
+      transitRouteStops: city.transitRoutes.reduce((sum, route) => sum + route.stopIds.length, 0),
+      transitPassengerDemand: city.transitStops.reduce((sum, stop) => sum + stop.passengerDemandSeed, 0),
       laneMarkings: objectIndex.countsByKind['lane-marking'] ?? 0,
       trafficVehicles: objectIndex.countsByKind['traffic-vehicle'] ?? 0,
       indexedObjects: objectIndex.objectIds.length,

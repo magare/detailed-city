@@ -54,6 +54,8 @@ import type {
   TreeSpecies,
   TrafficVehicleContract,
   TrafficCalmingDeviceContract,
+  TransitRouteContract,
+  TransitStopContract,
   ValidationResult,
   WeatherPresetContract,
   WaterfrontEdgeContract,
@@ -288,6 +290,8 @@ export interface LaneMarkingPlan extends LaneMarkingContract {
 export interface TrafficVehiclePlan extends TrafficVehicleContract {}
 
 export interface TrafficCalmingDevice extends TrafficCalmingDeviceContract {}
+export interface TransitStop extends TransitStopContract {}
+export interface TransitRoute extends TransitRouteContract {}
 
 export interface WeatherPreset extends WeatherPresetContract {}
 export interface SolarShadingSample extends SolarShadingSampleContract {}
@@ -316,6 +320,8 @@ export type GeneratedCityObject =
   | StreetLight
   | StreetFurniture
   | TrafficCalmingDevice
+  | TransitStop
+  | TransitRoute
   | WeatherPreset
   | SolarShadingSample
   | UrbanHeatZone
@@ -373,6 +379,8 @@ export interface GeneratedCity {
   streetLights: StreetLight[];
   streetFurniture: StreetFurniture[];
   trafficCalmingDevices: TrafficCalmingDevice[];
+  transitStops: TransitStop[];
+  transitRoutes: TransitRoute[];
   weatherPresets: WeatherPreset[];
   solarShadingSamples: SolarShadingSample[];
   urbanHeatZones: UrbanHeatZone[];

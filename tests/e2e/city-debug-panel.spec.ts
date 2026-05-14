@@ -62,7 +62,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('5995/5995 tagged');
+  expect(panelText).toContain('6024/6024 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -78,6 +78,8 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('145 trees, 27 corridors, 3116m2 canopy');
   expect(panelText).toContain('Furniture');
   expect(panelText).toContain('208 citywide, 6 railings, 19 shelters');
+  expect(panelText).toContain('Transit');
+  expect(panelText).toContain('9 routes, 19 stops, 1762 demand');
   expect(panelText).toContain('583 buildings, 44 frontages');
   expect(panelText).toContain('Civic');
   expect(panelText).toContain('6 anchors, 6 services, 3 emergency');
@@ -88,11 +90,11 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Government');
   expect(panelText).toContain('5 anchors, 29 counters, 5 plaza links');
   expect(panelText).toContain('Assets');
-  expect(panelText).toContain('46 assets, 46 bindings');
+  expect(panelText).toContain('47 assets, 47 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 5038 objects');
+  expect(panelText).toContain('6 formats, 5067 objects');
   expect(panelText).toContain('Registry');
-  expect(panelText).toContain('48 kinds');
+  expect(panelText).toContain('50 kinds');
   expect(panelText).toContain('Groups');
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
@@ -101,7 +103,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   );
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');
-  expect(panelText).toContain('48 policies');
+  expect(panelText).toContain('50 policies');
   expect(panelText).toContain('Performance');
   expect(panelText).toContain('Frame');
   await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');

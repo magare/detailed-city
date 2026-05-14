@@ -42,6 +42,8 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length +
+      city.transitStops.length +
+      city.transitRoutes.length +
       city.trafficCalmingDevices.length +
       traffic.markings.length +
       traffic.vehicles.length
@@ -55,6 +57,8 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
   expect(catalog.countsByKind['street-furniture']).toBe(city.streetFurniture.length);
+  expect(catalog.countsByKind['transit-stop']).toBe(city.transitStops.length);
+  expect(catalog.countsByKind['transit-route']).toBe(city.transitRoutes.length);
   expect(catalog.countsByKind['park-feature']).toBe(city.parkFeatures.length);
   expect(catalog.countsByKind['plaza-zone']).toBe(city.plazaZones.length);
   expect(catalog.countsByKind['traffic-calming-device']).toBe(city.trafficCalmingDevices.length);

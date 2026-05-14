@@ -244,6 +244,8 @@ export interface ProceduralSeedDomainSections {
   readonly crossings: GeneratedCity['crossings'];
   readonly curbZones: GeneratedCity['curbZones'];
   readonly trafficCalmingDevices: GeneratedCity['trafficCalmingDevices'];
+  readonly transitStops: GeneratedCity['transitStops'];
+  readonly transitRoutes: GeneratedCity['transitRoutes'];
   readonly streetLights: GeneratedCity['streetLights'];
   readonly streetFurniture: GeneratedCity['streetFurniture'];
   readonly sidewalkGraph: GeneratedCity['sidewalkGraph'];
@@ -289,6 +291,8 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly crossings: number;
   readonly curbZones: number;
   readonly trafficCalmingDevices: number;
+  readonly transitStops: number;
+  readonly transitRoutes: number;
   readonly streetLights: number;
   readonly streetFurniture: number;
   readonly sidewalkGraphNodes: number;
@@ -408,6 +412,8 @@ export function createProceduralSeedJsonExport(
       crossings: city.crossings,
       curbZones: city.curbZones,
       trafficCalmingDevices: city.trafficCalmingDevices,
+      transitStops: city.transitStops,
+      transitRoutes: city.transitRoutes,
       streetLights: city.streetLights,
       streetFurniture: city.streetFurniture,
       sidewalkGraph: city.sidewalkGraph,
@@ -554,6 +560,8 @@ export function createProceduralSeedDomainSectionCounts(
     | 'crossings'
     | 'curbZones'
     | 'trafficCalmingDevices'
+    | 'transitStops'
+    | 'transitRoutes'
     | 'districts'
     | 'zoningDistricts'
     | 'intersections'
@@ -597,6 +605,8 @@ export function createProceduralSeedDomainSectionCounts(
     crossings: city.crossings.length,
     curbZones: city.curbZones.length,
     trafficCalmingDevices: city.trafficCalmingDevices.length,
+    transitStops: city.transitStops.length,
+    transitRoutes: city.transitRoutes.length,
     streetLights: city.streetLights.length,
     streetFurniture: city.streetFurniture.length,
     sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
@@ -652,6 +662,8 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'crossings') +
     getArrayLength(city, 'curbZones') +
     getArrayLength(city, 'trafficCalmingDevices') +
+    getArrayLength(city, 'transitStops') +
+    getArrayLength(city, 'transitRoutes') +
     getArrayLength(city, 'streetLights') +
     getArrayLength(city, 'streetFurniture') +
     getNestedArrayLength(city, 'sidewalkGraph', 'nodes') +
