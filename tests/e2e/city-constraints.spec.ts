@@ -69,6 +69,8 @@ test('constraint layer is deterministic, indexed, and visible in overlays', () =
     'government-anchors',
     'constraints',
     'resilience-goals',
+    'thermal-service',
+    'thermal-outages',
     'parcels',
     'roads',
     'validation-issues',

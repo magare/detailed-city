@@ -152,6 +152,10 @@ export class DebugPanel {
         `${diagnostics.telecom.nodes} nodes, ${diagnostics.telecom.antennas} antennas, ${diagnostics.telecom.buildingsServed} buildings`
       ),
       createMetric(
+        'Thermal',
+        `${diagnostics.thermalEnergy.nodes} nodes, ${diagnostics.thermalEnergy.heatExchangers} exchangers, ${diagnostics.thermalEnergy.buildingsServed} buildings`
+      ),
+      createMetric(
         'Zoning',
         `${diagnostics.zoningModel.total} districts, ${diagnostics.zoningModel.formBasedDistricts} form, ${diagnostics.zoningModel.parcelsWithZoning} parcels`
       ),

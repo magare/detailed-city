@@ -472,6 +472,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateWastewater(city, issues);
   validateStormwater(city, issues);
   validateTelecom(city, issues);
+  validateThermalEnergy(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -4172,6 +4173,180 @@ function validateTelecom(city: GeneratedCityForValidation, issues: ValidationIss
         objectId: building.id,
         ...createIssueFocus(getObjectAffectedPoint(building), `Assign redundant telecom service to critical facility ${building.id}.`),
         message: `Critical facility ${building.id} must have redundant telecom coverage.`
+      });
+    }
+  }
+}
+
+function validateThermalEnergy(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const thermalNodes = city.utilityNodes.filter((node) => node.utilityType === 'district-energy' || node.utilityType === 'gas');
+  const thermalEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'district-energy' || edge.utilityType === 'gas');
+  const thermalNodesById = new Map(thermalNodes.map((node) => [node.id, node]));
+  const thermalEdgesById = new Map(thermalEdges.map((edge) => [edge.id, edge]));
+  const equipmentKinds = new Set(thermalNodes.map((node) => node.thermalEnergy?.equipmentKind).filter(Boolean));
+  const thermalLoopIds = new Set<string>();
+  const outageDomainIds = new Set<string>();
+
+  for (const node of thermalNodes) {
+    outageDomainIds.add(node.outage.outageDomainId);
+    if (!node.thermalEnergy) {
+      issues.push(createUtilityNodeIssue(node, 'missing-thermal-energy-metadata', `Thermal utility node ${node.id} must expose gas or district energy metadata.`));
+      continue;
+    }
+    thermalLoopIds.add(node.thermalEnergy.thermalLoopId);
+    if (
+      node.thermalEnergy.capacityKwThermal <= 0 ||
+      node.capacity.value <= 0 ||
+      (node.utilityType === 'gas' && node.capacity.unit !== 'kj-per-hour') ||
+      (node.utilityType === 'district-energy' && node.capacity.unit !== 'kw-thermal')
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-thermal-capacity', `Thermal utility node ${node.id} must expose positive thermal capacity in the expected unit.`));
+    }
+    if (!node.thermalEnergy.serviceAreaId || node.thermalEnergy.serviceAreaId !== node.serviceArea.serviceAreaBoundaryId) {
+      issues.push(createUtilityNodeIssue(node, 'missing-thermal-service-area', `Thermal utility node ${node.id} must reference its utility service area.`));
+    }
+    if (node.thermalEnergy.servedObjectIds.length === 0 && node.thermalEnergy.equipmentKind !== 'gas-valve') {
+      issues.push(createUtilityNodeIssue(node, 'missing-served-objects', `Thermal utility node ${node.id} must list served buildings, loops, or equipment.`));
+    }
+    for (const objectId of node.thermalEnergy.servedObjectIds) {
+      if (!hasObjectId(city, objectId) && !objectId.startsWith('thermal-') && !objectId.startsWith('gas-')) {
+        issues.push(createUtilityNodeIssue(node, `missing-served-object-${toIssueIdToken(objectId)}`, `Thermal utility node ${node.id} references missing served object ${objectId}.`));
+      }
+    }
+    if (node.thermalEnergy.plantRoomBuildingId && !hasObjectId(city, node.thermalEnergy.plantRoomBuildingId)) {
+      issues.push(createUtilityNodeIssue(node, 'missing-plant-room-building', `Thermal utility node ${node.id} references missing plant room building ${node.thermalEnergy.plantRoomBuildingId}.`));
+    }
+    if (node.thermalEnergy.medium === 'gas') {
+      if (!node.thermalEnergy.pressureKpa || node.thermalEnergy.pressureKpa <= 0) {
+        issues.push(createUtilityNodeIssue(node, 'invalid-gas-pressure', `Gas utility node ${node.id} must expose positive pressure.`));
+      }
+    } else if (
+      node.thermalEnergy.supplyTemperatureC === undefined ||
+      node.thermalEnergy.returnTemperatureC === undefined ||
+      node.thermalEnergy.supplyTemperatureC === node.thermalEnergy.returnTemperatureC ||
+      !node.thermalEnergy.pressureKpa ||
+      node.thermalEnergy.pressureKpa <= 0
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-thermal-operating-state', `District energy node ${node.id} must expose temperature and pressure assumptions.`));
+    }
+    if (
+      node.thermalEnergy.equipmentKind === 'thermal-storage' &&
+      (!node.thermalEnergy.thermalStorageMwh || node.thermalEnergy.thermalStorageMwh <= 0)
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-thermal-storage', `Thermal storage node ${node.id} must expose positive storage capacity.`));
+    }
+  }
+
+  for (const edge of thermalEdges) {
+    outageDomainIds.add(edge.outageDomainId);
+    if (!edge.thermalEnergy) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-thermal-energy-metadata', `Thermal utility edge ${edge.id} must expose gas or district energy metadata.`));
+      continue;
+    }
+    thermalLoopIds.add(edge.thermalEnergy.loopId);
+    const fromNode = thermalNodesById.get(edge.fromNodeId);
+    const toNode = thermalNodesById.get(edge.toNodeId);
+    if (!fromNode || !toNode) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-thermal-node-reference', `Thermal utility edge ${edge.id} must connect generated thermal utility nodes.`));
+      continue;
+    }
+    if (
+      edge.thermalEnergy.capacityKwThermal <= 0 ||
+      edge.thermalEnergy.pipeDiameterMm <= 0 ||
+      edge.thermalEnergy.maxPressureKpa <= 0 ||
+      edge.capacity.value <= 0 ||
+      (edge.utilityType === 'gas' && edge.capacity.unit !== 'kj-per-hour') ||
+      (edge.utilityType === 'district-energy' && edge.capacity.unit !== 'kw-thermal')
+    ) {
+      issues.push(createUtilityEdgeIssue(edge, 'invalid-thermal-capacity', `Thermal utility edge ${edge.id} must expose positive capacity, pressure, and pipe size.`));
+    }
+    if (
+      edge.thermalEnergy.fromEquipmentKind !== fromNode.thermalEnergy?.equipmentKind ||
+      edge.thermalEnergy.toEquipmentKind !== toNode.thermalEnergy?.equipmentKind
+    ) {
+      issues.push(createUtilityEdgeIssue(edge, 'equipment-kind-mismatch', `Thermal utility edge ${edge.id} equipment metadata must match endpoint nodes.`));
+    }
+    if (edge.thermalEnergy.medium !== 'gas' && (!edge.thermalEnergy.insulated || !edge.thermalEnergy.designDeltaTC || edge.thermalEnergy.designDeltaTC <= 0)) {
+      issues.push(createUtilityEdgeIssue(edge, 'invalid-thermal-loop-assumptions', `District energy edge ${edge.id} must expose insulation and temperature delta assumptions.`));
+    }
+  }
+
+  const requiredThermalEquipmentKinds = [
+    'gas-regulator',
+    'gas-valve',
+    'gas-meter',
+    'district-energy-plant',
+    'boiler',
+    'chilled-water-plant',
+    'thermal-storage',
+    'heat-exchanger'
+  ] as const;
+  for (const requiredKind of requiredThermalEquipmentKinds) {
+    if (!equipmentKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-thermal-equipment-${requiredKind}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        message: `Gas and district energy network must include ${requiredKind} equipment.`
+      });
+    }
+  }
+
+  if (thermalLoopIds.size === 0 || thermalEdges.length === 0 || outageDomainIds.size === 0) {
+    issues.push({
+      id: 'missing-thermal-service-coverage',
+      severity: 'error',
+      category: 'utility-coverage',
+      message: 'Gas and district energy network must expose thermal loops, outage domains, and route edges.'
+    });
+  }
+
+  for (const building of city.buildings) {
+    const thermalService = building.thermalService;
+    if (!thermalService) {
+      issues.push({
+        id: `missing-building-thermal-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Attach ${building.id} to generated thermal service metadata.`),
+        message: `Building ${building.id} must reference generated gas and district energy service.`
+      });
+      continue;
+    }
+    const serviceNode = thermalNodesById.get(thermalService.serviceNodeId);
+    const heatExchanger = thermalNodesById.get(thermalService.heatExchangerNodeId);
+    const gasServiceNode = thermalNodesById.get(thermalService.gasServiceNodeId);
+    if (
+      !serviceNode ||
+      !heatExchanger ||
+      heatExchanger.thermalEnergy?.equipmentKind !== 'heat-exchanger' ||
+      !gasServiceNode ||
+      gasServiceNode.thermalEnergy?.equipmentKind !== 'gas-meter' ||
+      !thermalEdgesById.has(thermalService.serviceLateralEdgeId) ||
+      !thermalLoopIds.has(thermalService.thermalLoopId) ||
+      !outageDomainIds.has(thermalService.outageDomainId) ||
+      thermalService.serviceModes.length === 0 ||
+      thermalService.estimatedPeakKwThermal <= 0 ||
+      thermalService.estimatedPeakGasKjPerHour <= 0
+    ) {
+      issues.push({
+        id: `invalid-building-thermal-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Regenerate thermal service references for ${building.id}.`),
+        message: `Building ${building.id} must reference valid thermal service nodes, gas meter, loop, outage domain, lateral edge, and positive demand.`
+      });
+    }
+    if (isCriticalFacilityBuilding(building) && !serviceNode?.thermalEnergy?.backupFuelAvailable) {
+      issues.push({
+        id: `critical-building-thermal-backup-missing-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Assign backup thermal service to critical facility ${building.id}.`),
+        message: `Critical facility ${building.id} must have backup-capable thermal service.`
       });
     }
   }

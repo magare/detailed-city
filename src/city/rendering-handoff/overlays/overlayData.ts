@@ -32,6 +32,8 @@ export type CityOverlayId =
   | 'government-anchors'
   | 'constraints'
   | 'resilience-goals'
+  | 'thermal-service'
+  | 'thermal-outages'
   | 'parcels'
   | 'roads'
   | 'validation-issues'
@@ -95,6 +97,8 @@ export function createCityOverlayDatasets(
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
+    createDataset('thermal-service', 'Thermal Service', 'domain-data', createThermalServiceFeatures(city)),
+    createDataset('thermal-outages', 'Thermal Outages', 'domain-data', createThermalOutageFeatures(city)),
     createDataset('parcels', 'Parcels', 'domain-data', createParcelFeatures(city)),
     createDataset('roads', 'Roads', 'domain-data', createRoadFeatures(city)),
     createDataset('validation-issues', 'Validation Issues', 'validation', createValidationIssueFeatures(city, runtimeObjectIndex)),
@@ -739,6 +743,91 @@ function createRoadFeatures(city: GeneratedCity): CityOverlayFeature[] {
   }));
 }
 
+function createThermalServiceFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  const nodeFeatures = city.utilityNodes
+    .filter((node) => node.thermalEnergy)
+    .map((node) => ({
+      id: `overlay:thermal-service:${node.id}`,
+      overlayId: 'thermal-service' as const,
+      objectId: node.id,
+      objectKind: node.kind,
+      ownerDomain: node.ownerDomain,
+      label: node.name ?? node.id,
+      geometry: { type: 'point' as const, point: node.center },
+      metadata: {
+        utilityType: node.utilityType,
+        equipmentKind: node.thermalEnergy?.equipmentKind ?? '',
+        medium: node.thermalEnergy?.medium ?? '',
+        thermalLoopId: node.thermalEnergy?.thermalLoopId ?? '',
+        serviceAreaId: node.thermalEnergy?.serviceAreaId ?? '',
+        outageDomainId: node.outage.outageDomainId,
+        capacityKwThermal: node.thermalEnergy?.capacityKwThermal ?? 0,
+        servedObjects: node.thermalEnergy?.servedObjectIds.length ?? 0,
+        backupFuelAvailable: node.thermalEnergy?.backupFuelAvailable ?? false
+      }
+    }));
+
+  const edgeFeatures = city.utilityEdges
+    .filter((edge) => edge.thermalEnergy)
+    .map((edge) => ({
+      id: `overlay:thermal-service:${edge.id}`,
+      overlayId: 'thermal-service' as const,
+      objectId: edge.id,
+      objectKind: edge.kind,
+      ownerDomain: edge.ownerDomain,
+      label: edge.name ?? edge.id,
+      geometry: { type: 'polyline' as const, points: edge.centerline },
+      metadata: {
+        utilityType: edge.utilityType,
+        medium: edge.thermalEnergy?.medium ?? '',
+        loopId: edge.thermalEnergy?.loopId ?? '',
+        outageDomainId: edge.outageDomainId,
+        fromEquipmentKind: edge.thermalEnergy?.fromEquipmentKind ?? '',
+        toEquipmentKind: edge.thermalEnergy?.toEquipmentKind ?? '',
+        capacityKwThermal: edge.thermalEnergy?.capacityKwThermal ?? 0,
+        pipeDiameterMm: edge.thermalEnergy?.pipeDiameterMm ?? 0,
+        insulated: edge.thermalEnergy?.insulated ?? false
+      }
+    }));
+
+  return [...nodeFeatures, ...edgeFeatures];
+}
+
+function createThermalOutageFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  const thermalNodes = city.utilityNodes.filter((node) => node.thermalEnergy);
+  const thermalEdges = city.utilityEdges.filter((edge) => edge.thermalEnergy);
+  const outageDomainIds = [...new Set([...thermalNodes.map((node) => node.outage.outageDomainId), ...thermalEdges.map((edge) => edge.outageDomainId)])].sort();
+
+  return outageDomainIds.map((outageDomainId) => {
+    const domainNodes = thermalNodes.filter((node) => node.outage.outageDomainId === outageDomainId);
+    const domainEdges = thermalEdges.filter((edge) => edge.outageDomainId === outageDomainId);
+    const points = [
+      ...domainNodes.map((node) => node.center),
+      ...domainEdges.flatMap((edge) => edge.centerline)
+    ];
+
+    return {
+      id: `overlay:thermal-outages:${outageDomainId}`,
+      overlayId: 'thermal-outages' as const,
+      ownerDomain: 'utilities' as const,
+      label: outageDomainId,
+      geometry: { type: 'polygon' as const, points: createPaddedBoundsPolygon(points, 12) },
+      metadata: {
+        outageDomainId,
+        thermalNodes: domainNodes.length,
+        thermalEdges: domainEdges.length,
+        backupNodes: domainNodes.filter((node) => node.outage.backupAvailable).length,
+        highCriticalityNodes: domainNodes.filter((node) => node.outage.criticality === 'high').length,
+        serviceAreas: new Set(domainNodes.map((node) => node.thermalEnergy?.serviceAreaId).filter(Boolean)).size,
+        thermalLoops: new Set([
+          ...domainNodes.map((node) => node.thermalEnergy?.thermalLoopId).filter(Boolean),
+          ...domainEdges.map((edge) => edge.thermalEnergy?.loopId).filter(Boolean)
+        ]).size
+      }
+    };
+  });
+}
+
 function createValidationIssueFeatures(
   city: GeneratedCity,
   runtimeObjectIndex: CityObjectIndex<GeneratedRuntimeCityObject>
@@ -855,6 +944,39 @@ function getGeometryPoint(geometry: CityOverlayGeometry | undefined): Point2D | 
   }
 
   return undefined;
+}
+
+function createPaddedBoundsPolygon(points: readonly Point2D[], paddingMeters: number): Polygon2D {
+  if (points.length === 0) {
+    return [
+      { x: -paddingMeters, z: -paddingMeters },
+      { x: paddingMeters, z: -paddingMeters },
+      { x: paddingMeters, z: paddingMeters },
+      { x: -paddingMeters, z: paddingMeters }
+    ];
+  }
+
+  const bounds = points.reduce(
+    (current, point) => ({
+      minX: Math.min(current.minX, point.x),
+      maxX: Math.max(current.maxX, point.x),
+      minZ: Math.min(current.minZ, point.z),
+      maxZ: Math.max(current.maxZ, point.z)
+    }),
+    {
+      minX: Number.POSITIVE_INFINITY,
+      maxX: Number.NEGATIVE_INFINITY,
+      minZ: Number.POSITIVE_INFINITY,
+      maxZ: Number.NEGATIVE_INFINITY
+    }
+  );
+
+  return [
+    { x: bounds.minX - paddingMeters, z: bounds.minZ - paddingMeters },
+    { x: bounds.maxX + paddingMeters, z: bounds.minZ - paddingMeters },
+    { x: bounds.maxX + paddingMeters, z: bounds.maxZ + paddingMeters },
+    { x: bounds.minX - paddingMeters, z: bounds.maxZ + paddingMeters }
+  ];
 }
 
 function isPoint(value: unknown): value is Point2D {

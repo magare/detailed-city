@@ -43,6 +43,7 @@ import { TrafficCalmingGenerator } from './traffic/TrafficCalmingGenerator';
 import { PowerGridGenerator } from './utilities/PowerGridGenerator';
 import { StormwaterGenerator } from './utilities/StormwaterGenerator';
 import { TelecomGenerator } from './utilities/TelecomGenerator';
+import { GasDistrictEnergyGenerator } from './utilities/GasDistrictEnergyGenerator';
 import { UtilityBaseGenerator } from './utilities/UtilityBaseGenerator';
 import { WaterSupplyGenerator } from './utilities/WaterSupplyGenerator';
 import { WastewaterGenerator } from './utilities/WastewaterGenerator';
@@ -243,25 +244,31 @@ export class CityGenerator {
       roads: stormwater.roads,
       buildings: wastewater.buildings
     });
+    const gasDistrictEnergy = new GasDistrictEnergyGenerator().create({
+      utilityNodes: telecom.utilityNodes,
+      utilityEdges: telecom.utilityEdges,
+      roads: stormwater.roads,
+      buildings: telecom.buildings
+    });
     const civicAnchors = new CivicAnchorGenerator().create({
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildingsWithTopography.districts,
       parcels: soilGeology.parcels,
-      buildings: telecom.buildings
+      buildings: gasDistrictEnergy.buildings
     });
     const governmentAnchors = new GovernmentAnchorGenerator().create({
       civicAnchors,
-      buildings: telecom.buildings,
+      buildings: gasDistrictEnergy.buildings,
       plazaZones
     });
     const cultureAnchors = new CultureAnchorGenerator().create({
       civicAnchors,
-      buildings: telecom.buildings,
+      buildings: gasDistrictEnergy.buildings,
       plazaZones
     });
     const communityAnchors = new CommunityAnchorGenerator().create({
       civicAnchors,
-      buildings: telecom.buildings,
+      buildings: gasDistrictEnergy.buildings,
       plazaZones
     });
     const cityMetrics = new CityMetricGenerator(this.config).create({
@@ -270,7 +277,7 @@ export class CityGenerator {
       crossings: sliceTagged.crossings,
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
-      buildings: telecom.buildings,
+      buildings: gasDistrictEnergy.buildings,
       activeFrontages,
       parks: parksWithFeatures,
       resilienceGoals
@@ -290,8 +297,8 @@ export class CityGenerator {
       weatherPresets,
       solarShadingSamples,
       urbanHeatZones,
-      utilityNodes: telecom.utilityNodes,
-      utilityEdges: telecom.utilityEdges,
+      utilityNodes: gasDistrictEnergy.utilityNodes,
+      utilityEdges: gasDistrictEnergy.utilityEdges,
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,
@@ -309,7 +316,7 @@ export class CityGenerator {
       streetFurniture,
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
-      buildings: telecom.buildings,
+      buildings: gasDistrictEnergy.buildings,
       civicAnchors,
       communityAnchors,
       cultureAnchors,

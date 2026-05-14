@@ -1307,6 +1307,7 @@ export interface CadastreRecordContract extends CityObjectBase<'cadastre-record'
 
 export type UtilityNetworkKind =
   | 'district-energy'
+  | 'gas'
   | 'power'
   | 'stormwater'
   | 'telecom'
@@ -1325,6 +1326,7 @@ export type UtilityNodeRole =
   | 'drain'
   | 'duct-bank'
   | 'fiber-node'
+  | 'heat-exchanger'
   | 'hydrant'
   | 'inlet'
   | 'lift-station'
@@ -1336,6 +1338,7 @@ export type UtilityNodeRole =
   | 'pump'
   | 'substation'
   | 'tank'
+  | 'thermal-storage'
   | 'valve';
 export type UtilityEdgeRole =
   | 'collection-route'
@@ -1345,9 +1348,10 @@ export type UtilityEdgeRole =
   | 'fiber-route'
   | 'main'
   | 'runoff-path'
-  | 'service-lateral';
+  | 'service-lateral'
+  | 'thermal-loop';
 export type UtilityAccessPointKind = 'building-service' | 'parcel-easement' | 'roadside-vault' | 'surface-cover';
-export type UtilityCapacityUnit = 'kva' | 'liters-per-second' | 'mbps' | 'tons-per-day';
+export type UtilityCapacityUnit = 'kj-per-hour' | 'kva' | 'kw-thermal' | 'liters-per-second' | 'mbps' | 'tons-per-day';
 export type PowerGridEquipmentKind =
   | 'backup-supply'
   | 'meter'
@@ -1529,6 +1533,57 @@ export interface BuildingTelecomServiceContract {
   readonly redundancyTier: 'none' | 'secondary-backhaul' | 'critical-facility';
 }
 
+export type ThermalEnergyEquipmentKind =
+  | 'boiler'
+  | 'chilled-water-plant'
+  | 'district-energy-plant'
+  | 'gas-meter'
+  | 'gas-regulator'
+  | 'gas-valve'
+  | 'heat-exchanger'
+  | 'thermal-storage';
+export type ThermalEnergyMediumKind = 'chilled-water' | 'gas' | 'hot-water' | 'steam';
+
+export interface ThermalEnergyNodeContract {
+  readonly equipmentKind: ThermalEnergyEquipmentKind;
+  readonly thermalLoopId: CityId;
+  readonly serviceAreaId: CityId;
+  readonly medium: ThermalEnergyMediumKind;
+  readonly capacityKwThermal: number;
+  readonly servedObjectIds: readonly CityId[];
+  readonly supplyTemperatureC?: number;
+  readonly returnTemperatureC?: number;
+  readonly pressureKpa?: number;
+  readonly plantRoomBuildingId?: CityId;
+  readonly thermalStorageMwh?: number;
+  readonly backupFuelAvailable: boolean;
+}
+
+export interface ThermalEnergyEdgeContract {
+  readonly loopId: CityId;
+  readonly fromEquipmentKind: ThermalEnergyEquipmentKind;
+  readonly toEquipmentKind: ThermalEnergyEquipmentKind;
+  readonly medium: ThermalEnergyMediumKind;
+  readonly capacityKwThermal: number;
+  readonly pipeDiameterMm: number;
+  readonly maxPressureKpa: number;
+  readonly designDeltaTC?: number;
+  readonly buried: boolean;
+  readonly insulated: boolean;
+}
+
+export interface BuildingThermalServiceContract {
+  readonly serviceNodeId: CityId;
+  readonly heatExchangerNodeId: CityId;
+  readonly gasServiceNodeId: CityId;
+  readonly serviceLateralEdgeId: CityId;
+  readonly thermalLoopId: CityId;
+  readonly outageDomainId: CityId;
+  readonly serviceModes: readonly ThermalEnergyMediumKind[];
+  readonly estimatedPeakKwThermal: number;
+  readonly estimatedPeakGasKjPerHour: number;
+}
+
 export interface UtilityCapacityContract {
   readonly value: number;
   readonly unit: UtilityCapacityUnit;
@@ -1572,6 +1627,7 @@ export interface UtilityNodeContract extends CityObjectBase<'utility-node'> {
   readonly wastewater?: WastewaterNodeContract;
   readonly stormwater?: StormwaterNodeContract;
   readonly telecom?: TelecomNodeContract;
+  readonly thermalEnergy?: ThermalEnergyNodeContract;
 }
 
 export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
@@ -1592,6 +1648,7 @@ export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
   readonly wastewater?: WastewaterEdgeContract;
   readonly stormwater?: StormwaterEdgeContract;
   readonly telecom?: TelecomEdgeContract;
+  readonly thermalEnergy?: ThermalEnergyEdgeContract;
 }
 
 export interface ParcelFrontagePriorityContract {
@@ -2384,6 +2441,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly waterService?: BuildingWaterServiceContract;
   readonly wastewaterService?: BuildingWastewaterServiceContract;
   readonly telecomService?: BuildingTelecomServiceContract;
+  readonly thermalService?: BuildingThermalServiceContract;
 }
 
 export type ActiveFrontageUse = Extract<LandUse, 'hospitality' | 'mixed-use' | 'retail'>;

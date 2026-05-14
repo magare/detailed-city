@@ -72,6 +72,7 @@ export interface CityDiagnostics {
   readonly wastewater: WastewaterDiagnostics;
   readonly stormwater: StormwaterDiagnostics;
   readonly telecom: TelecomDiagnostics;
+  readonly thermalEnergy: ThermalEnergyDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -192,6 +193,11 @@ export interface CityDiagnostics {
     readonly telecomCellSites: number;
     readonly telecomAntennas: number;
     readonly buildingsWithTelecomService: number;
+    readonly gasDistrictEnergyNodes: number;
+    readonly gasNodes: number;
+    readonly districtEnergyNodes: number;
+    readonly gasDistrictEnergyEdges: number;
+    readonly buildingsWithThermalService: number;
     readonly parcelsWithConstraints: number;
     readonly primaryFrontageParcels: number;
     readonly zoningDistricts: number;
@@ -508,6 +514,27 @@ export interface TelecomDiagnostics {
   readonly totalCapacityMbps: number;
   readonly networkZoneIds: readonly string[];
   readonly coverageAssumptionIds: readonly string[];
+  readonly outageDomainIds: readonly string[];
+}
+
+export interface ThermalEnergyDiagnostics {
+  readonly nodes: number;
+  readonly edges: number;
+  readonly gasNodes: number;
+  readonly districtEnergyNodes: number;
+  readonly gasRegulators: number;
+  readonly gasMeters: number;
+  readonly plantRooms: number;
+  readonly boilers: number;
+  readonly chillers: number;
+  readonly heatExchangers: number;
+  readonly thermalStorageNodes: number;
+  readonly buildingsServed: number;
+  readonly criticalBuildingsServed: number;
+  readonly totalCapacityKwThermal: number;
+  readonly totalGasCapacityKjPerHour: number;
+  readonly thermalLoopIds: readonly string[];
+  readonly serviceAreaIds: readonly string[];
   readonly outageDomainIds: readonly string[];
 }
 
@@ -961,6 +988,7 @@ export function createCityDiagnostics(
   const wastewater = createWastewaterDiagnostics(city);
   const stormwater = createStormwaterDiagnostics(city);
   const telecom = createTelecomDiagnostics(city);
+  const thermalEnergy = createThermalEnergyDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -1022,6 +1050,7 @@ export function createCityDiagnostics(
     wastewater,
     stormwater,
     telecom,
+    thermalEnergy,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -1133,6 +1162,11 @@ export function createCityDiagnostics(
       telecomCellSites: telecom.cellSites,
       telecomAntennas: telecom.antennas,
       buildingsWithTelecomService: telecom.buildingsServed,
+      gasDistrictEnergyNodes: thermalEnergy.nodes,
+      gasNodes: thermalEnergy.gasNodes,
+      districtEnergyNodes: thermalEnergy.districtEnergyNodes,
+      gasDistrictEnergyEdges: thermalEnergy.edges,
+      buildingsWithThermalService: thermalEnergy.buildingsServed,
       parcelsWithConstraints: parcelModel.parcelsWithConstraints,
       primaryFrontageParcels: parcelModel.primaryFrontageParcels,
       zoningDistricts: zoningModel.total,
@@ -1693,6 +1727,49 @@ function createTelecomDiagnostics(city: GeneratedCity): TelecomDiagnostics {
     totalCapacityMbps: telecomNodes.reduce((sum, node) => sum + (node.capacity.unit === 'mbps' ? node.capacity.value : 0), 0),
     networkZoneIds: [...networkZoneIds].sort(),
     coverageAssumptionIds: [...coverageAssumptionIds].sort(),
+    outageDomainIds: [...outageDomainIds].sort()
+  };
+}
+
+function createThermalEnergyDiagnostics(city: GeneratedCity): ThermalEnergyDiagnostics {
+  const thermalNodes = city.utilityNodes.filter((node) => node.utilityType === 'district-energy' || node.utilityType === 'gas');
+  const thermalEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'district-energy' || edge.utilityType === 'gas');
+  const thermalLoopIds = new Set<string>();
+  const serviceAreaIds = new Set<string>();
+  const outageDomainIds = new Set<string>();
+
+  for (const node of thermalNodes) {
+    if (node.thermalEnergy) {
+      thermalLoopIds.add(node.thermalEnergy.thermalLoopId);
+      serviceAreaIds.add(node.thermalEnergy.serviceAreaId);
+    }
+    outageDomainIds.add(node.outage.outageDomainId);
+  }
+  for (const edge of thermalEdges) {
+    if (edge.thermalEnergy) {
+      thermalLoopIds.add(edge.thermalEnergy.loopId);
+    }
+    outageDomainIds.add(edge.outageDomainId);
+  }
+
+  return {
+    nodes: thermalNodes.length,
+    edges: thermalEdges.length,
+    gasNodes: thermalNodes.filter((node) => node.utilityType === 'gas').length,
+    districtEnergyNodes: thermalNodes.filter((node) => node.utilityType === 'district-energy').length,
+    gasRegulators: thermalNodes.filter((node) => node.thermalEnergy?.equipmentKind === 'gas-regulator').length,
+    gasMeters: thermalNodes.filter((node) => node.thermalEnergy?.equipmentKind === 'gas-meter').length,
+    plantRooms: thermalNodes.filter((node) => node.thermalEnergy?.equipmentKind === 'district-energy-plant').length,
+    boilers: thermalNodes.filter((node) => node.thermalEnergy?.equipmentKind === 'boiler').length,
+    chillers: thermalNodes.filter((node) => node.thermalEnergy?.equipmentKind === 'chilled-water-plant').length,
+    heatExchangers: thermalNodes.filter((node) => node.thermalEnergy?.equipmentKind === 'heat-exchanger').length,
+    thermalStorageNodes: thermalNodes.filter((node) => node.thermalEnergy?.equipmentKind === 'thermal-storage').length,
+    buildingsServed: city.buildings.filter((building) => Boolean(building.thermalService)).length,
+    criticalBuildingsServed: city.buildings.filter((building) => isCriticalFacilityBuilding(building) && Boolean(building.thermalService)).length,
+    totalCapacityKwThermal: thermalNodes.reduce((sum, node) => sum + (node.capacity.unit === 'kw-thermal' ? node.capacity.value : 0), 0),
+    totalGasCapacityKjPerHour: thermalNodes.reduce((sum, node) => sum + (node.capacity.unit === 'kj-per-hour' ? node.capacity.value : 0), 0),
+    thermalLoopIds: [...thermalLoopIds].sort(),
+    serviceAreaIds: [...serviceAreaIds].sort(),
     outageDomainIds: [...outageDomainIds].sort()
   };
 }

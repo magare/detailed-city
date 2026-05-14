@@ -19,29 +19,29 @@ test('utility base contracts are deterministic and indexed', () => {
 
   expect(firstCity.utilityNodes.map(getUtilityNodeSignature)).toEqual(secondCity.utilityNodes.map(getUtilityNodeSignature));
   expect(firstCity.utilityEdges.map(getUtilityEdgeSignature)).toEqual(secondCity.utilityEdges.map(getUtilityEdgeSignature));
-  expect(firstCity.utilityNodes).toHaveLength(37);
-  expect(firstCity.utilityEdges).toHaveLength(31);
-  expect(firstCity.objectIndex.countsByKind['utility-node']).toBe(37);
-  expect(firstCity.objectIndex.countsByKind['utility-edge']).toBe(31);
+  expect(firstCity.utilityNodes).toHaveLength(45);
+  expect(firstCity.utilityEdges).toHaveLength(38);
+  expect(firstCity.objectIndex.countsByKind['utility-node']).toBe(45);
+  expect(firstCity.objectIndex.countsByKind['utility-edge']).toBe(38);
   expect(firstCity.validation.issues.filter((issue) => issue.category === 'utility-coverage')).toEqual([]);
   expect(diagnostics.utilityBase).toMatchObject({
-    nodes: 37,
-    edges: 31,
-    networkTypes: 6,
-    backupNodes: 22,
-    highCriticalityNodes: 21
+    nodes: 45,
+    edges: 38,
+    networkTypes: 8,
+    backupNodes: 30,
+    highCriticalityNodes: 25
   });
   expect(diagnostics.utilityBase.serviceParcels).toBeGreaterThan(0);
   expect(diagnostics.utilityBase.criticalObjects).toBeGreaterThan(0);
   expect(diagnostics.objectCounts).toMatchObject({
-    utilityNodes: 37,
-    utilityEdges: 31,
-    utilityNetworkTypes: 6,
-    utilityBackupNodes: 22,
-    utilityHighCriticalityNodes: 21
+    utilityNodes: 45,
+    utilityEdges: 38,
+    utilityNetworkTypes: 8,
+    utilityBackupNodes: 30,
+    utilityHighCriticalityNodes: 25
   });
-  expect(exportArtifact.domainSectionCounts.utilityNodes).toBe(37);
-  expect(exportArtifact.domainSectionCounts.utilityEdges).toBe(31);
+  expect(exportArtifact.domainSectionCounts.utilityNodes).toBe(45);
+  expect(exportArtifact.domainSectionCounts.utilityEdges).toBe(38);
   expect(countProceduralSeedDomainObjects(exportArtifact)).toBe(exportArtifact.objectCount);
 });
 
@@ -132,12 +132,12 @@ test('browser diagnostics expose utility base counts in the debug panel', async 
 
   expect(diagnostics.validationPassed).toBe(true);
   expect(diagnostics.utilityBase).toMatchObject({
-    nodes: 37,
-    edges: 31,
-    networkTypes: 6
+    nodes: 45,
+    edges: 38,
+    networkTypes: 8
   });
-  expect(diagnostics.utilityNodeObjects).toBe(37);
-  expect(diagnostics.utilityEdgeObjects).toBe(31);
+  expect(diagnostics.utilityNodeObjects).toBe(45);
+  expect(diagnostics.utilityEdgeObjects).toBe(38);
   expect(diagnostics.debugText).toContain('Utilities');
 });
 

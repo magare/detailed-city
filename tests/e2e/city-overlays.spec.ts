@@ -35,6 +35,8 @@ test('debug overlay datasets are generated from domain data', () => {
     'government-anchors',
     'constraints',
     'resilience-goals',
+    'thermal-service',
+    'thermal-outages',
     'parcels',
     'roads',
     'validation-issues',
@@ -155,6 +157,44 @@ test('debug overlay datasets are generated from domain data', () => {
   );
   expect(overlays.find((overlay) => overlay.id === 'constraints')?.featureCount).toBe(11);
   expect(overlays.find((overlay) => overlay.id === 'resilience-goals')?.featureCount).toBe(7);
+  expect(overlays.find((overlay) => overlay.id === 'thermal-service')?.featureCount).toBe(15);
+  expect(overlays.find((overlay) => overlay.id === 'thermal-service')?.features).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        objectId: 'utility-node-district-energy-heat-exchanger-downtown',
+        objectKind: 'utility-node',
+        ownerDomain: 'utilities',
+        geometry: expect.objectContaining({ type: 'point' }),
+        metadata: expect.objectContaining({
+          equipmentKind: 'heat-exchanger',
+          outageDomainId: 'outage-domain-thermal-downtown-primary',
+          servedObjects: 583
+        })
+      }),
+      expect.objectContaining({
+        objectId: 'utility-edge-district-energy-service-heat-exchanger-downtown',
+        objectKind: 'utility-edge',
+        ownerDomain: 'utilities',
+        geometry: expect.objectContaining({ type: 'polyline' }),
+        metadata: expect.objectContaining({
+          medium: 'steam',
+          loopId: 'thermal-loop-downtown-primary',
+          insulated: true
+        })
+      })
+    ])
+  );
+  expect(overlays.find((overlay) => overlay.id === 'thermal-outages')?.featureCount).toBe(1);
+  expect(overlays.find((overlay) => overlay.id === 'thermal-outages')?.features[0]).toMatchObject({
+    id: 'overlay:thermal-outages:outage-domain-thermal-downtown-primary',
+    ownerDomain: 'utilities',
+    geometry: expect.objectContaining({ type: 'polygon' }),
+    metadata: expect.objectContaining({
+      thermalNodes: 8,
+      thermalEdges: 7,
+      thermalLoops: 3
+    })
+  });
   expect(overlays.find((overlay) => overlay.id === 'parcels')?.featureCount).toBe(583);
   expect(overlays.find((overlay) => overlay.id === 'roads')?.featureCount).toBe(26);
   expect(overlays.find((overlay) => overlay.id === 'validation-issues')?.featureCount).toBe(0);
