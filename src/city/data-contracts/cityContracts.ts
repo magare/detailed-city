@@ -1317,11 +1317,14 @@ export type UtilityNodeRole =
   | 'cabinet'
   | 'collection-point'
   | 'distribution-node'
+  | 'hydrant'
   | 'meter-bank'
   | 'outfall'
   | 'plant'
+  | 'pressure-zone'
   | 'pump'
   | 'substation'
+  | 'tank'
   | 'valve';
 export type UtilityEdgeRole = 'collection-route' | 'conduit' | 'feeder' | 'main' | 'service-lateral';
 export type UtilityAccessPointKind = 'building-service' | 'parcel-easement' | 'roadside-vault' | 'surface-cover';
@@ -1360,6 +1363,36 @@ export interface BuildingPowerServiceContract {
   readonly circuitId: CityId;
   readonly outageDomainId: CityId;
   readonly estimatedPeakKva: number;
+}
+
+export type WaterSupplyEquipmentKind = 'hydrant' | 'main' | 'meter' | 'pressure-zone' | 'pump' | 'tank' | 'valve';
+
+export interface WaterSupplyNodeContract {
+  readonly equipmentKind: WaterSupplyEquipmentKind;
+  readonly pressureZoneId: CityId;
+  readonly pressureMinKpa: number;
+  readonly pressureMaxKpa: number;
+  readonly servedObjectIds: readonly CityId[];
+  readonly hydrantReachMeters?: number;
+  readonly storageVolumeCubicMeters?: number;
+}
+
+export interface WaterSupplyEdgeContract {
+  readonly mainId: CityId;
+  readonly fromEquipmentKind: WaterSupplyEquipmentKind;
+  readonly toEquipmentKind: WaterSupplyEquipmentKind;
+  readonly pipeDiameterMm: number;
+  readonly pressureZoneId: CityId;
+  readonly normallyOpen: boolean;
+}
+
+export interface BuildingWaterServiceContract {
+  readonly serviceNodeId: CityId;
+  readonly serviceLateralEdgeId: CityId;
+  readonly meterId: CityId;
+  readonly pressureZoneId: CityId;
+  readonly nearestHydrantNodeId: CityId;
+  readonly estimatedPeakLitersPerSecond: number;
 }
 
 export interface UtilityCapacityContract {
@@ -1401,6 +1434,7 @@ export interface UtilityNodeContract extends CityObjectBase<'utility-node'> {
   readonly connectedEdgeIds: readonly CityId[];
   readonly renderBindingId: CityId;
   readonly powerGrid?: PowerGridNodeContract;
+  readonly waterSupply?: WaterSupplyNodeContract;
 }
 
 export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
@@ -1417,6 +1451,7 @@ export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
   readonly ownerEntityId: CityId;
   readonly renderBindingId: CityId;
   readonly powerGrid?: PowerGridEdgeContract;
+  readonly waterSupply?: WaterSupplyEdgeContract;
 }
 
 export interface ParcelFrontagePriorityContract {
@@ -2205,6 +2240,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly buildabilityFromLandform?: LandformBuildability;
   readonly soilGeologyZoneIds?: readonly CityId[];
   readonly powerService?: BuildingPowerServiceContract;
+  readonly waterService?: BuildingWaterServiceContract;
 }
 
 export type ActiveFrontageUse = Extract<LandUse, 'hospitality' | 'mixed-use' | 'retail'>;

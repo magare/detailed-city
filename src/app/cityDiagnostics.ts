@@ -68,6 +68,7 @@ export interface CityDiagnostics {
   readonly cadastreModel: CadastreModelDiagnostics;
   readonly utilityBase: UtilityBaseDiagnostics;
   readonly powerGrid: PowerGridDiagnostics;
+  readonly waterSupply: WaterSupplyDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -164,6 +165,13 @@ export interface CityDiagnostics {
     readonly powerStreetLightCircuits: number;
     readonly buildingsWithPowerService: number;
     readonly streetLightsWithPowerCircuit: number;
+    readonly waterSupplyNodes: number;
+    readonly waterSupplyEdges: number;
+    readonly waterHydrants: number;
+    readonly waterValves: number;
+    readonly waterPumps: number;
+    readonly waterTanks: number;
+    readonly buildingsWithWaterService: number;
     readonly parcelsWithConstraints: number;
     readonly primaryFrontageParcels: number;
     readonly zoningDistricts: number;
@@ -415,6 +423,21 @@ export interface PowerGridDiagnostics {
   readonly streetLightsServed: number;
   readonly totalCapacityKva: number;
   readonly circuitIds: readonly string[];
+  readonly outageDomainIds: readonly string[];
+}
+
+export interface WaterSupplyDiagnostics {
+  readonly nodes: number;
+  readonly edges: number;
+  readonly hydrants: number;
+  readonly valves: number;
+  readonly pumps: number;
+  readonly tanks: number;
+  readonly meters: number;
+  readonly pressureZones: number;
+  readonly buildingsServed: number;
+  readonly totalCapacityLitersPerSecond: number;
+  readonly pressureZoneIds: readonly string[];
   readonly outageDomainIds: readonly string[];
 }
 
@@ -864,6 +887,7 @@ export function createCityDiagnostics(
   const cadastreModel = createCadastreModelDiagnostics(city);
   const utilityBase = createUtilityBaseDiagnostics(city);
   const powerGrid = createPowerGridDiagnostics(city);
+  const waterSupply = createWaterSupplyDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -921,6 +945,7 @@ export function createCityDiagnostics(
     cadastreModel,
     utilityBase,
     powerGrid,
+    waterSupply,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -1008,6 +1033,13 @@ export function createCityDiagnostics(
       powerStreetLightCircuits: powerGrid.streetLightCircuits,
       buildingsWithPowerService: powerGrid.buildingsServed,
       streetLightsWithPowerCircuit: powerGrid.streetLightsServed,
+      waterSupplyNodes: waterSupply.nodes,
+      waterSupplyEdges: waterSupply.edges,
+      waterHydrants: waterSupply.hydrants,
+      waterValves: waterSupply.valves,
+      waterPumps: waterSupply.pumps,
+      waterTanks: waterSupply.tanks,
+      buildingsWithWaterService: waterSupply.buildingsServed,
       parcelsWithConstraints: parcelModel.parcelsWithConstraints,
       primaryFrontageParcels: parcelModel.primaryFrontageParcels,
       zoningDistricts: zoningModel.total,
@@ -1387,6 +1419,44 @@ function createPowerGridDiagnostics(city: GeneratedCity): PowerGridDiagnostics {
     streetLightsServed: city.streetLights.filter((light) => light.powerCircuitId && circuitIds.has(light.powerCircuitId)).length,
     totalCapacityKva: powerNodes.reduce((sum, node) => sum + (node.capacity.unit === 'kva' ? node.capacity.value : 0), 0),
     circuitIds: [...circuitIds].sort(),
+    outageDomainIds: [...outageDomainIds].sort()
+  };
+}
+
+function createWaterSupplyDiagnostics(city: GeneratedCity): WaterSupplyDiagnostics {
+  const waterNodes = city.utilityNodes.filter((node) => node.utilityType === 'water');
+  const waterEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'water');
+  const pressureZoneIds = new Set<string>();
+  const outageDomainIds = new Set<string>();
+
+  for (const node of waterNodes) {
+    if (node.waterSupply) {
+      pressureZoneIds.add(node.waterSupply.pressureZoneId);
+    }
+    outageDomainIds.add(node.outage.outageDomainId);
+  }
+  for (const edge of waterEdges) {
+    if (edge.waterSupply) {
+      pressureZoneIds.add(edge.waterSupply.pressureZoneId);
+    }
+    outageDomainIds.add(edge.outageDomainId);
+  }
+
+  return {
+    nodes: waterNodes.length,
+    edges: waterEdges.length,
+    hydrants: waterNodes.filter((node) => node.waterSupply?.equipmentKind === 'hydrant').length,
+    valves: waterNodes.filter((node) => node.waterSupply?.equipmentKind === 'valve').length,
+    pumps: waterNodes.filter((node) => node.waterSupply?.equipmentKind === 'pump').length,
+    tanks: waterNodes.filter((node) => node.waterSupply?.equipmentKind === 'tank').length,
+    meters: waterNodes.filter((node) => node.waterSupply?.equipmentKind === 'meter').length,
+    pressureZones: waterNodes.filter((node) => node.waterSupply?.equipmentKind === 'pressure-zone').length,
+    buildingsServed: city.buildings.filter((building) => Boolean(building.waterService)).length,
+    totalCapacityLitersPerSecond: waterNodes.reduce(
+      (sum, node) => sum + (node.capacity.unit === 'liters-per-second' ? node.capacity.value : 0),
+      0
+    ),
+    pressureZoneIds: [...pressureZoneIds].sort(),
     outageDomainIds: [...outageDomainIds].sort()
   };
 }

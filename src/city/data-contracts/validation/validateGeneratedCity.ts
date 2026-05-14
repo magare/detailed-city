@@ -468,6 +468,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateCadastreRecords(city, issues);
   validateUtilityBase(city, issues);
   validatePowerGrid(city, issues);
+  validateWaterSupply(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -3624,6 +3625,120 @@ function validatePowerGrid(city: GeneratedCityForValidation, issues: ValidationI
         objectId: building.id,
         ...createIssueFocus(getObjectAffectedPoint(building), `Regenerate power service references for ${building.id}.`),
         message: `Building ${building.id} must reference valid power nodes, lateral edge, circuit, and positive demand.`
+      });
+    }
+  }
+}
+
+function validateWaterSupply(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const waterNodes = city.utilityNodes.filter((node) => node.utilityType === 'water');
+  const waterEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'water');
+  const waterNodesById = new Map(waterNodes.map((node) => [node.id, node]));
+  const waterEdgesById = new Map(waterEdges.map((edge) => [edge.id, edge]));
+  const pressureZoneIds = new Set<string>();
+  const equipmentKinds = new Set(waterNodes.map((node) => node.waterSupply?.equipmentKind).filter(Boolean));
+  const hydrantNodes = waterNodes.filter((node) => node.waterSupply?.equipmentKind === 'hydrant');
+
+  for (const node of waterNodes) {
+    if (!node.waterSupply) {
+      issues.push(createUtilityNodeIssue(node, 'missing-water-supply-metadata', `Water node ${node.id} must expose water supply metadata.`));
+      continue;
+    }
+    pressureZoneIds.add(node.waterSupply.pressureZoneId);
+    if (node.capacity.unit !== 'liters-per-second' || node.capacity.value <= 0) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-water-capacity', `Water node ${node.id} must expose positive liters-per-second capacity.`));
+    }
+    if (
+      node.waterSupply.pressureMinKpa <= 0 ||
+      node.waterSupply.pressureMaxKpa <= node.waterSupply.pressureMinKpa ||
+      node.waterSupply.pressureMaxKpa > 1000
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-water-pressure', `Water node ${node.id} must expose a valid water pressure range.`));
+    }
+    if (node.waterSupply.servedObjectIds.length === 0 && node.waterSupply.equipmentKind !== 'valve') {
+      issues.push(createUtilityNodeIssue(node, 'missing-served-objects', `Water node ${node.id} must list served equipment or service objects.`));
+    }
+    if (node.waterSupply.equipmentKind === 'hydrant' && (!node.waterSupply.hydrantReachMeters || node.waterSupply.hydrantReachMeters <= 0)) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-hydrant-reach', `Hydrant node ${node.id} must expose positive hydrant reach.`));
+    }
+    if (node.waterSupply.equipmentKind === 'tank' && (!node.waterSupply.storageVolumeCubicMeters || node.waterSupply.storageVolumeCubicMeters <= 0)) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-tank-storage', `Tank node ${node.id} must expose positive storage volume.`));
+    }
+  }
+
+  for (const edge of waterEdges) {
+    if (!edge.waterSupply) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-water-supply-metadata', `Water edge ${edge.id} must expose water supply metadata.`));
+      continue;
+    }
+    pressureZoneIds.add(edge.waterSupply.pressureZoneId);
+    const fromNode = waterNodesById.get(edge.fromNodeId);
+    const toNode = waterNodesById.get(edge.toNodeId);
+    if (!fromNode || !toNode) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-water-node-reference', `Water edge ${edge.id} must connect generated water nodes.`));
+      continue;
+    }
+    if (edge.capacity.unit !== 'liters-per-second' || edge.capacity.value <= 0 || edge.waterSupply.pipeDiameterMm <= 0) {
+      issues.push(createUtilityEdgeIssue(edge, 'invalid-water-capacity', `Water edge ${edge.id} must expose positive capacity and pipe diameter.`));
+    }
+    if (
+      edge.waterSupply.fromEquipmentKind !== fromNode.waterSupply?.equipmentKind ||
+      edge.waterSupply.toEquipmentKind !== toNode.waterSupply?.equipmentKind
+    ) {
+      issues.push(createUtilityEdgeIssue(edge, 'equipment-kind-mismatch', `Water edge ${edge.id} equipment metadata must match endpoint nodes.`));
+    }
+  }
+
+  const requiredWaterEquipmentKinds = ['valve', 'pump', 'tank', 'pressure-zone', 'hydrant', 'meter'] as const;
+  for (const requiredKind of requiredWaterEquipmentKinds) {
+    if (!equipmentKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-water-equipment-${requiredKind}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        message: `Water supply must include ${requiredKind} equipment.`
+      });
+    }
+  }
+
+  if (hydrantNodes.length === 0) {
+    issues.push({
+      id: 'missing-water-hydrant-coverage',
+      severity: 'error',
+      category: 'utility-coverage',
+      message: 'Water supply must include hydrants before fire response can query hydrant reach.'
+    });
+  }
+
+  for (const building of city.buildings) {
+    const waterService = building.waterService;
+    if (!waterService) {
+      issues.push({
+        id: `missing-building-water-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Attach ${building.id} to generated water service metadata.`),
+        message: `Building ${building.id} must reference generated water service.`
+      });
+      continue;
+    }
+    const hydrant = waterNodesById.get(waterService.nearestHydrantNodeId);
+    if (
+      !waterNodesById.has(waterService.serviceNodeId) ||
+      !waterEdgesById.has(waterService.serviceLateralEdgeId) ||
+      !pressureZoneIds.has(waterService.pressureZoneId) ||
+      !hydrant ||
+      hydrant.waterSupply?.equipmentKind !== 'hydrant' ||
+      waterService.estimatedPeakLitersPerSecond <= 0
+    ) {
+      issues.push({
+        id: `invalid-building-water-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Regenerate water service references for ${building.id}.`),
+        message: `Building ${building.id} must reference valid water service, pressure zone, hydrant, lateral edge, and positive demand.`
       });
     }
   }

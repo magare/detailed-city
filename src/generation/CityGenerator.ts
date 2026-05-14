@@ -42,6 +42,7 @@ import { TerrainGenerator } from './terrain/TerrainGenerator';
 import { TrafficCalmingGenerator } from './traffic/TrafficCalmingGenerator';
 import { PowerGridGenerator } from './utilities/PowerGridGenerator';
 import { UtilityBaseGenerator } from './utilities/UtilityBaseGenerator';
+import { WaterSupplyGenerator } from './utilities/WaterSupplyGenerator';
 import { applyGeneratedCitySourceMetadata } from './applySourceMetadata';
 
 export class CityGenerator {
@@ -213,25 +214,31 @@ export class CityGenerator {
       buildings: sliceTagged.buildings,
       streetLights
     });
+    const waterSupply = new WaterSupplyGenerator().create({
+      utilityNodes: powerGrid.utilityNodes,
+      utilityEdges: powerGrid.utilityEdges,
+      roads: sliceTagged.roads,
+      buildings: powerGrid.buildings
+    });
     const civicAnchors = new CivicAnchorGenerator().create({
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildingsWithTopography.districts,
       parcels: soilGeology.parcels,
-      buildings: powerGrid.buildings
+      buildings: waterSupply.buildings
     });
     const governmentAnchors = new GovernmentAnchorGenerator().create({
       civicAnchors,
-      buildings: powerGrid.buildings,
+      buildings: waterSupply.buildings,
       plazaZones
     });
     const cultureAnchors = new CultureAnchorGenerator().create({
       civicAnchors,
-      buildings: powerGrid.buildings,
+      buildings: waterSupply.buildings,
       plazaZones
     });
     const communityAnchors = new CommunityAnchorGenerator().create({
       civicAnchors,
-      buildings: powerGrid.buildings,
+      buildings: waterSupply.buildings,
       plazaZones
     });
     const cityMetrics = new CityMetricGenerator(this.config).create({
@@ -240,7 +247,7 @@ export class CityGenerator {
       crossings: sliceTagged.crossings,
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
-      buildings: powerGrid.buildings,
+      buildings: waterSupply.buildings,
       activeFrontages,
       parks: parksWithFeatures,
       resilienceGoals
@@ -260,8 +267,8 @@ export class CityGenerator {
       weatherPresets,
       solarShadingSamples,
       urbanHeatZones,
-      utilityNodes: powerGrid.utilityNodes,
-      utilityEdges: powerGrid.utilityEdges,
+      utilityNodes: waterSupply.utilityNodes,
+      utilityEdges: waterSupply.utilityEdges,
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,
@@ -279,7 +286,7 @@ export class CityGenerator {
       streetFurniture,
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
-      buildings: powerGrid.buildings,
+      buildings: waterSupply.buildings,
       civicAnchors,
       communityAnchors,
       cultureAnchors,
