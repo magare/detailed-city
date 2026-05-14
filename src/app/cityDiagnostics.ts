@@ -287,6 +287,14 @@ export interface CityDiagnostics {
     readonly busBulbs: number;
     readonly speedTables: number;
     readonly curbZones: number;
+    readonly citywideCurbZones: number;
+    readonly detailedCurbZones: number;
+    readonly parkingCurbZones: number;
+    readonly loadingCurbZones: number;
+    readonly rideHailCurbZones: number;
+    readonly disabledCurbSpaces: number;
+    readonly pricedCurbZones: number;
+    readonly cameraEnforcedCurbZones: number;
     readonly sidewalkGraphNodes: number;
     readonly sidewalkGraphEdges: number;
     readonly lanes: number;
@@ -1260,6 +1268,14 @@ export function createCityDiagnostics(
       busBulbs: trafficCalming.busBulbs,
       speedTables: trafficCalming.speedTables,
       curbZones: city.curbZones.length,
+      citywideCurbZones: city.curbZones.filter((zone) => zone.managementContext === 'citywide').length,
+      detailedCurbZones: city.curbZones.filter((zone) => zone.managementContext === 'detailed-street').length,
+      parkingCurbZones: city.curbZones.filter((zone) => zone.curbUse === 'parking').length,
+      loadingCurbZones: city.curbZones.filter((zone) => zone.curbUse === 'loading').length,
+      rideHailCurbZones: city.curbZones.filter((zone) => zone.curbUse === 'ride-hail').length,
+      disabledCurbSpaces: city.curbZones.reduce((sum, zone) => sum + zone.management.disabledSpaces, 0),
+      pricedCurbZones: city.curbZones.filter((zone) => zone.management.pricing !== 'free' && zone.management.pricing !== 'not-applicable').length,
+      cameraEnforcedCurbZones: city.curbZones.filter((zone) => zone.management.enforcement === 'camera').length,
       sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
       sidewalkGraphEdges: city.sidewalkGraph.edges.length,
       lanes: objectIndex.countsByKind.lane ?? 0,

@@ -1064,17 +1064,39 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   const curbZonesBySidewalk = new Map<string, typeof city.curbZones>();
 
   for (const curbZone of city.curbZones) {
-    const slice = slicesById.get(curbZone.sliceId);
+    const isDetailedCurbZone = curbZone.managementContext === 'detailed-street';
+    const isCitywideCurbZone = curbZone.managementContext === 'citywide';
+    const slice = curbZone.sliceId ? slicesById.get(curbZone.sliceId) : undefined;
     const road = roadsById.get(curbZone.roadId);
     const sidewalk = city.objectIndex.objectsById[curbZone.sidewalkId];
 
-    if (!slice) {
+    if (isDetailedCurbZone && !slice) {
       issues.push({
-        id: `missing-curb-zone-slice-${curbZone.id}-${curbZone.sliceId}`,
+        id: `missing-curb-zone-slice-${curbZone.id}-${curbZone.sliceId ?? 'missing'}`,
         severity: 'error',
         category: 'identifier',
         objectId: curbZone.id,
-        message: `Curb zone references missing detailed street slice ${curbZone.sliceId}.`
+        message: `Detailed curb zone must reference a detailed street slice.`
+      });
+    }
+
+    if (!isDetailedCurbZone && !isCitywideCurbZone) {
+      issues.push({
+        id: `invalid-curb-zone-management-context-${curbZone.id}`,
+        severity: 'error',
+        category: 'config',
+        objectId: curbZone.id,
+        message: `Curb zone ${curbZone.id} must declare detailed-street or citywide management context.`
+      });
+    }
+
+    if (isCitywideCurbZone && curbZone.sliceId) {
+      issues.push({
+        id: `citywide-curb-zone-has-slice-${curbZone.id}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: curbZone.id,
+        message: `Citywide curb zone ${curbZone.id} must not be parented to a detailed street slice.`
       });
     }
 
@@ -1134,7 +1156,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
-    if (curbZone.tags?.detailedStreetSliceId !== curbZone.sliceId) {
+    if (isDetailedCurbZone && curbZone.tags?.detailedStreetSliceId !== curbZone.sliceId) {
       issues.push({
         id: `missing-curb-zone-slice-tag-${curbZone.id}`,
         severity: 'error',
@@ -1144,8 +1166,49 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
-    if (slice && road && curbZone.curbUse === 'loading') {
-      for (const intersectionId of slice.intersectionIds) {
+    if (curbZone.curbUse === 'parking' && curbZone.management.disabledSpaces < 0) {
+      issues.push({
+        id: `invalid-curb-zone-disabled-spaces-${curbZone.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: curbZone.id,
+        message: `Parking curb zone ${curbZone.id} must declare a non-negative disabled-space allocation.`
+      });
+    }
+
+    if ((curbZone.curbUse === 'emergency' || curbZone.curbUse === 'no-stopping') && !curbZone.management.fireLaneClearance) {
+      issues.push({
+        id: `curb-zone-blocks-fire-lane-${curbZone.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: curbZone.id,
+        message: `Emergency and no-stopping curb zones must preserve fire-lane clearance.`
+      });
+    }
+
+    if (curbZone.curbUse === 'bus-stop' && !curbZone.management.transitStopClearance) {
+      issues.push({
+        id: `curb-zone-blocks-transit-stop-${curbZone.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: curbZone.id,
+        message: `Bus-stop curb zones must preserve transit stop clearance.`
+      });
+    }
+
+    if (curbZone.curbUse === 'loading' && !curbZone.management.loadingDockAccess) {
+      issues.push({
+        id: `curb-zone-missing-loading-access-${curbZone.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: curbZone.id,
+        message: `Loading curb zone ${curbZone.id} must expose loading-dock access metadata.`
+      });
+    }
+
+    if (road && curbZone.curbUse === 'loading') {
+      const clearanceIntersectionIds = isDetailedCurbZone && slice ? slice.intersectionIds : roadIntersectionIdsByRoad.get(road.id) ?? [];
+      for (const intersectionId of clearanceIntersectionIds) {
         const intersection = intersectionsById.get(intersectionId);
         const crossingOffset = intersection ? getRoadOffsetMeters(road, intersection.center) : undefined;
 

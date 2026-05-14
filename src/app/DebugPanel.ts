@@ -261,6 +261,10 @@ export class DebugPanel {
         `${diagnostics.laneRestrictions.busOnlyLanes} bus, ${diagnostics.laneRestrictions.turnPocketLanes} turn, ${diagnostics.laneRestrictions.reversibleLanes} reversible`
       ),
       createMetric(
+        'Curbs',
+        `${diagnostics.objectCounts.citywideCurbZones} citywide, ${diagnostics.objectCounts.parkingCurbZones} parking, ${diagnostics.objectCounts.loadingCurbZones} loading`
+      ),
+      createMetric(
         'Junctions',
         `${diagnostics.intersectionBehavior.signalized} signal, ${diagnostics.intersectionBehavior.stopControlled} stop, ${diagnostics.intersectionBehavior.raisedJunctions} raised`
       ),

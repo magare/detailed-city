@@ -2523,9 +2523,23 @@ export interface DetailedStreetSliceContract extends CityObjectBase<'vertical-sl
 
 export type CurbZoneUse = 'parking' | 'loading' | 'ride-hail' | 'bus-stop' | 'emergency' | 'no-stopping';
 export type CurbSide = 'left' | 'right';
+export type CurbManagementContext = 'detailed-street' | 'citywide';
+export type CurbPricingPolicy = 'free' | 'metered' | 'permit' | 'commercial-loading' | 'not-applicable';
+export type CurbEnforcementPolicy = 'camera' | 'patrol' | 'self-enforced' | 'not-applicable';
+
+export interface CurbManagementPolicy {
+  readonly pricing: CurbPricingPolicy;
+  readonly enforcement: CurbEnforcementPolicy;
+  readonly maxStayMinutes: number;
+  readonly disabledSpaces: number;
+  readonly loadingDockAccess: boolean;
+  readonly fireLaneClearance: boolean;
+  readonly transitStopClearance: boolean;
+}
 
 export interface CurbZoneContract extends CityObjectBase<'curb-zone'> {
-  readonly sliceId: CityId;
+  readonly sliceId?: CityId;
+  readonly managementContext: CurbManagementContext;
   readonly roadId: CityId;
   readonly sidewalkId: CityId;
   readonly side: CurbSide;
@@ -2537,7 +2551,9 @@ export interface CurbZoneContract extends CityObjectBase<'curb-zone'> {
   readonly widthMeters: number;
   readonly center: Point2D;
   readonly crossingClearanceMeters: number;
+  readonly management: CurbManagementPolicy;
 }
+
 
 export interface StreetLightContract extends CityObjectBase<'street-light'> {
   readonly sliceId: CityId;
