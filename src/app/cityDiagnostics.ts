@@ -71,6 +71,7 @@ export interface CityDiagnostics {
   readonly waterSupply: WaterSupplyDiagnostics;
   readonly wastewater: WastewaterDiagnostics;
   readonly stormwater: StormwaterDiagnostics;
+  readonly telecom: TelecomDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -186,6 +187,11 @@ export interface CityDiagnostics {
     readonly stormwaterBioswales: number;
     readonly stormwaterCulverts: number;
     readonly roadsWithStormwaterDrainage: number;
+    readonly telecomNodes: number;
+    readonly telecomEdges: number;
+    readonly telecomCellSites: number;
+    readonly telecomAntennas: number;
+    readonly buildingsWithTelecomService: number;
     readonly parcelsWithConstraints: number;
     readonly primaryFrontageParcels: number;
     readonly zoningDistricts: number;
@@ -486,6 +492,22 @@ export interface StormwaterDiagnostics {
   readonly totalCapacityLitersPerSecond: number;
   readonly catchmentIds: readonly string[];
   readonly receivingWaterwayIds: readonly string[];
+  readonly outageDomainIds: readonly string[];
+}
+
+export interface TelecomDiagnostics {
+  readonly nodes: number;
+  readonly edges: number;
+  readonly fiberHubs: number;
+  readonly cabinets: number;
+  readonly ductBanks: number;
+  readonly cellSites: number;
+  readonly antennas: number;
+  readonly buildingsServed: number;
+  readonly criticalBuildingsServed: number;
+  readonly totalCapacityMbps: number;
+  readonly networkZoneIds: readonly string[];
+  readonly coverageAssumptionIds: readonly string[];
   readonly outageDomainIds: readonly string[];
 }
 
@@ -938,6 +960,7 @@ export function createCityDiagnostics(
   const waterSupply = createWaterSupplyDiagnostics(city);
   const wastewater = createWastewaterDiagnostics(city);
   const stormwater = createStormwaterDiagnostics(city);
+  const telecom = createTelecomDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -998,6 +1021,7 @@ export function createCityDiagnostics(
     waterSupply,
     wastewater,
     stormwater,
+    telecom,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -1104,6 +1128,11 @@ export function createCityDiagnostics(
       stormwaterBioswales: stormwater.bioswales,
       stormwaterCulverts: stormwater.culverts,
       roadsWithStormwaterDrainage: stormwater.roadsDrained,
+      telecomNodes: telecom.nodes,
+      telecomEdges: telecom.edges,
+      telecomCellSites: telecom.cellSites,
+      telecomAntennas: telecom.antennas,
+      buildingsWithTelecomService: telecom.buildingsServed,
       parcelsWithConstraints: parcelModel.parcelsWithConstraints,
       primaryFrontageParcels: parcelModel.primaryFrontageParcels,
       zoningDistricts: zoningModel.total,
@@ -1624,6 +1653,46 @@ function createStormwaterDiagnostics(city: GeneratedCity): StormwaterDiagnostics
     ),
     catchmentIds: [...catchmentIds].sort(),
     receivingWaterwayIds: [...receivingWaterwayIds].sort(),
+    outageDomainIds: [...outageDomainIds].sort()
+  };
+}
+
+function createTelecomDiagnostics(city: GeneratedCity): TelecomDiagnostics {
+  const telecomNodes = city.utilityNodes.filter((node) => node.utilityType === 'telecom');
+  const telecomEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'telecom');
+  const networkZoneIds = new Set<string>();
+  const coverageAssumptionIds = new Set<string>();
+  const outageDomainIds = new Set<string>();
+
+  for (const node of telecomNodes) {
+    if (node.telecom) {
+      networkZoneIds.add(node.telecom.networkZoneId);
+      coverageAssumptionIds.add(node.telecom.coverageAssumptionId);
+    }
+    outageDomainIds.add(node.outage.outageDomainId);
+  }
+  for (const edge of telecomEdges) {
+    if (edge.telecom) {
+      coverageAssumptionIds.add(edge.telecom.coverageAssumptionId);
+    }
+    outageDomainIds.add(edge.outageDomainId);
+  }
+
+  return {
+    nodes: telecomNodes.length,
+    edges: telecomEdges.length,
+    fiberHubs: telecomNodes.filter((node) => node.telecom?.equipmentKind === 'fiber-hub').length,
+    cabinets: telecomNodes.filter((node) => node.telecom?.equipmentKind === 'cabinet').length,
+    ductBanks: telecomNodes.filter((node) => node.telecom?.equipmentKind === 'duct-bank').length,
+    cellSites: telecomNodes.filter((node) => node.telecom?.equipmentKind === 'cell-site').length,
+    antennas: telecomNodes.filter((node) => node.telecom?.equipmentKind === 'antenna').length,
+    buildingsServed: city.buildings.filter((building) => Boolean(building.telecomService)).length,
+    criticalBuildingsServed: city.buildings.filter(
+      (building) => isCriticalFacilityBuilding(building) && building.telecomService?.redundancyTier === 'critical-facility'
+    ).length,
+    totalCapacityMbps: telecomNodes.reduce((sum, node) => sum + (node.capacity.unit === 'mbps' ? node.capacity.value : 0), 0),
+    networkZoneIds: [...networkZoneIds].sort(),
+    coverageAssumptionIds: [...coverageAssumptionIds].sort(),
     outageDomainIds: [...outageDomainIds].sort()
   };
 }
@@ -2823,4 +2892,8 @@ function createSourceMetadataDiagnostics(
 
 function roundDiagnosticRatio(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function isCriticalFacilityBuilding(building: GeneratedCity['buildings'][number]): boolean {
+  return building.uses.some((use) => use === 'civic' || use === 'education' || use === 'transport' || use === 'utility');
 }

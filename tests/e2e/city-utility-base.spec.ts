@@ -19,29 +19,29 @@ test('utility base contracts are deterministic and indexed', () => {
 
   expect(firstCity.utilityNodes.map(getUtilityNodeSignature)).toEqual(secondCity.utilityNodes.map(getUtilityNodeSignature));
   expect(firstCity.utilityEdges.map(getUtilityEdgeSignature)).toEqual(secondCity.utilityEdges.map(getUtilityEdgeSignature));
-  expect(firstCity.utilityNodes).toHaveLength(31);
-  expect(firstCity.utilityEdges).toHaveLength(26);
-  expect(firstCity.objectIndex.countsByKind['utility-node']).toBe(31);
-  expect(firstCity.objectIndex.countsByKind['utility-edge']).toBe(26);
+  expect(firstCity.utilityNodes).toHaveLength(37);
+  expect(firstCity.utilityEdges).toHaveLength(31);
+  expect(firstCity.objectIndex.countsByKind['utility-node']).toBe(37);
+  expect(firstCity.objectIndex.countsByKind['utility-edge']).toBe(31);
   expect(firstCity.validation.issues.filter((issue) => issue.category === 'utility-coverage')).toEqual([]);
   expect(diagnostics.utilityBase).toMatchObject({
-    nodes: 31,
-    edges: 26,
+    nodes: 37,
+    edges: 31,
     networkTypes: 6,
-    backupNodes: 16,
-    highCriticalityNodes: 17
+    backupNodes: 22,
+    highCriticalityNodes: 21
   });
   expect(diagnostics.utilityBase.serviceParcels).toBeGreaterThan(0);
   expect(diagnostics.utilityBase.criticalObjects).toBeGreaterThan(0);
   expect(diagnostics.objectCounts).toMatchObject({
-    utilityNodes: 31,
-    utilityEdges: 26,
+    utilityNodes: 37,
+    utilityEdges: 31,
     utilityNetworkTypes: 6,
-    utilityBackupNodes: 16,
-    utilityHighCriticalityNodes: 17
+    utilityBackupNodes: 22,
+    utilityHighCriticalityNodes: 21
   });
-  expect(exportArtifact.domainSectionCounts.utilityNodes).toBe(31);
-  expect(exportArtifact.domainSectionCounts.utilityEdges).toBe(26);
+  expect(exportArtifact.domainSectionCounts.utilityNodes).toBe(37);
+  expect(exportArtifact.domainSectionCounts.utilityEdges).toBe(31);
   expect(countProceduralSeedDomainObjects(exportArtifact)).toBe(exportArtifact.objectCount);
 });
 
@@ -132,12 +132,12 @@ test('browser diagnostics expose utility base counts in the debug panel', async 
 
   expect(diagnostics.validationPassed).toBe(true);
   expect(diagnostics.utilityBase).toMatchObject({
-    nodes: 31,
-    edges: 26,
+    nodes: 37,
+    edges: 31,
     networkTypes: 6
   });
-  expect(diagnostics.utilityNodeObjects).toBe(31);
-  expect(diagnostics.utilityEdgeObjects).toBe(26);
+  expect(diagnostics.utilityNodeObjects).toBe(37);
+  expect(diagnostics.utilityEdgeObjects).toBe(31);
   expect(diagnostics.debugText).toContain('Utilities');
 });
 

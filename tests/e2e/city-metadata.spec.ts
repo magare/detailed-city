@@ -50,11 +50,11 @@ test('runtime traffic source metadata is validated and exposed in diagnostics', 
   expect(traffic.markings.every((marking) => marking.metadata?.sourceType === 'procedural')).toBe(true);
   expect(traffic.vehicles.every((vehicle) => vehicle.metadata?.sourceType === 'simulated')).toBe(true);
   expect(diagnostics.sourceMetadata).toEqual({
-    objectsWithMetadata: 5969,
+    objectsWithMetadata: 5980,
     objectsMissingMetadata: 0,
     objectsRequiringReview: 0,
     sourceTypes: {
-      procedural: 5962,
+      procedural: 5973,
       authored: 0,
       imported: 0,
       simulated: 7

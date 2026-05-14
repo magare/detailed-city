@@ -471,6 +471,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateWaterSupply(city, issues);
   validateWastewater(city, issues);
   validateStormwater(city, issues);
+  validateTelecom(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -4032,6 +4033,145 @@ function validateStormwater(city: GeneratedCityForValidation, issues: Validation
         objectId: road.id,
         ...createIssueFocus(road.center, `Regenerate stormwater drainage references for ${road.id}.`),
         message: `Road ${road.id} must reference valid stormwater inlets, runoff paths, low point, detention, pervious area, hazard, and outfall metadata.`
+      });
+    }
+  }
+}
+
+function validateTelecom(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const telecomNodes = city.utilityNodes.filter((node) => node.utilityType === 'telecom');
+  const telecomEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'telecom');
+  const telecomNodesById = new Map(telecomNodes.map((node) => [node.id, node]));
+  const telecomEdgesById = new Map(telecomEdges.map((edge) => [edge.id, edge]));
+  const equipmentKinds = new Set(telecomNodes.map((node) => node.telecom?.equipmentKind).filter(Boolean));
+  const networkZoneIds = new Set<string>();
+  const coverageAssumptionIds = new Set<string>();
+
+  for (const node of telecomNodes) {
+    if (!node.telecom) {
+      issues.push(createUtilityNodeIssue(node, 'missing-telecom-metadata', `Telecom node ${node.id} must expose telecom metadata.`));
+      continue;
+    }
+    networkZoneIds.add(node.telecom.networkZoneId);
+    coverageAssumptionIds.add(node.telecom.coverageAssumptionId);
+    if (node.capacity.unit !== 'mbps' || node.capacity.value <= 0 || node.telecom.bandwidthMbps <= 0) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-telecom-capacity', `Telecom node ${node.id} must expose positive Mbps capacity.`));
+    }
+    if (!node.telecom.networkZoneId || !node.telecom.coverageAssumptionId) {
+      issues.push(createUtilityNodeIssue(node, 'missing-telecom-zone', `Telecom node ${node.id} must expose network zone and coverage assumption IDs.`));
+    }
+    if (node.telecom.servedObjectIds.length === 0 && node.telecom.equipmentKind !== 'duct-bank') {
+      issues.push(createUtilityNodeIssue(node, 'missing-served-objects', `Telecom node ${node.id} must list served buildings, roads, or equipment.`));
+    }
+    for (const objectId of node.telecom.servedObjectIds) {
+      if (!hasObjectId(city, objectId) && !objectId.startsWith('telecom-')) {
+        issues.push(createUtilityNodeIssue(node, `missing-served-object-${toIssueIdToken(objectId)}`, `Telecom node ${node.id} references missing served object ${objectId}.`));
+      }
+    }
+    if (
+      (node.telecom.equipmentKind === 'antenna' || node.telecom.equipmentKind === 'cell-site') &&
+      (!node.telecom.coverageRadiusMeters || node.telecom.coverageRadiusMeters <= 0)
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'missing-wireless-coverage', `Telecom ${node.telecom.equipmentKind} ${node.id} must expose a positive coverage radius.`));
+    }
+    if (node.telecom.equipmentKind === 'antenna' && (!node.telecom.frequencyBandGhz || node.telecom.frequencyBandGhz <= 0)) {
+      issues.push(createUtilityNodeIssue(node, 'missing-frequency-band', `Telecom antenna ${node.id} must expose a positive frequency band.`));
+    }
+    if (node.telecom.backhaulNodeId && !telecomNodesById.has(node.telecom.backhaulNodeId)) {
+      issues.push(createUtilityNodeIssue(node, 'missing-backhaul-node', `Telecom node ${node.id} references missing backhaul node ${node.telecom.backhaulNodeId}.`));
+    }
+  }
+
+  for (const edge of telecomEdges) {
+    if (!edge.telecom) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-telecom-metadata', `Telecom edge ${edge.id} must expose telecom metadata.`));
+      continue;
+    }
+    coverageAssumptionIds.add(edge.telecom.coverageAssumptionId);
+    const fromNode = telecomNodesById.get(edge.fromNodeId);
+    const toNode = telecomNodesById.get(edge.toNodeId);
+    if (!fromNode || !toNode) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-telecom-node-reference', `Telecom edge ${edge.id} must connect generated telecom nodes.`));
+      continue;
+    }
+    if (edge.capacity.unit !== 'mbps' || edge.capacity.value <= 0 || edge.telecom.bandwidthMbps <= 0 || edge.telecom.latencyMs <= 0) {
+      issues.push(createUtilityEdgeIssue(edge, 'invalid-telecom-capacity', `Telecom edge ${edge.id} must expose positive Mbps capacity and latency.`));
+    }
+    if (
+      edge.telecom.fromEquipmentKind !== fromNode.telecom?.equipmentKind ||
+      edge.telecom.toEquipmentKind !== toNode.telecom?.equipmentKind
+    ) {
+      issues.push(createUtilityEdgeIssue(edge, 'equipment-kind-mismatch', `Telecom edge ${edge.id} equipment metadata must match endpoint nodes.`));
+    }
+    if (edge.telecom.medium === 'fiber' && (!edge.telecom.fiberStrandCount || edge.telecom.fiberStrandCount <= 0)) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-fiber-strands', `Fiber telecom edge ${edge.id} must expose a positive fiber strand count.`));
+    }
+    if (edge.telecom.medium !== 'wireless' && (!edge.telecom.ductCount || edge.telecom.ductCount <= 0)) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-duct-count', `Wired telecom edge ${edge.id} must expose a positive duct count.`));
+    }
+  }
+
+  const requiredTelecomEquipmentKinds = ['fiber-hub', 'cabinet', 'duct-bank', 'cell-site', 'antenna'] as const;
+  for (const requiredKind of requiredTelecomEquipmentKinds) {
+    if (!equipmentKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-telecom-equipment-${requiredKind}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        message: `Telecom network must include ${requiredKind} equipment.`
+      });
+    }
+  }
+
+  if (networkZoneIds.size === 0 || coverageAssumptionIds.size === 0 || telecomEdges.length === 0) {
+    issues.push({
+      id: 'missing-telecom-coverage',
+      severity: 'error',
+      category: 'utility-coverage',
+      message: 'Telecom network must expose network zones, coverage assumptions, and route edges.'
+    });
+  }
+
+  for (const building of city.buildings) {
+    const telecomService = building.telecomService;
+    if (!telecomService) {
+      issues.push({
+        id: `missing-building-telecom-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Attach ${building.id} to generated telecom service metadata.`),
+        message: `Building ${building.id} must reference generated telecom service.`
+      });
+      continue;
+    }
+    const serviceNode = telecomNodesById.get(telecomService.serviceNodeId);
+    const coverageNode = telecomNodesById.get(telecomService.coverageNodeId);
+    if (
+      !serviceNode ||
+      !telecomEdgesById.has(telecomService.serviceDropEdgeId) ||
+      !networkZoneIds.has(telecomService.networkZoneId) ||
+      !coverageNode ||
+      (coverageNode.telecom?.equipmentKind !== 'antenna' && coverageNode.telecom?.equipmentKind !== 'cell-site') ||
+      telecomService.estimatedPeakMbps <= 0
+    ) {
+      issues.push({
+        id: `invalid-building-telecom-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Regenerate telecom service references for ${building.id}.`),
+        message: `Building ${building.id} must reference valid telecom service, coverage, network zone, and positive bandwidth demand.`
+      });
+    }
+    if (isCriticalFacilityBuilding(building) && telecomService.redundancyTier === 'none') {
+      issues.push({
+        id: `critical-building-uncovered-telecom-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Assign redundant telecom service to critical facility ${building.id}.`),
+        message: `Critical facility ${building.id} must have redundant telecom coverage.`
       });
     }
   }
@@ -9075,4 +9215,8 @@ function validateRenderBindings(
 
 function includesValue<T extends string>(values: readonly T[], value: string): value is T {
   return values.includes(value as T);
+}
+
+function isCriticalFacilityBuilding(building: GeneratedCityForValidation['buildings'][number]): boolean {
+  return building.uses.some((use) => use === 'civic' || use === 'education' || use === 'transport' || use === 'utility');
 }

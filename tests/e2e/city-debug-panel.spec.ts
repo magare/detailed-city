@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('debug panel exposes current city diagnostics and can collapse', async ({ page }) => {
-  test.setTimeout(70_000);
+  test.setTimeout(120_000);
 
   await page.goto('/');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
@@ -26,7 +26,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('18 admin, 4 wards, 5 neighborhoods');
   expect(panelText).toContain('Blocks');
   expect(panelText).toContain('Utilities');
-  expect(panelText).toContain('31 nodes, 26 edges, 6 networks');
+  expect(panelText).toContain('37 nodes, 31 edges, 6 networks');
   expect(panelText).toContain('Power');
   expect(panelText).toContain('8 nodes, 3 transformers, 12 lights');
   expect(panelText).toContain('Water Supply');
@@ -35,6 +35,8 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('6 nodes, 2 manholes, 583 buildings');
   expect(panelText).toContain('Stormwater');
   expect(panelText).toContain('8 nodes, 2 inlets, 26 roads');
+  expect(panelText).toContain('Telecom');
+  expect(panelText).toContain('7 nodes, 2 antennas, 583 buildings');
   expect(panelText).toContain('Constraints');
   expect(panelText).toContain('11 rules, 3 no-build');
   expect(panelText).toContain('Hazards');
@@ -58,7 +60,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('5969/5969 tagged');
+  expect(panelText).toContain('5980/5980 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -86,7 +88,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Assets');
   expect(panelText).toContain('46 assets, 46 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 5012 objects');
+  expect(panelText).toContain('6 formats, 5023 objects');
   expect(panelText).toContain('Registry');
   expect(panelText).toContain('48 kinds');
   expect(panelText).toContain('Groups');

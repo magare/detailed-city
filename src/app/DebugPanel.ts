@@ -148,6 +148,10 @@ export class DebugPanel {
         `${diagnostics.stormwater.nodes} nodes, ${diagnostics.stormwater.inlets} inlets, ${diagnostics.stormwater.roadsDrained} roads`
       ),
       createMetric(
+        'Telecom',
+        `${diagnostics.telecom.nodes} nodes, ${diagnostics.telecom.antennas} antennas, ${diagnostics.telecom.buildingsServed} buildings`
+      ),
+      createMetric(
         'Zoning',
         `${diagnostics.zoningModel.total} districts, ${diagnostics.zoningModel.formBasedDistricts} form, ${diagnostics.zoningModel.parcelsWithZoning} parcels`
       ),

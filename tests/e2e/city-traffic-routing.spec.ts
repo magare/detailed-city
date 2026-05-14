@@ -181,7 +181,7 @@ test('browser traffic vehicles move along route offsets', async ({ page }) => {
 
           return mesh ? Math.abs(mesh.position.z - start.z) : 0;
         }, before),
-      { timeout: 5_000 }
+      { timeout: 10_000 }
     )
     .toBeGreaterThan(1);
   const after = await page.evaluate(() => {

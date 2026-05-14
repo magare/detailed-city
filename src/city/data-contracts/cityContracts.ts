@@ -1314,13 +1314,17 @@ export type UtilityNetworkKind =
   | 'wastewater'
   | 'water';
 export type UtilityNodeRole =
+  | 'antenna'
   | 'bioswale'
   | 'cabinet'
+  | 'cell-site'
   | 'collection-point'
   | 'culvert'
   | 'detention'
   | 'distribution-node'
   | 'drain'
+  | 'duct-bank'
+  | 'fiber-node'
   | 'hydrant'
   | 'inlet'
   | 'lift-station'
@@ -1333,7 +1337,15 @@ export type UtilityNodeRole =
   | 'substation'
   | 'tank'
   | 'valve';
-export type UtilityEdgeRole = 'collection-route' | 'conduit' | 'drain' | 'feeder' | 'main' | 'runoff-path' | 'service-lateral';
+export type UtilityEdgeRole =
+  | 'collection-route'
+  | 'conduit'
+  | 'drain'
+  | 'feeder'
+  | 'fiber-route'
+  | 'main'
+  | 'runoff-path'
+  | 'service-lateral';
 export type UtilityAccessPointKind = 'building-service' | 'parcel-easement' | 'roadside-vault' | 'surface-cover';
 export type UtilityCapacityUnit = 'kva' | 'liters-per-second' | 'mbps' | 'tons-per-day';
 export type PowerGridEquipmentKind =
@@ -1479,6 +1491,44 @@ export interface RoadStormwaterDrainageContract {
   readonly runoffCoefficient: number;
 }
 
+export type TelecomEquipmentKind = 'antenna' | 'cabinet' | 'cell-site' | 'duct-bank' | 'fiber-hub';
+export type TelecomMediumKind = 'fiber' | 'copper' | 'wireless';
+
+export interface TelecomNodeContract {
+  readonly equipmentKind: TelecomEquipmentKind;
+  readonly networkZoneId: CityId;
+  readonly coverageAssumptionId: CityId;
+  readonly bandwidthMbps: number;
+  readonly servedObjectIds: readonly CityId[];
+  readonly coverageRadiusMeters?: number;
+  readonly frequencyBandGhz?: number;
+  readonly backhaulNodeId?: CityId;
+  readonly redundantBackhaulAvailable: boolean;
+}
+
+export interface TelecomEdgeContract {
+  readonly routeId: CityId;
+  readonly fromEquipmentKind: TelecomEquipmentKind;
+  readonly toEquipmentKind: TelecomEquipmentKind;
+  readonly medium: TelecomMediumKind;
+  readonly bandwidthMbps: number;
+  readonly latencyMs: number;
+  readonly ductCount?: number;
+  readonly fiberStrandCount?: number;
+  readonly buried: boolean;
+  readonly coverageAssumptionId: CityId;
+}
+
+export interface BuildingTelecomServiceContract {
+  readonly serviceNodeId: CityId;
+  readonly serviceDropEdgeId: CityId;
+  readonly coverageNodeId: CityId;
+  readonly networkZoneId: CityId;
+  readonly subscriberId: CityId;
+  readonly estimatedPeakMbps: number;
+  readonly redundancyTier: 'none' | 'secondary-backhaul' | 'critical-facility';
+}
+
 export interface UtilityCapacityContract {
   readonly value: number;
   readonly unit: UtilityCapacityUnit;
@@ -1521,6 +1571,7 @@ export interface UtilityNodeContract extends CityObjectBase<'utility-node'> {
   readonly waterSupply?: WaterSupplyNodeContract;
   readonly wastewater?: WastewaterNodeContract;
   readonly stormwater?: StormwaterNodeContract;
+  readonly telecom?: TelecomNodeContract;
 }
 
 export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
@@ -1540,6 +1591,7 @@ export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
   readonly waterSupply?: WaterSupplyEdgeContract;
   readonly wastewater?: WastewaterEdgeContract;
   readonly stormwater?: StormwaterEdgeContract;
+  readonly telecom?: TelecomEdgeContract;
 }
 
 export interface ParcelFrontagePriorityContract {
@@ -2331,6 +2383,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly powerService?: BuildingPowerServiceContract;
   readonly waterService?: BuildingWaterServiceContract;
   readonly wastewaterService?: BuildingWastewaterServiceContract;
+  readonly telecomService?: BuildingTelecomServiceContract;
 }
 
 export type ActiveFrontageUse = Extract<LandUse, 'hospitality' | 'mixed-use' | 'retail'>;
