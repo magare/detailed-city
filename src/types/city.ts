@@ -2,6 +2,12 @@ import type {
   AssetDefinition,
   ActiveFrontageContract,
   AdministrativeBoundaryContract,
+  BikeConflictZoneContract,
+  BikeGraphEdgeContract,
+  BikeGraphNodeContract,
+  BikeParkingContract,
+  BikeSegmentContract,
+  BikeSignalContract,
   BuildingContract,
   BuildingFrontageSide,
   CadastreRecordContract,
@@ -295,6 +301,12 @@ export interface TrafficVehiclePlan extends TrafficVehicleContract {}
 export interface TrafficCalmingDevice extends TrafficCalmingDeviceContract {}
 export interface TransitStop extends TransitStopContract {}
 export interface TransitRoute extends TransitRouteContract {}
+export interface BikeSegment extends BikeSegmentContract {}
+export interface BikeGraphNode extends BikeGraphNodeContract {}
+export interface BikeGraphEdge extends BikeGraphEdgeContract {}
+export interface BikeParking extends BikeParkingContract {}
+export interface BikeSignal extends BikeSignalContract {}
+export interface BikeConflictZone extends BikeConflictZoneContract {}
 export interface FreightLoadingDock extends FreightLoadingDockContract {}
 export interface FreightRoute extends FreightRouteContract {}
 export interface ServiceAlley extends ServiceAlleyContract {}
@@ -328,6 +340,12 @@ export type GeneratedCityObject =
   | TrafficCalmingDevice
   | TransitStop
   | TransitRoute
+  | BikeSegment
+  | BikeGraphNode
+  | BikeGraphEdge
+  | BikeParking
+  | BikeSignal
+  | BikeConflictZone
   | FreightLoadingDock
   | FreightRoute
   | ServiceAlley
@@ -390,6 +408,12 @@ export interface GeneratedCity {
   trafficCalmingDevices: TrafficCalmingDevice[];
   transitStops: TransitStop[];
   transitRoutes: TransitRoute[];
+  bikeSegments: BikeSegment[];
+  bikeGraphNodes: BikeGraphNode[];
+  bikeGraphEdges: BikeGraphEdge[];
+  bikeParking: BikeParking[];
+  bikeSignals: BikeSignal[];
+  bikeConflictZones: BikeConflictZone[];
   freightLoadingDocks: FreightLoadingDock[];
   freightRoutes: FreightRoute[];
   serviceAlleys: ServiceAlley[];

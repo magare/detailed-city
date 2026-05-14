@@ -28,6 +28,7 @@ import { SoilGeologyGenerator } from './land/SoilGeologyGenerator';
 import { TopographyGenerator } from './land/TopographyGenerator';
 import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
+import { CyclingNetworkGenerator } from './mobility/CyclingNetworkGenerator';
 import { FreightLogisticsGenerator } from './mobility/FreightLogisticsGenerator';
 import { TransitGenerator } from './mobility/TransitGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
@@ -173,6 +174,14 @@ export class CityGenerator {
     const transit = new TransitGenerator().create({
       roads: sliceTagged.roads,
       streetFurniture
+    });
+    const cycling = new CyclingNetworkGenerator().create({
+      roads: sliceTagged.roads,
+      intersections: sliceTagged.intersections,
+      crossings: sliceTagged.crossings,
+      curbZones,
+      streetFurniture,
+      transitStops: transit.stops
     });
     const freightLogistics = new FreightLogisticsGenerator().create({
       roads: sliceTagged.roads,
@@ -326,6 +335,12 @@ export class CityGenerator {
       trafficCalmingDevices,
       transitStops: transit.stops,
       transitRoutes: transit.routes,
+      bikeSegments: cycling.bikeSegments,
+      bikeGraphNodes: cycling.bikeGraphNodes,
+      bikeGraphEdges: cycling.bikeGraphEdges,
+      bikeParking: cycling.bikeParking,
+      bikeSignals: cycling.bikeSignals,
+      bikeConflictZones: cycling.bikeConflictZones,
       freightLoadingDocks: freightLogistics.loadingDocks,
       freightRoutes: freightLogistics.routes,
       serviceAlleys: freightLogistics.serviceAlleys,

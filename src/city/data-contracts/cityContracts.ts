@@ -21,6 +21,12 @@ export type CityObjectKind =
   | 'district'
   | 'economy-anchor'
   | 'facade'
+  | 'bike-conflict-zone'
+  | 'bike-graph-edge'
+  | 'bike-graph-node'
+  | 'bike-parking'
+  | 'bike-segment'
+  | 'bike-signal'
   | 'freight-loading-dock'
   | 'freight-route'
   | 'government-anchor'
@@ -526,6 +532,48 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod3',
       allowedTiers: ['lod3', 'lod4'],
       description: 'Facade modules and active frontages appear near the street and can expose close inspection detail.'
+    },
+    {
+      objectKind: 'bike-conflict-zone',
+      scope: 'network',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Bike conflict zones identify turning, door-zone, transit-stop, and driveway conflicts requiring mitigation.'
+    },
+    {
+      objectKind: 'bike-graph-edge',
+      scope: 'network',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2'],
+      description: 'Bike graph edges describe deterministic cycling route continuity.'
+    },
+    {
+      objectKind: 'bike-graph-node',
+      scope: 'network',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2'],
+      description: 'Bike graph nodes connect cycling segments at intersections, parking, and transit access points.'
+    },
+    {
+      objectKind: 'bike-parking',
+      scope: 'public-realm-prop',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3', 'lod4'],
+      description: 'Bike parking exposes rack, dock, and corral capacity linked to cycling routes and transit access.'
+    },
+    {
+      objectKind: 'bike-segment',
+      scope: 'network',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod1', 'lod2', 'lod3'],
+      description: 'Bike segments describe protected lanes, painted lanes, cycle tracks, and shared streets by road side.'
+    },
+    {
+      objectKind: 'bike-signal',
+      scope: 'network',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Bike signals expose protected or leading bike phases at cycling conflict intersections.'
     },
     {
       objectKind: 'freight-loading-dock',
@@ -1810,6 +1858,78 @@ export interface LaneContract extends CityObjectBase<'lane'> {
 
 export type TravelMode = 'vehicle' | 'bus' | 'bike' | 'freight' | 'emergency';
 export type LaneRole = 'general' | 'bus-only' | 'turn-pocket' | 'reversible' | 'service';
+
+export type BikeFacilityKind = 'protected-lane' | 'painted-lane' | 'cycle-track' | 'shared-street';
+export type BikeConflictKind = 'turning-conflict' | 'door-zone' | 'transit-stop-conflict' | 'driveway-crossing';
+export type BikeSignalKind = 'protected-phase' | 'leading-bike-interval' | 'yield-control';
+
+export interface BikeSegmentContract extends CityObjectBase<'bike-segment'> {
+  readonly roadId: CityId;
+  readonly side: CurbSide;
+  readonly facilityKind: BikeFacilityKind;
+  readonly startMeters: number;
+  readonly endMeters: number;
+  readonly lengthMeters: number;
+  readonly widthMeters: number;
+  readonly centerline: Polyline2D;
+  readonly protected: boolean;
+  readonly connectsToTransit: boolean;
+  readonly bikeParkingIds: readonly CityId[];
+  readonly conflictZoneIds: readonly CityId[];
+}
+
+export interface BikeGraphNodeContract extends CityObjectBase<'bike-graph-node'> {
+  readonly roadId: CityId;
+  readonly segmentId: CityId;
+  readonly intersectionId?: CityId;
+  readonly position: Point2D;
+  readonly nodeRole: 'segment-start' | 'segment-end' | 'intersection' | 'parking';
+  readonly accessibleToTransit: boolean;
+}
+
+export interface BikeGraphEdgeContract extends CityObjectBase<'bike-graph-edge'> {
+  readonly fromNodeId: CityId;
+  readonly toNodeId: CityId;
+  readonly segmentId: CityId;
+  readonly roadId: CityId;
+  readonly lengthMeters: number;
+  readonly facilityKind: BikeFacilityKind;
+  readonly protected: boolean;
+  readonly conflictZoneIds: readonly CityId[];
+}
+
+export interface BikeParkingContract extends CityObjectBase<'bike-parking'> {
+  readonly roadId: CityId;
+  readonly sidewalkId: CityId;
+  readonly streetFurnitureId?: CityId;
+  readonly segmentId: CityId;
+  readonly position: Point2D;
+  readonly capacity: number;
+  readonly parkingKind: 'rack' | 'dock' | 'corral';
+  readonly connectsToTransitStopId?: CityId;
+}
+
+export interface BikeSignalContract extends CityObjectBase<'bike-signal'> {
+  readonly intersectionId: CityId;
+  readonly roadId: CityId;
+  readonly segmentId: CityId;
+  readonly position: Point2D;
+  readonly signalKind: BikeSignalKind;
+  readonly protectedPhaseSeconds: number;
+  readonly conflictZoneIds: readonly CityId[];
+}
+
+export interface BikeConflictZoneContract extends CityObjectBase<'bike-conflict-zone'> {
+  readonly roadId: CityId;
+  readonly segmentId: CityId;
+  readonly intersectionId?: CityId;
+  readonly curbZoneId?: CityId;
+  readonly crossingId?: CityId;
+  readonly position: Point2D;
+  readonly conflictKind: BikeConflictKind;
+  readonly severity: ConflictPointSeverity;
+  readonly mitigation: 'paint' | 'signal' | 'buffer' | 'raised-crossing';
+}
 
 export type FreightVehicleClass = 'cargo-van' | 'box-truck' | 'semi-truck';
 export type FreightRouteKind = 'industrial-haul' | 'retail-delivery' | 'warehouse-link';

@@ -227,6 +227,10 @@ export class DebugPanel {
         `${diagnostics.objectCounts.transitRoutes} routes, ${diagnostics.objectCounts.transitStops} stops, ${diagnostics.objectCounts.transitPassengerDemand} demand`
       ),
       createMetric(
+        'Cycling',
+        `${diagnostics.objectCounts.bikeSegments} segments, ${diagnostics.objectCounts.bikeParking} parking, ${diagnostics.objectCounts.bikeConflictZones} conflicts`
+      ),
+      createMetric(
         'Freight',
         `${diagnostics.objectCounts.freightRoutes} routes, ${diagnostics.objectCounts.freightLoadingDocks} docks, ${diagnostics.objectCounts.serviceAlleys} alleys`
       ),

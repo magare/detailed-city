@@ -295,6 +295,18 @@ export interface CityDiagnostics {
     readonly disabledCurbSpaces: number;
     readonly pricedCurbZones: number;
     readonly cameraEnforcedCurbZones: number;
+    readonly bikeSegments: number;
+    readonly protectedBikeSegments: number;
+    readonly cycleTrackSegments: number;
+    readonly paintedBikeSegments: number;
+    readonly sharedBikeSegments: number;
+    readonly bikeGraphNodes: number;
+    readonly bikeGraphEdges: number;
+    readonly bikeParking: number;
+    readonly bikeParkingCapacity: number;
+    readonly bikeSignals: number;
+    readonly bikeConflictZones: number;
+    readonly highSeverityBikeConflicts: number;
     readonly freightLoadingDocks: number;
     readonly freightRoutes: number;
     readonly serviceAlleys: number;
@@ -1282,6 +1294,18 @@ export function createCityDiagnostics(
       disabledCurbSpaces: city.curbZones.reduce((sum, zone) => sum + zone.management.disabledSpaces, 0),
       pricedCurbZones: city.curbZones.filter((zone) => zone.management.pricing !== 'free' && zone.management.pricing !== 'not-applicable').length,
       cameraEnforcedCurbZones: city.curbZones.filter((zone) => zone.management.enforcement === 'camera').length,
+      bikeSegments: city.bikeSegments.length,
+      protectedBikeSegments: city.bikeSegments.filter((segment) => segment.facilityKind === 'protected-lane').length,
+      cycleTrackSegments: city.bikeSegments.filter((segment) => segment.facilityKind === 'cycle-track').length,
+      paintedBikeSegments: city.bikeSegments.filter((segment) => segment.facilityKind === 'painted-lane').length,
+      sharedBikeSegments: city.bikeSegments.filter((segment) => segment.facilityKind === 'shared-street').length,
+      bikeGraphNodes: city.bikeGraphNodes.length,
+      bikeGraphEdges: city.bikeGraphEdges.length,
+      bikeParking: city.bikeParking.length,
+      bikeParkingCapacity: city.bikeParking.reduce((sum, parking) => sum + parking.capacity, 0),
+      bikeSignals: city.bikeSignals.length,
+      bikeConflictZones: city.bikeConflictZones.length,
+      highSeverityBikeConflicts: city.bikeConflictZones.filter((zone) => zone.severity === 'high').length,
       freightLoadingDocks: city.freightLoadingDocks.length,
       freightRoutes: city.freightRoutes.length,
       serviceAlleys: city.serviceAlleys.length,

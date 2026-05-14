@@ -26,7 +26,19 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'networks',
     name: 'Networks Render Layer',
-    objectKinds: ['road-segment', 'lane-marking', 'traffic-calming-device', 'freight-loading-dock', 'freight-route', 'service-alley'] as const
+    objectKinds: [
+      'road-segment',
+      'lane-marking',
+      'traffic-calming-device',
+      'bike-segment',
+      'bike-graph-node',
+      'bike-graph-edge',
+      'bike-signal',
+      'bike-conflict-zone',
+      'freight-loading-dock',
+      'freight-route',
+      'service-alley'
+    ] as const
   },
   {
     id: 'buildings',
@@ -36,7 +48,7 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'public-realm',
     name: 'Public Realm Render Layer',
-    objectKinds: ['park', 'tree-planting', 'street-light', 'street-furniture', 'waterfront-edge'] as const
+    objectKinds: ['park', 'tree-planting', 'street-light', 'street-furniture', 'bike-parking', 'waterfront-edge'] as const
   },
   {
     id: 'agents',

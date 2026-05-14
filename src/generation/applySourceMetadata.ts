@@ -45,6 +45,12 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     ),
     transitStops: city.transitStops.map((stop) => withProceduralMetadata(stop, 'mobility-transit-stops')),
     transitRoutes: city.transitRoutes.map((route) => withProceduralMetadata(route, 'mobility-transit-routes')),
+    bikeSegments: city.bikeSegments.map((segment) => withProceduralMetadata(segment, 'mobility-cycling-segments')),
+    bikeGraphNodes: city.bikeGraphNodes.map((node) => withProceduralMetadata(node, 'mobility-cycling-graph')),
+    bikeGraphEdges: city.bikeGraphEdges.map((edge) => withProceduralMetadata(edge, 'mobility-cycling-graph')),
+    bikeParking: city.bikeParking.map((parking) => withProceduralMetadata(parking, 'mobility-bike-parking')),
+    bikeSignals: city.bikeSignals.map((signal) => withProceduralMetadata(signal, 'mobility-bike-signals')),
+    bikeConflictZones: city.bikeConflictZones.map((zone) => withProceduralMetadata(zone, 'mobility-bike-conflicts')),
     freightLoadingDocks: city.freightLoadingDocks.map((dock) =>
       withProceduralMetadata(dock, 'mobility-freight-loading-docks')
     ),

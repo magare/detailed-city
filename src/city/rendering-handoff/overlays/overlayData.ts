@@ -26,6 +26,7 @@ export type CityOverlayId =
   | 'solar-shading'
   | 'urban-heat'
   | 'city-metrics'
+  | 'cycling-network'
   | 'freight-logistics'
   | 'civic-anchors'
   | 'community-anchors'
@@ -92,6 +93,7 @@ export function createCityOverlayDatasets(
     createDataset('solar-shading', 'Solar Shading', 'domain-data', createSolarShadingFeatures(city)),
     createDataset('urban-heat', 'Urban Heat', 'domain-data', createUrbanHeatFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
+    createDataset('cycling-network', 'Cycling Network', 'domain-data', createCyclingNetworkFeatures(city)),
     createDataset('freight-logistics', 'Freight Logistics', 'domain-data', createFreightLogisticsFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
@@ -802,6 +804,77 @@ function createFreightLogisticsFeatures(city: GeneratedCity): CityOverlayFeature
   }));
 
   return [...routeFeatures, ...dockFeatures, ...alleyFeatures];
+}
+
+function createCyclingNetworkFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  const segmentFeatures = city.bikeSegments.map((segment) => ({
+    id: `overlay:cycling-network:${segment.id}`,
+    overlayId: 'cycling-network' as const,
+    objectId: segment.id,
+    objectKind: segment.kind,
+    ownerDomain: segment.ownerDomain,
+    label: segment.id,
+    geometry: { type: 'polyline' as const, points: segment.centerline },
+    metadata: {
+      roadId: segment.roadId,
+      side: segment.side,
+      facilityKind: segment.facilityKind,
+      protected: segment.protected,
+      parking: segment.bikeParkingIds.length,
+      conflicts: segment.conflictZoneIds.length,
+      connectsToTransit: segment.connectsToTransit
+    }
+  }));
+  const parkingFeatures = city.bikeParking.map((parking) => ({
+    id: `overlay:cycling-network:${parking.id}`,
+    overlayId: 'cycling-network' as const,
+    objectId: parking.id,
+    objectKind: parking.kind,
+    ownerDomain: parking.ownerDomain,
+    label: parking.id,
+    geometry: { type: 'point' as const, point: parking.position },
+    metadata: {
+      roadId: parking.roadId,
+      segmentId: parking.segmentId,
+      capacity: parking.capacity,
+      parkingKind: parking.parkingKind,
+      connectsToTransit: Boolean(parking.connectsToTransitStopId)
+    }
+  }));
+  const conflictFeatures = city.bikeConflictZones.map((conflict) => ({
+    id: `overlay:cycling-network:${conflict.id}`,
+    overlayId: 'cycling-network' as const,
+    objectId: conflict.id,
+    objectKind: conflict.kind,
+    ownerDomain: conflict.ownerDomain,
+    label: conflict.id,
+    geometry: { type: 'point' as const, point: conflict.position },
+    metadata: {
+      roadId: conflict.roadId,
+      segmentId: conflict.segmentId,
+      conflictKind: conflict.conflictKind,
+      severity: conflict.severity,
+      mitigation: conflict.mitigation
+    }
+  }));
+  const signalFeatures = city.bikeSignals.map((signal) => ({
+    id: `overlay:cycling-network:${signal.id}`,
+    overlayId: 'cycling-network' as const,
+    objectId: signal.id,
+    objectKind: signal.kind,
+    ownerDomain: signal.ownerDomain,
+    label: signal.id,
+    geometry: { type: 'point' as const, point: signal.position },
+    metadata: {
+      roadId: signal.roadId,
+      segmentId: signal.segmentId,
+      signalKind: signal.signalKind,
+      protectedPhaseSeconds: signal.protectedPhaseSeconds,
+      conflicts: signal.conflictZoneIds.length
+    }
+  }));
+
+  return [...segmentFeatures, ...parkingFeatures, ...conflictFeatures, ...signalFeatures];
 }
 
 function createThermalServiceFeatures(city: GeneratedCity): CityOverlayFeature[] {

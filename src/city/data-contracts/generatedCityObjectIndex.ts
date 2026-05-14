@@ -13,6 +13,12 @@ type GeneratedCityObjectSource = Pick<
   | 'assetCatalog'
   | 'activeFrontages'
   | 'administrativeBoundaries'
+  | 'bikeConflictZones'
+  | 'bikeGraphEdges'
+  | 'bikeGraphNodes'
+  | 'bikeParking'
+  | 'bikeSegments'
+  | 'bikeSignals'
   | 'blocks'
   | 'buildings'
   | 'cadastreRecords'
@@ -80,6 +86,12 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.trafficCalmingDevices,
     ...city.transitStops,
     ...city.transitRoutes,
+    ...city.bikeSegments,
+    ...city.bikeGraphNodes,
+    ...city.bikeGraphEdges,
+    ...city.bikeParking,
+    ...city.bikeSignals,
+    ...city.bikeConflictZones,
     ...city.freightLoadingDocks,
     ...city.freightRoutes,
     ...city.serviceAlleys,

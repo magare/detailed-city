@@ -108,7 +108,7 @@ test('browser diagnostics expose traffic calming counts', async ({ page }) => {
     busBulbs: 2,
     speedTables: 2,
     minimumTargetSpeedKph: 15,
-    networkLayerObjects: 1390
+    networkLayerObjects: 2230
   });
   expect(diagnostics.debugText).toContain('Calming');
   expect(diagnostics.debugText).toContain('12 devices, 2 curb, 15kph min');

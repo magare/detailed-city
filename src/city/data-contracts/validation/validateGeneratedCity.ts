@@ -64,6 +64,12 @@ type GeneratedCityForValidation = Pick<
   | 'assetCatalog'
   | 'activeFrontages'
   | 'administrativeBoundaries'
+  | 'bikeConflictZones'
+  | 'bikeGraphEdges'
+  | 'bikeGraphNodes'
+  | 'bikeParking'
+  | 'bikeSegments'
+  | 'bikeSignals'
   | 'blocks'
   | 'buildings'
   | 'cadastreRecords'
@@ -893,6 +899,10 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   const freightRoutesById = new Map(city.freightRoutes.map((route) => [route.id, route]));
   const freightLoadingDocksById = new Map(city.freightLoadingDocks.map((dock) => [dock.id, dock]));
   const serviceAlleysById = new Map(city.serviceAlleys.map((alley) => [alley.id, alley]));
+  const bikeSegmentsById = new Map(city.bikeSegments.map((segment) => [segment.id, segment]));
+  const bikeGraphNodesById = new Map(city.bikeGraphNodes.map((node) => [node.id, node]));
+  const bikeParkingById = new Map(city.bikeParking.map((parking) => [parking.id, parking]));
+  const bikeConflictZonesById = new Map(city.bikeConflictZones.map((zone) => [zone.id, zone]));
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
   const sidewalkGraphNodeIds = new Set(city.sidewalkGraph.nodes.map((node) => node.id));
   const crossingGraphEdgeIds = new Set(
@@ -1259,6 +1269,192 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
           message: `Curb zones ${previous.id} and ${current.id} overlap on sidewalk ${sidewalkId}.`
         });
       }
+    }
+  }
+
+  for (const segment of city.bikeSegments) {
+    const road = roadsById.get(segment.roadId);
+
+    if (!road || segment.parentId !== segment.roadId) {
+      issues.push({
+        id: `invalid-bike-segment-road-${segment.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: segment.id,
+        message: `Bike segment ${segment.id} must be parented to existing road ${segment.roadId}.`
+      });
+    }
+
+    if (segment.startMeters < 0 || segment.endMeters <= segment.startMeters || segment.lengthMeters <= 0 || segment.widthMeters <= 0) {
+      issues.push({
+        id: `invalid-bike-segment-geometry-${segment.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: segment.id,
+        message: `Bike segment ${segment.id} must expose positive range, length, and width.`
+      });
+    }
+
+    if (segment.facilityKind !== 'shared-street' && !segment.protected && segment.conflictZoneIds.length === 0) {
+      issues.push({
+        id: `unmitigated-bike-segment-conflicts-${segment.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: segment.id,
+        message: `Non-protected bike segment ${segment.id} must expose conflict-zone mitigation metadata.`
+      });
+    }
+
+    for (const conflictId of segment.conflictZoneIds) {
+      const conflict = bikeConflictZonesById.get(conflictId);
+      if (!conflict || conflict.segmentId !== segment.id) {
+        issues.push({
+          id: `bike-segment-conflict-mismatch-${segment.id}-${conflictId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: segment.id,
+          message: `Bike segment ${segment.id} references missing or mismatched conflict zone ${conflictId}.`
+        });
+      }
+    }
+
+    for (const parkingId of segment.bikeParkingIds) {
+      const parking = bikeParkingById.get(parkingId);
+      if (!parking || parking.segmentId !== segment.id) {
+        issues.push({
+          id: `bike-segment-parking-mismatch-${segment.id}-${parkingId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: segment.id,
+          message: `Bike segment ${segment.id} references missing or mismatched parking ${parkingId}.`
+        });
+      }
+    }
+  }
+
+  for (const node of city.bikeGraphNodes) {
+    if (!bikeSegmentsById.has(node.segmentId) || node.parentId !== node.segmentId || !roadsById.has(node.roadId)) {
+      issues.push({
+        id: `invalid-bike-graph-node-${node.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: node.id,
+        message: `Bike graph node ${node.id} must reference existing road and parent bike segment.`
+      });
+    }
+
+    if (node.intersectionId && !intersectionsById.has(node.intersectionId)) {
+      issues.push({
+        id: `invalid-bike-graph-node-intersection-${node.id}-${node.intersectionId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: node.id,
+        message: `Bike graph node ${node.id} references missing intersection ${node.intersectionId}.`
+      });
+    }
+  }
+
+  for (const edge of city.bikeGraphEdges) {
+    const fromNode = bikeGraphNodesById.get(edge.fromNodeId);
+    const toNode = bikeGraphNodesById.get(edge.toNodeId);
+
+    if (!bikeSegmentsById.has(edge.segmentId) || edge.parentId !== edge.segmentId || !fromNode || !toNode || edge.lengthMeters <= 0) {
+      issues.push({
+        id: `invalid-bike-graph-edge-${edge.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: edge.id,
+        message: `Bike graph edge ${edge.id} must link existing bike graph nodes on a positive-length segment.`
+      });
+    }
+
+    if (fromNode && toNode && (fromNode.segmentId !== edge.segmentId || toNode.segmentId !== edge.segmentId)) {
+      issues.push({
+        id: `bike-graph-edge-segment-mismatch-${edge.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: edge.id,
+        message: `Bike graph edge ${edge.id} endpoints must belong to segment ${edge.segmentId}.`
+      });
+    }
+  }
+
+  for (const parking of city.bikeParking) {
+    const furniture = parking.streetFurnitureId ? city.objectIndex.objectsById[parking.streetFurnitureId] : undefined;
+    const sidewalk = city.objectIndex.objectsById[parking.sidewalkId];
+
+    if (!bikeSegmentsById.has(parking.segmentId) || !roadsById.has(parking.roadId) || !sidewalk || sidewalk.kind !== 'sidewalk') {
+      issues.push({
+        id: `invalid-bike-parking-reference-${parking.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: parking.id,
+        message: `Bike parking ${parking.id} must reference existing bike segment, road, and sidewalk.`
+      });
+    }
+
+    if (parking.streetFurnitureId && (!furniture || furniture.kind !== 'street-furniture' || furniture.parentId !== parking.sidewalkId)) {
+      issues.push({
+        id: `invalid-bike-parking-furniture-${parking.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: parking.id,
+        message: `Bike parking ${parking.id} must be derived from bike-rack street furniture on its sidewalk.`
+      });
+    }
+
+    if (parking.capacity <= 0) {
+      issues.push({
+        id: `invalid-bike-parking-capacity-${parking.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: parking.id,
+        message: `Bike parking ${parking.id} must expose positive capacity.`
+      });
+    }
+  }
+
+  for (const signal of city.bikeSignals) {
+    if (!intersectionsById.has(signal.intersectionId) || signal.parentId !== signal.intersectionId || !bikeSegmentsById.has(signal.segmentId)) {
+      issues.push({
+        id: `invalid-bike-signal-reference-${signal.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: signal.id,
+        message: `Bike signal ${signal.id} must attach to an intersection and bike segment.`
+      });
+    }
+
+    if (signal.protectedPhaseSeconds <= 0 || signal.conflictZoneIds.length === 0) {
+      issues.push({
+        id: `invalid-bike-signal-phase-${signal.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: signal.id,
+        message: `Bike signal ${signal.id} must expose positive protected phase timing and conflict links.`
+      });
+    }
+  }
+
+  for (const conflict of city.bikeConflictZones) {
+    if (!bikeSegmentsById.has(conflict.segmentId) || conflict.parentId !== conflict.segmentId || !roadsById.has(conflict.roadId)) {
+      issues.push({
+        id: `invalid-bike-conflict-reference-${conflict.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: conflict.id,
+        message: `Bike conflict ${conflict.id} must reference an existing road and parent bike segment.`
+      });
+    }
+
+    if (conflict.severity === 'high' && conflict.mitigation === 'paint') {
+      issues.push({
+        id: `unsafe-bike-conflict-mitigation-${conflict.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: conflict.id,
+        message: `High-severity bike conflict ${conflict.id} cannot rely on paint-only mitigation.`
+      });
     }
   }
 
@@ -6215,6 +6411,26 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
 
   for (const curbZone of city.curbZones) {
     validatePoint2D(city.geospatial, curbZone.id, 'center', curbZone.center, issues);
+  }
+
+  for (const segment of city.bikeSegments) {
+    validatePolyline2D(city.geospatial, segment.id, 'centerline', segment.centerline, issues);
+  }
+
+  for (const node of city.bikeGraphNodes) {
+    validatePoint2D(city.geospatial, node.id, 'position', node.position, issues);
+  }
+
+  for (const parking of city.bikeParking) {
+    validatePoint2D(city.geospatial, parking.id, 'position', parking.position, issues);
+  }
+
+  for (const signal of city.bikeSignals) {
+    validatePoint2D(city.geospatial, signal.id, 'position', signal.position, issues);
+  }
+
+  for (const conflict of city.bikeConflictZones) {
+    validatePoint2D(city.geospatial, conflict.id, 'position', conflict.position, issues);
   }
 
   for (const dock of city.freightLoadingDocks) {

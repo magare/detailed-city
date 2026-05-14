@@ -73,6 +73,32 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('asset', ['asset:<category>:<semantic-name>:primitive'], [exact(String.raw`asset:${NAMED_ID}(?::${NAMED_ID})+:primitive`)], none()),
   entry('block', ['block-<grid-x>-<grid-z>'], [exact(String.raw`block-\d+-\d+`)], required(['district'])),
   entry('building', ['building-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(BUILDING_ID)], required(['parcel'])),
+  entry(
+    'bike-conflict-zone',
+    ['bike-conflict-zone-<road-id>-<side>-<suffix>'],
+    [exact(String.raw`bike-conflict-zone-${ROAD_ID}-${SIDEWALK_SIDE}-${NAMED_ID}(?:-\d+)?`)],
+    required(['bike-segment'])
+  ),
+  entry('bike-graph-edge', ['bike-graph-edge-<road-id>-<side>'], [exact(String.raw`bike-graph-edge-${ROAD_ID}-${SIDEWALK_SIDE}`)], required(['bike-segment'])),
+  entry(
+    'bike-graph-node',
+    ['bike-graph-node-<road-id>-<side>-<role>'],
+    [exact(String.raw`bike-graph-node-${ROAD_ID}-${SIDEWALK_SIDE}-${NAMED_ID}(?:-\d+)?`)],
+    required(['bike-segment'])
+  ),
+  entry(
+    'bike-parking',
+    ['bike-parking-<street-furniture-id>'],
+    [exact(String.raw`bike-parking-street-furniture-${ROAD_ID}-${SIDEWALK_SIDE}-\d+-bike-rack`)],
+    required(['street-furniture'])
+  ),
+  entry('bike-segment', ['bike-segment-<road-id>-<side>'], [exact(String.raw`bike-segment-${ROAD_ID}-${SIDEWALK_SIDE}`)], required(['road-segment'])),
+  entry(
+    'bike-signal',
+    ['bike-signal-<intersection-id>-<road-id>-<side>'],
+    [exact(String.raw`bike-signal-${INTERSECTION_ID}-${ROAD_ID}-${SIDEWALK_SIDE}`)],
+    required(['intersection'])
+  ),
   entry('cadastre-record', ['cadastre-record-<parcel-id>'], [exact(String.raw`cadastre-record-${PARCEL_ID}`)], required(['parcel'])),
   entry('city-metric', ['city-metric-<metric-kind>'], [exact(String.raw`city-metric-${NAMED_ID}`)], none()),
   entry('civic-anchor', ['civic-anchor-<slug>'], [exact(String.raw`civic-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),

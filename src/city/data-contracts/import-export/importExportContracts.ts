@@ -246,6 +246,12 @@ export interface ProceduralSeedDomainSections {
   readonly trafficCalmingDevices: GeneratedCity['trafficCalmingDevices'];
   readonly transitStops: GeneratedCity['transitStops'];
   readonly transitRoutes: GeneratedCity['transitRoutes'];
+  readonly bikeSegments: GeneratedCity['bikeSegments'];
+  readonly bikeGraphNodes: GeneratedCity['bikeGraphNodes'];
+  readonly bikeGraphEdges: GeneratedCity['bikeGraphEdges'];
+  readonly bikeParking: GeneratedCity['bikeParking'];
+  readonly bikeSignals: GeneratedCity['bikeSignals'];
+  readonly bikeConflictZones: GeneratedCity['bikeConflictZones'];
   readonly freightLoadingDocks: GeneratedCity['freightLoadingDocks'];
   readonly freightRoutes: GeneratedCity['freightRoutes'];
   readonly serviceAlleys: GeneratedCity['serviceAlleys'];
@@ -296,6 +302,12 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly trafficCalmingDevices: number;
   readonly transitStops: number;
   readonly transitRoutes: number;
+  readonly bikeSegments: number;
+  readonly bikeGraphNodes: number;
+  readonly bikeGraphEdges: number;
+  readonly bikeParking: number;
+  readonly bikeSignals: number;
+  readonly bikeConflictZones: number;
   readonly freightLoadingDocks: number;
   readonly freightRoutes: number;
   readonly serviceAlleys: number;
@@ -420,6 +432,12 @@ export function createProceduralSeedJsonExport(
       trafficCalmingDevices: city.trafficCalmingDevices,
       transitStops: city.transitStops,
       transitRoutes: city.transitRoutes,
+      bikeSegments: city.bikeSegments,
+      bikeGraphNodes: city.bikeGraphNodes,
+      bikeGraphEdges: city.bikeGraphEdges,
+      bikeParking: city.bikeParking,
+      bikeSignals: city.bikeSignals,
+      bikeConflictZones: city.bikeConflictZones,
       freightLoadingDocks: city.freightLoadingDocks,
       freightRoutes: city.freightRoutes,
       serviceAlleys: city.serviceAlleys,
@@ -571,6 +589,12 @@ export function createProceduralSeedDomainSectionCounts(
     | 'trafficCalmingDevices'
     | 'transitStops'
     | 'transitRoutes'
+    | 'bikeSegments'
+    | 'bikeGraphNodes'
+    | 'bikeGraphEdges'
+    | 'bikeParking'
+    | 'bikeSignals'
+    | 'bikeConflictZones'
     | 'freightLoadingDocks'
     | 'freightRoutes'
     | 'serviceAlleys'
@@ -619,6 +643,12 @@ export function createProceduralSeedDomainSectionCounts(
     trafficCalmingDevices: city.trafficCalmingDevices.length,
     transitStops: city.transitStops.length,
     transitRoutes: city.transitRoutes.length,
+    bikeSegments: city.bikeSegments.length,
+    bikeGraphNodes: city.bikeGraphNodes.length,
+    bikeGraphEdges: city.bikeGraphEdges.length,
+    bikeParking: city.bikeParking.length,
+    bikeSignals: city.bikeSignals.length,
+    bikeConflictZones: city.bikeConflictZones.length,
     freightLoadingDocks: city.freightLoadingDocks.length,
     freightRoutes: city.freightRoutes.length,
     serviceAlleys: city.serviceAlleys.length,
@@ -679,6 +709,12 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'trafficCalmingDevices') +
     getArrayLength(city, 'transitStops') +
     getArrayLength(city, 'transitRoutes') +
+    getArrayLength(city, 'bikeSegments') +
+    getArrayLength(city, 'bikeGraphNodes') +
+    getArrayLength(city, 'bikeGraphEdges') +
+    getArrayLength(city, 'bikeParking') +
+    getArrayLength(city, 'bikeSignals') +
+    getArrayLength(city, 'bikeConflictZones') +
     getArrayLength(city, 'freightLoadingDocks') +
     getArrayLength(city, 'freightRoutes') +
     getArrayLength(city, 'serviceAlleys') +

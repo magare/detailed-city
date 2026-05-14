@@ -80,6 +80,11 @@ export function createCitySceneLayerDiagnostics(
     networks:
       city.roads.length +
       city.trafficCalmingDevices.length +
+      city.bikeSegments.length +
+      city.bikeGraphNodes.length +
+      city.bikeGraphEdges.length +
+      city.bikeSignals.length +
+      city.bikeConflictZones.length +
       city.freightLoadingDocks.length +
       city.freightRoutes.length +
       city.serviceAlleys.length +
@@ -99,6 +104,7 @@ export function createCitySceneLayerDiagnostics(
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length +
+      city.bikeParking.length +
       city.waterfrontEdges.length +
       city.waterfrontOpenSpaces.length,
     agents: traffic.vehicles.length,
