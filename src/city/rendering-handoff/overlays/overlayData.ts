@@ -26,6 +26,7 @@ export type CityOverlayId =
   | 'solar-shading'
   | 'urban-heat'
   | 'city-metrics'
+  | 'freight-logistics'
   | 'civic-anchors'
   | 'community-anchors'
   | 'culture-anchors'
@@ -91,6 +92,7 @@ export function createCityOverlayDatasets(
     createDataset('solar-shading', 'Solar Shading', 'domain-data', createSolarShadingFeatures(city)),
     createDataset('urban-heat', 'Urban Heat', 'domain-data', createUrbanHeatFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
+    createDataset('freight-logistics', 'Freight Logistics', 'domain-data', createFreightLogisticsFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
@@ -741,6 +743,65 @@ function createRoadFeatures(city: GeneratedCity): CityOverlayFeature[] {
       turnPocketLanes: road.lanes.filter((lane) => lane.laneRole === 'turn-pocket').length
     }
   }));
+}
+
+function createFreightLogisticsFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  const routeFeatures = city.freightRoutes.map((route) => ({
+    id: `overlay:freight-logistics:${route.id}`,
+    overlayId: 'freight-logistics' as const,
+    objectId: route.id,
+    objectKind: route.kind,
+    ownerDomain: route.ownerDomain,
+    label: route.name ?? route.id,
+    geometry: { type: 'polyline' as const, points: route.polyline },
+    metadata: {
+      routeKind: route.routeKind,
+      docks: route.loadingDockIds.length,
+      warehouseBuildings: route.warehouseBuildingIds.length,
+      deliveryWindow: route.deliveryWindow.windowKind,
+      maxLengthMeters: route.truckRestriction.maxLengthMeters,
+      maxWeightTonnes: route.truckRestriction.maxWeightTonnes,
+      lastMileStops: route.lastMileStopCount
+    }
+  }));
+  const dockFeatures = city.freightLoadingDocks.map((dock) => ({
+    id: `overlay:freight-logistics:${dock.id}`,
+    overlayId: 'freight-logistics' as const,
+    objectId: dock.id,
+    objectKind: dock.kind,
+    ownerDomain: dock.ownerDomain,
+    label: dock.name ?? dock.id,
+    geometry: { type: 'point' as const, point: dock.position },
+    metadata: {
+      buildingId: dock.buildingId,
+      parcelId: dock.parcelId,
+      roadId: dock.roadId,
+      curbZoneId: dock.curbZoneId,
+      dockKind: dock.dockKind,
+      loadingBays: dock.loadingBays,
+      deliveryWindow: dock.deliveryWindow.windowKind,
+      warehouseLink: dock.warehouseLink
+    }
+  }));
+  const alleyFeatures = city.serviceAlleys.map((alley) => ({
+    id: `overlay:freight-logistics:${alley.id}`,
+    overlayId: 'freight-logistics' as const,
+    objectId: alley.id,
+    objectKind: alley.kind,
+    ownerDomain: alley.ownerDomain,
+    label: alley.name ?? alley.id,
+    geometry: { type: 'polyline' as const, points: alley.centerline },
+    metadata: {
+      roadId: alley.roadId,
+      buildings: alley.buildingIds.length,
+      parcels: alley.parcelIds.length,
+      loadingDocks: alley.loadingDockIds.length,
+      accessControlled: alley.accessControlled,
+      deliveryWindow: alley.deliveryWindow.windowKind
+    }
+  }));
+
+  return [...routeFeatures, ...dockFeatures, ...alleyFeatures];
 }
 
 function createThermalServiceFeatures(city: GeneratedCity): CityOverlayFeature[] {

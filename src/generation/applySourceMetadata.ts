@@ -45,6 +45,11 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     ),
     transitStops: city.transitStops.map((stop) => withProceduralMetadata(stop, 'mobility-transit-stops')),
     transitRoutes: city.transitRoutes.map((route) => withProceduralMetadata(route, 'mobility-transit-routes')),
+    freightLoadingDocks: city.freightLoadingDocks.map((dock) =>
+      withProceduralMetadata(dock, 'mobility-freight-loading-docks')
+    ),
+    freightRoutes: city.freightRoutes.map((route) => withProceduralMetadata(route, 'mobility-freight-routes')),
+    serviceAlleys: city.serviceAlleys.map((alley) => withProceduralMetadata(alley, 'mobility-service-alleys')),
     sidewalkGraph: {
       nodes: city.sidewalkGraph.nodes.map((node) => withProceduralMetadata(node, 'mobility-sidewalk-graph')),
       edges: city.sidewalkGraph.edges.map((edge) => withProceduralMetadata(edge, 'mobility-sidewalk-graph'))

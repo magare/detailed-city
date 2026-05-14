@@ -42,6 +42,7 @@ const SIDEWALK_ID = String.raw`${ROAD_ID}-sidewalk-${SIDEWALK_SIDE}`;
 const CROSSING_ID = String.raw`crossing-(?:${INTERSECTION_ID}-${ROAD_ID}|midblock-${ROAD_ID}-\d+)`;
 const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
 const PARCEL_ID = String.raw`parcel-\d+-\d+-\d+-\d+`;
+const FREIGHT_ROUTE_KIND = String.raw`(?:industrial-haul|retail-delivery|warehouse-link)`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|railing|regulatory-sign|street-name-sign|wayfinding-sign)`;
 const TRAFFIC_CALMING_KIND = String.raw`(?:curb-extension|bus-bulb|chicane|pinchpoint|speed-hump|speed-table|speed-cushion|neighborhood-gateway)`;
 const TRANSIT_MODE = String.raw`(?:bus)`;
@@ -110,6 +111,18 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('economy-anchor', ['economy-anchor-<slug>'], [exact(String.raw`economy-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
   entry('facade', ['facade-active-frontage-<building-id>-<road-id>'], [exact(String.raw`facade-active-frontage-${BUILDING_ID}-${ROAD_ID}`)], required(['building'])),
   entry(
+    'freight-loading-dock',
+    ['freight-loading-dock-<building-id>'],
+    [exact(String.raw`freight-loading-dock-${BUILDING_ID}`)],
+    required(['building'])
+  ),
+  entry(
+    'freight-route',
+    ['freight-route-<road-id>-<route-kind>'],
+    [exact(String.raw`freight-route-${ROAD_ID}-${FREIGHT_ROUTE_KIND}`)],
+    none()
+  ),
+  entry(
     'government-anchor',
     ['government-anchor-<government-anchor-kind>'],
     [exact(String.raw`government-anchor-${GOVERNMENT_ANCHOR_KIND}`)],
@@ -146,6 +159,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('road-segment', ['road-v-<index>', 'road-h-<index>'], [exact(ROAD_ID)], none()),
   entry('sensor', ['sensor-<slug>'], [exact(String.raw`sensor-${NAMED_ID}`)], optional(['building', 'road-segment', 'street-light', 'utility-node'])),
   entry('sidewalk', ['<road-id>-sidewalk-left', '<road-id>-sidewalk-right'], [exact(SIDEWALK_ID)], required(['road-segment'])),
+  entry(
+    'service-alley',
+    ['service-alley-<road-id>-<index>'],
+    [exact(String.raw`service-alley-${ROAD_ID}-\d+`)],
+    required(['road-segment'])
+  ),
   entry(
     'solar-shading-sample',
     ['solar-shading-<sample-kind>-<index>'],

@@ -28,6 +28,7 @@ import { SoilGeologyGenerator } from './land/SoilGeologyGenerator';
 import { TopographyGenerator } from './land/TopographyGenerator';
 import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
+import { FreightLogisticsGenerator } from './mobility/FreightLogisticsGenerator';
 import { TransitGenerator } from './mobility/TransitGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
@@ -172,6 +173,12 @@ export class CityGenerator {
     const transit = new TransitGenerator().create({
       roads: sliceTagged.roads,
       streetFurniture
+    });
+    const freightLogistics = new FreightLogisticsGenerator().create({
+      roads: sliceTagged.roads,
+      parcels: sliceTagged.parcels,
+      buildings: sliceTagged.buildings,
+      curbZones
     });
     const activeFrontages = new ActiveFrontageGenerator().create({
       slices: verticalSlicesWithCurbs,
@@ -319,6 +326,9 @@ export class CityGenerator {
       trafficCalmingDevices,
       transitStops: transit.stops,
       transitRoutes: transit.routes,
+      freightLoadingDocks: freightLogistics.loadingDocks,
+      freightRoutes: freightLogistics.routes,
+      serviceAlleys: freightLogistics.serviceAlleys,
       streetLights: powerGrid.streetLights,
       streetFurniture,
       sidewalkGraph: sliceTagged.sidewalkGraph,

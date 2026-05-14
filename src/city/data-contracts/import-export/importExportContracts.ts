@@ -246,6 +246,9 @@ export interface ProceduralSeedDomainSections {
   readonly trafficCalmingDevices: GeneratedCity['trafficCalmingDevices'];
   readonly transitStops: GeneratedCity['transitStops'];
   readonly transitRoutes: GeneratedCity['transitRoutes'];
+  readonly freightLoadingDocks: GeneratedCity['freightLoadingDocks'];
+  readonly freightRoutes: GeneratedCity['freightRoutes'];
+  readonly serviceAlleys: GeneratedCity['serviceAlleys'];
   readonly streetLights: GeneratedCity['streetLights'];
   readonly streetFurniture: GeneratedCity['streetFurniture'];
   readonly sidewalkGraph: GeneratedCity['sidewalkGraph'];
@@ -293,6 +296,9 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly trafficCalmingDevices: number;
   readonly transitStops: number;
   readonly transitRoutes: number;
+  readonly freightLoadingDocks: number;
+  readonly freightRoutes: number;
+  readonly serviceAlleys: number;
   readonly streetLights: number;
   readonly streetFurniture: number;
   readonly sidewalkGraphNodes: number;
@@ -414,6 +420,9 @@ export function createProceduralSeedJsonExport(
       trafficCalmingDevices: city.trafficCalmingDevices,
       transitStops: city.transitStops,
       transitRoutes: city.transitRoutes,
+      freightLoadingDocks: city.freightLoadingDocks,
+      freightRoutes: city.freightRoutes,
+      serviceAlleys: city.serviceAlleys,
       streetLights: city.streetLights,
       streetFurniture: city.streetFurniture,
       sidewalkGraph: city.sidewalkGraph,
@@ -562,6 +571,9 @@ export function createProceduralSeedDomainSectionCounts(
     | 'trafficCalmingDevices'
     | 'transitStops'
     | 'transitRoutes'
+    | 'freightLoadingDocks'
+    | 'freightRoutes'
+    | 'serviceAlleys'
     | 'districts'
     | 'zoningDistricts'
     | 'intersections'
@@ -607,6 +619,9 @@ export function createProceduralSeedDomainSectionCounts(
     trafficCalmingDevices: city.trafficCalmingDevices.length,
     transitStops: city.transitStops.length,
     transitRoutes: city.transitRoutes.length,
+    freightLoadingDocks: city.freightLoadingDocks.length,
+    freightRoutes: city.freightRoutes.length,
+    serviceAlleys: city.serviceAlleys.length,
     streetLights: city.streetLights.length,
     streetFurniture: city.streetFurniture.length,
     sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
@@ -664,6 +679,9 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'trafficCalmingDevices') +
     getArrayLength(city, 'transitStops') +
     getArrayLength(city, 'transitRoutes') +
+    getArrayLength(city, 'freightLoadingDocks') +
+    getArrayLength(city, 'freightRoutes') +
+    getArrayLength(city, 'serviceAlleys') +
     getArrayLength(city, 'streetLights') +
     getArrayLength(city, 'streetFurniture') +
     getNestedArrayLength(city, 'sidewalkGraph', 'nodes') +

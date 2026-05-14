@@ -77,7 +77,13 @@ export function createCitySceneLayerDiagnostics(
     .reduce((sum, building) => sum + (building.roofGrammar?.details.length ?? 0), 0);
   const objectCounts: Record<CitySceneLayerId, number> = {
     terrain: 1 + city.waterways.length,
-    networks: city.roads.length + city.trafficCalmingDevices.length + traffic.markings.length,
+    networks:
+      city.roads.length +
+      city.trafficCalmingDevices.length +
+      city.freightLoadingDocks.length +
+      city.freightRoutes.length +
+      city.serviceAlleys.length +
+      traffic.markings.length,
     buildings:
       city.buildings.length +
       city.civicAnchors.length +

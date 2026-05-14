@@ -74,7 +74,12 @@ test('city object groups provide deterministic query paths for domains, slices, 
   expect(baselineScenarioObjects).toHaveLength(first.runtimeIndex.objectIds.length);
 
   expect(getCityObjectsByRenderLayer(first.groupIndex, 'networks')).toHaveLength(
-    first.city.roads.length + first.traffic.markings.length + first.city.trafficCalmingDevices.length
+    first.city.roads.length +
+      first.traffic.markings.length +
+      first.city.trafficCalmingDevices.length +
+      first.city.freightLoadingDocks.length +
+      first.city.freightRoutes.length +
+      first.city.serviceAlleys.length
   );
   expect(getCityObjectsByRenderLayer(first.groupIndex, 'buildings')).toHaveLength(
     first.city.buildings.length +
@@ -94,7 +99,12 @@ test('city object groups provide deterministic query paths for domains, slices, 
     })[0]
   ).toMatchObject({
     id: 'group:render-layer:networks',
-    objectCount: first.city.roads.length + first.traffic.markings.length + first.city.trafficCalmingDevices.length
+    objectCount: first.city.roads.length +
+      first.traffic.markings.length +
+      first.city.trafficCalmingDevices.length +
+      first.city.freightLoadingDocks.length +
+      first.city.freightRoutes.length +
+      first.city.serviceAlleys.length
   });
 });
 
@@ -175,8 +185,8 @@ test('browser diagnostics expose grouped object counts for debug tools', async (
     ownerDomainGroups: 13,
     districtGroups: 5,
     renderLayerGroups: 6,
-    networkRenderLayerObjects: 988,
-    baselineScenarioObjects: 7274
+    networkRenderLayerObjects: 1390,
+    baselineScenarioObjects: 7676
   });
   expect(groupDiagnostics.emptyGroups).toBeGreaterThan(0);
   expect(groupDiagnostics.sliceGroupObjects).toBeGreaterThan(1000);

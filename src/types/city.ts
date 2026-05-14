@@ -20,6 +20,8 @@ import type {
   CrossingContract,
   DetailedStreetSliceContract,
   DistrictContract,
+  FreightLoadingDockContract,
+  FreightRouteContract,
   GeospatialFrame,
   GreenCorridorRole,
   HazardZoneContract,
@@ -35,6 +37,7 @@ import type {
   RenderBinding,
   ResilienceGoalContract,
   RoadSegmentContract,
+  ServiceAlleyContract,
   SidewalkGraphEdgeContract,
   SidewalkGraphNodeContract,
   SidewalkContract,
@@ -292,6 +295,9 @@ export interface TrafficVehiclePlan extends TrafficVehicleContract {}
 export interface TrafficCalmingDevice extends TrafficCalmingDeviceContract {}
 export interface TransitStop extends TransitStopContract {}
 export interface TransitRoute extends TransitRouteContract {}
+export interface FreightLoadingDock extends FreightLoadingDockContract {}
+export interface FreightRoute extends FreightRouteContract {}
+export interface ServiceAlley extends ServiceAlleyContract {}
 
 export interface WeatherPreset extends WeatherPresetContract {}
 export interface SolarShadingSample extends SolarShadingSampleContract {}
@@ -322,6 +328,9 @@ export type GeneratedCityObject =
   | TrafficCalmingDevice
   | TransitStop
   | TransitRoute
+  | FreightLoadingDock
+  | FreightRoute
+  | ServiceAlley
   | WeatherPreset
   | SolarShadingSample
   | UrbanHeatZone
@@ -381,6 +390,9 @@ export interface GeneratedCity {
   trafficCalmingDevices: TrafficCalmingDevice[];
   transitStops: TransitStop[];
   transitRoutes: TransitRoute[];
+  freightLoadingDocks: FreightLoadingDock[];
+  freightRoutes: FreightRoute[];
+  serviceAlleys: ServiceAlley[];
   weatherPresets: WeatherPreset[];
   solarShadingSamples: SolarShadingSample[];
   urbanHeatZones: UrbanHeatZone[];

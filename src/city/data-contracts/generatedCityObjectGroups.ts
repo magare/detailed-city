@@ -26,7 +26,7 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'networks',
     name: 'Networks Render Layer',
-    objectKinds: ['road-segment', 'lane-marking', 'traffic-calming-device'] as const
+    objectKinds: ['road-segment', 'lane-marking', 'traffic-calming-device', 'freight-loading-dock', 'freight-route', 'service-alley'] as const
   },
   {
     id: 'buildings',

@@ -82,6 +82,8 @@ type GeneratedCityForValidation = Pick<
   | 'crossings'
   | 'curbZones'
   | 'districts'
+  | 'freightLoadingDocks'
+  | 'freightRoutes'
   | 'geospatial'
   | 'hazardZones'
   | 'intersections'
@@ -94,6 +96,7 @@ type GeneratedCityForValidation = Pick<
   | 'resilienceGoals'
   | 'roads'
   | 'sidewalkGraph'
+  | 'serviceAlleys'
   | 'soilGeologyZones'
   | 'streetFurniture'
   | 'streetLights'
@@ -885,6 +888,11 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
   const slicesById = new Map(city.verticalSlices.map((slice) => [slice.id, slice]));
   const curbZonesById = new Map(city.curbZones.map((curbZone) => [curbZone.id, curbZone]));
+  const parcelsByIdForMobility = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
+  const buildingsByIdForMobility = new Map(city.buildings.map((building) => [building.id, building]));
+  const freightRoutesById = new Map(city.freightRoutes.map((route) => [route.id, route]));
+  const freightLoadingDocksById = new Map(city.freightLoadingDocks.map((dock) => [dock.id, dock]));
+  const serviceAlleysById = new Map(city.serviceAlleys.map((alley) => [alley.id, alley]));
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
   const sidewalkGraphNodeIds = new Set(city.sidewalkGraph.nodes.map((node) => node.id));
   const crossingGraphEdgeIds = new Set(
@@ -1249,6 +1257,199 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
           category: 'graph',
           objectId: current.id,
           message: `Curb zones ${previous.id} and ${current.id} overlap on sidewalk ${sidewalkId}.`
+        });
+      }
+    }
+  }
+
+  for (const dock of city.freightLoadingDocks) {
+    const building = buildingsByIdForMobility.get(dock.buildingId);
+    const parcel = parcelsByIdForMobility.get(dock.parcelId);
+    const road = roadsById.get(dock.roadId);
+    const curbZone = curbZonesById.get(dock.curbZoneId);
+    const serviceAlley = dock.serviceAlleyId ? serviceAlleysById.get(dock.serviceAlleyId) : undefined;
+
+    if (!building || dock.parentId !== dock.buildingId) {
+      issues.push({
+        id: `invalid-freight-dock-building-${dock.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: dock.id,
+        message: `Freight loading dock ${dock.id} must be parented to existing building ${dock.buildingId}.`
+      });
+    }
+
+    if (!parcel || building?.parcelId !== dock.parcelId || parcel.districtId !== dock.districtId) {
+      issues.push({
+        id: `invalid-freight-dock-parcel-${dock.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: dock.id,
+        message: `Freight loading dock ${dock.id} must reference its building parcel and district.`
+      });
+    }
+
+    if (!road || !road.lanes.some((lane) => lane.allowedModes.includes('freight'))) {
+      issues.push({
+        id: `invalid-freight-dock-road-${dock.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: dock.id,
+        message: `Freight loading dock ${dock.id} must connect to a freight-capable road.`
+      });
+    }
+
+    if (!curbZone || curbZone.curbUse !== 'loading' || !curbZone.management.loadingDockAccess || curbZone.roadId !== dock.roadId) {
+      issues.push({
+        id: `invalid-freight-dock-curb-zone-${dock.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: dock.id,
+        message: `Freight loading dock ${dock.id} must attach to a loading curb zone on its road.`
+      });
+    }
+
+    if (dock.serviceAlleyId && (!serviceAlley || !serviceAlley.loadingDockIds.includes(dock.id))) {
+      issues.push({
+        id: `invalid-freight-dock-service-alley-${dock.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: dock.id,
+        message: `Freight loading dock ${dock.id} references missing or unlinked service alley ${dock.serviceAlleyId}.`
+      });
+    }
+
+    if (!isFiniteNumber(dock.position.x) || !isFiniteNumber(dock.position.z) || dock.loadingBays <= 0 || dock.lastMileRadiusMeters <= 0) {
+      issues.push({
+        id: `invalid-freight-dock-geometry-${dock.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: dock.id,
+        message: `Freight loading dock ${dock.id} must expose finite position, positive bays, and positive last-mile radius.`
+      });
+    }
+
+    validateFreightDeliveryWindow(dock.id, dock.deliveryWindow, issues);
+
+    if (dock.allowedVehicleClasses.length === 0 || dock.linkedRouteIds.length === 0) {
+      issues.push({
+        id: `invalid-freight-dock-routing-${dock.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: dock.id,
+        message: `Freight loading dock ${dock.id} must declare vehicle classes and at least one linked freight route.`
+      });
+    }
+
+    for (const routeId of dock.linkedRouteIds) {
+      const route = freightRoutesById.get(routeId);
+
+      if (!route || !route.loadingDockIds.includes(dock.id)) {
+        issues.push({
+          id: `freight-dock-route-mismatch-${dock.id}-${routeId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: dock.id,
+          message: `Freight dock ${dock.id} and route ${routeId} must reference each other.`
+        });
+      }
+    }
+  }
+
+  for (const route of city.freightRoutes) {
+    validateFreightDeliveryWindow(route.id, route.deliveryWindow, issues);
+
+    if (route.roadIds.length === 0 || route.laneIds.length === 0 || route.loadingDockIds.length === 0 || route.polyline.length < 2) {
+      issues.push({
+        id: `invalid-freight-route-shape-${route.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: route.id,
+        message: `Freight route ${route.id} must include roads, freight lanes, loading docks, and a polyline.`
+      });
+    }
+
+    for (const roadId of route.roadIds) {
+      const road = roadsById.get(roadId);
+
+      if (!road || !road.lanes.some((lane) => lane.allowedModes.includes('freight'))) {
+        issues.push({
+          id: `invalid-freight-route-road-${route.id}-${roadId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: route.id,
+          message: `Freight route ${route.id} references missing or freight-restricted road ${roadId}.`
+        });
+      }
+    }
+
+    for (const laneId of route.laneIds) {
+      const lane = city.objectIndex.objectsById[laneId];
+
+      if (!lane || lane.kind !== 'lane' || !lane.allowedModes.includes('freight')) {
+        issues.push({
+          id: `invalid-freight-route-lane-${route.id}-${laneId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: route.id,
+          message: `Freight route ${route.id} references missing or freight-restricted lane ${laneId}.`
+        });
+      }
+    }
+
+    for (const dockId of route.loadingDockIds) {
+      const dock = freightLoadingDocksById.get(dockId);
+
+      if (!dock || !dock.linkedRouteIds.includes(route.id)) {
+        issues.push({
+          id: `freight-route-dock-mismatch-${route.id}-${dockId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: route.id,
+          message: `Freight route ${route.id} and dock ${dockId} must reference each other.`
+        });
+      }
+    }
+
+    if (
+      route.truckRestriction.maxLengthMeters <= 0 ||
+      route.truckRestriction.maxWeightTonnes <= 0 ||
+      route.allowedVehicleClasses.length === 0 ||
+      route.lastMileStopCount < route.loadingDockIds.length
+    ) {
+      issues.push({
+        id: `invalid-freight-route-restriction-${route.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: route.id,
+        message: `Freight route ${route.id} must expose positive truck restrictions, vehicle classes, and last-mile stop counts.`
+      });
+    }
+  }
+
+  for (const alley of city.serviceAlleys) {
+    validateFreightDeliveryWindow(alley.id, alley.deliveryWindow, issues);
+
+    if (!roadsById.has(alley.roadId) || alley.parentId !== alley.roadId || alley.centerline.length < 2 || alley.widthMeters <= 0) {
+      issues.push({
+        id: `invalid-service-alley-road-${alley.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: alley.id,
+        message: `Service alley ${alley.id} must be parented to a road and expose a positive-width centerline.`
+      });
+    }
+
+    for (const dockId of alley.loadingDockIds) {
+      const dock = freightLoadingDocksById.get(dockId);
+
+      if (!dock || dock.serviceAlleyId !== alley.id) {
+        issues.push({
+          id: `service-alley-dock-mismatch-${alley.id}-${dockId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: alley.id,
+          message: `Service alley ${alley.id} must only list loading docks that point back to it.`
         });
       }
     }
@@ -6016,6 +6217,19 @@ function validateGeneratedCoordinates(city: GeneratedCityForValidation, issues: 
     validatePoint2D(city.geospatial, curbZone.id, 'center', curbZone.center, issues);
   }
 
+  for (const dock of city.freightLoadingDocks) {
+    validatePoint2D(city.geospatial, dock.id, 'position', dock.position, issues);
+    validateHeightValue(city.geospatial, dock.id, 'dockHeightMeters', dock.dockHeightMeters, issues);
+  }
+
+  for (const route of city.freightRoutes) {
+    validatePolyline2D(city.geospatial, route.id, 'polyline', route.polyline, issues);
+  }
+
+  for (const alley of city.serviceAlleys) {
+    validatePolyline2D(city.geospatial, alley.id, 'centerline', alley.centerline, issues);
+  }
+
   for (const utilityNode of city.utilityNodes) {
     validatePoint2D(city.geospatial, utilityNode.id, 'center', utilityNode.center, issues);
     validatePoint2D(city.geospatial, utilityNode.id, 'accessPoint.position', utilityNode.accessPoint.position, issues);
@@ -9589,6 +9803,31 @@ function validateRenderBindings(
 
 function includesValue<T extends string>(values: readonly T[], value: string): value is T {
   return values.includes(value as T);
+}
+
+function validateFreightDeliveryWindow(
+  objectId: CityId,
+  deliveryWindow: GeneratedCityForValidation['freightRoutes'][number]['deliveryWindow'],
+  issues: ValidationIssue[]
+): void {
+  if (
+    !Number.isInteger(deliveryWindow.startHour) ||
+    !Number.isInteger(deliveryWindow.endHour) ||
+    deliveryWindow.startHour < 0 ||
+    deliveryWindow.startHour > 23 ||
+    deliveryWindow.endHour < 0 ||
+    deliveryWindow.endHour > 23 ||
+    deliveryWindow.startHour === deliveryWindow.endHour ||
+    deliveryWindow.days.length === 0
+  ) {
+    issues.push({
+      id: `invalid-freight-delivery-window-${objectId}`,
+      severity: 'error',
+      category: 'graph',
+      objectId,
+      message: `Freight object ${objectId} must expose a non-empty valid delivery time window.`
+    });
+  }
 }
 
 function isCriticalFacilityBuilding(building: GeneratedCityForValidation['buildings'][number]): boolean {

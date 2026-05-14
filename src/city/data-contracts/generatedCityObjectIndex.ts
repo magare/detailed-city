@@ -26,6 +26,8 @@ type GeneratedCityObjectSource = Pick<
   | 'crossings'
   | 'curbZones'
   | 'districts'
+  | 'freightLoadingDocks'
+  | 'freightRoutes'
   | 'hazardZones'
   | 'intersections'
   | 'parcels'
@@ -35,6 +37,7 @@ type GeneratedCityObjectSource = Pick<
   | 'resilienceGoals'
   | 'roads'
   | 'sidewalkGraph'
+  | 'serviceAlleys'
   | 'soilGeologyZones'
   | 'solarShadingSamples'
   | 'streetFurniture'
@@ -77,6 +80,9 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.trafficCalmingDevices,
     ...city.transitStops,
     ...city.transitRoutes,
+    ...city.freightLoadingDocks,
+    ...city.freightRoutes,
+    ...city.serviceAlleys,
     ...city.weatherPresets,
     ...city.solarShadingSamples,
     ...city.urbanHeatZones,

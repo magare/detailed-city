@@ -295,6 +295,12 @@ export interface CityDiagnostics {
     readonly disabledCurbSpaces: number;
     readonly pricedCurbZones: number;
     readonly cameraEnforcedCurbZones: number;
+    readonly freightLoadingDocks: number;
+    readonly freightRoutes: number;
+    readonly serviceAlleys: number;
+    readonly freightWarehouseLinks: number;
+    readonly freightLastMileStops: number;
+    readonly freightTruckRestrictedRoads: number;
     readonly sidewalkGraphNodes: number;
     readonly sidewalkGraphEdges: number;
     readonly lanes: number;
@@ -1276,6 +1282,12 @@ export function createCityDiagnostics(
       disabledCurbSpaces: city.curbZones.reduce((sum, zone) => sum + zone.management.disabledSpaces, 0),
       pricedCurbZones: city.curbZones.filter((zone) => zone.management.pricing !== 'free' && zone.management.pricing !== 'not-applicable').length,
       cameraEnforcedCurbZones: city.curbZones.filter((zone) => zone.management.enforcement === 'camera').length,
+      freightLoadingDocks: city.freightLoadingDocks.length,
+      freightRoutes: city.freightRoutes.length,
+      serviceAlleys: city.serviceAlleys.length,
+      freightWarehouseLinks: city.freightLoadingDocks.filter((dock) => dock.warehouseLink).length,
+      freightLastMileStops: city.freightRoutes.reduce((sum, route) => sum + route.lastMileStopCount, 0),
+      freightTruckRestrictedRoads: new Set(city.freightRoutes.flatMap((route) => route.truckRestriction.restrictedRoadIds)).size,
       sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
       sidewalkGraphEdges: city.sidewalkGraph.edges.length,
       lanes: objectIndex.countsByKind.lane ?? 0,

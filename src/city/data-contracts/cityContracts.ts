@@ -21,6 +21,8 @@ export type CityObjectKind =
   | 'district'
   | 'economy-anchor'
   | 'facade'
+  | 'freight-loading-dock'
+  | 'freight-route'
   | 'government-anchor'
   | 'hazard-zone'
   | 'intersection'
@@ -36,6 +38,7 @@ export type CityObjectKind =
   | 'sidewalk'
   | 'sidewalk-graph-edge'
   | 'sidewalk-graph-node'
+  | 'service-alley'
   | 'solar-shading-sample'
   | 'soil-geology-zone'
   | 'street-furniture'
@@ -525,6 +528,20 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       description: 'Facade modules and active frontages appear near the street and can expose close inspection detail.'
     },
     {
+      objectKind: 'freight-loading-dock',
+      scope: 'network',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3', 'lod4'],
+      description: 'Freight loading docks attach buildings to loading curbs, service alleys, and last-mile delivery routes.'
+    },
+    {
+      objectKind: 'freight-route',
+      scope: 'network',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod1', 'lod2'],
+      description: 'Freight routes describe truck-capable road paths, delivery windows, and route restrictions.'
+    },
+    {
       objectKind: 'intersection',
       scope: 'network',
       defaultTier: 'lod2',
@@ -586,6 +603,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod3',
       allowedTiers: ['lod3', 'lod4'],
       description: 'Sensors are small utility/operations objects shown only near inspection range.'
+    },
+    {
+      objectKind: 'service-alley',
+      scope: 'network',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Service alleys describe controlled rear or side access for freight docks and building service yards.'
     },
     {
       objectKind: 'sidewalk',
@@ -1786,6 +1810,69 @@ export interface LaneContract extends CityObjectBase<'lane'> {
 
 export type TravelMode = 'vehicle' | 'bus' | 'bike' | 'freight' | 'emergency';
 export type LaneRole = 'general' | 'bus-only' | 'turn-pocket' | 'reversible' | 'service';
+
+export type FreightVehicleClass = 'cargo-van' | 'box-truck' | 'semi-truck';
+export type FreightRouteKind = 'industrial-haul' | 'retail-delivery' | 'warehouse-link';
+export type FreightLoadingDockKind = 'curbside' | 'service-bay' | 'yard';
+export type FreightDeliveryWindowKind = 'overnight' | 'morning' | 'midday' | 'off-peak';
+
+export interface FreightDeliveryWindowContract {
+  readonly windowKind: FreightDeliveryWindowKind;
+  readonly startHour: number;
+  readonly endHour: number;
+  readonly days: readonly ('weekday' | 'saturday' | 'sunday')[];
+}
+
+export interface FreightTruckRestrictionContract {
+  readonly maxLengthMeters: number;
+  readonly maxWeightTonnes: number;
+  readonly hazmatAllowed: boolean;
+  readonly restrictedRoadIds: readonly CityId[];
+}
+
+export interface FreightLoadingDockContract extends CityObjectBase<'freight-loading-dock'> {
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly districtId: CityId;
+  readonly roadId: CityId;
+  readonly curbZoneId: CityId;
+  readonly serviceAlleyId?: CityId;
+  readonly position: Point2D;
+  readonly dockKind: FreightLoadingDockKind;
+  readonly loadingBays: number;
+  readonly dockHeightMeters: number;
+  readonly deliveryWindow: FreightDeliveryWindowContract;
+  readonly allowedVehicleClasses: readonly FreightVehicleClass[];
+  readonly linkedRouteIds: readonly CityId[];
+  readonly warehouseLink: boolean;
+  readonly lastMileRadiusMeters: number;
+}
+
+export interface FreightRouteContract extends CityObjectBase<'freight-route'> {
+  readonly routeKind: FreightRouteKind;
+  readonly roadIds: readonly CityId[];
+  readonly laneIds: readonly CityId[];
+  readonly loadingDockIds: readonly CityId[];
+  readonly curbZoneIds: readonly CityId[];
+  readonly warehouseBuildingIds: readonly CityId[];
+  readonly polyline: Polyline2D;
+  readonly deliveryWindow: FreightDeliveryWindowContract;
+  readonly allowedVehicleClasses: readonly FreightVehicleClass[];
+  readonly truckRestriction: FreightTruckRestrictionContract;
+  readonly lastMileStopCount: number;
+}
+
+export interface ServiceAlleyContract extends CityObjectBase<'service-alley'> {
+  readonly roadId: CityId;
+  readonly buildingIds: readonly CityId[];
+  readonly parcelIds: readonly CityId[];
+  readonly loadingDockIds: readonly CityId[];
+  readonly centerline: Polyline2D;
+  readonly widthMeters: number;
+  readonly accessControlled: boolean;
+  readonly deliveryWindow: FreightDeliveryWindowContract;
+  readonly allowedVehicleClasses: readonly FreightVehicleClass[];
+}
 
 export type RoadMarkingOrientation = 'horizontal' | 'vertical';
 
