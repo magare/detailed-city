@@ -469,6 +469,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateUtilityBase(city, issues);
   validatePowerGrid(city, issues);
   validateWaterSupply(city, issues);
+  validateWastewater(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -3739,6 +3740,133 @@ function validateWaterSupply(city: GeneratedCityForValidation, issues: Validatio
         objectId: building.id,
         ...createIssueFocus(getObjectAffectedPoint(building), `Regenerate water service references for ${building.id}.`),
         message: `Building ${building.id} must reference valid water service, pressure zone, hydrant, lateral edge, and positive demand.`
+      });
+    }
+  }
+}
+
+function validateWastewater(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const wastewaterNodes = city.utilityNodes.filter((node) => node.utilityType === 'wastewater');
+  const wastewaterEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'wastewater');
+  const wastewaterNodesById = new Map(wastewaterNodes.map((node) => [node.id, node]));
+  const wastewaterEdgesById = new Map(wastewaterEdges.map((edge) => [edge.id, edge]));
+  const waterwayIds = new Set(city.waterways.map((waterway) => waterway.id));
+  const sewerBasinIds = new Set<string>();
+  const equipmentKinds = new Set(wastewaterNodes.map((node) => node.wastewater?.equipmentKind).filter(Boolean));
+  const manholeNodes = wastewaterNodes.filter((node) => node.wastewater?.equipmentKind === 'manhole');
+  const outfallNodes = wastewaterNodes.filter((node) => node.wastewater?.equipmentKind === 'outfall');
+
+  for (const node of wastewaterNodes) {
+    if (!node.wastewater) {
+      issues.push(createUtilityNodeIssue(node, 'missing-wastewater-metadata', `Wastewater node ${node.id} must expose wastewater metadata.`));
+      continue;
+    }
+    sewerBasinIds.add(node.wastewater.sewerBasinId);
+    if (node.capacity.unit !== 'liters-per-second' || node.capacity.value <= 0) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-wastewater-capacity', `Wastewater node ${node.id} must expose positive liters-per-second capacity.`));
+    }
+    if (node.wastewater.rimElevationMeters <= node.wastewater.invertElevationMeters) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-wastewater-elevation', `Wastewater node ${node.id} must keep rim elevation above invert elevation.`));
+    }
+    if (node.wastewater.servedObjectIds.length === 0 && node.wastewater.equipmentKind !== 'manhole') {
+      issues.push(createUtilityNodeIssue(node, 'missing-served-objects', `Wastewater node ${node.id} must list served equipment or service objects.`));
+    }
+    if (
+      node.wastewater.equipmentKind === 'lift-station' &&
+      (!node.wastewater.wetWellVolumeCubicMeters || node.wastewater.wetWellVolumeCubicMeters <= 0)
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'invalid-wet-well-volume', `Lift station ${node.id} must expose positive wet-well volume.`));
+    }
+    if (
+      node.wastewater.equipmentKind === 'outfall' &&
+      (!node.wastewater.receivingWaterwayId || !waterwayIds.has(node.wastewater.receivingWaterwayId))
+    ) {
+      issues.push(createUtilityNodeIssue(node, 'missing-receiving-waterway', `Wastewater outfall ${node.id} must reference a generated receiving waterway.`));
+    }
+  }
+
+  for (const edge of wastewaterEdges) {
+    if (!edge.wastewater) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-wastewater-metadata', `Wastewater edge ${edge.id} must expose wastewater metadata.`));
+      continue;
+    }
+    sewerBasinIds.add(edge.wastewater.sewerBasinId);
+    const fromNode = wastewaterNodesById.get(edge.fromNodeId);
+    const toNode = wastewaterNodesById.get(edge.toNodeId);
+    if (!fromNode || !toNode) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-wastewater-node-reference', `Wastewater edge ${edge.id} must connect generated wastewater nodes.`));
+      continue;
+    }
+    if (
+      edge.capacity.unit !== 'liters-per-second' ||
+      edge.capacity.value <= 0 ||
+      edge.wastewater.pipeDiameterMm <= 0 ||
+      edge.wastewater.slopePercent <= 0 ||
+      edge.wastewater.capacityReservePercent <= 0
+    ) {
+      issues.push(createUtilityEdgeIssue(edge, 'invalid-wastewater-capacity', `Wastewater edge ${edge.id} must expose positive capacity, slope, reserve, and pipe diameter.`));
+    }
+    if (
+      edge.wastewater.fromEquipmentKind !== fromNode.wastewater?.equipmentKind ||
+      edge.wastewater.toEquipmentKind !== toNode.wastewater?.equipmentKind
+    ) {
+      issues.push(createUtilityEdgeIssue(edge, 'equipment-kind-mismatch', `Wastewater edge ${edge.id} equipment metadata must match endpoint nodes.`));
+    }
+    if (edge.wastewater.receivingWaterwayId && !waterwayIds.has(edge.wastewater.receivingWaterwayId)) {
+      issues.push(createUtilityEdgeIssue(edge, 'missing-receiving-waterway', `Wastewater edge ${edge.id} references missing receiving waterway.`));
+    }
+  }
+
+  const requiredWastewaterEquipmentKinds = ['lift-station', 'manhole', 'outfall', 'service-connection', 'treatment-plant'] as const;
+  for (const requiredKind of requiredWastewaterEquipmentKinds) {
+    if (!equipmentKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-wastewater-equipment-${requiredKind}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        message: `Wastewater network must include ${requiredKind} equipment.`
+      });
+    }
+  }
+
+  if (manholeNodes.length === 0 || outfallNodes.length === 0) {
+    issues.push({
+      id: 'missing-wastewater-collection-coverage',
+      severity: 'error',
+      category: 'utility-coverage',
+      message: 'Wastewater network must include manholes and outfalls before service and environmental checks can run.'
+    });
+  }
+
+  for (const building of city.buildings) {
+    const wastewaterService = building.wastewaterService;
+    if (!wastewaterService) {
+      issues.push({
+        id: `missing-building-wastewater-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Attach ${building.id} to generated wastewater service metadata.`),
+        message: `Building ${building.id} must reference generated wastewater service.`
+      });
+      continue;
+    }
+    const manhole = wastewaterNodesById.get(wastewaterService.nearestManholeNodeId);
+    if (
+      !wastewaterNodesById.has(wastewaterService.serviceNodeId) ||
+      !wastewaterEdgesById.has(wastewaterService.serviceLateralEdgeId) ||
+      !sewerBasinIds.has(wastewaterService.sewerBasinId) ||
+      !manhole ||
+      manhole.wastewater?.equipmentKind !== 'manhole' ||
+      wastewaterService.estimatedPeakLitersPerSecond <= 0
+    ) {
+      issues.push({
+        id: `invalid-building-wastewater-service-${building.id}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: building.id,
+        ...createIssueFocus(getObjectAffectedPoint(building), `Regenerate wastewater service references for ${building.id}.`),
+        message: `Building ${building.id} must reference valid wastewater service, sewer basin, manhole, lateral edge, and positive demand.`
       });
     }
   }
