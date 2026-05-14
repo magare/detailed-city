@@ -122,7 +122,7 @@ test('resilience validation reports coverage gaps and missing route references w
 });
 
 test('browser diagnostics expose resilience goals for debug tools', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

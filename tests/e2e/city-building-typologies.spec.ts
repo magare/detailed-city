@@ -111,7 +111,7 @@ test('building typology validation rejects invalid defaults', () => {
 });
 
 test('browser diagnostics expose building typology counts in the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await expect(page.locator('.city-debug-panel')).toBeVisible();
 
   const diagnostics = await page.evaluate(() => ({

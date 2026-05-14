@@ -333,7 +333,7 @@ test('scene picking metadata resolves regular meshes and instanced meshes', () =
 });
 
 test('browser raycast picking returns city object metadata', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const pick = await page.evaluate(() => {

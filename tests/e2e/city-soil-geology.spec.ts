@@ -107,7 +107,7 @@ test('soil geology validation catches invalid ground metrics and missing query r
 });
 
 test('browser diagnostics expose soil geology counts and debug panel metric', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

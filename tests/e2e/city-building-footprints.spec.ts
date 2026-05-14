@@ -81,7 +81,7 @@ test('building footprint grammar validation rejects invalid envelope, coverage, 
 });
 
 test('browser diagnostics expose building footprint grammar counts', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

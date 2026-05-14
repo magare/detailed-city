@@ -98,7 +98,7 @@ test('city metric validation catches missing coverage and invalid references', (
 });
 
 test('browser diagnostics expose city metrics for the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

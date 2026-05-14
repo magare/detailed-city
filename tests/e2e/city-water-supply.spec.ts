@@ -127,7 +127,7 @@ test('water validation catches bad service, pressure, hydrant reach, and edge me
 });
 
 test('browser diagnostics expose water supply coverage in the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

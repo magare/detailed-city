@@ -230,7 +230,7 @@ test('waterfront validation catches broken water, public realm, road, dock, open
 });
 
 test('browser diagnostics expose waterfront model counts and visible pickable waterfront objects', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

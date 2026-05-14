@@ -122,7 +122,7 @@ test('power validation catches unserved lights, bad building service, and broken
 });
 
 test('browser diagnostics expose power grid coverage in the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

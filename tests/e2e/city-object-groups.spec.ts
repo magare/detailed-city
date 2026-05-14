@@ -149,7 +149,7 @@ test('city object group validation catches duplicate groups and missing members'
 });
 
 test('browser diagnostics expose grouped object counts for debug tools', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const groupDiagnostics = await page.evaluate(() => ({

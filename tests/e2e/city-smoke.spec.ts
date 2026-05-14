@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { PNG } from 'pngjs';
 
 test('renders a nonblank WebGL city scene', async ({ page }, testInfo) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   await expect(page.locator('body')).toHaveAttribute('data-scene-validation-status', 'passed');

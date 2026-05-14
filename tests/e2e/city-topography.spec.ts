@@ -85,7 +85,7 @@ test('topography validation catches missing road grades and impossible building 
 });
 
 test('browser diagnostics expose topography counts and nonblank city output', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

@@ -120,7 +120,7 @@ test('building roof grammar validation rejects impossible rooftop equipment and 
 });
 
 test('browser diagnostics expose building roof grammar counts in the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

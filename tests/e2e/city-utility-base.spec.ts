@@ -119,7 +119,7 @@ test('utility validation catches invalid service, access, capacity, and edge ref
 });
 
 test('browser diagnostics expose utility base counts in the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

@@ -148,7 +148,7 @@ test('zoning validation reports use, height, FAR, coverage, buffer, and frontage
 });
 
 test('browser diagnostics expose zoning model counts in the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

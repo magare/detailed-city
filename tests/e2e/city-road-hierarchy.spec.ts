@@ -119,7 +119,7 @@ test('road hierarchy validator catches profile and corridor policy mismatches', 
 });
 
 test('road hierarchy diagnostics render in the browser debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

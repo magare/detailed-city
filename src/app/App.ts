@@ -22,6 +22,34 @@ import { createCityDiagnostics, type CityDiagnostics } from './cityDiagnostics';
 import { validateAppConfig } from '../config/configSchema';
 import { assertAppConfigValid, assertGeneratedCityValid } from './cityValidationGate';
 import { DebugPanel } from './DebugPanel';
+import type { RenderConfig } from '../config/renderConfig';
+
+const TEST_MODE_PARAM = 'testMode';
+const FAST_RENDER_CONFIG: Partial<RenderConfig> = {
+  qualityPreset: 'low',
+  antialias: false,
+  maxPixelRatio: 1,
+  shadows: false
+};
+
+function isFastTestMode(): boolean {
+  return new URLSearchParams(window.location.search).get(TEST_MODE_PARAM) === 'fast';
+}
+
+function getRuntimeRenderConfig(): RenderConfig {
+  if (!isFastTestMode()) {
+    return renderConfig;
+  }
+
+  return {
+    ...renderConfig,
+    ...FAST_RENDER_CONFIG
+  };
+}
+
+function getDebugPanelRefreshIntervalMs(): number {
+  return isFastTestMode() ? 0 : 1000;
+}
 
 export class App {
   readonly diagnostics: CityDiagnostics;
@@ -35,11 +63,14 @@ export class App {
   private readonly performanceMonitor = new PerformanceMonitor();
   private readonly activeAgentCount: number;
   private readonly loop: RenderLoop;
+  private readonly runtimeRenderConfig: RenderConfig;
   private readonly raycaster = new THREE.Raycaster();
   private readonly pickPoint = new THREE.Vector2();
   private disposed = false;
 
   constructor(container: HTMLElement) {
+    this.runtimeRenderConfig = getRuntimeRenderConfig();
+
     assertAppConfigValid(validateAppConfig({ cityConfig, renderConfig }));
 
     const generatedCity = new CityGenerator(cityConfig).generate();
@@ -54,7 +85,7 @@ export class App {
     this.activeAgentCount = trafficPlan.vehicles.length;
     this.diagnostics = createCityDiagnostics(generatedCity, trafficPlan, renderConfig, cityConfig);
     const activeWeatherPreset = getActiveWeatherPreset(generatedCity.weatherPresets);
-    this.bootstrap = new SceneBootstrap(container, renderConfig, activeWeatherPreset);
+    this.bootstrap = new SceneBootstrap(container, this.runtimeRenderConfig, activeWeatherPreset);
 
     CameraRig.applyOverview(this.bootstrap.camera, cityConfig);
     createCityLighting(this.bootstrap.scene, activeWeatherPreset);
@@ -69,7 +100,7 @@ export class App {
       container,
       this.bootstrap.camera,
       this.bootstrap.renderer,
-      renderConfig.maxPixelRatio
+      this.runtimeRenderConfig.maxPixelRatio
     );
 
     this.loop = new RenderLoop(this.bootstrap.renderer, this.bootstrap.scene, this.bootstrap.camera, [
@@ -82,7 +113,7 @@ export class App {
       seed: cityConfig.seed,
       diagnostics: this.diagnostics,
       getPerformanceDiagnostics: () => this.getPerformanceDiagnostics()
-    });
+    }, { refreshIntervalMs: getDebugPanelRefreshIntervalMs() });
   }
 
   pickCityObjectAtClientPoint(clientX: number, clientY: number): CityPickResult | undefined {

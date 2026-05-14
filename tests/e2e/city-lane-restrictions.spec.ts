@@ -111,7 +111,7 @@ test('traffic validation rejects vehicles assigned to restricted lanes', () => {
 });
 
 test('browser diagnostics expose lane-level restriction counts', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

@@ -1,6 +1,10 @@
 import type { RuntimePerformanceDiagnostics } from '../systems/performance/PerformanceMonitor';
 import type { CityDiagnostics } from './cityDiagnostics';
 
+export interface DebugPanelStartOptions {
+  refreshIntervalMs?: number;
+}
+
 export interface DebugPanelSource {
   readonly seed: string;
   readonly diagnostics: CityDiagnostics;
@@ -11,12 +15,14 @@ export class DebugPanel {
   readonly root: HTMLElement;
   private readonly body: HTMLElement;
   private readonly toggleButton: HTMLButtonElement;
+  private readonly refreshIntervalMs: number;
   private intervalId: number | undefined;
   private collapsed = false;
 
   constructor(
     private readonly container: HTMLElement,
-    private readonly source: DebugPanelSource
+    private readonly source: DebugPanelSource,
+    options: DebugPanelStartOptions = {}
   ) {
     this.root = document.createElement('aside');
     this.root.className = 'city-debug-panel';
@@ -45,6 +51,7 @@ export class DebugPanel {
     this.root.append(header, this.body);
     this.container.append(this.root);
     this.render();
+    this.refreshIntervalMs = options.refreshIntervalMs ?? 1000;
 
     if (isDebugPanelHiddenByUrl()) {
       this.setHidden(true);
@@ -54,7 +61,15 @@ export class DebugPanel {
   }
 
   start(): void {
-    this.intervalId = window.setInterval(() => this.render(), 1000);
+    if (this.refreshIntervalMs <= 0) {
+      return;
+    }
+
+    if (this.intervalId !== undefined) {
+      return;
+    }
+
+    this.intervalId = window.setInterval(() => this.render(), this.refreshIntervalMs);
     this.render();
   }
 

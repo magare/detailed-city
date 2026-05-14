@@ -7,8 +7,11 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test:e2e": "env -u NO_COLOR playwright test",
-    "test:e2e:headed": "env -u NO_COLOR playwright test --headed"
+    "test:e2e": "env -u NO_COLOR playwright test --project=desktop-chromium",
+    "test:e2e:fast": "env -u NO_COLOR playwright test --project=desktop-chromium-fast",
+    "test:e2e:full": "env -u NO_COLOR playwright test",
+    "test:e2e:mobile": "env -u NO_COLOR playwright test --project=mobile-chromium",
+    "test:e2e:headed": "env -u NO_COLOR playwright test --headed --project=desktop-chromium"
   },
   "dependencies": {
     "three": "^0.184.0"

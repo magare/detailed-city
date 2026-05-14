@@ -151,7 +151,7 @@ test('solar shading validation catches invalid values and broken references', ()
 });
 
 test('browser diagnostics expose solar shading for debug and overlays', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

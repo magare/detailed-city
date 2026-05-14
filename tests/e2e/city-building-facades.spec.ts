@@ -109,7 +109,7 @@ test('building facade grammar validation rejects invalid floor grids, modules, m
 });
 
 test('browser diagnostics expose building facade grammar counts in the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

@@ -85,7 +85,7 @@ test('validation rejects calming devices that block access or ignore road speed 
 });
 
 test('browser diagnostics expose traffic calming counts', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

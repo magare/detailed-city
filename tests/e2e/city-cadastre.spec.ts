@@ -68,7 +68,7 @@ test('cadastre validation catches parcel mismatches and invalid legal data', () 
 });
 
 test('browser diagnostics expose cadastre counts in the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

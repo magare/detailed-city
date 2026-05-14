@@ -135,7 +135,7 @@ test('hazard validation catches missing references and prohibited object conflic
 });
 
 test('browser diagnostics expose hazard counts and overlay data', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

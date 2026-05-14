@@ -132,7 +132,7 @@ test('traffic validation rejects vehicles with invalid lane, route, speed, and h
 });
 
 test('browser traffic vehicles move along route offsets', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const sample = await page.evaluate(() => {

@@ -3,7 +3,8 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 120_000,
-  workers: 1,
+  workers: process.env.CI ? 2 : 4,
+  fullyParallel: true,
   expect: {
     timeout: 5_000
   },
@@ -23,6 +24,13 @@ export default defineConfig({
       use: {
         browserName: 'chromium',
         viewport: { width: 1440, height: 900 }
+      }
+    },
+    {
+      name: 'desktop-chromium-fast',
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 1366, height: 768 }
       }
     },
     {

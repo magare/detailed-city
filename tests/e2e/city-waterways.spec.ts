@@ -141,7 +141,7 @@ test('waterway validation catches disconnected edges and missing crossing, culve
 });
 
 test('browser diagnostics expose waterway network counts in the debug panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

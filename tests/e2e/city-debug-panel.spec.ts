@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('debug panel exposes current city diagnostics and can collapse', async ({ page }) => {
   test.setTimeout(120_000);
 
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const panel = page.locator('[data-city-debug-panel="true"]');
@@ -144,7 +144,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
 test('debug panel can be hidden for clean browser checks', async ({ page }) => {
   test.setTimeout(45_000);
 
-  await page.goto('/?debugPanel=hidden');
+  await page.goto('/?testMode=fast&debugPanel=hidden');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const panel = page.locator('[data-city-debug-panel="true"]');

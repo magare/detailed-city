@@ -148,7 +148,7 @@ test('community anchor validation catches broken civic, plaza, service, and rend
 });
 
 test('browser diagnostics expose community anchors and debug panel metric', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

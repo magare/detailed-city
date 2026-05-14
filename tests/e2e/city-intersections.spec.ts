@@ -114,7 +114,7 @@ test('validation rejects malformed intersection behavior policy', () => {
 });
 
 test('browser diagnostics expose intersection behavior counts', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

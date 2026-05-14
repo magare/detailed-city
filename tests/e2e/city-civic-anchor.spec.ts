@@ -152,7 +152,7 @@ test('civic anchor validation catches broken service references and schedules', 
 });
 
 test('browser diagnostics expose civic anchors and debug panel metric', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

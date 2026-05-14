@@ -133,7 +133,7 @@ test('climate weather validation catches invalid active, visibility, and wetness
 });
 
 test('browser diagnostics expose climate weather state for debug and overlays', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

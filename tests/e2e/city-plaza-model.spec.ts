@@ -85,7 +85,7 @@ test('plaza validation catches broken access, active-edge, event, feature, and b
 });
 
 test('browser diagnostics expose plaza zones and debug panel metric', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({

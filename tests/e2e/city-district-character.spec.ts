@@ -189,7 +189,7 @@ test('city diagnostics and browser state expose district character counts', asyn
     districtStylePalettes: 5
   });
 
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const browserDiagnostics = await page.evaluate(() => ({

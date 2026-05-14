@@ -112,7 +112,7 @@ test('building structure shell validation rejects invalid massing, core, grid, a
 });
 
 test('browser diagnostics expose building structure shell counts', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const diagnostics = await page.evaluate(() => ({
