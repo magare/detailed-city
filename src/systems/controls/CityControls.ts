@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { Point3D } from '../../city/data-contracts/cityContracts';
 import type { Updatable } from '../../types/city';
 
 export class CityControls implements Updatable {
@@ -16,6 +17,11 @@ export class CityControls implements Updatable {
   }
 
   update(): void {
+    this.controls.update();
+  }
+
+  setTarget(target: Point3D): void {
+    this.controls.target.set(target.x, target.y, target.z);
     this.controls.update();
   }
 

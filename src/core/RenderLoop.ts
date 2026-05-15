@@ -23,9 +23,21 @@ export class RenderLoop {
     this.frameId = requestAnimationFrame(this.tick);
   }
 
-  dispose(): void {
+  stop(): void {
+    if (!this.running) {
+      return;
+    }
+
     this.running = false;
     cancelAnimationFrame(this.frameId);
+  }
+
+  renderOnce(): void {
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  dispose(): void {
+    this.stop();
     this.timer.dispose();
   }
 

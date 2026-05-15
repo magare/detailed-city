@@ -15,6 +15,11 @@ import {
   PerformanceMonitor,
   type RuntimePerformanceDiagnostics
 } from '../systems/performance/PerformanceMonitor';
+import {
+  createVisualQaCameraPresets,
+  type VisualQaCameraPreset,
+  type VisualQaCameraPresetId
+} from '../systems/camera/VisualQaCameraPresets';
 import { Atmosphere } from '../systems/weather/Atmosphere';
 import { City } from '../world/city/City';
 import type { CityPickResult } from '../city/rendering-handoff/picking/pickingMetadata';
@@ -66,6 +71,7 @@ export class App {
   private readonly atmosphere: Atmosphere;
   private readonly debugPanel: DebugPanel;
   private readonly performanceMonitor = new PerformanceMonitor();
+  private readonly visualQaCameraPresets: readonly VisualQaCameraPreset[];
   private readonly activeAgentCount: number;
   private readonly loop: RenderLoop;
   private readonly runtimeRenderConfig: RenderConfig;
@@ -80,6 +86,7 @@ export class App {
 
     const generatedCity = new CityGenerator(cityConfig).generate();
     assertGeneratedCityValid(generatedCity.validation);
+    this.visualQaCameraPresets = createVisualQaCameraPresets(cityConfig, generatedCity);
 
     const trafficPlan = new TrafficLaneGenerator().create({
       roads: generatedCity.roads,
@@ -166,6 +173,28 @@ export class App {
     if (state) {
       setLayerOrderDataset(layerId, state.renderOrder);
     }
+  }
+
+  getVisualQaCameraPresets(): readonly VisualQaCameraPreset[] {
+    return this.visualQaCameraPresets;
+  }
+
+  applyVisualQaCameraPreset(presetId: VisualQaCameraPresetId): boolean {
+    const preset = this.visualQaCameraPresets.find((candidate) => candidate.id === presetId);
+
+    if (!preset) {
+      return false;
+    }
+
+    CameraRig.applyPreset(this.bootstrap.camera, preset);
+    this.controls.setTarget(preset.target);
+    return true;
+  }
+
+  renderVisualQaFrame(): void {
+    this.loop.stop();
+    this.controls.update();
+    this.loop.renderOnce();
   }
 
   start(): void {
