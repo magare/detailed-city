@@ -19,6 +19,7 @@ import type {
   StreetLight,
   UtilityEdge,
   UtilityNode,
+  WaterTransportAccess,
   WaterfrontOpenSpace
 } from '../../types/city';
 
@@ -29,6 +30,7 @@ export interface AssetInventoryGeneratorInput {
   readonly cultureAnchors: readonly CultureAnchor[];
   readonly governmentAnchors: readonly GovernmentAnchor[];
   readonly emergencyServiceAnchors: readonly EmergencyServiceAnchor[];
+  readonly waterTransportAccess: readonly WaterTransportAccess[];
   readonly utilityNodes: readonly UtilityNode[];
   readonly utilityEdges: readonly UtilityEdge[];
   readonly streetLights: readonly StreetLight[];
@@ -46,6 +48,7 @@ type InventoryTarget = Extract<
   | CultureAnchor
   | EmergencyServiceAnchor
   | GovernmentAnchor
+  | WaterTransportAccess
   | UtilityNode
   | UtilityEdge
   | StreetLight
@@ -80,6 +83,15 @@ export class AssetInventoryGenerator {
       ...input.cultureAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.governmentAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.emergencyServiceAnchors.map((object) => civicTarget(object, object.renderBindingId)),
+      ...input.waterTransportAccess.map((object) =>
+        publicRealmTarget(object, object.renderBindingId, [
+          ...object.routing.connectedRoadIds,
+          ...object.routing.transferObjectIds,
+          ...(object.waterwayId ? [object.waterwayId] : []),
+          ...(object.emergencyServiceAnchorId ? [object.emergencyServiceAnchorId] : []),
+          ...(object.freightRouteId ? [object.freightRouteId] : [])
+        ])
+      ),
       ...input.utilityNodes.map((object) => utilityTarget(object, UTILITY_NODE_BINDING_ID, [object.accessPoint.objectId])),
       ...input.utilityEdges.map((object) => utilityTarget(object, UTILITY_EDGE_BINDING_ID, object.accessPointIds)),
       ...input.streetLights.map((object) => publicRealmTarget(object, STREET_LIGHT_BINDING_ID, [object.sidewalkId, object.roadId])),
@@ -125,7 +137,7 @@ function utilityTarget<T extends UtilityNode | UtilityEdge>(
   };
 }
 
-function publicRealmTarget<T extends StreetLight | StreetFurniture | ParkFeature | PlazaZone | GreenStormwaterFeature | WaterfrontOpenSpace>(
+function publicRealmTarget<T extends StreetLight | StreetFurniture | ParkFeature | PlazaZone | GreenStormwaterFeature | WaterTransportAccess | WaterfrontOpenSpace>(
   object: T,
   renderBindingId: CityId,
   accessObjectIds: readonly CityId[]
@@ -223,6 +235,7 @@ function getExpectedServiceLifeYears(object: InventoryTarget): number {
       return 12;
     case 'green-stormwater-feature':
       return 16;
+    case 'water-transport-access':
     case 'waterfront-open-space':
       return 30;
     case 'park-feature':
@@ -253,6 +266,13 @@ function getReplacementCost(object: InventoryTarget): number {
       return Math.round((object.dimensions.widthMeters + object.dimensions.lengthMeters + object.dimensions.heightMeters) * 900);
     case 'green-stormwater-feature':
       return Math.round(object.storageVolumeCubicMeters * 4200 + object.size.x * object.size.z * 650);
+    case 'water-transport-access':
+      return Math.round(
+        object.capacity.berths * 95000 +
+          object.capacity.passengersPerHour * 120 +
+          object.capacity.cargoTonnesPerDay * 720 +
+          object.capacity.emergencySlotsPerHour * 18000
+      );
     case 'waterfront-open-space':
       return Math.round(object.lengthMeters * object.widthMeters * 420);
     case 'park-feature':
@@ -276,6 +296,9 @@ function getCriticality(object: InventoryTarget): AssetCriticality {
   }
   if (object.kind === 'street-light' && object.nightSafety.emergencyRouteSupport) {
     return 'high';
+  }
+  if (object.kind === 'water-transport-access') {
+    return object.constraints.emergencyPriority ? 'high' : object.capacity.cargoTonnesPerDay > 0 ? 'medium' : 'low';
   }
   if (object.kind === 'green-stormwater-feature' || object.kind === 'waterfront-open-space') {
     return 'medium';

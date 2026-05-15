@@ -56,6 +56,7 @@ const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|o
 const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|landslide-risk|restricted-area)`;
 const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
 const WATERFRONT_OPEN_SPACE_KIND = String.raw`(?:boardwalk|ecological-edge|overlook|pier-landing|promenade|water-access)`;
+const WATER_TRANSPORT_ACCESS_KIND = String.raw`(?:emergency-helipad|ferry-pier|ferry-stop|port-logistics-edge|service-dock|small-port)`;
 const WEATHER_PRESET_KIND = String.raw`(?:clear|cloudy|rain|fog|monsoon)`;
 const SOLAR_SHADING_SAMPLE_KIND = String.raw`(?:roof-solar|plaza-comfort|park-comfort|waterfront-comfort)`;
 const URBAN_HEAT_ZONE_KIND = String.raw`(?:heat-island|cool-roof|canopy-cooling|water-cooling|public-route-risk)`;
@@ -73,7 +74,7 @@ const NAMED_PLACE_KIND = String.raw`(?:civic-anchor|district|neighborhood|park|s
 const GAZETTEER_ENTRY_KIND = String.raw`(?:address|anchor|place|street)`;
 const ACCESS_CONTROL_KIND = String.raw`(?:bollard-line|checkpoint|fence|gate|guardrail|turnstile|wall)`;
 const GREEN_STORMWATER_KIND = String.raw`(?:bioswale|curb-cut|flow-through-planter|permeable-pavement|pervious-strip|rain-garden|tree-trench)`;
-const ASSET_INVENTORY_TARGET_KIND = String.raw`(?:civic-anchor|community-anchor|culture-anchor|emergency-service-anchor|government-anchor|green-stormwater-feature|park-feature|plaza-zone|street-furniture|street-light|utility-edge|utility-node|waterfront-open-space)`;
+const ASSET_INVENTORY_TARGET_KIND = String.raw`(?:civic-anchor|community-anchor|culture-anchor|emergency-service-anchor|government-anchor|green-stormwater-feature|park-feature|plaza-zone|street-furniture|street-light|utility-edge|utility-node|water-transport-access|waterfront-open-space)`;
 const MAINTENANCE_OPERATION_KIND = String.raw`(?:inspection|repair|replacement|street-work|temporary-closure)`;
 const PERMIT_INSPECTION_KIND = String.raw`(?:development-permit|temporary-closure-permit|code-check|approval|inspection|compliance-review)`;
 
@@ -108,6 +109,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
       'street-light',
       'utility-edge',
       'utility-node',
+      'water-transport-access',
       'waterfront-open-space'
     ])
   ),
@@ -372,6 +374,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ['transit-stop-<road-id>-<side>-<index>'],
     [exact(String.raw`transit-stop-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)],
     required(['sidewalk'])
+  ),
+  entry(
+    'water-transport-access',
+    ['water-transport-access-<access-kind>'],
+    [exact(String.raw`water-transport-access-${WATER_TRANSPORT_ACCESS_KIND}`)],
+    required(['emergency-service-anchor', 'freight-route', 'waterfront-edge', 'waterfront-open-space'])
   ),
   entry('tree-planting', ['<park-id>-tree-<index>', 'street-tree-<road-id>-<side>-<index>', 'citywide-tree-<road-id>-<side>-<index>'], [exact(String.raw`${NAMED_ID}-tree-\d+`), exact(String.raw`street-tree-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`), exact(String.raw`citywide-tree-${ROAD_ID}-${SIDEWALK_SIDE}-\d+`)], required(['park', 'sidewalk'])),
   entry('utility-edge', ['utility-edge-<slug>'], [exact(String.raw`utility-edge-${NAMED_ID}`)], optional(['utility-node'])),

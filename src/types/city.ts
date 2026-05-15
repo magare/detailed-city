@@ -84,6 +84,7 @@ import type {
   TransitStopContract,
   ValidationResult,
   WeatherPresetContract,
+  WaterTransportAccessContract,
   WaterfrontEdgeContract,
   WaterfrontOpenSpaceContract,
   WaterwayContract,
@@ -257,6 +258,8 @@ export interface GovernmentAnchor extends GovernmentAnchorContract {}
 
 export interface EmergencyServiceAnchor extends EmergencyServiceAnchorContract {}
 
+export interface WaterTransportAccess extends WaterTransportAccessContract {}
+
 export interface ActiveFrontage extends ActiveFrontageContract {
   frontageSide: BuildingFrontageSide;
 }
@@ -425,6 +428,7 @@ export type GeneratedCityObject =
   | CultureAnchor
   | GovernmentAnchor
   | EmergencyServiceAnchor
+  | WaterTransportAccess
   | ActiveFrontage
   | ParkPatch
   | ParkFeature
@@ -507,6 +511,7 @@ export interface GeneratedCity {
   cultureAnchors: CultureAnchor[];
   governmentAnchors: GovernmentAnchor[];
   emergencyServiceAnchors: EmergencyServiceAnchor[];
+  waterTransportAccess: WaterTransportAccess[];
   activeFrontages: ActiveFrontage[];
   parks: ParkPatch[];
   parkFeatures: ParkFeature[];

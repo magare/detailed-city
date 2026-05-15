@@ -62,6 +62,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:utility:inventory-edge:primitive', 'utility', 'Utility Inventory Edge Primitive', 'utility-edge', 12, 'lod2'),
   createProceduralAsset('asset:street-prop:waterfront-edge:primitive', 'street-prop', 'Waterfront Edge Primitive', 'waterfront-edge', 18, 'lod2'),
   createProceduralAsset('asset:street-prop:waterfront-open-space:primitive', 'street-prop', 'Waterfront Open Space Primitive', 'waterfront-open-space', 18, 'lod3'),
+  createProceduralAsset('asset:transit:water-transport-access:primitive', 'transit', 'Water Transport Access Primitive', 'transit', 12, 'lod3'),
   createProceduralAsset('asset:vehicle:traffic-car:primitive', 'vehicle', 'Traffic Car Primitive', 'vehicle', 4.8, 'lod2')
 ] as const satisfies readonly AssetDefinition[];
 
@@ -476,6 +477,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'waterfront',
     fallbackMaterial: 'waterfrontEdge',
     fallbackGeometry: 'waterfront-open-space-promenade'
+  },
+  {
+    id: 'binding:water-transport:access',
+    objectKind: 'water-transport-access',
+    semanticTag: 'water-transport-access',
+    assetId: 'asset:transit:water-transport-access:primitive',
+    materialZone: 'transit',
+    fallbackMaterial: 'transitStop',
+    fallbackGeometry: 'water-transport-access-marker'
   },
   {
     id: 'binding:transit:bus-stop',

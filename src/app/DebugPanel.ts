@@ -235,6 +235,10 @@ export class DebugPanel {
         `${diagnostics.waterfrontModel.total} edges, ${diagnostics.waterfrontModel.publicAccessEdges} public, ${diagnostics.waterfrontModel.piers} piers`
       ),
       createMetric(
+        'Water Transport',
+        `${diagnostics.waterTransportAccess.total} access, ${diagnostics.waterTransportAccess.ferryAccessPoints} ferry, ${diagnostics.waterTransportAccess.emergencyHelipads} helipad`
+      ),
+      createMetric(
         'Promenade',
         `${diagnostics.waterfrontOpenSpace.total} spaces, ${diagnostics.waterfrontOpenSpace.seatingCapacity} seats, ${diagnostics.waterfrontOpenSpace.waterAccessPoints} water access`
       ),

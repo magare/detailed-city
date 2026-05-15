@@ -29,6 +29,7 @@ export type CityOverlayId =
   | 'cycling-network'
   | 'navigation-graphs'
   | 'freight-logistics'
+  | 'water-transport-access'
   | 'asset-inventory'
   | 'maintenance-operations'
   | 'permits-inspections'
@@ -111,6 +112,7 @@ export function createCityOverlayDatasets(
     createDataset('cycling-network', 'Cycling Network', 'domain-data', createCyclingNetworkFeatures(city)),
     createDataset('navigation-graphs', 'Navigation Graphs', 'domain-data', createNavigationGraphFeatures(city)),
     createDataset('freight-logistics', 'Freight Logistics', 'domain-data', createFreightLogisticsFeatures(city)),
+    createDataset('water-transport-access', 'Water Transport Access', 'domain-data', createWaterTransportAccessFeatures(city)),
     createDataset('asset-inventory', 'Asset Inventory', 'domain-data', createAssetInventoryFeatures(city)),
     createDataset('maintenance-operations', 'Maintenance Operations', 'domain-data', createMaintenanceOperationFeatures(city)),
     createDataset('permits-inspections', 'Permits And Inspections', 'domain-data', createPermitInspectionFeatures(city)),
@@ -1116,6 +1118,37 @@ function createFreightLogisticsFeatures(city: GeneratedCity): CityOverlayFeature
   }));
 
   return [...routeFeatures, ...dockFeatures, ...alleyFeatures];
+}
+
+function createWaterTransportAccessFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.waterTransportAccess.map((access) => ({
+    id: `overlay:water-transport-access:${access.id}`,
+    overlayId: 'water-transport-access' as const,
+    objectId: access.id,
+    objectKind: access.kind,
+    ownerDomain: access.ownerDomain,
+    label: access.name ?? access.id,
+    geometry: { type: 'polygon' as const, points: access.boundary },
+    metadata: {
+      accessKind: access.accessKind,
+      arrivalMode: access.arrivalMode,
+      waterwayId: access.waterwayId ?? '',
+      waterfrontEdgeId: access.waterfrontEdgeId ?? '',
+      dockId: access.dockId ?? '',
+      emergencyServiceAnchorId: access.emergencyServiceAnchorId ?? '',
+      freightRouteId: access.freightRouteId ?? '',
+      berths: access.capacity.berths,
+      passengersPerHour: access.capacity.passengersPerHour,
+      cargoTonnesPerDay: access.capacity.cargoTonnesPerDay,
+      emergencySlotsPerHour: access.capacity.emergencySlotsPerHour,
+      navigationNodes: access.routing.navigationNodeIds.length,
+      navigationEdges: access.routing.navigationEdgeIds.length,
+      connectedRoads: access.routing.connectedRoadIds.length,
+      waterwayComponents: access.routing.connectedWaterwayComponentIds.length,
+      emergencyPriority: access.constraints.emergencyPriority,
+      nightOperations: access.constraints.nightOperations
+    }
+  }));
 }
 
 function createAssetInventoryFeatures(city: GeneratedCity): CityOverlayFeature[] {

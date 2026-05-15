@@ -37,6 +37,7 @@ import { CyclingNetworkGenerator } from './mobility/CyclingNetworkGenerator';
 import { FreightLogisticsGenerator } from './mobility/FreightLogisticsGenerator';
 import { NavigationGraphGenerator } from './mobility/NavigationGraphGenerator';
 import { TransitGenerator } from './mobility/TransitGenerator';
+import { WaterTransportAccessGenerator } from './mobility/WaterTransportAccessGenerator';
 import { AssetInventoryGenerator } from './operations/AssetInventoryGenerator';
 import { MaintenanceOperationGenerator } from './operations/MaintenanceOperationGenerator';
 import { PermitInspectionGenerator } from './operations/PermitInspectionGenerator';
@@ -364,6 +365,16 @@ export class CityGenerator {
       navigationGraphEdges: accessControl.navigationGraphEdges,
       curbZones
     });
+    const waterTransportAccess = new WaterTransportAccessGenerator().create({
+      waterways,
+      waterfrontEdges,
+      waterfrontOpenSpaces,
+      freightRoutes: freightLogistics.routes,
+      navigationGraphNodes: navigationGraphs.navigationGraphNodes,
+      navigationGraphEdges: accessControl.navigationGraphEdges,
+      emergencyServiceAnchors,
+      roads: stormwater.roads
+    });
     const governmentAnchors = new GovernmentAnchorGenerator().create({
       civicAnchors,
       buildings: entranceAddress.buildings,
@@ -411,6 +422,7 @@ export class CityGenerator {
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
       emergencyServiceAnchors,
+      waterTransportAccess,
       utilityNodes: serviceAccess.utilityNodes,
       utilityEdges: serviceAccess.utilityEdges,
       streetLights: powerGrid.streetLights,
@@ -502,6 +514,7 @@ export class CityGenerator {
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
       emergencyServiceAnchors,
+      waterTransportAccess,
       activeFrontages: entranceAddress.activeFrontages,
       parks: parksWithFeatures,
       parkFeatures,

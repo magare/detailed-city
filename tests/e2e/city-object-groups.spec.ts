@@ -87,7 +87,8 @@ test('city object groups provide deterministic query paths for domains, slices, 
       first.city.navigationRoutes.length +
       first.city.freightLoadingDocks.length +
       first.city.freightRoutes.length +
-      first.city.serviceAlleys.length
+      first.city.serviceAlleys.length +
+      first.city.waterTransportAccess.length
   );
   expect(getCityObjectsByRenderLayer(first.groupIndex, 'buildings')).toHaveLength(
     first.city.buildings.length +
@@ -121,7 +122,8 @@ test('city object groups provide deterministic query paths for domains, slices, 
       first.city.navigationRoutes.length +
       first.city.freightLoadingDocks.length +
       first.city.freightRoutes.length +
-      first.city.serviceAlleys.length
+      first.city.serviceAlleys.length +
+      first.city.waterTransportAccess.length
   });
 });
 

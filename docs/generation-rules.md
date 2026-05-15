@@ -19,9 +19,10 @@ Generation must produce contract-valid city data first. Rendering consumes that 
 13. Generate maintenance operations from inventory condition, service access, roads, and operation-capable navigation routes.
 14. Generate permit and inspection records from cadastre records plus maintenance operations that create temporary closures.
 15. Generate permitted curb activations from active curb zones and approved/compliant permit records.
-16. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
-17. Stamp generated objects with deterministic source metadata.
-18. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, operations records, slice tags, and budgets.
+16. Generate water transport access from waterfront, waterway, freight, emergency anchor, and navigation graph contracts.
+17. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
+18. Stamp generated objects with deterministic source metadata.
+19. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, operations records, slice tags, and budgets.
 19. Hand validated objects to mesh builders and scene-layer adapters.
 
 ## City Intent

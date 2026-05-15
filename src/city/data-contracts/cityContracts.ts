@@ -76,6 +76,7 @@ export type CityObjectKind =
   | 'utility-edge'
   | 'utility-node'
   | 'vertical-slice'
+  | 'water-transport-access'
   | 'waterfront-edge'
   | 'waterfront-open-space'
   | 'waterway'
@@ -1040,6 +1041,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       description: 'Transit stops are sidewalk-attached passenger access points with shelter, accessibility, transfer, and route metadata.'
     },
     {
+      objectKind: 'water-transport-access',
+      scope: 'network',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3', 'lod4'],
+      description: 'Water transport access objects expose ferry stops, piers, service docks, small port edges, and emergency helipads linked to waterfront and navigation data.'
+    },
+    {
       objectKind: 'tree-planting',
       scope: 'public-realm-prop',
       defaultTier: 'lod2',
@@ -1440,6 +1448,54 @@ export interface WaterfrontOpenSpaceContract extends CityObjectBase<'waterfront-
     readonly eventCapacityPeople: number;
   };
   readonly assetBindingId: CityId;
+}
+
+export type WaterTransportAccessKind =
+  | 'emergency-helipad'
+  | 'ferry-pier'
+  | 'ferry-stop'
+  | 'port-logistics-edge'
+  | 'service-dock'
+  | 'small-port';
+export type WaterTransportArrivalMode = 'ferry' | 'freight-barge' | 'helicopter' | 'service-vessel' | 'water-taxi';
+
+export interface WaterTransportAccessContract extends CityObjectBase<'water-transport-access'> {
+  readonly accessKind: WaterTransportAccessKind;
+  readonly arrivalMode: WaterTransportArrivalMode;
+  readonly waterwayId?: CityId;
+  readonly waterfrontEdgeId?: CityId;
+  readonly waterfrontOpenSpaceId?: CityId;
+  readonly dockId?: CityId;
+  readonly emergencyServiceAnchorId?: CityId;
+  readonly freightRouteId?: CityId;
+  readonly roadId?: CityId;
+  readonly center: Point2D;
+  readonly boundary: Polygon2D;
+  readonly capacity: {
+    readonly berths: number;
+    readonly passengersPerHour: number;
+    readonly cargoTonnesPerDay: number;
+    readonly emergencySlotsPerHour: number;
+  };
+  readonly constraints: {
+    readonly maxVesselLengthMeters?: number;
+    readonly minChannelWidthMeters?: number;
+    readonly requiredClearanceMeters?: number;
+    readonly maxApproachGradePercent: number;
+    readonly weatherLimited: boolean;
+    readonly hazmatAllowed: boolean;
+    readonly nightOperations: boolean;
+    readonly emergencyPriority: boolean;
+  };
+  readonly routing: {
+    readonly navigationNodeIds: readonly CityId[];
+    readonly navigationEdgeIds: readonly CityId[];
+    readonly connectedRoadIds: readonly CityId[];
+    readonly connectedWaterwayComponentIds: readonly CityId[];
+    readonly transferObjectIds: readonly CityId[];
+  };
+  readonly scheduleProfileId: CityId;
+  readonly renderBindingId: CityId;
 }
 
 export const CITY_CONSTRAINT_KINDS = [

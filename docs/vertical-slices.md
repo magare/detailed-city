@@ -44,13 +44,14 @@ Success criteria:
 
 Scope:
 
-- Plaza or promenade, park, civic/hospitality building, transit stop, water edge, public art, lighting, crowd/event state.
+- Plaza or promenade, park, civic/hospitality building, transit stop, ferry/port/helipad access, water edge, public art, lighting, crowd/event state.
 
 Success criteria:
 
 | Test | Expected result |
 | --- | --- |
 | Public realm is usable | Paths, seating, shade, crossings, and plaza edges connect. |
+| Water arrival works | Ferry, port, and emergency helipad access points resolve to waterway, waterfront, road, and navigation graph references. |
 | Events modify scene | Temporary stalls, barriers, closures, and crowds appear from operations data. |
 | Environment affects scene | Sun, shadow, rain/fog, and heat overlays alter comfort/rendering. |
 | Debug panel works | Active simulation, validation, object metadata, and asset bindings are visible. |

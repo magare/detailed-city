@@ -50,6 +50,7 @@ src/city/
     crossings/          Crosswalks, refuge islands, midblock crossings, raised crossings.
     cycling/            Cycle tracks, protected lanes, bike parking, conflict points.
     transit/            Stops, stations, routes, headways, priority lanes.
+    water-transport/    Ferry stops, piers, docks, small ports, port logistics edges, helipads, and arrival constraints.
     parking-curbs/      Parking, loading, curb pricing, curb restrictions, ride-hail zones.
     freight-logistics/  Delivery routes, loading docks, service alleys, time windows.
     navigation-graphs/  Routing graphs for vehicles, pedestrians, bikes, services, emergency units.

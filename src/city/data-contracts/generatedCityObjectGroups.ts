@@ -40,7 +40,8 @@ const RENDER_LAYER_KIND_GROUPS = [
       'navigation-route',
       'freight-loading-dock',
       'freight-route',
-      'service-alley'
+      'service-alley',
+      'water-transport-access'
     ] as const
   },
   {

@@ -63,14 +63,14 @@ Clicking or hovering a city object should eventually show:
 
 ## Overlays
 
-The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results. Current executable datasets include administrative boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil/geology, city metrics, building access, building fire safety, emergency service anchors, addressing/gazetteer, access controls, public lighting, signage/wayfinding, green stormwater, asset inventory, maintenance operations, permits/inspections, curb activations, public amenities, constraints, resilience goals, service access, thermal service and outage maps, parcels, roads, validation issues, and owner domains.
+The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results. Current executable datasets include administrative boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil/geology, city metrics, building access, building fire safety, emergency service anchors, addressing/gazetteer, access controls, public lighting, signage/wayfinding, green stormwater, freight logistics, water transport access, asset inventory, maintenance operations, permits/inspections, curb activations, public amenities, constraints, resilience goals, service access, thermal service and outage maps, parcels, roads, validation issues, and owner domains.
 
 Validation issue overlay features now carry focus targets. When a validation issue provides an affected point, affected boundary, or suggested fix, the overlay feature uses that precise geometry and remediation text; otherwise it falls back to the referenced city object geometry.
 
 | Overlay | Contents |
 | --- | --- |
 | Land | Boundaries, blocks, parcels, zoning, hazards, topography, soil/geology, water. |
-| Mobility | Road hierarchy, lanes, sidewalks, crossings, route graphs. |
+| Mobility | Road hierarchy, lanes, sidewalks, crossings, route graphs, freight logistics, and water transport access. |
 | Utilities | Power, water, wastewater, stormwater, telecom, gas, district energy, and service access. |
 | Green stormwater | Feature counts, routed runoff features, tree-linked trenches, maintenance owners, storage/treatment capacity, and overlay features. |
 | Public realm | Trees, lighting, furniture, signs, parks, plazas, curb activations, public amenities, comfort metrics, and utility/service access references. |

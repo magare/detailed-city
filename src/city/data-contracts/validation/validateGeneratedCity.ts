@@ -39,6 +39,8 @@ import type {
   TravelMode,
   UrbanHeatRiskLevel,
   UrbanHeatZoneKind,
+  WaterTransportAccessKind,
+  WaterTransportArrivalMode,
   ValidationIssue,
   ValidationResult,
   WeatherPrecipitationKind,
@@ -91,6 +93,7 @@ type GeneratedCityForValidation = Pick<
   | 'cultureAnchors'
   | 'governmentAnchors'
   | 'emergencyServiceAnchors'
+  | 'waterTransportAccess'
   | 'cityMetrics'
   | 'developmentPhases'
   | 'weatherPresets'
@@ -157,6 +160,7 @@ type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
 type ValidationGovernmentAnchor = GeneratedCityForValidation['governmentAnchors'][number];
 type ValidationEmergencyServiceAnchor = GeneratedCityForValidation['emergencyServiceAnchors'][number];
+type ValidationWaterTransportAccess = GeneratedCityForValidation['waterTransportAccess'][number];
 type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
@@ -199,6 +203,7 @@ const ASSET_INVENTORY_TARGET_KINDS = [
   'street-light',
   'utility-edge',
   'utility-node',
+  'water-transport-access',
   'waterfront-open-space'
 ] as const satisfies readonly CityObjectKind[];
 
@@ -254,6 +259,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:civic:government-anchor',
   'binding:waterfront:edge',
   'binding:waterfront:open-space',
+  'binding:water-transport:access',
   'binding:vehicle:traffic-car'
 ] as const;
 
@@ -276,6 +282,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'lane-marking',
   'traffic-calming-device',
   'transit-stop',
+  'water-transport-access',
   'waterfront-edge',
   'waterfront-open-space',
   'traffic-vehicle'
@@ -296,6 +303,21 @@ const WATERFRONT_OPEN_SPACE_SURFACES = [
   'stone-quay',
   'timber-boardwalk'
 ] as const;
+const WATER_TRANSPORT_ACCESS_KINDS = [
+  'emergency-helipad',
+  'ferry-pier',
+  'ferry-stop',
+  'port-logistics-edge',
+  'service-dock',
+  'small-port'
+] as const satisfies readonly WaterTransportAccessKind[];
+const WATER_TRANSPORT_ARRIVAL_MODES = [
+  'ferry',
+  'freight-barge',
+  'helicopter',
+  'service-vessel',
+  'water-taxi'
+] as const satisfies readonly WaterTransportArrivalMode[];
 const CIVIC_ANCHOR_SERVICE_TYPES = [
   'community',
   'culture',
@@ -3036,6 +3058,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateCultureAnchors(city, issues, assetBindingsById);
   validateGovernmentAnchors(city, issues, assetBindingsById);
   validateEmergencyServiceAnchors(city, issues, assetBindingsById);
+  validateWaterTransportAccess(city, issues, assetBindingsById);
 
   for (const tree of city.trees) {
     if (tree.plantingContext === 'park' && (!tree.parkId || !hasObjectId(city, tree.parkId) || tree.parentId !== tree.parkId)) {
@@ -10638,6 +10661,180 @@ function createEmergencyServiceAnchorIssue(
     category: 'zoning',
     objectId: anchor.id,
     ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from emergency civic, fire-safety, and navigation graph data.`),
+    message
+  };
+}
+
+function validateWaterTransportAccess(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const accessByKind = new Map<WaterTransportAccessKind, ValidationWaterTransportAccess[]>();
+  const waterwaysById = new Map(city.waterways.map((waterway) => [waterway.id, waterway]));
+  const waterfrontEdgesById = new Map(city.waterfrontEdges.map((edge) => [edge.id, edge]));
+  const waterfrontOpenSpacesById = new Map(city.waterfrontOpenSpaces.map((openSpace) => [openSpace.id, openSpace]));
+  const emergencyAnchorsById = new Map(city.emergencyServiceAnchors.map((anchor) => [anchor.id, anchor]));
+  const freightRoutesById = new Map(city.freightRoutes.map((route) => [route.id, route]));
+  const navigationNodesById = new Map(city.navigationGraphNodes.map((node) => [node.id, node]));
+  const navigationEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
+  const roadIds = new Set(city.roads.map((road) => road.id));
+
+  for (const access of city.waterTransportAccess) {
+    const binding = assetBindingsById.get(access.renderBindingId);
+    const waterway = access.waterwayId ? waterwaysById.get(access.waterwayId) : undefined;
+    const waterfrontEdge = access.waterfrontEdgeId ? waterfrontEdgesById.get(access.waterfrontEdgeId) : undefined;
+    const waterfrontOpenSpace = access.waterfrontOpenSpaceId
+      ? waterfrontOpenSpacesById.get(access.waterfrontOpenSpaceId)
+      : undefined;
+    const emergencyAnchor = access.emergencyServiceAnchorId
+      ? emergencyAnchorsById.get(access.emergencyServiceAnchorId)
+      : undefined;
+    const freightRoute = access.freightRouteId ? freightRoutesById.get(access.freightRouteId) : undefined;
+
+    if (WATER_TRANSPORT_ACCESS_KINDS.includes(access.accessKind)) {
+      accessByKind.set(access.accessKind, [...(accessByKind.get(access.accessKind) ?? []), access]);
+    } else {
+      issues.push(createWaterTransportAccessIssue(access, 'invalid-kind', `Water transport access ${access.id} must declare a supported access kind.`));
+    }
+
+    if (!WATER_TRANSPORT_ARRIVAL_MODES.includes(access.arrivalMode)) {
+      issues.push(createWaterTransportAccessIssue(access, 'invalid-arrival-mode', `Water transport access ${access.id} must declare a supported arrival mode.`));
+    }
+
+    if (access.boundary.length < 4 || !isFiniteNumber(access.center.x) || !isFiniteNumber(access.center.z)) {
+      issues.push(createWaterTransportAccessIssue(access, 'invalid-geometry', `Water transport access ${access.id} must expose finite center and boundary geometry.`));
+    }
+
+    if (
+      access.capacity.berths <= 0 ||
+      access.capacity.passengersPerHour < 0 ||
+      access.capacity.cargoTonnesPerDay < 0 ||
+      access.capacity.emergencySlotsPerHour < 0
+    ) {
+      issues.push(createWaterTransportAccessIssue(access, 'invalid-capacity', `Water transport access ${access.id} must expose non-negative passenger, cargo, and emergency capacity plus positive berths.`));
+    }
+
+    if (access.constraints.maxApproachGradePercent <= 0 || access.constraints.requiredClearanceMeters === undefined || access.constraints.requiredClearanceMeters <= 0) {
+      issues.push(createWaterTransportAccessIssue(access, 'invalid-arrival-constraints', `Water transport access ${access.id} must expose positive approach grade and clearance constraints.`));
+    }
+
+    if (access.accessKind === 'emergency-helipad') {
+      if (!emergencyAnchor || access.parentId !== emergencyAnchor.id || access.arrivalMode !== 'helicopter') {
+        issues.push(createWaterTransportAccessIssue(access, 'invalid-helipad-anchor', `Emergency helipad ${access.id} must be parented to an emergency service anchor and use helicopter arrival.`));
+      }
+      if (!access.constraints.emergencyPriority || (access.constraints.requiredClearanceMeters ?? 0) < 18) {
+        issues.push(createWaterTransportAccessIssue(access, 'invalid-helipad-constraints', `Emergency helipad ${access.id} must expose emergency priority and at least 18m clearance.`));
+      }
+    } else {
+      if (!waterway || !access.waterwayId) {
+        issues.push(createWaterTransportAccessIssue(access, 'missing-waterway', `Water transport access ${access.id} must reference a generated waterway.`));
+      }
+      if ((access.constraints.maxVesselLengthMeters ?? 0) <= 0 || (access.constraints.minChannelWidthMeters ?? 0) <= 0) {
+        issues.push(createWaterTransportAccessIssue(access, 'invalid-vessel-constraints', `Water transport access ${access.id} must expose max vessel length and minimum channel width.`));
+      }
+      if (!access.dockId || !waterway?.docks.some((dock) => dock.id === access.dockId)) {
+        issues.push(createWaterTransportAccessIssue(access, 'missing-dock', `Water transport access ${access.id} must reference an existing waterway dock.`));
+      }
+    }
+
+    if (access.waterfrontEdgeId && !waterfrontEdge) {
+      issues.push(createWaterTransportAccessIssue(access, 'missing-waterfront-edge', `Water transport access ${access.id} references missing waterfront edge ${access.waterfrontEdgeId}.`));
+    }
+
+    if (access.waterfrontOpenSpaceId && !waterfrontOpenSpace) {
+      issues.push(createWaterTransportAccessIssue(access, 'missing-waterfront-open-space', `Water transport access ${access.id} references missing waterfront open space ${access.waterfrontOpenSpaceId}.`));
+    }
+
+    if ((access.accessKind === 'small-port' || access.accessKind === 'port-logistics-edge') && !freightRoute) {
+      issues.push(createWaterTransportAccessIssue(access, 'missing-freight-route', `Port access ${access.id} must reference a freight route.`));
+    }
+
+    if (access.roadId && !roadIds.has(access.roadId)) {
+      issues.push(createWaterTransportAccessIssue(access, 'missing-road', `Water transport access ${access.id} references missing road ${access.roadId}.`));
+    }
+
+    if (access.routing.navigationNodeIds.length === 0 || access.routing.navigationEdgeIds.length === 0) {
+      issues.push(createWaterTransportAccessIssue(access, 'missing-navigation-routing', `Water transport access ${access.id} must expose navigation nodes and edges for routing.`));
+    }
+
+    for (const nodeId of access.routing.navigationNodeIds) {
+      const node = navigationNodesById.get(nodeId);
+      if (!node) {
+        issues.push(createWaterTransportAccessIssue(access, `missing-navigation-node-${toIssueIdToken(nodeId)}`, `Water transport access ${access.id} references missing navigation node ${nodeId}.`));
+      } else if (access.accessKind === 'emergency-helipad' && node.mode !== 'emergency') {
+        issues.push(createWaterTransportAccessIssue(access, `non-emergency-helipad-node-${toIssueIdToken(nodeId)}`, `Emergency helipad ${access.id} may only route through emergency navigation nodes.`));
+      }
+    }
+
+    for (const edgeId of access.routing.navigationEdgeIds) {
+      const edge = navigationEdgesById.get(edgeId);
+      if (!edge) {
+        issues.push(createWaterTransportAccessIssue(access, `missing-navigation-edge-${toIssueIdToken(edgeId)}`, `Water transport access ${access.id} references missing navigation edge ${edgeId}.`));
+      } else if (access.accessKind === 'emergency-helipad' && edge.mode !== 'emergency') {
+        issues.push(createWaterTransportAccessIssue(access, `non-emergency-helipad-edge-${toIssueIdToken(edgeId)}`, `Emergency helipad ${access.id} may only route through emergency navigation edges.`));
+      }
+    }
+
+    for (const roadId of access.routing.connectedRoadIds) {
+      if (!roadIds.has(roadId)) {
+        issues.push(createWaterTransportAccessIssue(access, `missing-connected-road-${toIssueIdToken(roadId)}`, `Water transport access ${access.id} references missing connected road ${roadId}.`));
+      }
+    }
+
+    if (waterway) {
+      for (const componentId of access.routing.connectedWaterwayComponentIds) {
+        if (!hasWaterwayComponent(waterway, componentId)) {
+          issues.push(createWaterTransportAccessIssue(access, `missing-waterway-component-${toIssueIdToken(componentId)}`, `Water transport access ${access.id} references missing waterway component ${componentId}.`));
+        }
+      }
+    }
+
+    for (const transferObjectId of access.routing.transferObjectIds) {
+      if (!hasObjectId(city, transferObjectId)) {
+        issues.push(createWaterTransportAccessIssue(access, `missing-transfer-object-${toIssueIdToken(transferObjectId)}`, `Water transport access ${access.id} references missing transfer object ${transferObjectId}.`));
+      }
+    }
+
+    if (!binding || binding.objectKind !== 'water-transport-access') {
+      issues.push(createWaterTransportAccessIssue(access, 'missing-render-binding', `Water transport access ${access.id} must reference a water-transport-access render binding.`));
+    }
+  }
+
+  if (city.waterways.length > 0 && city.emergencyServiceAnchors.length > 0 && city.waterTransportAccess.length === 0) {
+    issues.push({
+      id: 'missing-water-transport-access',
+      severity: 'error',
+      category: 'graph',
+      ...createIssueFocus(city.waterways[0].center, 'Generate ferry, port, service dock, and emergency helipad access from waterways and emergency anchors.'),
+      message: 'Waterfront and emergency access must expose water transport access objects.'
+    });
+  }
+
+  for (const accessKind of WATER_TRANSPORT_ACCESS_KINDS) {
+    if (!accessByKind.has(accessKind)) {
+      issues.push({
+        id: `missing-water-transport-access-${accessKind}`,
+        severity: 'error',
+        category: 'graph',
+        ...createIssueFocus(city.waterways[0]?.center, `Create ${accessKind} water transport access.`),
+        message: `Water transport access must include ${accessKind}.`
+      });
+    }
+  }
+}
+
+function createWaterTransportAccessIssue(
+  access: ValidationWaterTransportAccess,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `water-transport-access-${issueIdSuffix}-${toIssueIdToken(access.id)}`,
+    severity: 'error',
+    category: 'graph',
+    objectId: access.id,
+    ...createIssueFocus(access.center, `Regenerate ${access.id} from waterway, waterfront, freight, emergency, and navigation data.`),
     message
   };
 }

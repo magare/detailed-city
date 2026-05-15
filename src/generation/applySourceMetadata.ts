@@ -112,6 +112,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     emergencyServiceAnchors: city.emergencyServiceAnchors.map((anchor) =>
       withProceduralMetadata(anchor, 'civic-emergency-service-anchors')
     ),
+    waterTransportAccess: city.waterTransportAccess.map((access) =>
+      withProceduralMetadata(access, 'mobility-water-transport-access')
+    ),
     activeFrontages: city.activeFrontages.map((frontage) =>
       withProceduralMetadata(frontage, 'building-active-frontages')
     ),

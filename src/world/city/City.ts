@@ -19,6 +19,7 @@ import { TrafficMeshBuilder, type TrafficVehicle } from '../../city/rendering-ha
 import { TransitMeshBuilder } from '../../city/rendering-handoff/mesh-builders/TransitMeshBuilder';
 import { TreePlantingMeshBuilder } from '../../city/rendering-handoff/mesh-builders/TreePlantingMeshBuilder';
 import { WaterwayMeshBuilder } from '../../city/rendering-handoff/mesh-builders/WaterwayMeshBuilder';
+import { WaterTransportAccessMeshBuilder } from '../../city/rendering-handoff/mesh-builders/WaterTransportAccessMeshBuilder';
 import { WaterfrontEdgeMeshBuilder } from '../../city/rendering-handoff/mesh-builders/WaterfrontEdgeMeshBuilder';
 import { WaterfrontOpenSpaceMeshBuilder } from '../../city/rendering-handoff/mesh-builders/WaterfrontOpenSpaceMeshBuilder';
 import {
@@ -40,6 +41,7 @@ import type {
   StreetFurniture,
   StreetLight,
   TrafficCalmingDevice,
+  WaterTransportAccess,
   TrafficPlan,
   Updatable
 } from '../../types/city';
@@ -116,6 +118,7 @@ export class City implements Updatable {
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
     this.addPublicAmenities(generated.publicAmenities);
+    this.addWaterTransportAccess(generated.waterTransportAccess);
     this.addTrafficCalmingDevices(generated.trafficCalmingDevices);
     this.addAccessControls(generated);
     this.addTransit(generated);
@@ -267,6 +270,15 @@ export class City implements Updatable {
     ).build(publicAmenities);
 
     this.layerGroups['public-realm'].add(publicAmenityGroup);
+  }
+
+  private addWaterTransportAccess(waterTransportAccess: readonly WaterTransportAccess[]): void {
+    const group = new WaterTransportAccessMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(waterTransportAccess);
+
+    this.layerGroups.networks.add(group);
   }
 
   private addTransit(generated: GeneratedCity): void {

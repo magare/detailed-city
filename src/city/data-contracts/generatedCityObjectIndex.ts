@@ -76,6 +76,7 @@ type GeneratedCityObjectSource = Pick<
   | 'verticalSlices'
   | 'waterfrontEdges'
   | 'waterfrontOpenSpaces'
+  | 'waterTransportAccess'
   | 'waterways'
   | 'weatherPresets'
   | 'zoningDistricts'
@@ -152,6 +153,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.waterways,
     ...city.waterfrontEdges,
     ...city.waterfrontOpenSpaces,
+    ...city.waterTransportAccess,
     ...city.trees,
     ...city.assetCatalog
   ];

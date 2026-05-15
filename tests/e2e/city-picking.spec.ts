@@ -29,6 +29,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const streetFurniture = city.streetFurniture[0];
   const publicAmenity = city.publicAmenities[0];
   const trafficCalmingDevice = city.trafficCalmingDevices[0];
+  const waterTransportAccess = city.waterTransportAccess[0];
   const zebraCrossing = traffic.markings.find((marking) => marking.markingType === 'zebra-crossing-stripe');
 
   expect(catalog.pickableObjectIds).toHaveLength(
@@ -59,6 +60,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.transitStops.length +
       city.transitRoutes.length +
       city.trafficCalmingDevices.length +
+      city.waterTransportAccess.length +
       traffic.markings.length +
       traffic.vehicles.length
   );
@@ -84,6 +86,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind['plaza-zone']).toBe(city.plazaZones.length);
   expect(catalog.countsByKind['curb-activation']).toBe(city.curbActivations.length);
   expect(catalog.countsByKind['traffic-calming-device']).toBe(city.trafficCalmingDevices.length);
+  expect(catalog.countsByKind['water-transport-access']).toBe(city.waterTransportAccess.length);
   expect(catalog.countsByKind['waterfront-edge']).toBe(city.waterfrontEdges.length);
   expect(catalog.countsByKind['waterfront-open-space']).toBe(city.waterfrontOpenSpaces.length);
   expect(catalog.countsByKind['lane-marking']).toBe(traffic.markings.length);
@@ -247,6 +250,19 @@ test('picking catalog exposes deterministic object metadata and inherited refere
     references: {
       waterfrontEdgeId: city.waterfrontOpenSpaces[0].waterfrontEdgeId,
       waterwayId: city.waterfrontOpenSpaces[0].waterwayId
+    }
+  });
+  expect(catalog.metadataByObjectId[waterTransportAccess.id]).toMatchObject({
+    objectId: waterTransportAccess.id,
+    kind: 'water-transport-access',
+    ownerDomain: 'mobility',
+    parentId: waterTransportAccess.parentId,
+    lod: waterTransportAccess.lod,
+    references: {
+      waterwayId: waterTransportAccess.waterwayId,
+      waterfrontEdgeId: waterTransportAccess.waterfrontEdgeId,
+      roadId: waterTransportAccess.roadId,
+      navigationNodeId: waterTransportAccess.routing.navigationNodeIds[0]
     }
   });
   expect(catalog.metadataByObjectId[city.civicAnchors[0].id]).toMatchObject({

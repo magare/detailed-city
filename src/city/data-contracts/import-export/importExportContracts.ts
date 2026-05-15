@@ -290,6 +290,7 @@ export interface ProceduralSeedDomainSections {
   readonly cultureAnchors: GeneratedCity['cultureAnchors'];
   readonly governmentAnchors: GeneratedCity['governmentAnchors'];
   readonly emergencyServiceAnchors: GeneratedCity['emergencyServiceAnchors'];
+  readonly waterTransportAccess: GeneratedCity['waterTransportAccess'];
   readonly activeFrontages: GeneratedCity['activeFrontages'];
   readonly parks: GeneratedCity['parks'];
   readonly parkFeatures: GeneratedCity['parkFeatures'];
@@ -364,6 +365,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly cultureAnchors: number;
   readonly governmentAnchors: number;
   readonly emergencyServiceAnchors: number;
+  readonly waterTransportAccess: number;
   readonly activeFrontages: number;
   readonly parks: number;
   readonly parkFeatures: number;
@@ -510,6 +512,7 @@ export function createProceduralSeedJsonExport(
       cultureAnchors: city.cultureAnchors,
       governmentAnchors: city.governmentAnchors,
       emergencyServiceAnchors: city.emergencyServiceAnchors,
+      waterTransportAccess: city.waterTransportAccess,
       activeFrontages: city.activeFrontages,
       parks: city.parks,
       parkFeatures: city.parkFeatures,
@@ -665,6 +668,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'cultureAnchors'
     | 'governmentAnchors'
     | 'emergencyServiceAnchors'
+    | 'waterTransportAccess'
     | 'cityMetrics'
     | 'developmentPhases'
     | 'weatherPresets'
@@ -788,6 +792,7 @@ export function createProceduralSeedDomainSectionCounts(
     cultureAnchors: city.cultureAnchors.length,
     governmentAnchors: city.governmentAnchors.length,
     emergencyServiceAnchors: city.emergencyServiceAnchors.length,
+    waterTransportAccess: city.waterTransportAccess.length,
     activeFrontages: city.activeFrontages.length,
     parks: city.parks.length,
     parkFeatures: city.parkFeatures.length,
@@ -871,6 +876,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'cultureAnchors') +
     getArrayLength(city, 'governmentAnchors') +
     getArrayLength(city, 'emergencyServiceAnchors') +
+    getArrayLength(city, 'waterTransportAccess') +
     getArrayLength(city, 'activeFrontages') +
     getArrayLength(city, 'parks') +
     getArrayLength(city, 'parkFeatures') +

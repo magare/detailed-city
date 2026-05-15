@@ -40,7 +40,9 @@ import type {
   SourceType,
   StreetLightFixtureType,
   WeatherPresetKind,
-  WeatherSeason
+  WeatherSeason,
+  WaterTransportAccessKind,
+  WaterTransportArrivalMode
 } from '../city/data-contracts/cityContracts';
 import { createGeneratedRuntimeObjectIndex } from '../city/data-contracts/generatedCityObjectIndex';
 import { createGeneratedCityObjectGroupIndex } from '../city/data-contracts/generatedCityObjectGroups';
@@ -117,6 +119,7 @@ export interface CityDiagnostics {
   readonly cultureAnchors: CultureAnchorDiagnostics;
   readonly governmentAnchors: GovernmentAnchorDiagnostics;
   readonly emergencyServiceAnchors: EmergencyServiceAnchorDiagnostics;
+  readonly waterTransportAccess: WaterTransportAccessDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
@@ -337,6 +340,15 @@ export interface CityDiagnostics {
     readonly waterwayCulverts: number;
     readonly waterwayDocks: number;
     readonly waterwayOutfalls: number;
+    readonly waterTransportAccess: number;
+    readonly ferryAccessPoints: number;
+    readonly portLogisticsAccessPoints: number;
+    readonly emergencyHelipads: number;
+    readonly waterTransportBerths: number;
+    readonly waterTransportPassengersPerHour: number;
+    readonly waterTransportCargoTonnesPerDay: number;
+    readonly waterTransportEmergencySlotsPerHour: number;
+    readonly waterTransportNavigationNodes: number;
     readonly waterfrontEdges: number;
     readonly waterfrontPublicAccessEdges: number;
     readonly waterfrontFloodProtectionEdges: number;
@@ -1157,6 +1169,27 @@ export interface WaterwayNetworkDiagnostics {
   readonly navigableChannels: number;
 }
 
+export interface WaterTransportAccessDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Partial<Record<WaterTransportAccessKind, number>>>;
+  readonly byArrivalMode: Readonly<Partial<Record<WaterTransportArrivalMode, number>>>;
+  readonly accessKinds: number;
+  readonly arrivalModes: number;
+  readonly ferryAccessPoints: number;
+  readonly portLogisticsAccessPoints: number;
+  readonly emergencyHelipads: number;
+  readonly berths: number;
+  readonly passengersPerHour: number;
+  readonly cargoTonnesPerDay: number;
+  readonly emergencySlotsPerHour: number;
+  readonly navigationNodes: number;
+  readonly navigationEdges: number;
+  readonly connectedRoads: number;
+  readonly waterwayComponents: number;
+  readonly emergencyPriorityAccess: number;
+  readonly nightOperationsAccess: number;
+}
+
 export interface WaterfrontModelDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Record<string, number>>;
@@ -1416,6 +1449,7 @@ export function createCityDiagnostics(
   const cultureAnchors = createCultureAnchorDiagnostics(city);
   const governmentAnchors = createGovernmentAnchorDiagnostics(city);
   const emergencyServiceAnchors = createEmergencyServiceAnchorDiagnostics(city);
+  const waterTransportAccess = createWaterTransportAccessDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
@@ -1492,6 +1526,7 @@ export function createCityDiagnostics(
     cultureAnchors,
     governmentAnchors,
     emergencyServiceAnchors,
+    waterTransportAccess,
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
@@ -1703,6 +1738,15 @@ export function createCityDiagnostics(
       waterwayCulverts: waterwayNetwork.culverts,
       waterwayDocks: waterwayNetwork.docks,
       waterwayOutfalls: waterwayNetwork.outfalls,
+      waterTransportAccess: waterTransportAccess.total,
+      ferryAccessPoints: waterTransportAccess.ferryAccessPoints,
+      portLogisticsAccessPoints: waterTransportAccess.portLogisticsAccessPoints,
+      emergencyHelipads: waterTransportAccess.emergencyHelipads,
+      waterTransportBerths: waterTransportAccess.berths,
+      waterTransportPassengersPerHour: waterTransportAccess.passengersPerHour,
+      waterTransportCargoTonnesPerDay: waterTransportAccess.cargoTonnesPerDay,
+      waterTransportEmergencySlotsPerHour: waterTransportAccess.emergencySlotsPerHour,
+      waterTransportNavigationNodes: waterTransportAccess.navigationNodes,
       waterfrontEdges: waterfrontModel.total,
       waterfrontPublicAccessEdges: waterfrontModel.publicAccessEdges,
       waterfrontFloodProtectionEdges: waterfrontModel.floodProtectionEdges,
@@ -3685,6 +3729,71 @@ function createWaterwayNetworkDiagnostics(city: GeneratedCity): WaterwayNetworkD
       (sum, waterway) => sum + waterway.channels.filter((channel) => channel.navigable).length,
       0
     )
+  };
+}
+
+function createWaterTransportAccessDiagnostics(city: GeneratedCity): WaterTransportAccessDiagnostics {
+  const byKind: Partial<Record<WaterTransportAccessKind, number>> = {};
+  const byArrivalMode: Partial<Record<WaterTransportArrivalMode, number>> = {};
+  const navigationNodeIds = new Set<string>();
+  const navigationEdgeIds = new Set<string>();
+  const connectedRoadIds = new Set<string>();
+  const waterwayComponentIds = new Set<string>();
+  let berths = 0;
+  let passengersPerHour = 0;
+  let cargoTonnesPerDay = 0;
+  let emergencySlotsPerHour = 0;
+  let emergencyPriorityAccess = 0;
+  let nightOperationsAccess = 0;
+
+  for (const access of city.waterTransportAccess) {
+    byKind[access.accessKind] = (byKind[access.accessKind] ?? 0) + 1;
+    byArrivalMode[access.arrivalMode] = (byArrivalMode[access.arrivalMode] ?? 0) + 1;
+    berths += access.capacity.berths;
+    passengersPerHour += access.capacity.passengersPerHour;
+    cargoTonnesPerDay += access.capacity.cargoTonnesPerDay;
+    emergencySlotsPerHour += access.capacity.emergencySlotsPerHour;
+
+    if (access.constraints.emergencyPriority) {
+      emergencyPriorityAccess += 1;
+    }
+    if (access.constraints.nightOperations) {
+      nightOperationsAccess += 1;
+    }
+
+    for (const nodeId of access.routing.navigationNodeIds) {
+      navigationNodeIds.add(nodeId);
+    }
+    for (const edgeId of access.routing.navigationEdgeIds) {
+      navigationEdgeIds.add(edgeId);
+    }
+    for (const roadId of access.routing.connectedRoadIds) {
+      connectedRoadIds.add(roadId);
+    }
+    for (const componentId of access.routing.connectedWaterwayComponentIds) {
+      waterwayComponentIds.add(componentId);
+    }
+  }
+
+  return {
+    total: city.waterTransportAccess.length,
+    byKind,
+    byArrivalMode,
+    accessKinds: Object.keys(byKind).length,
+    arrivalModes: Object.keys(byArrivalMode).length,
+    ferryAccessPoints: (byKind['ferry-stop'] ?? 0) + (byKind['ferry-pier'] ?? 0),
+    portLogisticsAccessPoints: (byKind['small-port'] ?? 0) + (byKind['port-logistics-edge'] ?? 0),
+    emergencyHelipads: byKind['emergency-helipad'] ?? 0,
+    berths,
+    passengersPerHour,
+    cargoTonnesPerDay,
+    emergencySlotsPerHour,
+    navigationNodes: navigationNodeIds.size,
+    navigationEdges: navigationEdgeIds.size,
+    connectedRoads: connectedRoadIds.size,
+    waterwayComponents: waterwayComponentIds.size,
+    emergencyPriorityAccess,
+    nightOperationsAccess
   };
 }
 

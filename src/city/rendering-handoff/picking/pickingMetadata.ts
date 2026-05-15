@@ -36,6 +36,7 @@ export interface CityPickingReferences {
   readonly sidewalkId?: CityId;
   readonly transitStopId?: CityId;
   readonly transitRouteId?: CityId;
+  readonly navigationNodeId?: CityId;
 }
 
 export interface CityPickingMetadata {
@@ -94,6 +95,7 @@ type PickableObjectSource = Pick<
   | 'transitRoutes'
   | 'transitStops'
   | 'trees'
+  | 'waterTransportAccess'
   | 'waterfrontEdges'
   | 'waterfrontOpenSpaces'
   | 'waterways'
@@ -132,6 +134,7 @@ export function createCityPickingMetadataCatalog(
     ...city.transitStops,
     ...city.transitRoutes,
     ...city.trafficCalmingDevices,
+    ...city.waterTransportAccess,
     ...traffic.markings,
     ...traffic.vehicles
   ];
@@ -289,6 +292,25 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   } else if (object.kind === 'waterfront-open-space') {
     references.waterfrontEdgeId = typeof record.waterfrontEdgeId === 'string' ? record.waterfrontEdgeId : object.parentId;
     references.waterwayId = typeof record.waterwayId === 'string' ? record.waterwayId : undefined;
+  } else if (object.kind === 'water-transport-access') {
+    references.waterwayId = typeof record.waterwayId === 'string' ? record.waterwayId : undefined;
+    references.waterfrontEdgeId = typeof record.waterfrontEdgeId === 'string' ? record.waterfrontEdgeId : undefined;
+    references.waterfrontOpenSpaceId =
+      typeof record.waterfrontOpenSpaceId === 'string' ? record.waterfrontOpenSpaceId : undefined;
+    const routing = record.routing as
+      | {
+          connectedRoadIds?: readonly unknown[];
+          navigationNodeIds?: readonly unknown[];
+        }
+      | undefined;
+    references.roadId =
+      typeof record.roadId === 'string'
+        ? record.roadId
+        : typeof routing?.connectedRoadIds?.[0] === 'string'
+          ? routing.connectedRoadIds[0]
+          : undefined;
+    references.navigationNodeId =
+      typeof routing?.navigationNodeIds?.[0] === 'string' ? routing.navigationNodeIds[0] : undefined;
   } else if (
     (object.kind === 'lane-marking' || object.kind === 'traffic-vehicle') &&
     !references.roadId &&
