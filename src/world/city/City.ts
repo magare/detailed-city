@@ -19,7 +19,8 @@ import { WaterfrontEdgeMeshBuilder } from '../../city/rendering-handoff/mesh-bui
 import { WaterfrontOpenSpaceMeshBuilder } from '../../city/rendering-handoff/mesh-builders/WaterfrontOpenSpaceMeshBuilder';
 import {
   CITY_SCENE_LAYER_DEFINITIONS,
-  type CitySceneLayerId
+  type CitySceneLayerId,
+  type CitySceneLayerRuntimeState
 } from '../../city/rendering-handoff/scene-layers/sceneLayerDefinitions';
 import {
   createCityPickingMetadataCatalog,
@@ -68,6 +69,31 @@ export class City implements Updatable {
 
   resolvePickingMetadata(intersections: readonly THREE.Intersection[]): CityPickResult | undefined {
     return resolveCityPickFromIntersections(intersections);
+  }
+
+  getSceneLayerStates(): readonly CitySceneLayerRuntimeState[] {
+    return CITY_SCENE_LAYER_DEFINITIONS.map((definition) => {
+      const group = this.layerGroups[definition.id];
+
+      return {
+        ...definition,
+        visible: group.visible,
+        renderOrder: group.renderOrder
+      };
+    });
+  }
+
+  setSceneLayerVisible(layerId: CitySceneLayerId, visible: boolean): void {
+    this.layerGroups[layerId].visible = visible;
+  }
+
+  setSceneLayerRenderOrder(layerId: CitySceneLayerId, renderOrder: number): void {
+    const safeRenderOrder = Number.isFinite(renderOrder)
+      ? Math.max(0, Math.min(99, Math.round(renderOrder)))
+      : this.layerGroups[layerId].renderOrder;
+
+    this.layerGroups[layerId].renderOrder = safeRenderOrder;
+    this.layerGroups[layerId].userData.order = safeRenderOrder;
   }
 
   private build(generated: GeneratedCity, trafficPlan: TrafficPlan): void {
@@ -248,6 +274,7 @@ export class City implements Updatable {
       group.userData.sceneLayerName = definition.name;
       group.userData.ownerDomain = definition.ownerDomain;
       group.userData.order = definition.order;
+      group.renderOrder = definition.order;
       layerGroups[definition.id] = group;
       this.group.add(group);
     }

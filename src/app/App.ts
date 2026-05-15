@@ -24,6 +24,10 @@ import { assertAppConfigValid, assertGeneratedCityValid } from './cityValidation
 import { DebugPanel } from './DebugPanel';
 import { APP_UPDATED_AT } from './buildInfo';
 import type { RenderConfig } from '../config/renderConfig';
+import type {
+  CitySceneLayerId,
+  CitySceneLayerRuntimeState
+} from '../city/rendering-handoff/scene-layers/sceneLayerDefinitions';
 
 const TEST_MODE_PARAM = 'testMode';
 const FAST_RENDER_CONFIG: Partial<RenderConfig> = {
@@ -114,7 +118,10 @@ export class App {
       seed: cityConfig.seed,
       updatedAt: APP_UPDATED_AT,
       diagnostics: this.diagnostics,
-      getPerformanceDiagnostics: () => this.getPerformanceDiagnostics()
+      getPerformanceDiagnostics: () => this.getPerformanceDiagnostics(),
+      getSceneLayerStates: () => this.getSceneLayerStates(),
+      setSceneLayerVisible: (layerId, visible) => this.setSceneLayerVisible(layerId, visible),
+      setSceneLayerRenderOrder: (layerId, renderOrder) => this.setSceneLayerRenderOrder(layerId, renderOrder)
     }, { refreshIntervalMs: getDebugPanelRefreshIntervalMs() });
   }
 
@@ -143,6 +150,24 @@ export class App {
     );
   }
 
+  getSceneLayerStates(): readonly CitySceneLayerRuntimeState[] {
+    return this.city.getSceneLayerStates();
+  }
+
+  setSceneLayerVisible(layerId: CitySceneLayerId, visible: boolean): void {
+    this.city.setSceneLayerVisible(layerId, visible);
+    setLayerVisibilityDataset(layerId, visible);
+  }
+
+  setSceneLayerRenderOrder(layerId: CitySceneLayerId, renderOrder: number): void {
+    this.city.setSceneLayerRenderOrder(layerId, renderOrder);
+    const state = this.city.getSceneLayerStates().find((layer) => layer.id === layerId);
+
+    if (state) {
+      setLayerOrderDataset(layerId, state.renderOrder);
+    }
+  }
+
   start(): void {
     this.viewport.resize();
     this.loop.start();
@@ -150,6 +175,10 @@ export class App {
     document.body.dataset.sceneReady = 'true';
     document.body.dataset.sceneValidationStatus = this.diagnostics.validation.passed ? 'passed' : 'failed';
     document.body.dataset.sceneValidationIssues = String(this.diagnostics.validation.issues.length);
+    for (const layer of this.city.getSceneLayerStates()) {
+      setLayerVisibilityDataset(layer.id, layer.visible);
+      setLayerOrderDataset(layer.id, layer.renderOrder);
+    }
   }
 
   dispose(): void {
@@ -166,4 +195,19 @@ export class App {
     this.bootstrap.dispose();
     this.disposed = true;
   }
+}
+
+function getLayerDatasetKey(layerId: CitySceneLayerId, suffix: 'Visible' | 'Order'): string {
+  return `sceneLayer${layerId
+    .split('-')
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join('')}${suffix}`;
+}
+
+function setLayerVisibilityDataset(layerId: CitySceneLayerId, visible: boolean): void {
+  document.body.dataset[getLayerDatasetKey(layerId, 'Visible')] = String(visible);
+}
+
+function setLayerOrderDataset(layerId: CitySceneLayerId, renderOrder: number): void {
+  document.body.dataset[getLayerDatasetKey(layerId, 'Order')] = String(renderOrder);
 }

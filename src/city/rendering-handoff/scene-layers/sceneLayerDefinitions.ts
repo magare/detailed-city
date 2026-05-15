@@ -16,6 +16,11 @@ export interface CitySceneLayerDiagnostics extends CitySceneLayerDefinition {
   readonly objectCount: number;
 }
 
+export interface CitySceneLayerRuntimeState extends CitySceneLayerDefinition {
+  readonly visible: boolean;
+  readonly renderOrder: number;
+}
+
 export const CITY_SCENE_LAYER_DEFINITIONS = [
   {
     id: 'terrain',

@@ -1,4 +1,8 @@
 import type { RuntimePerformanceDiagnostics } from '../systems/performance/PerformanceMonitor';
+import type {
+  CitySceneLayerId,
+  CitySceneLayerRuntimeState
+} from '../city/rendering-handoff/scene-layers/sceneLayerDefinitions';
 import type { CityDiagnostics } from './cityDiagnostics';
 
 export interface DebugPanelStartOptions {
@@ -10,6 +14,9 @@ export interface DebugPanelSource {
   readonly updatedAt: Date;
   readonly diagnostics: CityDiagnostics;
   readonly getPerformanceDiagnostics: () => RuntimePerformanceDiagnostics;
+  readonly getSceneLayerStates: () => readonly CitySceneLayerRuntimeState[];
+  readonly setSceneLayerVisible: (layerId: CitySceneLayerId, visible: boolean) => void;
+  readonly setSceneLayerRenderOrder: (layerId: CitySceneLayerId, renderOrder: number) => void;
 }
 
 export class DebugPanel {
@@ -112,10 +119,17 @@ export class DebugPanel {
     const overlayNames = diagnostics.overlays.map((overlay) => overlay.id).join(', ');
     const lodTiers = diagnostics.lodPolicy.rules.map((rule) => rule.tier).join('/');
     const coordinatePrecision = diagnostics.geospatial.precision.coordinatePrecisionMeters;
+    const layerObjectCounts = new Map(diagnostics.sceneLayers.map((layer) => [layer.id, layer.objectCount]));
 
     this.body.replaceChildren(
       createMetric('Updated', formatDateTime(this.source.updatedAt)),
       createMetric('Seed', this.source.seed),
+      createLayerControls(
+        this.source.getSceneLayerStates(),
+        layerObjectCounts,
+        this.source.setSceneLayerVisible,
+        this.source.setSceneLayerRenderOrder
+      ),
       createMetric(
         'Config',
         `${diagnostics.config.city.qualityPreset}, grid ${diagnostics.config.city.gridSize}, traffic ${diagnostics.config.city.density.trafficDensity}`
@@ -372,6 +386,66 @@ function createMetric(label: string, value: string): HTMLElement {
 
   item.append(labelElement, valueElement);
   return item;
+}
+
+function createLayerControls(
+  layers: readonly CitySceneLayerRuntimeState[],
+  layerObjectCounts: ReadonlyMap<CitySceneLayerId, number>,
+  setSceneLayerVisible: DebugPanelSource['setSceneLayerVisible'],
+  setSceneLayerRenderOrder: DebugPanelSource['setSceneLayerRenderOrder']
+): HTMLElement {
+  const section = document.createElement('section');
+  section.className = 'city-debug-panel__layer-controls';
+  section.setAttribute('aria-label', 'Scene layer controls');
+
+  const heading = document.createElement('div');
+  heading.className = 'city-debug-panel__layer-heading';
+  heading.textContent = 'Layers';
+  section.append(heading);
+
+  for (const layer of layers) {
+    const row = document.createElement('div');
+    row.className = 'city-debug-panel__layer-row';
+
+    const checkbox = document.createElement('input');
+    checkbox.className = 'city-debug-panel__layer-checkbox';
+    checkbox.type = 'checkbox';
+    checkbox.checked = layer.visible;
+    checkbox.dataset.cityLayerToggle = layer.id;
+    checkbox.setAttribute('aria-label', `${layer.name} layer`);
+    checkbox.addEventListener('change', () => {
+      setSceneLayerVisible(layer.id, checkbox.checked);
+    });
+
+    const label = document.createElement('span');
+    label.className = 'city-debug-panel__layer-label';
+    label.textContent = layer.name;
+
+    const count = document.createElement('span');
+    count.className = 'city-debug-panel__layer-count';
+    count.textContent = `${layerObjectCounts.get(layer.id) ?? 0}`;
+    count.title = `${layer.name} objects`;
+
+    const order = document.createElement('input');
+    order.className = 'city-debug-panel__layer-order';
+    order.type = 'number';
+    order.min = '0';
+    order.max = '99';
+    order.step = '1';
+    order.value = String(layer.renderOrder);
+    order.dataset.cityLayerOrder = layer.id;
+    order.setAttribute('aria-label', `${layer.name} render order`);
+    order.addEventListener('change', () => {
+      setSceneLayerRenderOrder(layer.id, order.valueAsNumber);
+      const currentValue = Number.isFinite(order.valueAsNumber) ? Math.round(order.valueAsNumber) : layer.renderOrder;
+      order.value = String(Math.max(0, Math.min(99, currentValue)));
+    });
+
+    row.append(checkbox, label, count, order);
+    section.append(row);
+  }
+
+  return section;
 }
 
 function getStatusLabel(passed: boolean, issueCount: number): string {
