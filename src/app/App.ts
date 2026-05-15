@@ -22,6 +22,7 @@ import { createCityDiagnostics, type CityDiagnostics } from './cityDiagnostics';
 import { validateAppConfig } from '../config/configSchema';
 import { assertAppConfigValid, assertGeneratedCityValid } from './cityValidationGate';
 import { DebugPanel } from './DebugPanel';
+import { APP_UPDATED_AT } from './buildInfo';
 import type { RenderConfig } from '../config/renderConfig';
 
 const TEST_MODE_PARAM = 'testMode';
@@ -111,7 +112,7 @@ export class App {
     ]);
     this.debugPanel = new DebugPanel(container, {
       seed: cityConfig.seed,
-      updatedAt: new Date(),
+      updatedAt: APP_UPDATED_AT,
       diagnostics: this.diagnostics,
       getPerformanceDiagnostics: () => this.getPerformanceDiagnostics()
     }, { refreshIntervalMs: getDebugPanelRefreshIntervalMs() });

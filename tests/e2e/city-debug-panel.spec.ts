@@ -22,7 +22,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
 
   expect(panelText).toContain('Debug');
   expect(metricLabels[0]).toBe('Updated');
-  expect(updatedValue).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  expect(updatedValue).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   expect(panelText).toContain('Seed');
   expect(panelText).toContain('detailed-city-v1');
   expect(panelText).toContain('Config');
