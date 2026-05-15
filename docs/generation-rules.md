@@ -74,7 +74,7 @@ Generated districts must copy their blueprint character rules into the district 
 - Parks and plazas are public-realm objects with boundaries and program zones.
 - Trees are generated as `tree-planting` objects with parent park/street references before rendering.
 - Street furniture, lamps, signs, and hydrants must bind to placement zones rather than arbitrary coordinates.
-- Detailed-street furniture and signs are generated from active curb zones, with object centers, offsets, clearance envelopes, and asset binding IDs stored in domain data.
+- Detailed-street and citywide furniture/signs are generated from active curb zones or road-profile furnishing zones, with object centers, offsets, clearance envelopes, asset binding IDs, readable LOD, and route/district/frontage sign bindings stored in domain data.
 
 ## Building And Facade Rules
 

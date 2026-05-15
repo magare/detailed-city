@@ -75,7 +75,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('16597/16597 tagged');
+  expect(panelText).toContain('16711/16711 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -86,11 +86,13 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Plaza');
   expect(panelText).toContain('6 zones, 255 event cap, 1 active edge');
   expect(panelText).toContain('Promenade');
-  expect(panelText).toContain('8 spaces, 154 seats, 3 water access');
+  expect(panelText).toContain('8 spaces, 160 seats, 3 water access');
   expect(panelText).toContain('Planting');
   expect(panelText).toContain('145 trees, 27 corridors, 3116m2 canopy');
   expect(panelText).toContain('Furniture');
-  expect(panelText).toContain('208 citywide, 6 railings, 19 shelters');
+  expect(panelText).toContain('322 citywide, 6 railings, 19 shelters');
+  expect(panelText).toContain('Signage');
+  expect(panelText).toContain('133 signs, 27 routes, 3 frontages');
   expect(panelText).toContain('Transit');
   expect(panelText).toContain('9 routes, 19 stops, 1762 demand');
   expect(panelText).toContain('583 buildings, 44 frontages');
@@ -111,14 +113,14 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Assets');
   expect(panelText).toContain('48 assets, 48 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 15640 objects');
+  expect(panelText).toContain('6 formats, 15754 objects');
   expect(panelText).toContain('Registry');
   expect(panelText).toContain('68 kinds');
   expect(panelText).toContain('Groups');
   expect(panelText).toContain('32 groups, 5 districts');
   expect(panelText).toContain('Overlays');
   expect(panelText).toContain(
-    '33: administrative-boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil-geology, phasing, weather-presets, solar-shading, urban-heat, city-metrics, cycling-network, navigation-graphs, freight-logistics, civic-anchors, community-anchors, culture-anchors, government-anchors, building-access, addressing-gazetteer, access-controls, public-lighting, constraints, resilience-goals, service-access, thermal-service, thermal-outages, parcels, roads, validation-issues, owner-domains'
+    '34: administrative-boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil-geology, phasing, weather-presets, solar-shading, urban-heat, city-metrics, cycling-network, navigation-graphs, freight-logistics, civic-anchors, community-anchors, culture-anchors, government-anchors, building-access, addressing-gazetteer, access-controls, public-lighting, signage-wayfinding, constraints, resilience-goals, service-access, thermal-service, thermal-outages, parcels, roads, validation-issues, owner-domains'
   );
   expect(panelText).toContain('LOD');
   expect(panelText).toContain('5 tiers lod0/lod1/lod2/lod3/lod4');

@@ -1,16 +1,36 @@
 import type {
   CityId,
+  SignPanelKind,
   StreetFurniturePlacementZone,
   StreetFurnitureType
 } from '../../city/data-contracts/cityContracts';
 import { DEFAULT_STREET_PROFILES } from '../../city/data-contracts/cityContracts';
-import type { CurbZone, DetailedStreetSlice, IntersectionPlan, RoadSegment, StreetFurniture } from '../../types/city';
+import type {
+  ActiveFrontage,
+  CurbZone,
+  DetailedStreetSlice,
+  DistrictPlan,
+  IntersectionPlan,
+  Parcel,
+  RoadSegment,
+  StreetFurniture,
+  TransitRoute
+} from '../../types/city';
 
 export interface StreetFurnitureSource {
   readonly slices: readonly DetailedStreetSlice[];
   readonly roads: readonly RoadSegment[];
   readonly intersections: readonly IntersectionPlan[];
   readonly curbZones: readonly CurbZone[];
+}
+
+export interface SignageWayfindingBindingSource {
+  readonly streetFurniture: readonly StreetFurniture[];
+  readonly roads: readonly RoadSegment[];
+  readonly districts: readonly DistrictPlan[];
+  readonly parcels: readonly Parcel[];
+  readonly activeFrontages: readonly ActiveFrontage[];
+  readonly transitRoutes: readonly TransitRoute[];
 }
 
 interface StreetFurnitureRecipe {
@@ -179,11 +199,7 @@ function createStreetFurniture(
     transitStopId: recipe.furnitureType === 'bus-shelter' ? `transit-stop-${road.id}-${curbZone.side}-${curbZoneIndex}` : undefined,
     assetBindingId: recipe.assetBindingId,
     signFace: recipe.signRole
-      ? {
-          signRole: recipe.signRole,
-          textCode: getSignTextCode(recipe.furnitureType, road.id, curbZone.side),
-          facing: recipe.signRole === 'regulatory' ? 'road' : 'sidewalk'
-        }
+      ? createSignFace(recipe.signRole, recipe.furnitureType, road, curbZone.side, 'detailed-street')
       : undefined,
     tags: {
       detailedStreetSliceId: slice.id,
@@ -225,7 +241,56 @@ function createCitywideStreetFurniture(
 
         return recipe ? createCitywideFurniture(road, sidewalk, side, slot.index, slot.alongRoadMeters, recipe) : undefined;
       })
-      .filter((item): item is StreetFurniture => item !== undefined);
+      .filter((item): item is StreetFurniture => item !== undefined)
+      .concat(createCitywideSigns(road, sidewalk, side, sideOffset, segmentCenters));
+  });
+}
+
+export function attachSignageWayfindingBindings(source: SignageWayfindingBindingSource): StreetFurniture[] {
+  const roadsById = new Map(source.roads.map((road) => [road.id, road]));
+  const transitRoutesByRoadId = createTransitRoutesByRoadId(source.transitRoutes);
+  const districtIdsByRoadId = createDistrictIdsByRoadId(source.roads, source.parcels, source.districts);
+  const activeFrontageIdsByRoadId = createActiveFrontageIdsByRoadId(source.activeFrontages);
+
+  return source.streetFurniture.map((item) => {
+    if (!item.signFace) {
+      return item;
+    }
+
+    const road = roadsById.get(item.roadId);
+    const routeIds = item.signFace.signRole === 'wayfinding' ? transitRoutesByRoadId.get(item.roadId) ?? [] : [];
+    const districtIds = districtIdsByRoadId.get(item.roadId) ?? [];
+    const activeFrontageIds =
+      item.signFace.signRole === 'wayfinding' && item.placementContext === 'detailed-street'
+        ? activeFrontageIdsByRoadId.get(item.roadId) ?? []
+        : [];
+    const panelKind = getBoundSignPanelKind(item, routeIds, activeFrontageIds);
+    const destinationObjectIds = uniqueIds([
+      item.roadId,
+      ...districtIds,
+      ...routeIds,
+      ...activeFrontageIds
+    ]);
+
+    return {
+      ...item,
+      signFace: {
+        ...item.signFace,
+        panelKind,
+        textCode: getBoundSignTextCode(item, road, districtIds, routeIds, activeFrontageIds),
+        routeIds,
+        districtIds,
+        activeFrontageIds,
+        destinationObjectIds
+      },
+      tags: {
+        ...item.tags,
+        signPanelKind: panelKind,
+        signRouteIds: routeIds.join(','),
+        signDistrictIds: districtIds.join(','),
+        signActiveFrontageIds: activeFrontageIds.join(',')
+      }
+    };
   });
 }
 
@@ -313,6 +378,9 @@ function createCitywideFurniture(
     visibilityClearanceMeters: getVisibilityClearanceMeters(recipe.furnitureType),
     transitStopId: recipe.furnitureType === 'bus-shelter' ? `transit-stop-${road.id}-${side}-${segmentIndex}` : undefined,
     assetBindingId: recipe.assetBindingId,
+    signFace: recipe.signRole
+      ? createSignFace(recipe.signRole, recipe.furnitureType, road, side, 'citywide-street')
+      : undefined,
     tags: {
       citywideFurniture: true,
       corridorRoadId: road.id,
@@ -322,6 +390,44 @@ function createCitywideFurniture(
       hierarchy: road.hierarchy
     }
   };
+}
+
+function createCitywideSigns(
+  road: RoadSegment,
+  sidewalk: RoadSegment['sidewalks'][number],
+  side: 'left' | 'right',
+  sideOffset: number,
+  segmentCenters: readonly { readonly alongRoadMeters: number; readonly index: number }[]
+): StreetFurniture[] {
+  if (!isSignageRoad(road)) {
+    return [];
+  }
+
+  return segmentCenters.flatMap((slot) => {
+    const recipes = getCitywideSignRecipes(road, slot.index, sideOffset);
+
+    return recipes.map((recipe) => createCitywideFurniture(road, sidewalk, side, slot.index, slot.alongRoadMeters, recipe));
+  });
+}
+
+function getCitywideSignRecipes(
+  road: RoadSegment,
+  segmentIndex: number,
+  sideOffset: number
+): readonly StreetFurnitureRecipe[] {
+  if ((road.transitEligible || road.hierarchy === 'promenade' || road.hierarchy === 'collector') && (segmentIndex + sideOffset) % 10 === 3) {
+    return [BASE_RECIPES['wayfinding-sign']];
+  }
+
+  if ((segmentIndex + sideOffset) % 8 === 1) {
+    return [BASE_RECIPES['regulatory-sign']];
+  }
+
+  if ((segmentIndex + road.id.length + sideOffset) % 9 === 0) {
+    return [BASE_RECIPES['street-name-sign']];
+  }
+
+  return [];
 }
 
 function createRecipe(
@@ -383,6 +489,180 @@ function getSignTextCode(furnitureType: StreetFurnitureType, roadId: CityId, sid
     default:
       return `${roadId}:public-realm`;
   }
+}
+
+function createSignFace(
+  signRole: NonNullable<StreetFurniture['signFace']>['signRole'],
+  furnitureType: StreetFurnitureType,
+  road: RoadSegment,
+  side: string,
+  placementContext: StreetFurniture['placementContext']
+): NonNullable<StreetFurniture['signFace']> {
+  return {
+    signRole,
+    panelKind: getDefaultSignPanelKind(signRole, placementContext),
+    textCode: getSignTextCode(furnitureType, road.id, side),
+    facing: signRole === 'regulatory' ? 'road' : 'sidewalk',
+    readableLod: 'lod4',
+    routeIds: [],
+    districtIds: [],
+    activeFrontageIds: [],
+    destinationObjectIds: [road.id],
+    ...(signRole === 'regulatory'
+      ? {
+          regulatoryRule: {
+            ruleKind: road.transitEligible ? 'transit-priority' : road.hierarchy === 'local' ? 'loading-restriction' : 'speed-limit',
+            valueCode: road.transitEligible ? 'bus-priority' : road.hierarchy === 'local' ? 'local-loading-only' : `speed-${road.designSpeedKph}`
+          }
+        }
+      : {})
+  };
+}
+
+function getDefaultSignPanelKind(
+  signRole: NonNullable<StreetFurniture['signFace']>['signRole'],
+  placementContext: StreetFurniture['placementContext']
+): SignPanelKind {
+  if (signRole === 'regulatory') {
+    return 'regulatory-plate';
+  }
+
+  if (signRole === 'street-name') {
+    return 'street-name-blade';
+  }
+
+  return placementContext === 'detailed-street' ? 'storefront-directory' : 'district-map';
+}
+
+function getBoundSignPanelKind(
+  item: StreetFurniture,
+  routeIds: readonly CityId[],
+  activeFrontageIds: readonly CityId[]
+): SignPanelKind {
+  if (!item.signFace) {
+    return 'street-name-blade';
+  }
+
+  if (item.signFace.signRole === 'regulatory') {
+    return 'regulatory-plate';
+  }
+
+  if (item.signFace.signRole === 'street-name') {
+    return 'street-name-blade';
+  }
+
+  if (activeFrontageIds.length > 0) {
+    return 'storefront-directory';
+  }
+
+  return routeIds.length > 0 ? 'directional-fingerpost' : 'district-map';
+}
+
+function getBoundSignTextCode(
+  item: StreetFurniture,
+  road: RoadSegment | undefined,
+  districtIds: readonly CityId[],
+  routeIds: readonly CityId[],
+  activeFrontageIds: readonly CityId[]
+): string {
+  if (!item.signFace || !road) {
+    return item.signFace?.textCode ?? item.id;
+  }
+
+  switch (item.signFace.signRole) {
+    case 'regulatory':
+      return `${road.id}:${item.signFace.regulatoryRule?.valueCode ?? `speed-${road.designSpeedKph}`}`;
+    case 'street-name':
+      return `${road.corridorName}:${districtIds[0] ?? 'city'}`;
+    case 'wayfinding':
+      if (activeFrontageIds.length > 0) {
+        return `${road.id}:storefront-directory:${activeFrontageIds.length}`;
+      }
+
+      if (routeIds.length > 0) {
+        return `${road.id}:routes:${routeIds.join('+')}`;
+      }
+
+      return `${road.id}:district-map:${districtIds.join('+') || 'city'}`;
+  }
+}
+
+function createTransitRoutesByRoadId(transitRoutes: readonly TransitRoute[]): Map<CityId, CityId[]> {
+  const routeIdsByRoadId = new Map<CityId, CityId[]>();
+
+  for (const route of transitRoutes) {
+    for (const roadId of route.roadIds) {
+      routeIdsByRoadId.set(roadId, uniqueIds([...(routeIdsByRoadId.get(roadId) ?? []), route.id]));
+    }
+  }
+
+  return routeIdsByRoadId;
+}
+
+function createDistrictIdsByRoadId(
+  roads: readonly RoadSegment[],
+  parcels: readonly Parcel[],
+  districts: readonly DistrictPlan[]
+): Map<CityId, CityId[]> {
+  const knownDistrictIds = new Set(districts.map((district) => district.id));
+  const districtIdsByRoadId = new Map<CityId, CityId[]>();
+
+  for (const parcel of parcels) {
+    for (const roadId of parcel.frontageRoadIds) {
+      if (knownDistrictIds.has(parcel.districtId)) {
+        districtIdsByRoadId.set(roadId, uniqueIds([...(districtIdsByRoadId.get(roadId) ?? []), parcel.districtId]).slice(0, 3));
+      }
+    }
+  }
+
+  for (const road of roads) {
+    if (!districtIdsByRoadId.has(road.id)) {
+      districtIdsByRoadId.set(road.id, [getNearestDistrictId(road, districts)]);
+    }
+  }
+
+  return districtIdsByRoadId;
+}
+
+function createActiveFrontageIdsByRoadId(activeFrontages: readonly ActiveFrontage[]): Map<CityId, CityId[]> {
+  const idsByRoadId = new Map<CityId, CityId[]>();
+
+  for (const frontage of activeFrontages) {
+    idsByRoadId.set(frontage.roadId, uniqueIds([...(idsByRoadId.get(frontage.roadId) ?? []), frontage.id]).slice(0, 6));
+  }
+
+  return idsByRoadId;
+}
+
+function getNearestDistrictId(road: RoadSegment, districts: readonly DistrictPlan[]): CityId {
+  const district = districts
+    .slice()
+    .sort((left, right) => distanceSquared(road.center, getPolygonCentroid(left.boundary)) - distanceSquared(road.center, getPolygonCentroid(right.boundary)))[0];
+
+  return district?.id ?? 'district-downtown-core';
+}
+
+function uniqueIds(ids: readonly CityId[]): CityId[] {
+  return [...new Set(ids)];
+}
+
+function distanceSquared(left: { readonly x: number; readonly z: number }, right: { readonly x: number; readonly z: number }): number {
+  return (left.x - right.x) ** 2 + (left.z - right.z) ** 2;
+}
+
+function getPolygonCentroid(points: readonly { readonly x: number; readonly z: number }[]): { x: number; z: number } {
+  if (points.length === 0) {
+    return { x: 0, z: 0 };
+  }
+
+  return {
+    x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+    z: points.reduce((sum, point) => sum + point.z, 0) / points.length
+  };
+}
+
+function isSignageRoad(road: RoadSegment): boolean {
+  return road.transitEligible || road.hierarchy === 'arterial' || road.hierarchy === 'collector' || road.hierarchy === 'promenade';
 }
 
 function getCitywideFurnitureCadence(road: RoadSegment): number {

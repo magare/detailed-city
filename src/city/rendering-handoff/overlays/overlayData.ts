@@ -37,6 +37,7 @@ export type CityOverlayId =
   | 'addressing-gazetteer'
   | 'access-controls'
   | 'public-lighting'
+  | 'signage-wayfinding'
   | 'constraints'
   | 'resilience-goals'
   | 'service-access'
@@ -110,6 +111,7 @@ export function createCityOverlayDatasets(
     createDataset('addressing-gazetteer', 'Addressing Gazetteer', 'domain-data', createAddressingGazetteerFeatures(city)),
     createDataset('access-controls', 'Access Controls', 'domain-data', createAccessControlFeatures(city)),
     createDataset('public-lighting', 'Public Lighting', 'domain-data', createPublicLightingFeatures(city)),
+    createDataset('signage-wayfinding', 'Signage And Wayfinding', 'domain-data', createSignageWayfindingFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('service-access', 'Service Access', 'domain-data', createServiceAccessFeatures(city)),
@@ -782,6 +784,31 @@ function createPublicLightingFeatures(city: GeneratedCity): CityOverlayFeature[]
       decorative: light.decorativeLighting.enabled
     }
   }));
+}
+
+function createSignageWayfindingFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.streetFurniture
+    .filter((item) => item.signFace)
+    .map((sign) => ({
+      id: `overlay:signage-wayfinding:${sign.id}`,
+      overlayId: 'signage-wayfinding' as const,
+      objectId: sign.id,
+      objectKind: sign.kind,
+      ownerDomain: sign.ownerDomain,
+      label: sign.signFace?.textCode ?? sign.id,
+      geometry: { type: 'point' as const, point: sign.position },
+      metadata: {
+        signRole: sign.signFace?.signRole ?? 'unknown',
+        panelKind: sign.signFace?.panelKind ?? 'unknown',
+        furnitureType: sign.furnitureType,
+        placementContext: sign.placementContext,
+        readableLod: sign.signFace?.readableLod ?? sign.lod,
+        routes: sign.signFace?.routeIds.length ?? 0,
+        districts: sign.signFace?.districtIds.length ?? 0,
+        frontages: sign.signFace?.activeFrontageIds.length ?? 0,
+        destinations: sign.signFace?.destinationObjectIds.length ?? 0
+      }
+    }));
 }
 
 function createConstraintFeatures(city: GeneratedCity): CityOverlayFeature[] {

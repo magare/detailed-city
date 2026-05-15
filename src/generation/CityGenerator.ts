@@ -37,7 +37,7 @@ import { NavigationGraphGenerator } from './mobility/NavigationGraphGenerator';
 import { TransitGenerator } from './mobility/TransitGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
-import { StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
+import { attachSignageWayfindingBindings, StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
 import { StreetTreeGenerator } from './public-realm/StreetTreeGenerator';
 import { WaterfrontOpenSpaceGenerator } from './public-realm/WaterfrontOpenSpaceGenerator';
@@ -171,7 +171,13 @@ export class CityGenerator {
       curbZones,
       intersections: sliceTagged.intersections
     });
-    const streetFurniture = new StreetFurnitureGenerator().create({
+    const activeFrontages = new ActiveFrontageGenerator().create({
+      slices: verticalSlicesWithCurbs,
+      roads: sliceTagged.roads,
+      parcels: sliceTagged.parcels,
+      buildings: sliceTagged.buildings
+    });
+    const streetFurnitureSeed = new StreetFurnitureGenerator().create({
       slices: verticalSlicesWithCurbs,
       roads: sliceTagged.roads,
       intersections: sliceTagged.intersections,
@@ -179,7 +185,15 @@ export class CityGenerator {
     });
     const transit = new TransitGenerator().create({
       roads: sliceTagged.roads,
-      streetFurniture
+      streetFurniture: streetFurnitureSeed
+    });
+    const streetFurniture = attachSignageWayfindingBindings({
+      streetFurniture: streetFurnitureSeed,
+      roads: sliceTagged.roads,
+      districts: landAndBuildingsWithTopography.districts,
+      parcels: sliceTagged.parcels,
+      activeFrontages,
+      transitRoutes: transit.routes
     });
     const cycling = new CyclingNetworkGenerator().create({
       roads: sliceTagged.roads,
@@ -194,12 +208,6 @@ export class CityGenerator {
       parcels: sliceTagged.parcels,
       buildings: sliceTagged.buildings,
       curbZones
-    });
-    const activeFrontages = new ActiveFrontageGenerator().create({
-      slices: verticalSlicesWithCurbs,
-      roads: sliceTagged.roads,
-      parcels: sliceTagged.parcels,
-      buildings: sliceTagged.buildings
     });
     const plazaZones = new PlazaGenerator().create({
       parks: parksWithFeatures,

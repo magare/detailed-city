@@ -26,6 +26,7 @@ The target is a detailed contemporary river/coastal city: realistic enough for p
 - Day mode: readable planning geometry, soft shadows, clear district silhouettes.
 - Dusk/night: warm windows, streetlights, signs, transit stops, emergency lighting.
 - Public lighting: warm, shielded, contemporary fixtures; brighter on transit, arterial, and promenade routes, softer on local streets, with decorative fixtures used sparingly for identity.
+- Signage and wayfinding: readable detail appears only at close LOD, with street-name blades, restrained regulatory plates, blue/green wayfinding panels, and storefront directories acting as identity markers rather than oversized labels.
 - Weather modes: rain, fog, and monsoon states should change surfaces, visibility, and agent behavior.
 
 ## Density And Detail

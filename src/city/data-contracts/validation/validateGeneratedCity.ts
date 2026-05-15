@@ -949,6 +949,9 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   const navigationGraphEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
   const accessControlsById = new Map(city.accessControls.map((control) => [control.id, control]));
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
+  const transitRoutesById = new Map(city.transitRoutes.map((route) => [route.id, route]));
+  const districtsById = new Map(city.districts.map((district) => [district.id, district]));
+  const activeFrontagesById = new Map(city.activeFrontages.map((frontage) => [frontage.id, frontage]));
   const sidewalkGraphNodeIds = new Set(city.sidewalkGraph.nodes.map((node) => node.id));
   const crossingGraphEdgeIds = new Set(
     city.sidewalkGraph.edges
@@ -2651,6 +2654,17 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         objectId: streetFurniture.id,
         message: `Sign furniture ${streetFurniture.id} must expose sign-face metadata.`
       });
+    }
+
+    if (streetFurniture.signFace) {
+      validateStreetFurnitureSignFace(
+        streetFurniture,
+        transitRoutesById,
+        districtsById,
+        activeFrontagesById,
+        roadsById,
+        issues
+      );
     }
 
     if (isDetailedStreetFurniture && streetFurniture.tags?.detailedStreetSliceId !== streetFurniture.sliceId) {
@@ -10333,6 +10347,134 @@ function isSignFurnitureType(
     furnitureType === 'street-name-sign' ||
     furnitureType === 'wayfinding-sign'
   );
+}
+
+function validateStreetFurnitureSignFace(
+  streetFurniture: GeneratedCityForValidation['streetFurniture'][number],
+  transitRoutesById: ReadonlyMap<string, GeneratedCityForValidation['transitRoutes'][number]>,
+  districtsById: ReadonlyMap<string, GeneratedCityForValidation['districts'][number]>,
+  activeFrontagesById: ReadonlyMap<string, GeneratedCityForValidation['activeFrontages'][number]>,
+  roadsById: ReadonlyMap<string, ValidationRoad>,
+  issues: ValidationIssue[]
+): void {
+  const signFace = streetFurniture.signFace;
+
+  if (!signFace) {
+    return;
+  }
+
+  if (streetFurniture.lod !== 'lod4' || signFace.readableLod !== 'lod4') {
+    issues.push({
+      id: `non-readable-sign-lod-${streetFurniture.id}`,
+      severity: 'error',
+      category: 'lod',
+      objectId: streetFurniture.id,
+      message: `Readable sign ${streetFurniture.id} must use LOD4 object and sign-face metadata.`
+    });
+  }
+
+  if (signFace.textCode.trim().length === 0 || signFace.destinationObjectIds.length === 0) {
+    issues.push({
+      id: `incomplete-sign-face-${streetFurniture.id}`,
+      severity: 'error',
+      category: 'asset',
+      objectId: streetFurniture.id,
+      message: `Sign ${streetFurniture.id} must declare readable text and at least one destination object.`
+    });
+  }
+
+  if (signFace.signRole === 'regulatory' && !signFace.regulatoryRule) {
+    issues.push({
+      id: `missing-regulatory-sign-rule-${streetFurniture.id}`,
+      severity: 'error',
+      category: 'graph',
+      objectId: streetFurniture.id,
+      message: `Regulatory sign ${streetFurniture.id} must declare the rule it communicates.`
+    });
+  }
+
+  if (signFace.signRole === 'street-name' && !signFace.destinationObjectIds.includes(streetFurniture.roadId)) {
+    issues.push({
+      id: `street-name-sign-missing-road-${streetFurniture.id}`,
+      severity: 'error',
+      category: 'graph',
+      objectId: streetFurniture.id,
+      message: `Street-name sign ${streetFurniture.id} must bind to its road destination.`
+    });
+  }
+
+  if (
+    signFace.signRole === 'wayfinding' &&
+    signFace.routeIds.length === 0 &&
+    signFace.districtIds.length === 0 &&
+    signFace.activeFrontageIds.length === 0
+  ) {
+    issues.push({
+      id: `wayfinding-sign-without-destinations-${streetFurniture.id}`,
+      severity: 'error',
+      category: 'graph',
+      objectId: streetFurniture.id,
+      message: `Wayfinding sign ${streetFurniture.id} must bind to route, district, or frontage destinations.`
+    });
+  }
+
+  for (const routeId of signFace.routeIds) {
+    const route = transitRoutesById.get(routeId);
+
+    if (!route || !route.roadIds.includes(streetFurniture.roadId)) {
+      issues.push({
+        id: `invalid-sign-route-reference-${streetFurniture.id}-${routeId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: streetFurniture.id,
+        message: `Sign ${streetFurniture.id} references missing or unrelated route ${routeId}.`
+      });
+    }
+  }
+
+  for (const districtId of signFace.districtIds) {
+    if (!districtsById.has(districtId)) {
+      issues.push({
+        id: `invalid-sign-district-reference-${streetFurniture.id}-${districtId}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: streetFurniture.id,
+        message: `Sign ${streetFurniture.id} references missing district ${districtId}.`
+      });
+    }
+  }
+
+  for (const frontageId of signFace.activeFrontageIds) {
+    const frontage = activeFrontagesById.get(frontageId);
+
+    if (!frontage || frontage.roadId !== streetFurniture.roadId) {
+      issues.push({
+        id: `invalid-sign-frontage-reference-${streetFurniture.id}-${frontageId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: streetFurniture.id,
+        message: `Sign ${streetFurniture.id} references missing or unrelated active frontage ${frontageId}.`
+      });
+    }
+  }
+
+  for (const destinationObjectId of signFace.destinationObjectIds) {
+    if (
+      destinationObjectId !== streetFurniture.roadId &&
+      !transitRoutesById.has(destinationObjectId) &&
+      !districtsById.has(destinationObjectId) &&
+      !activeFrontagesById.has(destinationObjectId) &&
+      !roadsById.has(destinationObjectId)
+    ) {
+      issues.push({
+        id: `invalid-sign-destination-${streetFurniture.id}-${destinationObjectId}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: streetFurniture.id,
+        message: `Sign ${streetFurniture.id} references missing destination ${destinationObjectId}.`
+      });
+    }
+  }
 }
 
 interface ActiveFrontageValidationContext {

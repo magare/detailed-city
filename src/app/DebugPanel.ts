@@ -251,6 +251,10 @@ export class DebugPanel {
         `${diagnostics.objectCounts.citywideStreetFurniture} citywide, ${diagnostics.objectCounts.railings} railings, ${diagnostics.objectCounts.transitShelters} shelters`
       ),
       createMetric(
+        'Signage',
+        `${diagnostics.signageWayfinding.totalSigns} signs, ${diagnostics.signageWayfinding.routeBoundSigns} routes, ${diagnostics.signageWayfinding.frontageBoundSigns} frontages`
+      ),
+      createMetric(
         'Transit',
         `${diagnostics.objectCounts.transitRoutes} routes, ${diagnostics.objectCounts.transitStops} stops, ${diagnostics.objectCounts.transitPassengerDemand} demand`
       ),

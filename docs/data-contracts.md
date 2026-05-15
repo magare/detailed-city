@@ -102,7 +102,7 @@ The first detailed street slice is a generated `vertical-slice` object. It recor
 | Public realm object | Parent space/street reference, placement zone, asset binding, LOD tier, maintenance owner. |
 | Street tree | Parent sidewalk, road/slice/curb references, tree pit dimensions, canopy size, and furnishing-zone offset. |
 | Street light | Placement context, parent sidewalk, road/slice/curb references where applicable, position, along-road placement, fixture type, purpose, height, coverage radius, night-safety illuminance, glare control, decorative lighting, and power circuit reference. |
-| Street furniture/sign | Parent sidewalk, road/slice/curb references, furniture subtype, furnishing-zone placement, clearance envelope, asset binding, and sign-face metadata where applicable. |
+| Street furniture/sign | Parent sidewalk, road/slice/curb references, furniture subtype, furnishing-zone placement, clearance envelope, asset binding, and sign-face metadata where applicable, including readable LOD, panel kind, route, district, frontage, and destination bindings. |
 | Utility object | Network, capacity/coverage, access point, service area, outage domain, and typed service metadata such as power, water, wastewater, stormwater, telecom, gas, or district energy. |
 | Traffic vehicle | Parent road, lane ID, ordered route node IDs, spawn/destination nodes, profile speed, route offset, stop-zone behavior, and incident hook IDs. |
 | Agent/simulation object | Spawn point, destination class, route graph, schedule, pooling behavior. |

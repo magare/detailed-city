@@ -20,6 +20,7 @@ import type {
   CultureAnchorKind,
   GovernmentAnchorKind,
   ServiceAccessCorridorKind,
+  SignPanelKind,
   SourceType,
   StreetLightFixtureType,
   WeatherPresetKind,
@@ -79,6 +80,7 @@ export interface CityDiagnostics {
   readonly serviceAccess: ServiceAccessDiagnostics;
   readonly accessControls: AccessControlDiagnostics;
   readonly publicLighting: PublicLightingDiagnostics;
+  readonly signageWayfinding: SignageWayfindingDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -439,6 +441,13 @@ export interface CityDiagnostics {
     readonly citywideStreetFurniture: number;
     readonly railings: number;
     readonly transitShelters: number;
+    readonly regulatorySigns: number;
+    readonly streetNameSigns: number;
+    readonly wayfindingSigns: number;
+    readonly readableSigns: number;
+    readonly signageRouteBindings: number;
+    readonly signageDistrictBindings: number;
+    readonly signageFrontageBindings: number;
     readonly transitStops: number;
     readonly transitRoutes: number;
     readonly transitRouteStops: number;
@@ -564,6 +573,19 @@ export interface PublicLightingDiagnostics {
   readonly averageEstimatedIlluminanceLux: number;
   readonly lowGlareFixtures: number;
   readonly fixtureTypes: Readonly<Record<StreetLightFixtureType, number>>;
+}
+
+export interface SignageWayfindingDiagnostics {
+  readonly totalSigns: number;
+  readonly regulatorySigns: number;
+  readonly streetNameSigns: number;
+  readonly wayfindingSigns: number;
+  readonly readableLod4Signs: number;
+  readonly routeBoundSigns: number;
+  readonly districtBoundSigns: number;
+  readonly frontageBoundSigns: number;
+  readonly destinationBindings: number;
+  readonly panelKinds: Readonly<Record<SignPanelKind, number>>;
 }
 
 export interface PowerGridDiagnostics {
@@ -1154,6 +1176,7 @@ export function createCityDiagnostics(
   const serviceAccess = createServiceAccessDiagnostics(city);
   const accessControls = createAccessControlDiagnostics(city);
   const publicLighting = createPublicLightingDiagnostics(city);
+  const signageWayfinding = createSignageWayfindingDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -1221,6 +1244,7 @@ export function createCityDiagnostics(
     serviceAccess,
     accessControls,
     publicLighting,
+    signageWayfinding,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -1572,6 +1596,13 @@ export function createCityDiagnostics(
       citywideStreetFurniture: city.streetFurniture.filter((item) => item.placementContext === 'citywide-street').length,
       railings: city.streetFurniture.filter((item) => item.furnitureType === 'railing').length,
       transitShelters: city.streetFurniture.filter((item) => item.furnitureType === 'bus-shelter').length,
+      regulatorySigns: signageWayfinding.regulatorySigns,
+      streetNameSigns: signageWayfinding.streetNameSigns,
+      wayfindingSigns: signageWayfinding.wayfindingSigns,
+      readableSigns: signageWayfinding.readableLod4Signs,
+      signageRouteBindings: signageWayfinding.routeBoundSigns,
+      signageDistrictBindings: signageWayfinding.districtBoundSigns,
+      signageFrontageBindings: signageWayfinding.frontageBoundSigns,
       transitStops: city.transitStops.length,
       transitRoutes: city.transitRoutes.length,
       transitRouteStops: city.transitRoutes.reduce((sum, route) => sum + route.stopIds.length, 0),
@@ -1908,6 +1939,70 @@ function createPublicLightingDiagnostics(city: GeneratedCity): PublicLightingDia
     ),
     lowGlareFixtures,
     fixtureTypes
+  };
+}
+
+function createSignageWayfindingDiagnostics(city: GeneratedCity): SignageWayfindingDiagnostics {
+  const panelKinds = {
+    'district-map': 0,
+    'directional-fingerpost': 0,
+    'regulatory-plate': 0,
+    'storefront-directory': 0,
+    'street-name-blade': 0
+  } satisfies Record<SignPanelKind, number>;
+  let regulatorySigns = 0;
+  let streetNameSigns = 0;
+  let wayfindingSigns = 0;
+  let readableLod4Signs = 0;
+  let routeBoundSigns = 0;
+  let districtBoundSigns = 0;
+  let frontageBoundSigns = 0;
+  let destinationBindings = 0;
+
+  for (const item of city.streetFurniture) {
+    if (!item.signFace) {
+      continue;
+    }
+
+    panelKinds[item.signFace.panelKind] += 1;
+    destinationBindings += item.signFace.destinationObjectIds.length;
+
+    if (item.signFace.signRole === 'regulatory') {
+      regulatorySigns += 1;
+    } else if (item.signFace.signRole === 'street-name') {
+      streetNameSigns += 1;
+    } else {
+      wayfindingSigns += 1;
+    }
+
+    if (item.lod === 'lod4' && item.signFace.readableLod === 'lod4') {
+      readableLod4Signs += 1;
+    }
+
+    if (item.signFace.routeIds.length > 0) {
+      routeBoundSigns += 1;
+    }
+
+    if (item.signFace.districtIds.length > 0) {
+      districtBoundSigns += 1;
+    }
+
+    if (item.signFace.activeFrontageIds.length > 0) {
+      frontageBoundSigns += 1;
+    }
+  }
+
+  return {
+    totalSigns: regulatorySigns + streetNameSigns + wayfindingSigns,
+    regulatorySigns,
+    streetNameSigns,
+    wayfindingSigns,
+    readableLod4Signs,
+    routeBoundSigns,
+    districtBoundSigns,
+    frontageBoundSigns,
+    destinationBindings,
+    panelKinds
   };
 }
 

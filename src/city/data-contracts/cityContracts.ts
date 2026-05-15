@@ -3151,6 +3151,12 @@ export type StreetFurnitureType =
 
 export type StreetFurniturePlacementZone = 'curb-edge' | 'furnishing-zone' | 'frontage-zone';
 export type StreetFurniturePlacementContext = 'detailed-street' | 'citywide-street';
+export type SignPanelKind =
+  | 'district-map'
+  | 'directional-fingerpost'
+  | 'regulatory-plate'
+  | 'storefront-directory'
+  | 'street-name-blade';
 
 export interface StreetFurnitureContract extends CityObjectBase<'street-furniture'> {
   readonly placementContext: StreetFurniturePlacementContext;
@@ -3181,8 +3187,18 @@ export interface StreetFurnitureContract extends CityObjectBase<'street-furnitur
   readonly assetBindingId: CityId;
   readonly signFace?: {
     readonly signRole: 'regulatory' | 'street-name' | 'wayfinding';
+    readonly panelKind: SignPanelKind;
     readonly textCode: string;
     readonly facing: 'road' | 'sidewalk';
+    readonly readableLod: Extract<LodTier, 'lod4'>;
+    readonly routeIds: readonly CityId[];
+    readonly districtIds: readonly CityId[];
+    readonly activeFrontageIds: readonly CityId[];
+    readonly destinationObjectIds: readonly CityId[];
+    readonly regulatoryRule?: {
+      readonly ruleKind: 'loading-restriction' | 'speed-limit' | 'transit-priority';
+      readonly valueCode: string;
+    };
   };
 }
 
