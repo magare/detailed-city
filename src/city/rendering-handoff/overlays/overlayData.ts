@@ -35,6 +35,7 @@ export type CityOverlayId =
   | 'government-anchors'
   | 'constraints'
   | 'resilience-goals'
+  | 'service-access'
   | 'thermal-service'
   | 'thermal-outages'
   | 'parcels'
@@ -103,6 +104,7 @@ export function createCityOverlayDatasets(
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
+    createDataset('service-access', 'Service Access', 'domain-data', createServiceAccessFeatures(city)),
     createDataset('thermal-service', 'Thermal Service', 'domain-data', createThermalServiceFeatures(city)),
     createDataset('thermal-outages', 'Thermal Outages', 'domain-data', createThermalOutageFeatures(city)),
     createDataset('parcels', 'Parcels', 'domain-data', createParcelFeatures(city)),
@@ -920,6 +922,31 @@ function createCyclingNetworkFeatures(city: GeneratedCity): CityOverlayFeature[]
   }));
 
   return [...segmentFeatures, ...parkingFeatures, ...conflictFeatures, ...signalFeatures];
+}
+
+function createServiceAccessFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.serviceAccessCorridors.map((corridor) => ({
+    id: `overlay:service-access:${corridor.id}`,
+    overlayId: 'service-access' as const,
+    objectId: corridor.id,
+    objectKind: corridor.kind,
+    ownerDomain: corridor.ownerDomain,
+    label: `${corridor.corridorKind} ${corridor.id}`,
+    geometry: { type: 'polygon' as const, points: corridor.boundary },
+    metadata: {
+      corridorKind: corridor.corridorKind,
+      surface: corridor.surface,
+      restricted: corridor.restricted,
+      emergencyAccess: corridor.emergencyAccess,
+      clearAccessMeters: corridor.clearAccessMeters,
+      widthMeters: corridor.widthMeters,
+      buildingCount: corridor.buildingIds.length,
+      utilityNodeCount: corridor.utilityNodeIds.length,
+      utilityEdgeCount: corridor.utilityEdgeIds.length,
+      cadastreEasements: corridor.cadastreEasementIds.length,
+      authorizedRoles: corridor.authorizedRoleIds.length
+    }
+  }));
 }
 
 function createThermalServiceFeatures(city: GeneratedCity): CityOverlayFeature[] {

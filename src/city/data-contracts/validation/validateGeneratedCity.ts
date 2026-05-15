@@ -85,6 +85,7 @@ type GeneratedCityForValidation = Pick<
   | 'urbanHeatZones'
   | 'utilityNodes'
   | 'utilityEdges'
+  | 'serviceAccessCorridors'
   | 'constraints'
   | 'crossings'
   | 'curbZones'
@@ -138,6 +139,7 @@ type ValidationSolarShadingSample = GeneratedCityForValidation['solarShadingSamp
 type ValidationUrbanHeatZone = GeneratedCityForValidation['urbanHeatZones'][number];
 type ValidationUtilityNode = GeneratedCityForValidation['utilityNodes'][number];
 type ValidationUtilityEdge = GeneratedCityForValidation['utilityEdges'][number];
+type ValidationServiceAccessCorridor = GeneratedCityForValidation['serviceAccessCorridors'][number];
 type ValidationPark = GeneratedCityForValidation['parks'][number];
 type ValidationParkFeature = GeneratedCityForValidation['parkFeatures'][number];
 type ValidationPlazaZone = GeneratedCityForValidation['plazaZones'][number];
@@ -490,6 +492,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateStormwater(city, issues);
   validateTelecom(city, issues);
   validateThermalEnergy(city, issues);
+  validateServiceAccessCorridors(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -4264,6 +4267,173 @@ function createUtilityEdgeIssue(edge: ValidationUtilityEdge, suffix: string, mes
     category: 'utility-coverage',
     objectId: edge.id,
     affectedPoint: edge.centerline[0],
+    message
+  };
+}
+
+function validateServiceAccessCorridors(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const corridorIds = new Set(city.serviceAccessCorridors.map((corridor) => corridor.id));
+  const cadastreEasementIds = new Set(city.cadastreRecords.flatMap((record) => record.easements.map((easement) => easement.id)));
+
+  if (city.serviceAccessCorridors.length === 0) {
+    issues.push({
+      id: 'missing-service-access-corridors',
+      severity: 'error',
+      category: 'utility-coverage',
+      message: 'Service access corridors must expose maintenance paths, utility easements, vault access, and restricted access zones.'
+    });
+  }
+
+  for (const corridor of city.serviceAccessCorridors) {
+    if (
+      corridor.boundary.length < 4 ||
+      corridor.lengthMeters <= 0 ||
+      corridor.widthMeters <= 0 ||
+      corridor.clearAccessMeters <= 0 ||
+      corridor.clearAccessMeters > corridor.widthMeters
+    ) {
+      issues.push(createServiceAccessCorridorIssue(corridor, 'invalid-geometry', `Service access corridor ${corridor.id} must expose usable boundary, length, width, and clear access dimensions.`));
+    }
+
+    if (
+      corridor.utilityNodeIds.length === 0 &&
+      corridor.utilityEdgeIds.length === 0 &&
+      corridor.buildingIds.length === 0 &&
+      corridor.parcelIds.length === 0 &&
+      corridor.roadIds.length === 0
+    ) {
+      issues.push(createServiceAccessCorridorIssue(corridor, 'missing-object-links', `Service access corridor ${corridor.id} must link to at least one maintained city object.`));
+    }
+
+    validateServiceAccessReferences(city, issues, corridor, corridor.utilityNodeIds, 'utility-node', 'utility-node');
+    validateServiceAccessReferences(city, issues, corridor, corridor.utilityEdgeIds, 'utility-edge', 'utility-edge');
+    validateServiceAccessReferences(city, issues, corridor, corridor.buildingIds, 'building', 'building');
+    validateServiceAccessReferences(city, issues, corridor, corridor.parcelIds, 'parcel', 'parcel');
+    validateServiceAccessReferences(city, issues, corridor, corridor.cadastreRecordIds, 'cadastre-record', 'cadastre-record');
+    validateServiceAccessReferences(city, issues, corridor, corridor.roadIds, 'road', 'road-segment');
+
+    for (const easementId of corridor.cadastreEasementIds) {
+      if (!cadastreEasementIds.has(easementId)) {
+        issues.push(createServiceAccessCorridorIssue(corridor, `missing-easement-${toIssueIdToken(easementId)}`, `Service access corridor ${corridor.id} references missing cadastre easement ${easementId}.`));
+      }
+    }
+
+    if (corridor.restricted && (corridor.restrictions.length === 0 || corridor.authorizedRoleIds.length === 0)) {
+      issues.push(createServiceAccessCorridorIssue(corridor, 'missing-access-control', `Restricted service access corridor ${corridor.id} must declare restrictions and authorized roles.`));
+    }
+
+    if (
+      !Number.isInteger(corridor.maintenanceWindow.startHour) ||
+      !Number.isInteger(corridor.maintenanceWindow.endHour) ||
+      corridor.maintenanceWindow.startHour < 0 ||
+      corridor.maintenanceWindow.endHour > 23 ||
+      corridor.maintenanceWindow.startHour >= corridor.maintenanceWindow.endHour ||
+      corridor.maintenanceWindow.days.length === 0
+    ) {
+      issues.push(createServiceAccessCorridorIssue(corridor, 'invalid-maintenance-window', `Service access corridor ${corridor.id} must expose a bounded maintenance window and at least one operating day.`));
+    }
+  }
+
+  for (const node of city.utilityNodes) {
+    validateServiceAccessReferenceList(issues, node.serviceAccessCorridorIds, corridorIds, {
+      missingId: `invalid-utility-node-${node.id}-missing-service-access-corridor`,
+      invalidPrefix: `invalid-utility-node-${node.id}-missing-service-access-corridor`,
+      objectId: node.id,
+      point: node.center,
+      missingMessage: `Utility node ${node.id} must expose at least one service access corridor.`,
+      invalidMessage: (corridorId) => `Utility node ${node.id} references missing service access corridor ${corridorId}.`
+    });
+  }
+
+  for (const edge of city.utilityEdges) {
+    validateServiceAccessReferenceList(issues, edge.serviceAccessCorridorIds, corridorIds, {
+      missingId: `invalid-utility-edge-${edge.id}-missing-service-access-corridor`,
+      invalidPrefix: `invalid-utility-edge-${edge.id}-missing-service-access-corridor`,
+      objectId: edge.id,
+      point: edge.centerline[0],
+      missingMessage: `Utility edge ${edge.id} must expose at least one service access corridor.`,
+      invalidMessage: (corridorId) => `Utility edge ${edge.id} references missing service access corridor ${corridorId}.`
+    });
+  }
+
+  for (const building of city.buildings) {
+    validateServiceAccessReferenceList(issues, building.serviceAccessCorridorIds, corridorIds, {
+      missingId: `invalid-building-${building.id}-missing-service-access-corridor`,
+      invalidPrefix: `invalid-building-${building.id}-missing-service-access-corridor`,
+      objectId: building.id,
+      point: building.center,
+      missingMessage: `Building ${building.id} must expose at least one service access corridor.`,
+      invalidMessage: (corridorId) => `Building ${building.id} references missing service access corridor ${corridorId}.`
+    });
+  }
+}
+
+function validateServiceAccessReferences(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  corridor: ValidationServiceAccessCorridor,
+  objectIds: readonly CityId[],
+  suffixKind: string,
+  expectedKind: CityObjectKind
+): void {
+  for (const objectId of objectIds) {
+    const object = city.objectIndex.objectsById[objectId];
+    if (!object || object.kind !== expectedKind) {
+      issues.push(createServiceAccessCorridorIssue(corridor, `missing-${suffixKind}-${toIssueIdToken(objectId)}`, `Service access corridor ${corridor.id} references missing ${suffixKind} ${objectId}.`));
+    }
+  }
+}
+
+function validateServiceAccessReferenceList(
+  issues: ValidationIssue[],
+  references: readonly CityId[] | undefined,
+  corridorIds: ReadonlySet<CityId>,
+  options: {
+    readonly missingId: string;
+    readonly invalidPrefix: string;
+    readonly objectId: CityId;
+    readonly point: Point2D;
+    readonly missingMessage: string;
+    readonly invalidMessage: (corridorId: CityId) => string;
+  }
+): void {
+  if (!references || references.length === 0) {
+    issues.push({
+      id: options.missingId,
+      severity: 'error',
+      category: 'utility-coverage',
+      objectId: options.objectId,
+      affectedPoint: options.point,
+      message: options.missingMessage
+    });
+    return;
+  }
+
+  for (const corridorId of references) {
+    if (!corridorIds.has(corridorId)) {
+      issues.push({
+        id: `${options.invalidPrefix}-${toIssueIdToken(corridorId)}`,
+        severity: 'error',
+        category: 'utility-coverage',
+        objectId: options.objectId,
+        affectedPoint: options.point,
+        message: options.invalidMessage(corridorId)
+      });
+    }
+  }
+}
+
+function createServiceAccessCorridorIssue(
+  corridor: ValidationServiceAccessCorridor,
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `invalid-service-access-corridor-${corridor.id}-${suffix}`,
+    severity: 'error',
+    category: 'utility-coverage',
+    objectId: corridor.id,
+    affectedBoundary: corridor.boundary,
     message
   };
 }

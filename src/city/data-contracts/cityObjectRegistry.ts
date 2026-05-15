@@ -64,6 +64,7 @@ const PLAZA_ZONE_KIND = String.raw`(?:active-edge|event|hardscape|paving|seating
 const GOVERNMENT_ANCHOR_KIND = String.raw`(?:administrative-offices|city-hall|civic-plaza-interface|courts|service-counters)`;
 const NAVIGATION_MODE = String.raw`(?:vehicle|pedestrian|bike|transit|service|emergency|freight)`;
 const NAVIGATION_ROUTE_KIND = String.raw`(?:baseline|transfer|service|emergency|freight)`;
+const SERVICE_ACCESS_CORRIDOR_KIND = String.raw`(?:maintenance-path|restricted-corridor|service-yard|utility-easement|vault-access)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -204,6 +205,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('resilience-goal', ['resilience-goal-<slug>'], [exact(String.raw`resilience-goal-${NAMED_ID}`)], none()),
   entry('road-segment', ['road-v-<index>', 'road-h-<index>'], [exact(ROAD_ID)], none()),
   entry('sensor', ['sensor-<slug>'], [exact(String.raw`sensor-${NAMED_ID}`)], optional(['building', 'road-segment', 'street-light', 'utility-node'])),
+  entry(
+    'service-access-corridor',
+    ['service-access-corridor-<corridor-kind>-<index>'],
+    [exact(String.raw`service-access-corridor-${SERVICE_ACCESS_CORRIDOR_KIND}-\d+`)],
+    optional(['building', 'parcel', 'road-segment', 'utility-node', 'utility-edge'])
+  ),
   entry('sidewalk', ['<road-id>-sidewalk-left', '<road-id>-sidewalk-right'], [exact(SIDEWALK_ID)], required(['road-segment'])),
   entry(
     'service-alley',

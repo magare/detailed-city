@@ -44,6 +44,7 @@ export type CityObjectKind =
   | 'resilience-goal'
   | 'road-segment'
   | 'sensor'
+  | 'service-access-corridor'
   | 'sidewalk'
   | 'sidewalk-graph-edge'
   | 'sidewalk-graph-node'
@@ -682,6 +683,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Service alleys describe controlled rear or side access for freight docks and building service yards.'
+    },
+    {
+      objectKind: 'service-access-corridor',
+      scope: 'utility',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Service access corridors expose utility easements, vault access, maintenance paths, service yards, and restricted utility operations zones.'
     },
     {
       objectKind: 'sidewalk',
@@ -1464,6 +1472,14 @@ export type UtilityEdgeRole =
   | 'thermal-loop';
 export type UtilityAccessPointKind = 'building-service' | 'parcel-easement' | 'roadside-vault' | 'surface-cover';
 export type UtilityCapacityUnit = 'kj-per-hour' | 'kva' | 'kw-thermal' | 'liters-per-second' | 'mbps' | 'tons-per-day';
+export type ServiceAccessCorridorKind =
+  | 'maintenance-path'
+  | 'restricted-corridor'
+  | 'service-yard'
+  | 'utility-easement'
+  | 'vault-access';
+export type ServiceAccessSurfaceKind = 'asphalt' | 'concrete' | 'gravel' | 'paver' | 'reinforced-lawn';
+export type ServiceAccessRestrictionKind = 'authorized-only' | 'daytime-access' | 'emergency-only' | 'heavy-vehicle';
 export type PowerGridEquipmentKind =
   | 'backup-supply'
   | 'meter'
@@ -1733,6 +1749,7 @@ export interface UtilityNodeContract extends CityObjectBase<'utility-node'> {
   readonly outage: UtilityOutageDomainContract;
   readonly ownerEntityId: CityId;
   readonly connectedEdgeIds: readonly CityId[];
+  readonly serviceAccessCorridorIds?: readonly CityId[];
   readonly renderBindingId: CityId;
   readonly powerGrid?: PowerGridNodeContract;
   readonly waterSupply?: WaterSupplyNodeContract;
@@ -1754,6 +1771,7 @@ export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
   readonly accessPointIds: readonly CityId[];
   readonly outageDomainId: CityId;
   readonly ownerEntityId: CityId;
+  readonly serviceAccessCorridorIds?: readonly CityId[];
   readonly renderBindingId: CityId;
   readonly powerGrid?: PowerGridEdgeContract;
   readonly waterSupply?: WaterSupplyEdgeContract;
@@ -1761,6 +1779,32 @@ export interface UtilityEdgeContract extends CityObjectBase<'utility-edge'> {
   readonly stormwater?: StormwaterEdgeContract;
   readonly telecom?: TelecomEdgeContract;
   readonly thermalEnergy?: ThermalEnergyEdgeContract;
+}
+
+export interface ServiceAccessCorridorContract extends CityObjectBase<'service-access-corridor'> {
+  readonly corridorKind: ServiceAccessCorridorKind;
+  readonly surface: ServiceAccessSurfaceKind;
+  readonly center: Point2D;
+  readonly boundary: Polygon2D;
+  readonly lengthMeters: number;
+  readonly widthMeters: number;
+  readonly clearAccessMeters: number;
+  readonly utilityNodeIds: readonly CityId[];
+  readonly utilityEdgeIds: readonly CityId[];
+  readonly buildingIds: readonly CityId[];
+  readonly parcelIds: readonly CityId[];
+  readonly cadastreRecordIds: readonly CityId[];
+  readonly cadastreEasementIds: readonly CityId[];
+  readonly roadIds: readonly CityId[];
+  readonly restricted: boolean;
+  readonly restrictions: readonly ServiceAccessRestrictionKind[];
+  readonly authorizedRoleIds: readonly CityId[];
+  readonly maintenanceWindow: {
+    readonly startHour: number;
+    readonly endHour: number;
+    readonly days: readonly string[];
+  };
+  readonly emergencyAccess: boolean;
 }
 
 export interface ParcelFrontagePriorityContract {
@@ -2748,6 +2792,7 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly wastewaterService?: BuildingWastewaterServiceContract;
   readonly telecomService?: BuildingTelecomServiceContract;
   readonly thermalService?: BuildingThermalServiceContract;
+  readonly serviceAccessCorridorIds?: readonly CityId[];
 }
 
 export type ActiveFrontageUse = Extract<LandUse, 'hospitality' | 'mixed-use' | 'retail'>;

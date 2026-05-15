@@ -21,6 +21,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     urbanHeatZones: city.urbanHeatZones.map((zone) => withProceduralMetadata(zone, 'environment-urban-heat')),
     utilityNodes: city.utilityNodes.map((node) => withProceduralMetadata(node, 'utilities-base-nodes')),
     utilityEdges: city.utilityEdges.map((edge) => withProceduralMetadata(edge, 'utilities-base-edges')),
+    serviceAccessCorridors: city.serviceAccessCorridors.map((corridor) =>
+      withProceduralMetadata(corridor, 'utilities-service-access-corridors')
+    ),
     constraints: city.constraints.map((constraint) => withProceduralMetadata(constraint, 'blueprint-constraints')),
     hazardZones: city.hazardZones.map((hazard) => withProceduralMetadata(hazard, 'land-hazards')),
     topographyZones: city.topographyZones.map((zone) => withProceduralMetadata(zone, 'land-topography')),

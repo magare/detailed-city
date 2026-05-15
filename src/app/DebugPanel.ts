@@ -163,6 +163,10 @@ export class DebugPanel {
         `${diagnostics.utilityBase.nodes} nodes, ${diagnostics.utilityBase.edges} edges, ${diagnostics.utilityBase.networkTypes} networks`
       ),
       createMetric(
+        'Service Access',
+        `${diagnostics.serviceAccess.total} corridors, ${diagnostics.serviceAccess.restrictedCorridors} restricted, ${diagnostics.serviceAccess.buildingsLinked} buildings`
+      ),
+      createMetric(
         'Power',
         `${diagnostics.powerGrid.nodes} nodes, ${diagnostics.powerGrid.transformers} transformers, ${diagnostics.powerGrid.streetLightsServed} lights`
       ),

@@ -18,6 +18,7 @@ import type {
   CommunityAnchorKind,
   CultureAnchorKind,
   GovernmentAnchorKind,
+  ServiceAccessCorridorKind,
   SourceType,
   WeatherPresetKind,
   WeatherSeason
@@ -73,6 +74,7 @@ export interface CityDiagnostics {
   readonly stormwater: StormwaterDiagnostics;
   readonly telecom: TelecomDiagnostics;
   readonly thermalEnergy: ThermalEnergyDiagnostics;
+  readonly serviceAccess: ServiceAccessDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -162,6 +164,15 @@ export interface CityDiagnostics {
     readonly utilityCriticalObjects: number;
     readonly utilityBackupNodes: number;
     readonly utilityHighCriticalityNodes: number;
+    readonly serviceAccessCorridors: number;
+    readonly serviceAccessUtilityEasements: number;
+    readonly serviceAccessVaults: number;
+    readonly serviceAccessMaintenancePaths: number;
+    readonly serviceAccessServiceYards: number;
+    readonly serviceAccessRestrictedCorridors: number;
+    readonly buildingsWithServiceAccess: number;
+    readonly utilityNodesWithServiceAccess: number;
+    readonly utilityEdgesWithServiceAccess: number;
     readonly powerGridNodes: number;
     readonly powerGridEdges: number;
     readonly powerTransformers: number;
@@ -471,6 +482,21 @@ export interface UtilityBaseDiagnostics {
   readonly totalCapacityByUnit: Readonly<Record<string, number>>;
   readonly serviceAreaBoundaryIds: readonly string[];
   readonly ownerEntityIds: readonly string[];
+}
+
+export interface ServiceAccessDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<ServiceAccessCorridorKind, number>>;
+  readonly utilityEasements: number;
+  readonly vaultAccess: number;
+  readonly maintenancePaths: number;
+  readonly serviceYards: number;
+  readonly restrictedCorridors: number;
+  readonly buildingsLinked: number;
+  readonly utilityNodesLinked: number;
+  readonly utilityEdgesLinked: number;
+  readonly cadastreEasementLinks: number;
+  readonly emergencyAccessCorridors: number;
 }
 
 export interface PowerGridDiagnostics {
@@ -1025,6 +1051,7 @@ export function createCityDiagnostics(
   const stormwater = createStormwaterDiagnostics(city);
   const telecom = createTelecomDiagnostics(city);
   const thermalEnergy = createThermalEnergyDiagnostics(city);
+  const serviceAccess = createServiceAccessDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -1087,6 +1114,7 @@ export function createCityDiagnostics(
     stormwater,
     telecom,
     thermalEnergy,
+    serviceAccess,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -1167,6 +1195,15 @@ export function createCityDiagnostics(
       utilityCriticalObjects: utilityBase.criticalObjects,
       utilityBackupNodes: utilityBase.backupNodes,
       utilityHighCriticalityNodes: utilityBase.highCriticalityNodes,
+      serviceAccessCorridors: serviceAccess.total,
+      serviceAccessUtilityEasements: serviceAccess.utilityEasements,
+      serviceAccessVaults: serviceAccess.vaultAccess,
+      serviceAccessMaintenancePaths: serviceAccess.maintenancePaths,
+      serviceAccessServiceYards: serviceAccess.serviceYards,
+      serviceAccessRestrictedCorridors: serviceAccess.restrictedCorridors,
+      buildingsWithServiceAccess: serviceAccess.buildingsLinked,
+      utilityNodesWithServiceAccess: serviceAccess.utilityNodesLinked,
+      utilityEdgesWithServiceAccess: serviceAccess.utilityEdgesLinked,
       powerGridNodes: powerGrid.nodes,
       powerGridEdges: powerGrid.edges,
       powerTransformers: powerGrid.transformers,
@@ -1584,6 +1621,42 @@ function createUtilityBaseDiagnostics(city: GeneratedCity): UtilityBaseDiagnosti
     totalCapacityByUnit,
     serviceAreaBoundaryIds: [...serviceAreaBoundaryIds].sort(),
     ownerEntityIds: [...ownerEntityIds].sort()
+  };
+}
+
+function createServiceAccessDiagnostics(city: GeneratedCity): ServiceAccessDiagnostics {
+  const byKind = {
+    'maintenance-path': 0,
+    'restricted-corridor': 0,
+    'service-yard': 0,
+    'utility-easement': 0,
+    'vault-access': 0
+  } satisfies Record<ServiceAccessCorridorKind, number>;
+
+  let cadastreEasementLinks = 0;
+  let emergencyAccessCorridors = 0;
+
+  for (const corridor of city.serviceAccessCorridors) {
+    byKind[corridor.corridorKind] += 1;
+    cadastreEasementLinks += corridor.cadastreEasementIds.length;
+    if (corridor.emergencyAccess) {
+      emergencyAccessCorridors += 1;
+    }
+  }
+
+  return {
+    total: city.serviceAccessCorridors.length,
+    byKind,
+    utilityEasements: byKind['utility-easement'],
+    vaultAccess: byKind['vault-access'],
+    maintenancePaths: byKind['maintenance-path'],
+    serviceYards: byKind['service-yard'],
+    restrictedCorridors: byKind['restricted-corridor'],
+    buildingsLinked: city.buildings.filter((building) => (building.serviceAccessCorridorIds ?? []).length > 0).length,
+    utilityNodesLinked: city.utilityNodes.filter((node) => (node.serviceAccessCorridorIds ?? []).length > 0).length,
+    utilityEdgesLinked: city.utilityEdges.filter((edge) => (edge.serviceAccessCorridorIds ?? []).length > 0).length,
+    cadastreEasementLinks,
+    emergencyAccessCorridors
   };
 }
 

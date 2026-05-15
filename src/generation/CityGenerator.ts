@@ -48,6 +48,7 @@ import { PowerGridGenerator } from './utilities/PowerGridGenerator';
 import { StormwaterGenerator } from './utilities/StormwaterGenerator';
 import { TelecomGenerator } from './utilities/TelecomGenerator';
 import { GasDistrictEnergyGenerator } from './utilities/GasDistrictEnergyGenerator';
+import { ServiceAccessCorridorGenerator } from './utilities/ServiceAccessCorridorGenerator';
 import { UtilityBaseGenerator } from './utilities/UtilityBaseGenerator';
 import { WaterSupplyGenerator } from './utilities/WaterSupplyGenerator';
 import { WastewaterGenerator } from './utilities/WastewaterGenerator';
@@ -272,6 +273,14 @@ export class CityGenerator {
       roads: stormwater.roads,
       buildings: telecom.buildings
     });
+    const serviceAccess = new ServiceAccessCorridorGenerator().create({
+      cadastreRecords,
+      parcels: soilGeology.parcels,
+      buildings: gasDistrictEnergy.buildings,
+      roads: stormwater.roads,
+      utilityNodes: gasDistrictEnergy.utilityNodes,
+      utilityEdges: gasDistrictEnergy.utilityEdges
+    });
     const navigationGraphs = new NavigationGraphGenerator().create({
       roads: stormwater.roads,
       sidewalkGraph: sliceTagged.sidewalkGraph,
@@ -284,27 +293,27 @@ export class CityGenerator {
       freightLoadingDocks: freightLogistics.loadingDocks,
       freightRoutes: freightLogistics.routes,
       serviceAlleys: freightLogistics.serviceAlleys,
-      utilityNodes: gasDistrictEnergy.utilityNodes
+      utilityNodes: serviceAccess.utilityNodes
     });
     const civicAnchors = new CivicAnchorGenerator().create({
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildingsWithTopography.districts,
       parcels: soilGeology.parcels,
-      buildings: gasDistrictEnergy.buildings
+      buildings: serviceAccess.buildings
     });
     const governmentAnchors = new GovernmentAnchorGenerator().create({
       civicAnchors,
-      buildings: gasDistrictEnergy.buildings,
+      buildings: serviceAccess.buildings,
       plazaZones
     });
     const cultureAnchors = new CultureAnchorGenerator().create({
       civicAnchors,
-      buildings: gasDistrictEnergy.buildings,
+      buildings: serviceAccess.buildings,
       plazaZones
     });
     const communityAnchors = new CommunityAnchorGenerator().create({
       civicAnchors,
-      buildings: gasDistrictEnergy.buildings,
+      buildings: serviceAccess.buildings,
       plazaZones
     });
     const cityMetrics = new CityMetricGenerator(this.config).create({
@@ -313,7 +322,7 @@ export class CityGenerator {
       crossings: sliceTagged.crossings,
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
-      buildings: gasDistrictEnergy.buildings,
+      buildings: serviceAccess.buildings,
       activeFrontages,
       parks: parksWithFeatures,
       resilienceGoals
@@ -333,8 +342,9 @@ export class CityGenerator {
       weatherPresets,
       solarShadingSamples,
       urbanHeatZones,
-      utilityNodes: gasDistrictEnergy.utilityNodes,
-      utilityEdges: gasDistrictEnergy.utilityEdges,
+      utilityNodes: serviceAccess.utilityNodes,
+      utilityEdges: serviceAccess.utilityEdges,
+      serviceAccessCorridors: serviceAccess.serviceAccessCorridors,
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,
@@ -366,7 +376,7 @@ export class CityGenerator {
       streetFurniture,
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
-      buildings: gasDistrictEnergy.buildings,
+      buildings: serviceAccess.buildings,
       civicAnchors,
       communityAnchors,
       cultureAnchors,

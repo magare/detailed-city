@@ -232,6 +232,7 @@ export interface ProceduralSeedDomainSections {
   readonly urbanHeatZones: GeneratedCity['urbanHeatZones'];
   readonly utilityNodes: GeneratedCity['utilityNodes'];
   readonly utilityEdges: GeneratedCity['utilityEdges'];
+  readonly serviceAccessCorridors: GeneratedCity['serviceAccessCorridors'];
   readonly constraints: GeneratedCity['constraints'];
   readonly hazardZones: GeneratedCity['hazardZones'];
   readonly topographyZones: GeneratedCity['topographyZones'];
@@ -289,6 +290,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly urbanHeatZones: number;
   readonly utilityNodes: number;
   readonly utilityEdges: number;
+  readonly serviceAccessCorridors: number;
   readonly constraints: number;
   readonly hazardZones: number;
   readonly topographyZones: number;
@@ -424,6 +426,7 @@ export function createProceduralSeedJsonExport(
       urbanHeatZones: city.urbanHeatZones,
       utilityNodes: city.utilityNodes,
       utilityEdges: city.utilityEdges,
+      serviceAccessCorridors: city.serviceAccessCorridors,
       constraints: city.constraints,
       hazardZones: city.hazardZones,
       topographyZones: city.topographyZones,
@@ -588,6 +591,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'urbanHeatZones'
     | 'utilityNodes'
     | 'utilityEdges'
+    | 'serviceAccessCorridors'
     | 'constraints'
     | 'hazardZones'
     | 'topographyZones'
@@ -639,6 +643,7 @@ export function createProceduralSeedDomainSectionCounts(
     urbanHeatZones: city.urbanHeatZones.length,
     utilityNodes: city.utilityNodes.length,
     utilityEdges: city.utilityEdges.length,
+    serviceAccessCorridors: city.serviceAccessCorridors.length,
     constraints: city.constraints.length,
     hazardZones: city.hazardZones.length,
     topographyZones: city.topographyZones.length,
@@ -708,6 +713,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'urbanHeatZones') +
     getArrayLength(city, 'utilityNodes') +
     getArrayLength(city, 'utilityEdges') +
+    getArrayLength(city, 'serviceAccessCorridors') +
     getArrayLength(city, 'constraints') +
     getArrayLength(city, 'hazardZones') +
     getArrayLength(city, 'topographyZones') +

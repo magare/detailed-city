@@ -46,6 +46,7 @@ import type {
   RenderBinding,
   ResilienceGoalContract,
   RoadSegmentContract,
+  ServiceAccessCorridorContract,
   ServiceAlleyContract,
   SidewalkGraphEdgeContract,
   SidewalkGraphNodeContract,
@@ -316,6 +317,7 @@ export interface NavigationRoute extends NavigationRouteContract {}
 export interface FreightLoadingDock extends FreightLoadingDockContract {}
 export interface FreightRoute extends FreightRouteContract {}
 export interface ServiceAlley extends ServiceAlleyContract {}
+export interface ServiceAccessCorridor extends ServiceAccessCorridorContract {}
 
 export interface WeatherPreset extends WeatherPresetContract {}
 export interface SolarShadingSample extends SolarShadingSampleContract {}
@@ -358,6 +360,7 @@ export type GeneratedCityObject =
   | FreightLoadingDock
   | FreightRoute
   | ServiceAlley
+  | ServiceAccessCorridor
   | WeatherPreset
   | SolarShadingSample
   | UrbanHeatZone
@@ -429,6 +432,7 @@ export interface GeneratedCity {
   freightLoadingDocks: FreightLoadingDock[];
   freightRoutes: FreightRoute[];
   serviceAlleys: ServiceAlley[];
+  serviceAccessCorridors: ServiceAccessCorridor[];
   weatherPresets: WeatherPreset[];
   solarShadingSamples: SolarShadingSample[];
   urbanHeatZones: UrbanHeatZone[];

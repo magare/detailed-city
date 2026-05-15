@@ -126,6 +126,7 @@ export function createCitySceneLayerDiagnostics(
       city.constraints.length +
       city.hazardZones.length +
       city.resilienceGoals.length +
+      city.serviceAccessCorridors.length +
       city.zoningDistricts.length
   };
 

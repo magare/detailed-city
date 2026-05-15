@@ -47,6 +47,7 @@ type GeneratedCityObjectSource = Pick<
   | 'roads'
   | 'sidewalkGraph'
   | 'serviceAlleys'
+  | 'serviceAccessCorridors'
   | 'soilGeologyZones'
   | 'solarShadingSamples'
   | 'streetFurniture'
@@ -101,6 +102,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.freightLoadingDocks,
     ...city.freightRoutes,
     ...city.serviceAlleys,
+    ...city.serviceAccessCorridors,
     ...city.weatherPresets,
     ...city.solarShadingSamples,
     ...city.urbanHeatZones,
