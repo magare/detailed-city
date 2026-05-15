@@ -56,6 +56,8 @@ The validator now enforces registry ID patterns and parent-kind rules for genera
 
 The first executable export is `procedural-seed-json`. It carries the active seed/config, geospatial frame, bounds, LOD policy, performance budget, generated domain sections, asset catalog, render bindings, stable object IDs/counts, validation result, and deterministic provenance. It intentionally excludes renderer-only and runtime inspection fields such as `objectIndex`, scene layers, overlays, picking catalogs, runtime performance, quality flags, and traffic validation snapshots.
 
+Address points expose formatted addresses, ward/neighborhood/district membership, named-place links, and OSM-style `addr:*` import tags. Named places and gazetteer entries are exported with the procedural seed so address search, reverse lookup, and future imported address tags resolve against the same stable contracts.
+
 Diagnostics expose import/export readiness as a summary: supported format count, procedural export object count, asset/binding counts, JSON serializability, validation status, and any renderer-only fields detected in the generated artifact.
 
 ## Vertical Slice Contracts
@@ -92,6 +94,8 @@ The first detailed street slice is a generated `vertical-slice` object. It recor
 | Vertical slice | Slice kind, corridor road, related object IDs, QA camera target, and slice tags on referenced objects. |
 | Building | Parcel reference, footprint, uses, height, floor count, facade grammar, roof grammar, primary frontage side/road, and public entrance IDs. |
 | Active frontage facade | Detailed-street slice/building/parcel/road/sidewalk references, frontage side, active uses, storefront window/sign/awning/night-window metadata, public entrance IDs, and facade asset bindings. |
+| Address point | Building/parcel/road references, street name, building number, unit range, postal code, formatted address, ward/neighborhood/district membership, named-place links, entrance IDs, and import tags. |
+| Named place / gazetteer entry | Source object reference, normalized display/search text, address/place links, reverse lookup radius, and import/export metadata for addresses, streets, neighborhoods, wards, parks, and civic anchors. |
 | Public realm object | Parent space/street reference, placement zone, asset binding, LOD tier, maintenance owner. |
 | Street tree | Parent sidewalk, road/slice/curb references, tree pit dimensions, canopy size, and furnishing-zone offset. |
 | Street light | Parent sidewalk, road/slice/curb references, position, height, coverage radius, color temperature, and power circuit placeholder. |

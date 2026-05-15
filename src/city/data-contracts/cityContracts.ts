@@ -23,6 +23,7 @@ export type CityObjectKind =
   | 'district'
   | 'economy-anchor'
   | 'facade'
+  | 'gazetteer-entry'
   | 'bike-conflict-zone'
   | 'bike-graph-edge'
   | 'bike-graph-node'
@@ -39,6 +40,7 @@ export type CityObjectKind =
   | 'navigation-graph-edge'
   | 'navigation-graph-node'
   | 'navigation-route'
+  | 'named-place'
   | 'parcel'
   | 'park'
   | 'park-feature'
@@ -554,6 +556,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       description: 'Facade modules and active frontages appear near the street and can expose close inspection detail.'
     },
     {
+      objectKind: 'gazetteer-entry',
+      scope: 'overlay',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2', 'lod3', 'lod4'],
+      description: 'Gazetteer entries index addresses, named places, streets, and anchors for search, imports, and reverse lookup.'
+    },
+    {
       objectKind: 'bike-conflict-zone',
       scope: 'network',
       defaultTier: 'lod2',
@@ -650,6 +659,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2'],
       description: 'Navigation routes are deterministic route requests that agents and operations can resolve by mode.'
+    },
+    {
+      objectKind: 'named-place',
+      scope: 'land',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod1', 'lod2', 'lod3'],
+      description: 'Named places bind neighborhoods, wards, streets, parks, and civic anchors to stable searchable place metadata.'
     },
     {
       objectKind: 'parcel',
@@ -2433,6 +2449,7 @@ export interface CivicAnchorContract extends CityObjectBase<'civic-anchor'> {
   readonly arrivalModes: readonly CivicAnchorArrivalMode[];
   readonly publicEntranceIds: readonly CityId[];
   readonly serviceEntranceIds: readonly CityId[];
+  readonly addressPointIds?: readonly CityId[];
   readonly schedule: {
     readonly scheduleProfileId: string;
     readonly openHour: number;
@@ -2464,6 +2481,7 @@ export interface GovernmentAnchorContract extends CityObjectBase<'government-anc
   readonly ceremonialCapacityPeople: number;
   readonly securityScreening: boolean;
   readonly publicAccess: boolean;
+  readonly addressPointIds?: readonly CityId[];
   readonly scheduleProfileId: string;
   readonly renderBindingId: CityId;
 }
@@ -2490,6 +2508,7 @@ export interface CultureAnchorContract extends CityObjectBase<'culture-anchor'> 
   readonly tourismAttractionScore: number;
   readonly eveningActivity: boolean;
   readonly heritageProtected: boolean;
+  readonly addressPointIds?: readonly CityId[];
   readonly scheduleProfileId: string;
   readonly renderBindingId: CityId;
 }
@@ -2521,6 +2540,7 @@ export interface CommunityAnchorContract extends CityObjectBase<'community-ancho
   readonly crowdEventReady: boolean;
   readonly foodDistribution: boolean;
   readonly cemeteryCapacityPlots: number;
+  readonly addressPointIds?: readonly CityId[];
   readonly scheduleProfileId: string;
   readonly renderBindingId: CityId;
 }
@@ -2829,9 +2849,56 @@ export interface AddressPointContract extends CityObjectBase<'address-point'> {
   readonly buildingNumber: string;
   readonly unitRange?: string;
   readonly postalCode: string;
+  readonly formattedAddress?: string;
+  readonly administrativeBoundaryIds?: readonly CityId[];
+  readonly wardId?: CityId;
+  readonly wardName?: string;
+  readonly neighborhoodId?: CityId;
+  readonly neighborhoodName?: string;
+  readonly districtId?: CityId;
+  readonly placeIds?: readonly CityId[];
+  readonly importTags?: Readonly<Record<string, string>>;
   readonly entranceIds: readonly CityId[];
   readonly activeFrontageIds: readonly CityId[];
   readonly primary: boolean;
+}
+
+export type NamedPlaceKind = 'civic-anchor' | 'district' | 'neighborhood' | 'park' | 'street' | 'ward' | 'waterfront';
+export type GazetteerEntryKind = 'address' | 'anchor' | 'place' | 'street';
+
+export interface NamedPlaceContract extends CityObjectBase<'named-place'> {
+  readonly placeKind: NamedPlaceKind;
+  readonly name: string;
+  readonly normalizedName: string;
+  readonly sourceObjectId: CityId;
+  readonly sourceObjectKind: CityObjectKind;
+  readonly center: Point2D;
+  readonly boundary?: Polygon2D;
+  readonly addressPointIds: readonly CityId[];
+  readonly administrativeBoundaryIds: readonly CityId[];
+  readonly districtIds: readonly CityId[];
+  readonly roadIds: readonly CityId[];
+  readonly buildingIds: readonly CityId[];
+  readonly placeTags: readonly string[];
+}
+
+export interface GazetteerEntryContract extends CityObjectBase<'gazetteer-entry'> {
+  readonly entryKind: GazetteerEntryKind;
+  readonly displayName: string;
+  readonly normalizedName: string;
+  readonly searchTokens: readonly string[];
+  readonly sourceObjectId: CityId;
+  readonly sourceObjectKind: CityObjectKind;
+  readonly position: Point2D;
+  readonly reverseLookupRadiusMeters: number;
+  readonly addressPointId?: CityId;
+  readonly placeId?: CityId;
+  readonly streetName?: string;
+  readonly buildingNumber?: string;
+  readonly postalCode?: string;
+  readonly neighborhoodId?: CityId;
+  readonly wardId?: CityId;
+  readonly importTags?: Readonly<Record<string, string>>;
 }
 
 export interface BuildingContract extends CityObjectBase<'building'> {

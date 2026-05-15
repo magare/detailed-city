@@ -20,6 +20,8 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const building = city.buildings[0];
   const buildingEntrance = city.buildingEntrances[0];
   const addressPoint = city.addressPoints[0];
+  const namedPlace = city.namedPlaces.find((place) => place.placeKind === 'street') ?? city.namedPlaces[0];
+  const gazetteerEntry = city.gazetteerEntries[0];
   const parcel = city.parcels.find((candidate) => candidate.id === building.parcelId);
   const activeFrontage = city.activeFrontages[0];
   const streetLight = city.streetLights[0];
@@ -36,6 +38,8 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.governmentAnchors.length +
       city.buildingEntrances.length +
       city.addressPoints.length +
+      city.namedPlaces.length +
+      city.gazetteerEntries.length +
       city.activeFrontages.length +
       city.parks.length +
       city.parkFeatures.length +
@@ -56,6 +60,8 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind.building).toBe(city.buildings.length);
   expect(catalog.countsByKind['building-entrance']).toBe(city.buildingEntrances.length);
   expect(catalog.countsByKind['address-point']).toBe(city.addressPoints.length);
+  expect(catalog.countsByKind['named-place']).toBe(city.namedPlaces.length);
+  expect(catalog.countsByKind['gazetteer-entry']).toBe(city.gazetteerEntries.length);
   expect(catalog.countsByKind['civic-anchor']).toBe(city.civicAnchors.length);
   expect(catalog.countsByKind['community-anchor']).toBe(city.communityAnchors.length);
   expect(catalog.countsByKind['culture-anchor']).toBe(city.cultureAnchors.length);
@@ -108,6 +114,24 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       buildingId: addressPoint.buildingId,
       parcelId: addressPoint.parcelId,
       roadId: addressPoint.roadId
+    }
+  });
+  expect(catalog.metadataByObjectId[namedPlace.id]).toMatchObject({
+    objectId: namedPlace.id,
+    kind: 'named-place',
+    ownerDomain: 'land',
+    parentId: namedPlace.parentId,
+    references: {
+      roadId: namedPlace.sourceObjectId
+    }
+  });
+  expect(catalog.metadataByObjectId[gazetteerEntry.id]).toMatchObject({
+    objectId: gazetteerEntry.id,
+    kind: 'gazetteer-entry',
+    ownerDomain: 'data-contracts',
+    parentId: gazetteerEntry.parentId,
+    references: {
+      addressPointId: gazetteerEntry.addressPointId
     }
   });
   expect(catalog.metadataByObjectId[streetLight.id]).toMatchObject({

@@ -357,6 +357,10 @@ export class DebugPanel {
         `${diagnostics.buildingAccess.entrances} entries, ${diagnostics.buildingAccess.addressPoints} addresses, ${diagnostics.buildingAccess.loadingDoors} loading`
       ),
       createMetric(
+        'Gazetteer',
+        `${diagnostics.addressingGazetteer.namedPlaces} places, ${diagnostics.addressingGazetteer.gazetteerEntries} entries, ${diagnostics.addressingGazetteer.reverseLookupEntries} reverse`
+      ),
+      createMetric(
         'Assets',
         `${diagnostics.assetBindingDiagnostics.assetDefinitions} assets, ${diagnostics.assetBindingDiagnostics.renderBindings} bindings, ${diagnostics.assetBindingDiagnostics.materialZoneRegistry.definitions} zones`
       ),

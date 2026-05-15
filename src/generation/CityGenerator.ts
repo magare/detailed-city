@@ -23,6 +23,7 @@ import { ClimateWeatherGenerator } from './environment/ClimateWeatherGenerator';
 import { SolarShadingGenerator } from './environment/SolarShadingGenerator';
 import { UrbanHeatGenerator } from './environment/UrbanHeatGenerator';
 import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
+import { AddressingGazetteerGenerator } from './land/AddressingGazetteerGenerator';
 import { CadastreGenerator } from './land/CadastreGenerator';
 import { HazardZoneGenerator } from './land/HazardZoneGenerator';
 import { SoilGeologyGenerator } from './land/SoilGeologyGenerator';
@@ -325,6 +326,20 @@ export class CityGenerator {
       buildings: entranceAddress.buildings,
       plazaZones
     });
+    const addressingGazetteer = new AddressingGazetteerGenerator().create({
+      addressPoints: entranceAddress.addressPoints,
+      administrativeBoundaries: administrativeLand.administrativeBoundaries,
+      districts: landAndBuildingsWithTopography.districts,
+      parcels: soilGeology.parcels,
+      buildings: entranceAddress.buildings,
+      roads: stormwater.roads,
+      parks: parksWithFeatures,
+      waterfrontOpenSpaces,
+      civicAnchors,
+      communityAnchors,
+      cultureAnchors,
+      governmentAnchors
+    });
     const cityMetrics = new CityMetricGenerator(this.config).create({
       bounds,
       roads: stormwater.roads,
@@ -355,7 +370,9 @@ export class CityGenerator {
       utilityEdges: serviceAccess.utilityEdges,
       serviceAccessCorridors: serviceAccess.serviceAccessCorridors,
       buildingEntrances: entranceAddress.buildingEntrances,
-      addressPoints: entranceAddress.addressPoints,
+      addressPoints: addressingGazetteer.addressPoints,
+      namedPlaces: addressingGazetteer.namedPlaces,
+      gazetteerEntries: addressingGazetteer.gazetteerEntries,
       constraints,
       hazardZones,
       topographyZones: topography.topographyZones,
@@ -388,10 +405,10 @@ export class CityGenerator {
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
       buildings: entranceAddress.buildings,
-      civicAnchors,
-      communityAnchors,
-      cultureAnchors,
-      governmentAnchors,
+      civicAnchors: addressingGazetteer.civicAnchors,
+      communityAnchors: addressingGazetteer.communityAnchors,
+      cultureAnchors: addressingGazetteer.cultureAnchors,
+      governmentAnchors: addressingGazetteer.governmentAnchors,
       activeFrontages: entranceAddress.activeFrontages,
       parks: parksWithFeatures,
       parkFeatures,

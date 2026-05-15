@@ -75,6 +75,8 @@ type GeneratedCityForValidation = Pick<
   | 'buildings'
   | 'buildingEntrances'
   | 'addressPoints'
+  | 'namedPlaces'
+  | 'gazetteerEntries'
   | 'cadastreRecords'
   | 'civicAnchors'
   | 'communityAnchors'
@@ -129,6 +131,8 @@ type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
 type ValidationBuildingEntrance = GeneratedCityForValidation['buildingEntrances'][number];
 type ValidationAddressPoint = GeneratedCityForValidation['addressPoints'][number];
+type ValidationNamedPlace = GeneratedCityForValidation['namedPlaces'][number];
+type ValidationGazetteerEntry = GeneratedCityForValidation['gazetteerEntries'][number];
 type ValidationCadastreRecord = GeneratedCityForValidation['cadastreRecords'][number];
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
@@ -498,6 +502,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateThermalEnergy(city, issues);
   validateServiceAccessCorridors(city, issues);
   validateBuildingEntrancesAndAddresses(city, issues);
+  validateAddressingGazetteer(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -4506,6 +4511,12 @@ function validateBuildingEntrancesAndAddresses(city: GeneratedCityForValidation,
     if (!addressPoint.streetName || !addressPoint.buildingNumber || !addressPoint.postalCode) {
       issues.push(createAddressPointIssue(addressPoint, 'missing-address-fields', `Address point ${addressPoint.id} must expose street name, building number, and postal code.`));
     }
+    if (!addressPoint.formattedAddress || !addressPoint.neighborhoodId || !addressPoint.wardId || !addressPoint.districtId || !addressPoint.placeIds || addressPoint.placeIds.length === 0) {
+      issues.push(createAddressPointIssue(addressPoint, 'missing-gazetteer-context', `Address point ${addressPoint.id} must expose formatted address, neighborhood, ward, district, and named place links.`));
+    }
+    if (!addressPoint.importTags?.['addr:housenumber'] || !addressPoint.importTags?.['addr:street'] || !addressPoint.importTags?.['addr:postcode']) {
+      issues.push(createAddressPointIssue(addressPoint, 'missing-import-tags', `Address point ${addressPoint.id} must expose OSM-style address import tags.`));
+    }
     if (addressPoint.entranceIds.length === 0) {
       issues.push(createAddressPointIssue(addressPoint, 'missing-entrances', `Address point ${addressPoint.id} must link to at least one entrance.`));
     }
@@ -4625,6 +4636,146 @@ function createBuildingAccessIssue(building: ValidationBuilding, suffix: string,
     category: 'zoning',
     objectId: building.id,
     affectedBoundary: building.footprint,
+    message
+  };
+}
+
+function validateAddressingGazetteer(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const namedPlaceIds = new Set(city.namedPlaces.map((place) => place.id));
+  const gazetteerEntryIds = new Set(city.gazetteerEntries.map((entry) => entry.id));
+  const addressPointIds = new Set(city.addressPoints.map((addressPoint) => addressPoint.id));
+  const anchorAddressIds = new Set(city.civicAnchors.flatMap((anchor) => anchor.addressPointIds ?? []));
+
+  if (city.namedPlaces.length === 0 || city.gazetteerEntries.length === 0) {
+    issues.push({
+      id: 'missing-addressing-gazetteer',
+      severity: 'error',
+      category: 'land',
+      message: 'Addressing must expose named places and gazetteer entries.'
+    });
+  }
+
+  for (const addressPoint of city.addressPoints) {
+    for (const placeId of addressPoint.placeIds ?? []) {
+      if (!namedPlaceIds.has(placeId)) {
+        issues.push(createAddressPointIssue(addressPoint, `missing-named-place-${toIssueIdToken(placeId)}`, `Address point ${addressPoint.id} references missing named place ${placeId}.`));
+      }
+    }
+    if (!city.gazetteerEntries.some((entry) => entry.addressPointId === addressPoint.id && entry.entryKind === 'address')) {
+      issues.push(createAddressPointIssue(addressPoint, 'missing-gazetteer-entry', `Address point ${addressPoint.id} must have an address gazetteer entry.`));
+    }
+  }
+
+  for (const place of city.namedPlaces) {
+    validateGazetteerSourceReference(city, issues, place, place.sourceObjectId, place.sourceObjectKind);
+    if (!place.name || !place.normalizedName || place.placeTags.length === 0) {
+      issues.push(createNamedPlaceIssue(place, 'missing-name-or-tags', `Named place ${place.id} must expose searchable name and tags.`));
+    }
+    for (const addressPointId of place.addressPointIds) {
+      if (!addressPointIds.has(addressPointId)) {
+        issues.push(createNamedPlaceIssue(place, `missing-address-point-${toIssueIdToken(addressPointId)}`, `Named place ${place.id} references missing address point ${addressPointId}.`));
+      }
+    }
+    if (!city.gazetteerEntries.some((entry) => entry.placeId === place.id)) {
+      issues.push(createNamedPlaceIssue(place, 'missing-gazetteer-entry', `Named place ${place.id} must have a gazetteer entry.`));
+    }
+  }
+
+  for (const entry of city.gazetteerEntries) {
+    if (gazetteerEntryIds.size !== city.gazetteerEntries.length) {
+      issues.push({
+        id: 'duplicate-gazetteer-entry-ids',
+        severity: 'error',
+        category: 'land',
+        message: 'Gazetteer entry IDs must be unique.'
+      });
+      break;
+    }
+    validateGazetteerSourceReference(city, issues, entry, entry.sourceObjectId, entry.sourceObjectKind);
+    if (!entry.displayName || !entry.normalizedName || entry.searchTokens.length === 0 || entry.reverseLookupRadiusMeters <= 0) {
+      issues.push(createGazetteerEntryIssue(entry, 'missing-search-or-reverse-lookup', `Gazetteer entry ${entry.id} must expose display/search text and positive reverse lookup radius.`));
+    }
+    if (entry.addressPointId && !addressPointIds.has(entry.addressPointId)) {
+      issues.push(createGazetteerEntryIssue(entry, `missing-address-point-${toIssueIdToken(entry.addressPointId)}`, `Gazetteer entry ${entry.id} references missing address point ${entry.addressPointId}.`));
+    }
+    if (entry.placeId && !namedPlaceIds.has(entry.placeId)) {
+      issues.push(createGazetteerEntryIssue(entry, `missing-place-${toIssueIdToken(entry.placeId)}`, `Gazetteer entry ${entry.id} references missing named place ${entry.placeId}.`));
+    }
+    if (entry.entryKind === 'address' && (!entry.importTags?.['addr:housenumber'] || !entry.importTags?.['addr:street'])) {
+      issues.push(createGazetteerEntryIssue(entry, 'missing-address-import-tags', `Address gazetteer entry ${entry.id} must expose importable address tags.`));
+    }
+  }
+
+  for (const anchor of [...city.civicAnchors, ...city.communityAnchors, ...city.cultureAnchors, ...city.governmentAnchors]) {
+    if (!anchor.addressPointIds || anchor.addressPointIds.length === 0) {
+      issues.push({
+        id: `invalid-anchor-${anchor.id}-missing-address`,
+        severity: 'error',
+        category: 'land',
+        objectId: anchor.id,
+        affectedPoint: anchor.center,
+        message: `Anchor ${anchor.id} must resolve to at least one stable address point.`
+      });
+    }
+    for (const addressPointId of anchor.addressPointIds ?? []) {
+      if (!addressPointIds.has(addressPointId)) {
+        issues.push({
+          id: `invalid-anchor-${anchor.id}-missing-address-${toIssueIdToken(addressPointId)}`,
+          severity: 'error',
+          category: 'land',
+          objectId: anchor.id,
+          affectedPoint: anchor.center,
+          message: `Anchor ${anchor.id} references missing address point ${addressPointId}.`
+        });
+      }
+    }
+  }
+
+  if (anchorAddressIds.size === 0) {
+    issues.push({
+      id: 'missing-civic-anchor-address-resolution',
+      severity: 'error',
+      category: 'land',
+      message: 'Civic anchors must resolve to stable address points.'
+    });
+  }
+}
+
+function validateGazetteerSourceReference(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  object: ValidationNamedPlace | ValidationGazetteerEntry,
+  sourceObjectId: CityId,
+  sourceObjectKind: CityObjectKind
+): void {
+  const sourceObject = city.objectIndex.objectsById[sourceObjectId];
+  if (!sourceObject || sourceObject.kind !== sourceObjectKind) {
+    const issue = object.kind === 'named-place'
+      ? createNamedPlaceIssue(object, `missing-source-${toIssueIdToken(sourceObjectId)}`, `Named place ${object.id} references missing ${sourceObjectKind} source ${sourceObjectId}.`)
+      : createGazetteerEntryIssue(object, `missing-source-${toIssueIdToken(sourceObjectId)}`, `Gazetteer entry ${object.id} references missing ${sourceObjectKind} source ${sourceObjectId}.`);
+    issues.push(issue);
+  }
+}
+
+function createNamedPlaceIssue(place: ValidationNamedPlace, suffix: string, message: string): ValidationIssue {
+  return {
+    id: `invalid-named-place-${place.id}-${suffix}`,
+    severity: 'error',
+    category: 'land',
+    objectId: place.id,
+    affectedPoint: place.center,
+    affectedBoundary: place.boundary,
+    message
+  };
+}
+
+function createGazetteerEntryIssue(entry: ValidationGazetteerEntry, suffix: string, message: string): ValidationIssue {
+  return {
+    id: `invalid-gazetteer-entry-${entry.id}-${suffix}`,
+    severity: 'error',
+    category: 'land',
+    objectId: entry.id,
+    affectedPoint: entry.position,
     message
   };
 }

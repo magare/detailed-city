@@ -66,6 +66,8 @@ const GOVERNMENT_ANCHOR_KIND = String.raw`(?:administrative-offices|city-hall|ci
 const NAVIGATION_MODE = String.raw`(?:vehicle|pedestrian|bike|transit|service|emergency|freight)`;
 const NAVIGATION_ROUTE_KIND = String.raw`(?:baseline|transfer|service|emergency|freight)`;
 const SERVICE_ACCESS_CORRIDOR_KIND = String.raw`(?:maintenance-path|restricted-corridor|service-yard|utility-easement|vault-access)`;
+const NAMED_PLACE_KIND = String.raw`(?:civic-anchor|district|neighborhood|park|street|ward|waterfront)`;
+const GAZETTEER_ENTRY_KIND = String.raw`(?:address|anchor|place|street)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -148,6 +150,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('economy-anchor', ['economy-anchor-<slug>'], [exact(String.raw`economy-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
   entry('facade', ['facade-active-frontage-<building-id>-<road-id>'], [exact(String.raw`facade-active-frontage-${BUILDING_ID}-${ROAD_ID}`)], required(['building'])),
   entry(
+    'gazetteer-entry',
+    ['gazetteer-entry-<address|anchor|place|street>-<source-id>'],
+    [exact(String.raw`gazetteer-entry-${GAZETTEER_ENTRY_KIND}-${NAMED_ID}(?:-${NAMED_ID})*`)],
+    required(['address-point', 'civic-anchor', 'community-anchor', 'culture-anchor', 'government-anchor', 'named-place', 'road-segment'])
+  ),
+  entry(
     'freight-loading-dock',
     ['freight-loading-dock-<building-id>'],
     [exact(String.raw`freight-loading-dock-${BUILDING_ID}`)],
@@ -195,6 +203,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ['navigation-route-<mode>-<route-kind>-<index>'],
     [exact(String.raw`navigation-route-${NAVIGATION_MODE}-${NAVIGATION_ROUTE_KIND}-\d+`)],
     none()
+  ),
+  entry(
+    'named-place',
+    ['named-place-<place-kind>-<source-id>'],
+    [exact(String.raw`named-place-${NAMED_PLACE_KIND}-${NAMED_ID}(?:-${NAMED_ID})*`)],
+    required(['administrative-boundary', 'civic-anchor', 'district', 'park', 'road-segment', 'waterfront-open-space'])
   ),
   entry('parcel', ['parcel-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(PARCEL_ID)], required(['block'])),
   entry('park', ['<park-slug>'], [exact(NAMED_ID)], none()),

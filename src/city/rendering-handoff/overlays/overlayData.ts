@@ -34,6 +34,7 @@ export type CityOverlayId =
   | 'culture-anchors'
   | 'government-anchors'
   | 'building-access'
+  | 'addressing-gazetteer'
   | 'constraints'
   | 'resilience-goals'
   | 'service-access'
@@ -104,6 +105,7 @@ export function createCityOverlayDatasets(
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
     createDataset('building-access', 'Building Access', 'domain-data', createBuildingAccessFeatures(city)),
+    createDataset('addressing-gazetteer', 'Addressing Gazetteer', 'domain-data', createAddressingGazetteerFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('service-access', 'Service Access', 'domain-data', createServiceAccessFeatures(city)),
@@ -694,6 +696,43 @@ function createBuildingAccessFeatures(city: GeneratedCity): CityOverlayFeature[]
   }));
 
   return [...entranceFeatures, ...addressFeatures];
+}
+
+function createAddressingGazetteerFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  const placeFeatures = city.namedPlaces.map((place) => ({
+    id: `overlay:addressing-gazetteer:${place.id}`,
+    overlayId: 'addressing-gazetteer' as const,
+    objectId: place.id,
+    objectKind: place.kind,
+    ownerDomain: place.ownerDomain,
+    label: place.name,
+    geometry: place.boundary ? { type: 'polygon' as const, points: place.boundary } : { type: 'point' as const, point: place.center },
+    metadata: {
+      featureType: 'named-place',
+      placeKind: place.placeKind,
+      sourceObjectId: place.sourceObjectId,
+      addressPoints: place.addressPointIds.length,
+      searchTokens: place.placeTags.join(',')
+    }
+  }));
+  const gazetteerFeatures = city.gazetteerEntries.map((entry) => ({
+    id: `overlay:addressing-gazetteer:${entry.id}`,
+    overlayId: 'addressing-gazetteer' as const,
+    objectId: entry.id,
+    objectKind: entry.kind,
+    ownerDomain: entry.ownerDomain,
+    label: entry.displayName,
+    geometry: { type: 'point' as const, point: entry.position },
+    metadata: {
+      featureType: 'gazetteer-entry',
+      entryKind: entry.entryKind,
+      sourceObjectId: entry.sourceObjectId,
+      reverseLookupRadiusMeters: entry.reverseLookupRadiusMeters,
+      searchTokens: entry.searchTokens.length
+    }
+  }));
+
+  return [...placeFeatures, ...gazetteerFeatures];
 }
 
 function createConstraintFeatures(city: GeneratedCity): CityOverlayFeature[] {

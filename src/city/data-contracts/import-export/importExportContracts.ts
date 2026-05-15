@@ -190,6 +190,14 @@ export interface OsmInspiredFeatureCollectionExport {
   readonly features: readonly OsmInspiredFeature[];
 }
 
+export interface NormalizedAddressImportTags {
+  readonly buildingNumber: string;
+  readonly streetName: string;
+  readonly postalCode: string;
+  readonly unitRange?: string;
+  readonly neighborhoodName?: string;
+}
+
 export interface GltfAssetBindingExport {
   readonly schemaVersion: typeof CITY_EXCHANGE_SCHEMA_VERSION;
   readonly format: Extract<CityExchangeFormat, 'gltf-asset-binding'>;
@@ -235,6 +243,8 @@ export interface ProceduralSeedDomainSections {
   readonly serviceAccessCorridors: GeneratedCity['serviceAccessCorridors'];
   readonly buildingEntrances: GeneratedCity['buildingEntrances'];
   readonly addressPoints: GeneratedCity['addressPoints'];
+  readonly namedPlaces: GeneratedCity['namedPlaces'];
+  readonly gazetteerEntries: GeneratedCity['gazetteerEntries'];
   readonly constraints: GeneratedCity['constraints'];
   readonly hazardZones: GeneratedCity['hazardZones'];
   readonly topographyZones: GeneratedCity['topographyZones'];
@@ -295,6 +305,8 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly serviceAccessCorridors: number;
   readonly buildingEntrances: number;
   readonly addressPoints: number;
+  readonly namedPlaces: number;
+  readonly gazetteerEntries: number;
   readonly constraints: number;
   readonly hazardZones: number;
   readonly topographyZones: number;
@@ -433,6 +445,8 @@ export function createProceduralSeedJsonExport(
       serviceAccessCorridors: city.serviceAccessCorridors,
       buildingEntrances: city.buildingEntrances,
       addressPoints: city.addressPoints,
+      namedPlaces: city.namedPlaces,
+      gazetteerEntries: city.gazetteerEntries,
       constraints: city.constraints,
       hazardZones: city.hazardZones,
       topographyZones: city.topographyZones,
@@ -520,6 +534,38 @@ export function createCityImportExportDiagnostics(
   };
 }
 
+export function mapAddressPointToOsmAddressTags(
+  addressPoint: GeneratedCity['addressPoints'][number]
+): Readonly<Record<string, string>> {
+  return {
+    'addr:housenumber': addressPoint.buildingNumber,
+    'addr:street': addressPoint.streetName,
+    'addr:postcode': addressPoint.postalCode,
+    ...(addressPoint.unitRange ? { 'addr:unit': addressPoint.unitRange } : {}),
+    ...(addressPoint.neighborhoodName ? { 'addr:neighbourhood': addressPoint.neighborhoodName } : {})
+  };
+}
+
+export function mapOsmAddressTagsToAddressFields(
+  tags: Readonly<Record<string, string | undefined>>
+): NormalizedAddressImportTags | undefined {
+  const buildingNumber = tags['addr:housenumber'];
+  const streetName = tags['addr:street'];
+  const postalCode = tags['addr:postcode'];
+
+  if (!buildingNumber || !streetName || !postalCode) {
+    return undefined;
+  }
+
+  return {
+    buildingNumber,
+    streetName,
+    postalCode,
+    unitRange: tags['addr:unit'],
+    neighborhoodName: tags['addr:neighbourhood'] ?? tags['addr:suburb']
+  };
+}
+
 export function validateProceduralSeedJsonExport(artifact: unknown): ValidationResult {
   const exportArtifact = isRecord(artifact) ? (artifact as Partial<ProceduralSeedJsonExport>) : {};
   const issues: ValidationIssue[] = [];
@@ -600,6 +646,8 @@ export function createProceduralSeedDomainSectionCounts(
     | 'serviceAccessCorridors'
     | 'buildingEntrances'
     | 'addressPoints'
+    | 'namedPlaces'
+    | 'gazetteerEntries'
     | 'constraints'
     | 'hazardZones'
     | 'topographyZones'
@@ -654,6 +702,8 @@ export function createProceduralSeedDomainSectionCounts(
     serviceAccessCorridors: city.serviceAccessCorridors.length,
     buildingEntrances: city.buildingEntrances.length,
     addressPoints: city.addressPoints.length,
+    namedPlaces: city.namedPlaces.length,
+    gazetteerEntries: city.gazetteerEntries.length,
     constraints: city.constraints.length,
     hazardZones: city.hazardZones.length,
     topographyZones: city.topographyZones.length,
@@ -726,6 +776,8 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'serviceAccessCorridors') +
     getArrayLength(city, 'buildingEntrances') +
     getArrayLength(city, 'addressPoints') +
+    getArrayLength(city, 'namedPlaces') +
+    getArrayLength(city, 'gazetteerEntries') +
     getArrayLength(city, 'constraints') +
     getArrayLength(city, 'hazardZones') +
     getArrayLength(city, 'topographyZones') +

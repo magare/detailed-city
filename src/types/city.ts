@@ -30,6 +30,7 @@ import type {
   DistrictContract,
   FreightLoadingDockContract,
   FreightRouteContract,
+  GazetteerEntryContract,
   GeospatialFrame,
   GreenCorridorRole,
   HazardZoneContract,
@@ -40,6 +41,7 @@ import type {
   NavigationGraphEdgeContract,
   NavigationGraphNodeContract,
   NavigationRouteContract,
+  NamedPlaceContract,
   ParkFeatureContract,
   PlazaZoneContract,
   PerformanceBudget,
@@ -224,6 +226,10 @@ export interface BuildingEntrance extends BuildingEntranceContract {}
 
 export interface AddressPoint extends AddressPointContract {}
 
+export interface NamedPlace extends NamedPlaceContract {}
+
+export interface GazetteerEntry extends GazetteerEntryContract {}
+
 export interface CivicAnchor extends CivicAnchorContract {}
 
 export interface CommunityAnchor extends CommunityAnchorContract {}
@@ -334,6 +340,7 @@ export interface UtilityEdge extends UtilityEdgeContract {}
 export type GeneratedCityObject =
   | AssetDefinition
   | AddressPoint
+  | GazetteerEntry
   | AdministrativeBoundaryPlan
   | DetailedStreetSlice
   | CityMetricPlan
@@ -364,6 +371,7 @@ export type GeneratedCityObject =
   | NavigationGraphNode
   | NavigationGraphEdge
   | NavigationRoute
+  | NamedPlace
   | FreightLoadingDock
   | FreightRoute
   | ServiceAlley
@@ -443,6 +451,8 @@ export interface GeneratedCity {
   serviceAccessCorridors: ServiceAccessCorridor[];
   buildingEntrances: BuildingEntrance[];
   addressPoints: AddressPoint[];
+  namedPlaces: NamedPlace[];
+  gazetteerEntries: GazetteerEntry[];
   weatherPresets: WeatherPreset[];
   solarShadingSamples: SolarShadingSample[];
   urbanHeatZones: UrbanHeatZone[];

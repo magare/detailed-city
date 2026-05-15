@@ -18,6 +18,8 @@ export interface CityPickingReferences {
   readonly parcelId?: CityId;
   readonly buildingId?: CityId;
   readonly civicAnchorId?: CityId;
+  readonly addressPointId?: CityId;
+  readonly placeId?: CityId;
   readonly roadId?: CityId;
   readonly roadSegmentId?: CityId;
   readonly laneId?: CityId;
@@ -73,6 +75,8 @@ type PickableObjectSource = Pick<
   | 'communityAnchors'
   | 'cultureAnchors'
   | 'governmentAnchors'
+  | 'gazetteerEntries'
+  | 'namedPlaces'
   | 'parks'
   | 'parkFeatures'
   | 'plazaZones'
@@ -98,6 +102,8 @@ export function createCityPickingMetadataCatalog(
     ...city.addressPoints,
     ...city.buildings,
     ...city.buildingEntrances,
+    ...city.namedPlaces,
+    ...city.gazetteerEntries,
     ...city.civicAnchors,
     ...city.communityAnchors,
     ...city.cultureAnchors,
@@ -208,6 +214,8 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   copyStringReference(record, references, 'blockId');
   copyStringReference(record, references, 'buildingId');
   copyStringReference(record, references, 'civicAnchorId');
+  copyStringReference(record, references, 'addressPointId');
+  copyStringReference(record, references, 'placeId');
   copyStringReference(record, references, 'parcelId');
   copyStringReference(record, references, 'roadId');
   copyStringReference(record, references, 'roadSegmentId');
@@ -243,6 +251,9 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
   } else if (object.kind === 'government-anchor') {
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
+  } else if (object.kind === 'named-place') {
+    references.roadId =
+      record.placeKind === 'street' && typeof record.sourceObjectId === 'string' ? record.sourceObjectId : undefined;
   } else if (object.kind === 'transit-stop') {
     references.transitStopId = object.id;
   } else if (object.kind === 'transit-route') {

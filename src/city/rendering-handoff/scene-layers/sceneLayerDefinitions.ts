@@ -129,6 +129,8 @@ export function createCitySceneLayerDiagnostics(
       city.serviceAccessCorridors.length +
       city.buildingEntrances.length +
       city.addressPoints.length +
+      city.namedPlaces.length +
+      city.gazetteerEntries.length +
       city.zoningDistricts.length
   };
 

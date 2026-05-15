@@ -82,6 +82,7 @@ export interface CityDiagnostics {
   readonly buildingFacades: BuildingFacadeDiagnostics;
   readonly buildingRoofs: BuildingRoofDiagnostics;
   readonly buildingAccess: BuildingAccessDiagnostics;
+  readonly addressingGazetteer: AddressingGazetteerDiagnostics;
   readonly civicAnchors: CivicAnchorDiagnostics;
   readonly communityAnchors: CommunityAnchorDiagnostics;
   readonly cultureAnchors: CultureAnchorDiagnostics;
@@ -181,6 +182,15 @@ export interface CityDiagnostics {
     readonly serviceEntrances: number;
     readonly loadingEntrances: number;
     readonly addressPoints: number;
+    readonly formattedAddressPoints: number;
+    readonly namedPlaces: number;
+    readonly namedNeighborhoodPlaces: number;
+    readonly namedStreetPlaces: number;
+    readonly gazetteerEntries: number;
+    readonly addressGazetteerEntries: number;
+    readonly anchorGazetteerEntries: number;
+    readonly reverseLookupEntries: number;
+    readonly civicAnchorsWithAddresses: number;
     readonly buildingsWithAddressPoints: number;
     readonly buildingsWithAccessiblePublicEntrances: number;
     readonly powerGridNodes: number;
@@ -700,6 +710,26 @@ export interface BuildingAccessDiagnostics {
   readonly activeFrontageLinkedEntrances: number;
 }
 
+export interface AddressingGazetteerDiagnostics {
+  readonly addressPoints: number;
+  readonly formattedAddressPoints: number;
+  readonly namedPlaces: number;
+  readonly namedNeighborhoodPlaces: number;
+  readonly namedWardPlaces: number;
+  readonly namedStreetPlaces: number;
+  readonly gazetteerEntries: number;
+  readonly addressEntries: number;
+  readonly placeEntries: number;
+  readonly streetEntries: number;
+  readonly anchorEntries: number;
+  readonly reverseLookupEntries: number;
+  readonly importMappableAddresses: number;
+  readonly civicAnchorsWithAddresses: number;
+  readonly communityAnchorsWithAddresses: number;
+  readonly cultureAnchorsWithAddresses: number;
+  readonly governmentAnchorsWithAddresses: number;
+}
+
 export interface CivicAnchorDiagnostics {
   readonly total: number;
   readonly byServiceType: Readonly<Partial<Record<CivicAnchorServiceType, number>>>;
@@ -1082,6 +1112,7 @@ export function createCityDiagnostics(
   const buildingFacades = createBuildingFacadeDiagnostics(city);
   const buildingRoofs = createBuildingRoofDiagnostics(city);
   const buildingAccess = createBuildingAccessDiagnostics(city);
+  const addressingGazetteer = createAddressingGazetteerDiagnostics(city);
   const civicAnchors = createCivicAnchorDiagnostics(city);
   const communityAnchors = createCommunityAnchorDiagnostics(city);
   const cultureAnchors = createCultureAnchorDiagnostics(city);
@@ -1146,6 +1177,7 @@ export function createCityDiagnostics(
     buildingFacades,
     buildingRoofs,
     buildingAccess,
+    addressingGazetteer,
     civicAnchors,
     communityAnchors,
     cultureAnchors,
@@ -1236,6 +1268,15 @@ export function createCityDiagnostics(
       serviceEntrances: buildingAccess.serviceEntries,
       loadingEntrances: buildingAccess.loadingDoors,
       addressPoints: buildingAccess.addressPoints,
+      formattedAddressPoints: addressingGazetteer.formattedAddressPoints,
+      namedPlaces: addressingGazetteer.namedPlaces,
+      namedNeighborhoodPlaces: addressingGazetteer.namedNeighborhoodPlaces,
+      namedStreetPlaces: addressingGazetteer.namedStreetPlaces,
+      gazetteerEntries: addressingGazetteer.gazetteerEntries,
+      addressGazetteerEntries: addressingGazetteer.addressEntries,
+      anchorGazetteerEntries: addressingGazetteer.anchorEntries,
+      reverseLookupEntries: addressingGazetteer.reverseLookupEntries,
+      civicAnchorsWithAddresses: addressingGazetteer.civicAnchorsWithAddresses,
       buildingsWithAddressPoints: buildingAccess.buildingsWithAddresses,
       buildingsWithAccessiblePublicEntrances: buildingAccess.buildingsWithAccessiblePublicEntrances,
       powerGridNodes: powerGrid.nodes,
@@ -2431,6 +2472,38 @@ function createBuildingAccessDiagnostics(city: GeneratedCity): BuildingAccessDia
       building.publicEntranceIds.some((entranceId) => accessiblePublicEntranceIds.has(entranceId))
     ).length,
     activeFrontageLinkedEntrances: city.buildingEntrances.filter((entrance) => entrance.activeFrontageIds.length > 0).length
+  };
+}
+
+function createAddressingGazetteerDiagnostics(city: GeneratedCity): AddressingGazetteerDiagnostics {
+  const entriesByKind = city.gazetteerEntries.reduce<Record<string, number>>((counts, entry) => {
+    counts[entry.entryKind] = (counts[entry.entryKind] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    addressPoints: city.addressPoints.length,
+    formattedAddressPoints: city.addressPoints.filter((addressPoint) => Boolean(addressPoint.formattedAddress)).length,
+    namedPlaces: city.namedPlaces.length,
+    namedNeighborhoodPlaces: city.namedPlaces.filter((place) => place.placeKind === 'neighborhood').length,
+    namedWardPlaces: city.namedPlaces.filter((place) => place.placeKind === 'ward').length,
+    namedStreetPlaces: city.namedPlaces.filter((place) => place.placeKind === 'street').length,
+    gazetteerEntries: city.gazetteerEntries.length,
+    addressEntries: entriesByKind.address ?? 0,
+    placeEntries: entriesByKind.place ?? 0,
+    streetEntries: entriesByKind.street ?? 0,
+    anchorEntries: entriesByKind.anchor ?? 0,
+    reverseLookupEntries: city.gazetteerEntries.filter((entry) => entry.reverseLookupRadiusMeters > 0).length,
+    importMappableAddresses: city.addressPoints.filter(
+      (addressPoint) =>
+        Boolean(addressPoint.importTags?.['addr:housenumber']) &&
+        Boolean(addressPoint.importTags?.['addr:street']) &&
+        Boolean(addressPoint.importTags?.['addr:postcode'])
+    ).length,
+    civicAnchorsWithAddresses: city.civicAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
+    communityAnchorsWithAddresses: city.communityAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
+    cultureAnchorsWithAddresses: city.cultureAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
+    governmentAnchorsWithAddresses: city.governmentAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length
   };
 }
 

@@ -30,6 +30,10 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     addressPoints: city.addressPoints.map((addressPoint) =>
       withProceduralMetadata(addressPoint, 'building-address-points')
     ),
+    namedPlaces: city.namedPlaces.map((place) => withProceduralMetadata(place, 'land-named-places')),
+    gazetteerEntries: city.gazetteerEntries.map((entry) =>
+      withProceduralMetadata(entry, 'data-contracts-gazetteer')
+    ),
     constraints: city.constraints.map((constraint) => withProceduralMetadata(constraint, 'blueprint-constraints')),
     hazardZones: city.hazardZones.map((hazard) => withProceduralMetadata(hazard, 'land-hazards')),
     topographyZones: city.topographyZones.map((zone) => withProceduralMetadata(zone, 'land-topography')),
