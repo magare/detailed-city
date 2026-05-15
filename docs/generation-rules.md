@@ -16,10 +16,11 @@ Generation must produce contract-valid city data first. Rendering consumes that 
 10. Generate utilities and service access skeletons.
 11. Generate operations asset inventory records for renderable civic, public-realm, and utility assets.
 12. Generate maintenance operations from inventory condition, service access, roads, and operation-capable navigation routes.
-13. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
-14. Stamp generated objects with deterministic source metadata.
-15. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, slice tags, and budgets.
-16. Hand validated objects to mesh builders and scene-layer adapters.
+13. Generate permit and inspection records from cadastre records plus maintenance operations that create temporary closures.
+14. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
+15. Stamp generated objects with deterministic source metadata.
+16. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, operations records, slice tags, and budgets.
+17. Hand validated objects to mesh builders and scene-layer adapters.
 
 ## City Intent
 
@@ -97,3 +98,5 @@ Generated districts must copy their blueprint character rules into the district 
 - Each inventory record must point back to one target city object as `parentId`, carry the target object kind, and reference a render binding plus catalog asset that validators can resolve.
 - Maintenance operations are operations-owned children of asset inventory records and must be generated after asset inventory plus service navigation routes exist.
 - Maintenance IDs, repair queue items, condition updates, replacement estimates, service access references, and temporary closure restrictions must derive deterministically from inventory condition/criticality and existing road/navigation graph data.
+- Permit and inspection records are operations-owned children of cadastre records or maintenance operations and must be generated after cadastre plus maintenance operation data exists.
+- Permit/inspection IDs, approval windows, inspection schedules, compliance status, closure-road references, and responsible departments must derive deterministically from the source cadastre or maintenance object.

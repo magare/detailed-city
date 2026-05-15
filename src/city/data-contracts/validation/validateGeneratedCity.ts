@@ -108,6 +108,7 @@ type GeneratedCityForValidation = Pick<
   | 'navigationGraphNodes'
   | 'navigationRoutes'
   | 'maintenanceOperations'
+  | 'permitInspectionRecords'
   | 'lodPolicy'
   | 'objectIndex'
   | 'parcels'
@@ -143,6 +144,7 @@ type ValidationGazetteerEntry = GeneratedCityForValidation['gazetteerEntries'][n
 type ValidationCadastreRecord = GeneratedCityForValidation['cadastreRecords'][number];
 type ValidationAssetInventoryRecord = GeneratedCityForValidation['assetInventoryRecords'][number];
 type ValidationMaintenanceOperation = GeneratedCityForValidation['maintenanceOperations'][number];
+type ValidationPermitInspectionRecord = GeneratedCityForValidation['permitInspectionRecords'][number];
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
@@ -977,6 +979,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
   validateAssetInventoryRecords(city, issues, assetBindingsById);
   validateMaintenanceOperations(city, issues);
+  validatePermitInspectionRecords(city, issues);
   const transitRoutesById = new Map(city.transitRoutes.map((route) => [route.id, route]));
   const districtsById = new Map(city.districts.map((district) => [district.id, district]));
   const activeFrontagesById = new Map(city.activeFrontages.map((frontage) => [frontage.id, frontage]));
@@ -3784,6 +3787,114 @@ function createMaintenanceOperationIssue(
     severity: 'error',
     category: 'operations',
     objectId: operation.id,
+    message
+  };
+}
+
+function validatePermitInspectionRecords(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[]
+): void {
+  const cadastreById = new Map(city.cadastreRecords.map((record) => [record.id, record]));
+  const maintenanceById = new Map(city.maintenanceOperations.map((operation) => [operation.id, operation]));
+  const permitsByMaintenanceId = new Map<CityId, ValidationPermitInspectionRecord[]>();
+
+  for (const record of city.permitInspectionRecords) {
+    if (record.maintenanceOperationId) {
+      permitsByMaintenanceId.set(record.maintenanceOperationId, [
+        ...(permitsByMaintenanceId.get(record.maintenanceOperationId) ?? []),
+        record
+      ]);
+    }
+  }
+
+  for (const operation of city.maintenanceOperations) {
+    if (operation.createsTemporaryClosure) {
+      const hasClosurePermit = (permitsByMaintenanceId.get(operation.id) ?? []).some((record) =>
+        record.recordKind === 'temporary-closure-permit' && record.status === 'active'
+      );
+      if (!hasClosurePermit) {
+        issues.push({
+          id: `missing-temporary-closure-permit-${operation.id}`,
+          severity: 'error',
+          category: 'operations',
+          objectId: operation.id,
+          message: `Temporary closure operation ${operation.id} must have an active permit-inspection record.`
+        });
+      }
+    }
+  }
+
+  for (const record of city.permitInspectionRecords) {
+    const cadastre = record.cadastreRecordId ? cadastreById.get(record.cadastreRecordId) : undefined;
+    const operation = record.maintenanceOperationId ? maintenanceById.get(record.maintenanceOperationId) : undefined;
+
+    if (record.parentId !== record.cadastreRecordId && record.parentId !== record.maintenanceOperationId) {
+      issues.push(createPermitInspectionIssue(record, 'parent-mismatch', `Permit or inspection record ${record.id} must be parented to its cadastre or maintenance operation source.`));
+    }
+
+    if (record.cadastreRecordId && !cadastre) {
+      issues.push(createPermitInspectionIssue(record, 'missing-cadastre-record', `Permit or inspection record ${record.id} references missing cadastre record ${record.cadastreRecordId}.`));
+    }
+
+    if (record.maintenanceOperationId && !operation) {
+      issues.push(createPermitInspectionIssue(record, 'missing-maintenance-operation', `Permit or inspection record ${record.id} references missing maintenance operation ${record.maintenanceOperationId}.`));
+    }
+
+    if (cadastre && record.parcelId !== cadastre.parcelId) {
+      issues.push(createPermitInspectionIssue(record, 'parcel-mismatch', `Permit or inspection record ${record.id} must mirror cadastre parcel ${cadastre.parcelId}.`));
+    }
+
+    if (record.validFromDay < record.submittedDay || record.validToDay < record.validFromDay) {
+      issues.push(createPermitInspectionIssue(record, 'invalid-validity-window', `Permit or inspection record ${record.id} must expose a coherent submission and validity window.`));
+    }
+
+    const approvalMustBeComplete =
+      record.approval.required && (record.status === 'approved' || record.status === 'active' || record.status === 'closed');
+    if (approvalMustBeComplete && (!record.approval.approvedByDepartmentId || record.approval.approvalDay === undefined)) {
+      issues.push(createPermitInspectionIssue(record, 'missing-approval', `Permit or inspection record ${record.id} requires approval metadata.`));
+    }
+
+    if (
+      record.inspection.required &&
+      (!record.inspection.inspectorDepartmentId || record.inspection.scheduledDay === undefined || record.inspection.passed === undefined)
+    ) {
+      issues.push(createPermitInspectionIssue(record, 'missing-inspection', `Permit or inspection record ${record.id} requires inspection metadata.`));
+    }
+
+    if (record.compliance.outstandingIssueCount < 0 || (record.compliance.passed && record.compliance.outstandingIssueCount > 0)) {
+      issues.push(createPermitInspectionIssue(record, 'invalid-compliance', `Permit or inspection record ${record.id} has inconsistent compliance status.`));
+    }
+
+    if (record.recordKind === 'temporary-closure-permit') {
+      if (!operation?.createsTemporaryClosure) {
+        issues.push(createPermitInspectionIssue(record, 'non-closure-operation', `Temporary closure permit ${record.id} must reference a closure maintenance operation.`));
+      }
+      for (const roadId of record.closureRoadIds) {
+        if (!city.objectIndex.objectsById[roadId]) {
+          issues.push(createPermitInspectionIssue(record, `missing-closure-road-${roadId}`, `Temporary closure permit ${record.id} references missing closure road ${roadId}.`));
+        }
+      }
+    }
+
+    for (const objectId of record.relatedObjectIds) {
+      if (!city.objectIndex.objectsById[objectId]) {
+        issues.push(createPermitInspectionIssue(record, `missing-related-object-${objectId}`, `Permit or inspection record ${record.id} references missing related object ${objectId}.`));
+      }
+    }
+  }
+}
+
+function createPermitInspectionIssue(
+  record: ValidationPermitInspectionRecord,
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `permit-inspection-${suffix}-${record.id}`,
+    severity: 'error',
+    category: 'operations',
+    objectId: record.id,
     message
   };
 }

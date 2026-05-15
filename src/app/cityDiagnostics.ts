@@ -27,6 +27,8 @@ import type {
   MaintenanceOperationKind,
   MaintenanceOperationStatus,
   MaintenancePriority,
+  PermitInspectionRecordKind,
+  PermitInspectionStatus,
   ServiceAccessCorridorKind,
   SignPanelKind,
   SourceType,
@@ -88,6 +90,7 @@ export interface CityDiagnostics {
   readonly serviceAccess: ServiceAccessDiagnostics;
   readonly assetInventory: AssetInventoryDiagnostics;
   readonly maintenanceOperations: MaintenanceOperationDiagnostics;
+  readonly permitsInspections: PermitInspectionDiagnostics;
   readonly accessControls: AccessControlDiagnostics;
   readonly publicLighting: PublicLightingDiagnostics;
   readonly signageWayfinding: SignageWayfindingDiagnostics;
@@ -205,6 +208,14 @@ export interface CityDiagnostics {
     readonly maintenanceTemporaryClosures: number;
     readonly maintenanceConditionUpdates: number;
     readonly maintenanceClosureRoads: number;
+    readonly permitInspectionRecords: number;
+    readonly developmentPermits: number;
+    readonly temporaryClosurePermits: number;
+    readonly codeChecks: number;
+    readonly permitApprovals: number;
+    readonly permitInspections: number;
+    readonly complianceReviews: number;
+    readonly permitComplianceOpenIssues: number;
     readonly accessControls: number;
     readonly accessControlGates: number;
     readonly accessControlCheckpoints: number;
@@ -607,6 +618,23 @@ export interface MaintenanceOperationDiagnostics {
   readonly closureRoads: number;
   readonly closureNavigationEdges: number;
   readonly operationRoutes: number;
+}
+
+export interface PermitInspectionDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<PermitInspectionRecordKind, number>>;
+  readonly byStatus: Readonly<Record<PermitInspectionStatus, number>>;
+  readonly developmentPermits: number;
+  readonly temporaryClosurePermits: number;
+  readonly codeChecks: number;
+  readonly approvals: number;
+  readonly inspections: number;
+  readonly complianceReviews: number;
+  readonly approvedRecords: number;
+  readonly activeRecords: number;
+  readonly openComplianceIssues: number;
+  readonly closureRoads: number;
+  readonly relatedObjects: number;
 }
 
 export interface AccessControlDiagnostics {
@@ -1254,6 +1282,7 @@ export function createCityDiagnostics(
   const serviceAccess = createServiceAccessDiagnostics(city);
   const assetInventory = createAssetInventoryDiagnostics(city);
   const maintenanceOperations = createMaintenanceOperationDiagnostics(city);
+  const permitsInspections = createPermitInspectionDiagnostics(city);
   const accessControls = createAccessControlDiagnostics(city);
   const publicLighting = createPublicLightingDiagnostics(city);
   const signageWayfinding = createSignageWayfindingDiagnostics(city);
@@ -1325,6 +1354,7 @@ export function createCityDiagnostics(
     serviceAccess,
     assetInventory,
     maintenanceOperations,
+    permitsInspections,
     accessControls,
     publicLighting,
     signageWayfinding,
@@ -1433,6 +1463,14 @@ export function createCityDiagnostics(
       maintenanceTemporaryClosures: maintenanceOperations.temporaryClosures,
       maintenanceConditionUpdates: maintenanceOperations.assetsWithConditionUpdates,
       maintenanceClosureRoads: maintenanceOperations.closureRoads,
+      permitInspectionRecords: permitsInspections.total,
+      developmentPermits: permitsInspections.developmentPermits,
+      temporaryClosurePermits: permitsInspections.temporaryClosurePermits,
+      codeChecks: permitsInspections.codeChecks,
+      permitApprovals: permitsInspections.approvals,
+      permitInspections: permitsInspections.inspections,
+      complianceReviews: permitsInspections.complianceReviews,
+      permitComplianceOpenIssues: permitsInspections.openComplianceIssues,
       accessControls: accessControls.total,
       accessControlGates: accessControls.gates,
       accessControlCheckpoints: accessControls.checkpoints,
@@ -2062,6 +2100,58 @@ function createMaintenanceOperationDiagnostics(city: GeneratedCity): Maintenance
     closureRoads: closureRoads.size,
     closureNavigationEdges: closureNavigationEdges.size,
     operationRoutes: operationRoutes.size
+  };
+}
+
+function createPermitInspectionDiagnostics(city: GeneratedCity): PermitInspectionDiagnostics {
+  const byKind = {
+    'development-permit': 0,
+    'temporary-closure-permit': 0,
+    'code-check': 0,
+    approval: 0,
+    inspection: 0,
+    'compliance-review': 0
+  } satisfies Record<PermitInspectionRecordKind, number>;
+  const byStatus = {
+    draft: 0,
+    submitted: 0,
+    'under-review': 0,
+    approved: 0,
+    active: 0,
+    closed: 0,
+    failed: 0
+  } satisfies Record<PermitInspectionStatus, number>;
+  const closureRoads = new Set<string>();
+  const relatedObjects = new Set<string>();
+  let openComplianceIssues = 0;
+
+  for (const record of city.permitInspectionRecords) {
+    byKind[record.recordKind] += 1;
+    byStatus[record.status] += 1;
+    openComplianceIssues += record.compliance.outstandingIssueCount;
+    for (const roadId of record.closureRoadIds) {
+      closureRoads.add(roadId);
+    }
+    for (const objectId of record.relatedObjectIds) {
+      relatedObjects.add(objectId);
+    }
+  }
+
+  return {
+    total: city.permitInspectionRecords.length,
+    byKind,
+    byStatus,
+    developmentPermits: byKind['development-permit'],
+    temporaryClosurePermits: byKind['temporary-closure-permit'],
+    codeChecks: byKind['code-check'],
+    approvals: byKind.approval,
+    inspections: byKind.inspection,
+    complianceReviews: byKind['compliance-review'],
+    approvedRecords: byStatus.approved,
+    activeRecords: byStatus.active,
+    openComplianceIssues,
+    closureRoads: closureRoads.size,
+    relatedObjects: relatedObjects.size
   };
 }
 

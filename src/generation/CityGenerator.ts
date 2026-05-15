@@ -37,6 +37,7 @@ import { NavigationGraphGenerator } from './mobility/NavigationGraphGenerator';
 import { TransitGenerator } from './mobility/TransitGenerator';
 import { AssetInventoryGenerator } from './operations/AssetInventoryGenerator';
 import { MaintenanceOperationGenerator } from './operations/MaintenanceOperationGenerator';
+import { PermitInspectionGenerator } from './operations/PermitInspectionGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { GreenStormwaterGenerator } from './public-realm/GreenStormwaterGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
@@ -399,6 +400,10 @@ export class CityGenerator {
       navigationGraphEdges: accessControl.navigationGraphEdges,
       roads: stormwater.roads
     });
+    const permitInspectionRecords = new PermitInspectionGenerator().create({
+      cadastreRecords,
+      maintenanceOperations
+    });
 
     const generatedWithoutMetadata: Omit<GeneratedCity, 'objectIndex' | 'validation'> = {
       schemaVersion: CITY_CONTRACT_SCHEMA_VERSION,
@@ -447,6 +452,7 @@ export class CityGenerator {
       navigationGraphEdges: accessControl.navigationGraphEdges,
       navigationRoutes: navigationGraphs.navigationRoutes,
       maintenanceOperations,
+      permitInspectionRecords,
       freightLoadingDocks: freightLogistics.loadingDocks,
       freightRoutes: freightLogistics.routes,
       serviceAlleys: freightLogistics.serviceAlleys,

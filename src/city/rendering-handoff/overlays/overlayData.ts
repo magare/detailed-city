@@ -31,6 +31,7 @@ export type CityOverlayId =
   | 'freight-logistics'
   | 'asset-inventory'
   | 'maintenance-operations'
+  | 'permits-inspections'
   | 'civic-anchors'
   | 'community-anchors'
   | 'culture-anchors'
@@ -108,6 +109,7 @@ export function createCityOverlayDatasets(
     createDataset('freight-logistics', 'Freight Logistics', 'domain-data', createFreightLogisticsFeatures(city)),
     createDataset('asset-inventory', 'Asset Inventory', 'domain-data', createAssetInventoryFeatures(city)),
     createDataset('maintenance-operations', 'Maintenance Operations', 'domain-data', createMaintenanceOperationFeatures(city)),
+    createDataset('permits-inspections', 'Permits And Inspections', 'domain-data', createPermitInspectionFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
@@ -1104,6 +1106,42 @@ function createMaintenanceOperationFeatures(city: GeneratedCity): CityOverlayFea
         closureRoads: operation.closureRoadIds.length,
         closureEdges: operation.closureNavigationEdgeIds.length,
         createsTemporaryClosure: operation.createsTemporaryClosure
+      }
+    };
+  });
+}
+
+function createPermitInspectionFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.permitInspectionRecords.map((record) => {
+    const sourceObjectId = record.parcelId ?? record.maintenanceOperationId ?? record.relatedObjectIds[0];
+    const target = sourceObjectId ? city.objectIndex.objectsById[sourceObjectId] : undefined;
+
+    return {
+      id: `overlay:permits-inspections:${record.id}`,
+      overlayId: 'permits-inspections',
+      objectId: record.id,
+      objectKind: record.kind,
+      ownerDomain: record.ownerDomain,
+      label: `${record.recordKind}:${record.status}`,
+      geometry: target ? getObjectGeometry(target) : { type: 'none' },
+      metadata: {
+        recordKind: record.recordKind,
+        status: record.status,
+        applicantEntityId: record.applicantEntityId,
+        responsibleDepartmentId: record.responsibleDepartmentId,
+        cadastreRecordId: record.cadastreRecordId ?? '',
+        parcelId: record.parcelId ?? '',
+        maintenanceOperationId: record.maintenanceOperationId ?? '',
+        submittedDay: record.submittedDay,
+        validFromDay: record.validFromDay,
+        validToDay: record.validToDay,
+        approvalRequired: record.approval.required,
+        inspectionRequired: record.inspection.required,
+        complianceCode: record.compliance.code,
+        compliancePassed: record.compliance.passed,
+        outstandingIssueCount: record.compliance.outstandingIssueCount,
+        closureRoads: record.closureRoadIds.length,
+        temporaryRestrictions: record.temporaryRestrictionIds.length
       }
     };
   });

@@ -175,6 +175,10 @@ export class DebugPanel {
         `${diagnostics.maintenanceOperations.total} ops, ${diagnostics.maintenanceOperations.repairQueueItems} repairs, ${diagnostics.maintenanceOperations.temporaryClosures} closures`
       ),
       createMetric(
+        'Permits',
+        `${diagnostics.permitsInspections.total} records, ${diagnostics.permitsInspections.developmentPermits} development, ${diagnostics.permitsInspections.temporaryClosurePermits} closures`
+      ),
+      createMetric(
         'Access Control',
         `${diagnostics.accessControls.total} controls, ${diagnostics.accessControls.navigationControlledEdges} edges, ${diagnostics.accessControls.privateAccessControls} private`
       ),

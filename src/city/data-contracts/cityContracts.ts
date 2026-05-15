@@ -46,6 +46,7 @@ export type CityObjectKind =
   | 'navigation-route'
   | 'named-place'
   | 'parcel'
+  | 'permit-inspection-record'
   | 'park'
   | 'park-feature'
   | 'plaza-zone'
@@ -217,6 +218,48 @@ export interface MaintenanceOperationContract extends CityObjectBase<'maintenanc
   readonly closureNavigationEdgeIds: readonly CityId[];
   readonly temporaryRestrictionIds: readonly CityId[];
   readonly createsTemporaryClosure: boolean;
+}
+
+export type PermitInspectionRecordKind =
+  | 'development-permit'
+  | 'temporary-closure-permit'
+  | 'code-check'
+  | 'approval'
+  | 'inspection'
+  | 'compliance-review';
+export type PermitInspectionStatus = 'draft' | 'submitted' | 'under-review' | 'approved' | 'active' | 'closed' | 'failed';
+export type PermitComplianceCode = 'zoning' | 'traffic-control' | 'accessibility' | 'fire-safety' | 'operations';
+
+export interface PermitInspectionRecordContract extends CityObjectBase<'permit-inspection-record'> {
+  readonly recordKind: PermitInspectionRecordKind;
+  readonly status: PermitInspectionStatus;
+  readonly applicantEntityId: CityId;
+  readonly responsibleDepartmentId: CityId;
+  readonly cadastreRecordId?: CityId;
+  readonly parcelId?: CityId;
+  readonly maintenanceOperationId?: CityId;
+  readonly relatedObjectIds: readonly CityId[];
+  readonly closureRoadIds: readonly CityId[];
+  readonly temporaryRestrictionIds: readonly CityId[];
+  readonly submittedDay: number;
+  readonly validFromDay: number;
+  readonly validToDay: number;
+  readonly approval: {
+    readonly required: boolean;
+    readonly approvedByDepartmentId?: CityId;
+    readonly approvalDay?: number;
+  };
+  readonly inspection: {
+    readonly required: boolean;
+    readonly scheduledDay?: number;
+    readonly inspectorDepartmentId?: CityId;
+    readonly passed?: boolean;
+  };
+  readonly compliance: {
+    readonly code: PermitComplianceCode;
+    readonly passed: boolean;
+    readonly outstandingIssueCount: number;
+  };
 }
 
 export type DevelopmentPhaseKind = 'baseline' | 'future-expansion' | 'temporary-condition';
@@ -571,6 +614,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1'],
       description: 'Operations-owned maintenance work orders schedule inspections, repairs, replacements, street works, and temporary closures for inventory assets.'
+    },
+    {
+      objectKind: 'permit-inspection-record',
+      scope: 'operations',
+      defaultTier: 'lod1',
+      allowedTiers: ['lod1'],
+      description: 'Operations-owned permits, approvals, code checks, inspections, compliance reviews, and temporary closure approvals bind land and maintenance changes to inspectable records.'
     },
     {
       objectKind: 'block',

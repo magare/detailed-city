@@ -46,6 +46,7 @@ import type {
   NavigationGraphNodeContract,
   NavigationRouteContract,
   NamedPlaceContract,
+  PermitInspectionRecordContract,
   ParkFeatureContract,
   PlazaZoneContract,
   PerformanceBudget,
@@ -336,6 +337,7 @@ export interface NavigationGraphNode extends NavigationGraphNodeContract {}
 export interface NavigationGraphEdge extends NavigationGraphEdgeContract {}
 export interface NavigationRoute extends NavigationRouteContract {}
 export interface MaintenanceOperation extends MaintenanceOperationContract {}
+export interface PermitInspectionRecord extends PermitInspectionRecordContract {}
 export interface FreightLoadingDock extends FreightLoadingDockContract {}
 export interface FreightRoute extends FreightRouteContract {}
 export interface ServiceAlley extends ServiceAlleyContract {}
@@ -383,6 +385,7 @@ export type GeneratedCityObject =
   | NavigationGraphEdge
   | NavigationRoute
   | MaintenanceOperation
+  | PermitInspectionRecord
   | NamedPlace
   | FreightLoadingDock
   | FreightRoute
@@ -461,6 +464,7 @@ export interface GeneratedCity {
   navigationGraphEdges: NavigationGraphEdge[];
   navigationRoutes: NavigationRoute[];
   maintenanceOperations: MaintenanceOperation[];
+  permitInspectionRecords: PermitInspectionRecord[];
   freightLoadingDocks: FreightLoadingDock[];
   freightRoutes: FreightRoute[];
   serviceAlleys: ServiceAlley[];

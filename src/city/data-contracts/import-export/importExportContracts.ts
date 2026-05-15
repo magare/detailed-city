@@ -270,6 +270,7 @@ export interface ProceduralSeedDomainSections {
   readonly navigationGraphEdges: GeneratedCity['navigationGraphEdges'];
   readonly navigationRoutes: GeneratedCity['navigationRoutes'];
   readonly maintenanceOperations: GeneratedCity['maintenanceOperations'];
+  readonly permitInspectionRecords: GeneratedCity['permitInspectionRecords'];
   readonly freightLoadingDocks: GeneratedCity['freightLoadingDocks'];
   readonly freightRoutes: GeneratedCity['freightRoutes'];
   readonly serviceAlleys: GeneratedCity['serviceAlleys'];
@@ -338,6 +339,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly navigationGraphEdges: number;
   readonly navigationRoutes: number;
   readonly maintenanceOperations: number;
+  readonly permitInspectionRecords: number;
   readonly freightLoadingDocks: number;
   readonly freightRoutes: number;
   readonly serviceAlleys: number;
@@ -480,6 +482,7 @@ export function createProceduralSeedJsonExport(
       navigationGraphEdges: city.navigationGraphEdges,
       navigationRoutes: city.navigationRoutes,
       maintenanceOperations: city.maintenanceOperations,
+      permitInspectionRecords: city.permitInspectionRecords,
       freightLoadingDocks: city.freightLoadingDocks,
       freightRoutes: city.freightRoutes,
       serviceAlleys: city.serviceAlleys,
@@ -682,6 +685,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'navigationGraphEdges'
     | 'navigationRoutes'
     | 'maintenanceOperations'
+    | 'permitInspectionRecords'
     | 'freightLoadingDocks'
     | 'freightRoutes'
     | 'serviceAlleys'
@@ -747,6 +751,7 @@ export function createProceduralSeedDomainSectionCounts(
     navigationGraphEdges: city.navigationGraphEdges.length,
     navigationRoutes: city.navigationRoutes.length,
     maintenanceOperations: city.maintenanceOperations.length,
+    permitInspectionRecords: city.permitInspectionRecords.length,
     freightLoadingDocks: city.freightLoadingDocks.length,
     freightRoutes: city.freightRoutes.length,
     serviceAlleys: city.serviceAlleys.length,
@@ -825,6 +830,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'navigationGraphEdges') +
     getArrayLength(city, 'navigationRoutes') +
     getArrayLength(city, 'maintenanceOperations') +
+    getArrayLength(city, 'permitInspectionRecords') +
     getArrayLength(city, 'freightLoadingDocks') +
     getArrayLength(city, 'freightRoutes') +
     getArrayLength(city, 'serviceAlleys') +

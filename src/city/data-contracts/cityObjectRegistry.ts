@@ -72,6 +72,7 @@ const ACCESS_CONTROL_KIND = String.raw`(?:bollard-line|checkpoint|fence|gate|gua
 const GREEN_STORMWATER_KIND = String.raw`(?:bioswale|curb-cut|flow-through-planter|permeable-pavement|pervious-strip|rain-garden|tree-trench)`;
 const ASSET_INVENTORY_TARGET_KIND = String.raw`(?:civic-anchor|community-anchor|culture-anchor|government-anchor|green-stormwater-feature|park-feature|plaza-zone|street-furniture|street-light|utility-edge|utility-node|waterfront-open-space)`;
 const MAINTENANCE_OPERATION_KIND = String.raw`(?:inspection|repair|replacement|street-work|temporary-closure)`;
+const PERMIT_INSPECTION_KIND = String.raw`(?:development-permit|temporary-closure-permit|code-check|approval|inspection|compliance-review)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -109,6 +110,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry('block', ['block-<grid-x>-<grid-z>'], [exact(String.raw`block-\d+-\d+`)], required(['district'])),
   entry('address-point', ['<building-id>-address-primary'], [exact(String.raw`${BUILDING_ID}-address-primary`)], required(['building'])),
   entry('building', ['building-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(BUILDING_ID)], required(['parcel'])),
+  entry(
+    'permit-inspection-record',
+    ['permit-inspection-<record-kind>-<source-object-id>'],
+    [exact(String.raw`permit-inspection-${PERMIT_INSPECTION_KIND}-${NAMED_ID}(?:-${NAMED_ID})*`)],
+    required(['cadastre-record', 'maintenance-operation'])
+  ),
   entry(
     'building-entrance',
     ['<building-id>-entrance-<primary|lobby|ramp|service|loading>'],

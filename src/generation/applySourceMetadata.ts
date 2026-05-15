@@ -78,6 +78,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     maintenanceOperations: city.maintenanceOperations.map((operation) =>
       withProceduralMetadata(operation, 'operations-maintenance')
     ),
+    permitInspectionRecords: city.permitInspectionRecords.map((record) =>
+      withProceduralMetadata(record, 'operations-permits-inspections')
+    ),
     freightLoadingDocks: city.freightLoadingDocks.map((dock) =>
       withProceduralMetadata(dock, 'mobility-freight-loading-docks')
     ),
