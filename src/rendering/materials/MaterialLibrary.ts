@@ -272,6 +272,7 @@ export class MaterialLibrary {
     'community-anchor': this.plazaHardscape,
     'culture-anchor': this.storefrontSign,
     'government-anchor': this.building,
+    'emergency-service-anchor': this.building,
     roof: this.rooftop,
     solar: this.roofSolarPanel,
     'green-roof': this.roofGreen,

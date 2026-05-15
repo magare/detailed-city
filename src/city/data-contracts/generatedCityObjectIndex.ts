@@ -38,6 +38,7 @@ type GeneratedCityObjectSource = Pick<
   | 'curbActivations'
   | 'curbZones'
   | 'districts'
+  | 'emergencyServiceAnchors'
   | 'freightLoadingDocks'
   | 'freightRoutes'
   | 'gazetteerEntries'
@@ -143,6 +144,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.communityAnchors,
     ...city.cultureAnchors,
     ...city.governmentAnchors,
+    ...city.emergencyServiceAnchors,
     ...city.activeFrontages,
     ...city.parks,
     ...city.parkFeatures,

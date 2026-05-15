@@ -16,6 +16,7 @@ import { EntranceAddressGenerator } from './buildings/EntranceAddressGenerator';
 import { CivicAnchorGenerator } from './civic/CivicAnchorGenerator';
 import { CommunityAnchorGenerator } from './civic/CommunityAnchorGenerator';
 import { CultureAnchorGenerator } from './civic/CultureAnchorGenerator';
+import { EmergencyServiceAnchorGenerator } from './civic/EmergencyServiceAnchorGenerator';
 import { GovernmentAnchorGenerator } from './civic/GovernmentAnchorGenerator';
 import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
@@ -355,6 +356,14 @@ export class CityGenerator {
       parcels: soilGeology.parcels,
       buildings: entranceAddress.buildings
     });
+    const emergencyServiceAnchors = new EmergencyServiceAnchorGenerator().create({
+      civicAnchors,
+      buildings: entranceAddress.buildings,
+      buildingFireSafetyProfiles,
+      navigationGraphNodes: navigationGraphs.navigationGraphNodes,
+      navigationGraphEdges: accessControl.navigationGraphEdges,
+      curbZones
+    });
     const governmentAnchors = new GovernmentAnchorGenerator().create({
       civicAnchors,
       buildings: entranceAddress.buildings,
@@ -401,6 +410,7 @@ export class CityGenerator {
       communityAnchors: addressingGazetteer.communityAnchors,
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
+      emergencyServiceAnchors,
       utilityNodes: serviceAccess.utilityNodes,
       utilityEdges: serviceAccess.utilityEdges,
       streetLights: powerGrid.streetLights,
@@ -491,6 +501,7 @@ export class CityGenerator {
       communityAnchors: addressingGazetteer.communityAnchors,
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
+      emergencyServiceAnchors,
       activeFrontages: entranceAddress.activeFrontages,
       parks: parksWithFeatures,
       parkFeatures,

@@ -26,6 +26,7 @@ export type CityObjectKind =
   | 'development-phase'
   | 'district'
   | 'economy-anchor'
+  | 'emergency-service-anchor'
   | 'facade'
   | 'gazetteer-entry'
   | 'green-stormwater-feature'
@@ -687,6 +688,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Government anchors expose city hall, administrative, court, service counter, and civic plaza public-administration nodes.'
+    },
+    {
+      objectKind: 'emergency-service-anchor',
+      scope: 'building',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3', 'lod4'],
+      description: 'Emergency service anchors expose fire, police, ambulance, shelter, command, and staging bases with dispatch coverage and access references.'
     },
     {
       objectKind: 'cadastre-record',
@@ -2759,6 +2767,60 @@ export interface GovernmentAnchorContract extends CityObjectBase<'government-anc
   readonly publicAccess: boolean;
   readonly addressPointIds?: readonly CityId[];
   readonly scheduleProfileId: string;
+  readonly renderBindingId: CityId;
+}
+
+export type EmergencyServiceAnchorKind =
+  | 'ambulance-post'
+  | 'command-post'
+  | 'fire-station'
+  | 'police-station'
+  | 'public-shelter'
+  | 'staging-area';
+
+export type EmergencyResponseMode = 'command' | 'fire' | 'medical' | 'multi-agency' | 'police' | 'shelter';
+
+export interface EmergencyServiceAnchorContract extends CityObjectBase<'emergency-service-anchor'> {
+  readonly anchorKind: EmergencyServiceAnchorKind;
+  readonly responseMode: EmergencyResponseMode;
+  readonly civicAnchorId: CityId;
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly districtId: CityId;
+  readonly roadId: CityId;
+  readonly serviceAreaBoundaryId: CityId;
+  readonly center: Point2D;
+  readonly dispatch: {
+    readonly unitCapacity: number;
+    readonly responderCapacity: number;
+    readonly vehiclesAvailable: number;
+    readonly stagingBays: number;
+    readonly operates24h: boolean;
+    readonly dispatchPriority: number;
+  };
+  readonly coverage: {
+    readonly radiusMeters: number;
+    readonly targetDistrictIds: readonly CityId[];
+    readonly coveredRoadIds: readonly CityId[];
+    readonly coveredBuildingFireSafetyProfileIds: readonly CityId[];
+    readonly estimatedResponseSeconds: number;
+    readonly coverageScore: number;
+  };
+  readonly staging: {
+    readonly stagingAreaSqM: number;
+    readonly assemblyCapacityPeople: number;
+    readonly ambulanceBays: number;
+    readonly commandPostReady: boolean;
+    readonly shelterCapacityPeople: number;
+  };
+  readonly access: {
+    readonly navigationNodeIds: readonly CityId[];
+    readonly navigationEdgeIds: readonly CityId[];
+    readonly fireLaneCurbZoneIds: readonly CityId[];
+    readonly serviceAccessCorridorIds: readonly CityId[];
+    readonly hydrantNodeIds: readonly CityId[];
+  };
+  readonly scheduleProfileId: CityId;
   readonly renderBindingId: CityId;
 }
 

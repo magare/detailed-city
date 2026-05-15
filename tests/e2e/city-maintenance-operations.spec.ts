@@ -30,15 +30,15 @@ test('maintenance operations are deterministic and schedule asset work from inve
     secondCity.maintenanceOperations.map(getMaintenanceSignature)
   );
   expect(firstCity.validation.passed).toBe(true);
-  expect(firstCity.maintenanceOperations).toHaveLength(397);
+  expect(firstCity.maintenanceOperations).toHaveLength(400);
   expect(diagnostics.maintenanceOperations).toMatchObject({
-    total: 397,
+    total: 400,
     inspectionCycles: 24,
-    repairQueueItems: 152,
-    replacementPlans: 209,
+    repairQueueItems: 154,
+    replacementPlans: 210,
     streetWorks: 8,
     temporaryClosures: 4,
-    assetsWithConditionUpdates: 292,
+    assetsWithConditionUpdates: 294,
     closureRoads: 7,
     closureNavigationEdges: 15,
     operationRoutes: 1
@@ -46,7 +46,7 @@ test('maintenance operations are deterministic and schedule asset work from inve
   expect([...maintenanceWatchIds].every((id) => queuedAssetIds.has(id))).toBe(true);
   expect(firstCity.maintenanceOperations.every((operation) => operation.navigationRouteId === 'navigation-route-service-service-4')).toBe(true);
   expect(firstCity.maintenanceOperations.some((operation) => operation.createsTemporaryClosure)).toBe(true);
-  expect(overlays.find((overlay) => overlay.id === 'maintenance-operations')?.featureCount).toBe(397);
+  expect(overlays.find((overlay) => overlay.id === 'maintenance-operations')?.featureCount).toBe(400);
 });
 
 test('maintenance validation catches broken asset, route, schedule, and closure references', () => {
@@ -129,13 +129,13 @@ test('maintenance diagnostics and overlays are inspectable in browser debug surf
   }));
 
   expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.maintenance?.total).toBe(397);
-  expect(diagnostics.maintenance?.repairQueueItems).toBe(152);
+  expect(diagnostics.maintenance?.total).toBe(400);
+  expect(diagnostics.maintenance?.repairQueueItems).toBe(154);
   expect(diagnostics.maintenance?.temporaryClosures).toBe(4);
-  expect(diagnostics.maintenanceObjects).toBe(397);
-  expect(diagnostics.overlayFeatures).toBe(397);
+  expect(diagnostics.maintenanceObjects).toBe(400);
+  expect(diagnostics.overlayFeatures).toBe(400);
   expect(diagnostics.panelText).toContain('Maintenance');
-  expect(diagnostics.panelText).toContain('397 ops');
+  expect(diagnostics.panelText).toContain('400 ops');
 });
 
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {

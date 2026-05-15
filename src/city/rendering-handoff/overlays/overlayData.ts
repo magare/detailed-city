@@ -38,6 +38,7 @@ export type CityOverlayId =
   | 'community-anchors'
   | 'culture-anchors'
   | 'government-anchors'
+  | 'emergency-service-anchors'
   | 'building-access'
   | 'building-fire-safety'
   | 'addressing-gazetteer'
@@ -119,6 +120,7 @@ export function createCityOverlayDatasets(
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
+    createDataset('emergency-service-anchors', 'Emergency Service Anchors', 'domain-data', createEmergencyServiceAnchorFeatures(city)),
     createDataset('building-access', 'Building Access', 'domain-data', createBuildingAccessFeatures(city)),
     createDataset('building-fire-safety', 'Building Fire Safety', 'domain-data', createBuildingFireSafetyFeatures(city)),
     createDataset('addressing-gazetteer', 'Addressing Gazetteer', 'domain-data', createAddressingGazetteerFeatures(city)),
@@ -671,6 +673,37 @@ function createGovernmentAnchorFeatures(city: GeneratedCity): CityOverlayFeature
       dailyVisitors: anchor.dailyVisitors,
       staffCapacity: anchor.staffCapacity,
       publicAccess: anchor.publicAccess
+    }
+  }));
+}
+
+function createEmergencyServiceAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.emergencyServiceAnchors.map((anchor) => ({
+    id: `overlay:emergency-service-anchors:${anchor.id}`,
+    overlayId: 'emergency-service-anchors',
+    objectId: anchor.id,
+    objectKind: anchor.kind,
+    ownerDomain: anchor.ownerDomain,
+    label: anchor.name ?? anchor.id,
+    geometry: { type: 'point', point: anchor.center },
+    metadata: {
+      anchorKind: anchor.anchorKind,
+      responseMode: anchor.responseMode,
+      civicAnchorId: anchor.civicAnchorId,
+      buildingId: anchor.buildingId,
+      roadId: anchor.roadId,
+      units: anchor.dispatch.unitCapacity,
+      vehicles: anchor.dispatch.vehiclesAvailable,
+      responders: anchor.dispatch.responderCapacity,
+      coverageRadiusMeters: anchor.coverage.radiusMeters,
+      coveredRoads: anchor.coverage.coveredRoadIds.length,
+      coveredFireSafetyProfiles: anchor.coverage.coveredBuildingFireSafetyProfileIds.length,
+      estimatedResponseSeconds: anchor.coverage.estimatedResponseSeconds,
+      coverageScore: anchor.coverage.coverageScore,
+      shelterCapacityPeople: anchor.staging.shelterCapacityPeople,
+      commandPostReady: anchor.staging.commandPostReady,
+      navigationNodes: anchor.access.navigationNodeIds.length,
+      fireLanes: anchor.access.fireLaneCurbZoneIds.length
     }
   }));
 }

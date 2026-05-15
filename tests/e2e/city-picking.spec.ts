@@ -38,6 +38,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.communityAnchors.length +
       city.cultureAnchors.length +
       city.governmentAnchors.length +
+      city.emergencyServiceAnchors.length +
       city.buildingEntrances.length +
       city.addressPoints.length +
       city.accessControls.length +
@@ -72,6 +73,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind['community-anchor']).toBe(city.communityAnchors.length);
   expect(catalog.countsByKind['culture-anchor']).toBe(city.cultureAnchors.length);
   expect(catalog.countsByKind['government-anchor']).toBe(city.governmentAnchors.length);
+  expect(catalog.countsByKind['emergency-service-anchor']).toBe(city.emergencyServiceAnchors.length);
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
   expect(catalog.countsByKind['street-furniture']).toBe(city.streetFurniture.length);

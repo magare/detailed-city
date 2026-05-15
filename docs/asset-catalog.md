@@ -45,6 +45,7 @@ Asset selection should be driven by domain semantics:
 - Green stormwater render bindings use the procedural `green-stormwater` asset and registered material zones so rain gardens, bioswales, pervious strips, permeable paving, curb cuts, and tree trenches remain visible without external assets.
 - Curb activation render bindings use a procedural street-prop platform asset, registered public-realm material zones, and railing/wood fallback materials so parklets, outdoor dining, temporary seating decks, interim plazas, and protection barriers are visible before external furniture kits land.
 - Public amenity render bindings use procedural street-prop fallbacks for public toilets, drinking fountains, shade structures, misting/cooling points, charging points, clocks, information kiosks, and repair stands so comfort fixtures remain visible and inspectable before external amenity kits land.
+- Emergency service anchor render bindings use a procedural civic-building marker, registered emergency-service material zone, and building fallback material so fire, police, ambulance, shelter, command, and staging anchors remain inspectable before dedicated emergency facility assets land.
 - Utility asset inventory bindings use procedural utility-node and utility-edge fallbacks so inventory records can resolve render assets before dedicated utility models exist.
 - Procedural fallback assets are valid catalog entries when no binary asset exists yet.
 

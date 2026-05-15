@@ -46,7 +46,15 @@ const RENDER_LAYER_KIND_GROUPS = [
   {
     id: 'buildings',
     name: 'Buildings Render Layer',
-    objectKinds: ['building', 'civic-anchor', 'community-anchor', 'culture-anchor', 'government-anchor', 'facade'] as const
+    objectKinds: [
+      'building',
+      'civic-anchor',
+      'community-anchor',
+      'culture-anchor',
+      'government-anchor',
+      'emergency-service-anchor',
+      'facade'
+    ] as const
   },
   {
     id: 'public-realm',

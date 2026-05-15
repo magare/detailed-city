@@ -25,24 +25,24 @@ test('asset inventory is deterministic and covers renderable civic public-realm 
     secondCity.assetInventoryRecords.map(getInventorySignature)
   );
   expect(firstCity.validation.passed).toBe(true);
-  expect(firstCity.assetInventoryRecords).toHaveLength(1061);
+  expect(firstCity.assetInventoryRecords).toHaveLength(1067);
   expect(diagnostics.assetInventory).toMatchObject({
-    totalRecords: 1061,
-    coveredAssetObjects: 1061,
-    lookupKeys: 1061,
+    totalRecords: 1067,
+    coveredAssetObjects: 1067,
+    lookupKeys: 1067,
     byScope: {
-      civic: 25,
+      civic: 31,
       'public-realm': 953,
       utility: 83
     },
-    recordsWithRenderAssets: 1061,
-    recordsWithInspectionAccess: 1061
+    recordsWithRenderAssets: 1067,
+    recordsWithInspectionAccess: 1067
   });
   expect([...targetIds].every((id) => inventoryTargetIds.has(id))).toBe(true);
   expect(lookupKeys.size).toBe(firstCity.assetInventoryRecords.length);
   expect(firstCity.assetInventoryRecords.every((record) => bindingIds.has(record.renderBindingId))).toBe(true);
   expect(firstCity.assetInventoryRecords.every((record) => assetIds.has(record.renderAssetId))).toBe(true);
-  expect(overlays.find((overlay) => overlay.id === 'asset-inventory')?.featureCount).toBe(1061);
+  expect(overlays.find((overlay) => overlay.id === 'asset-inventory')?.featureCount).toBe(1067);
 });
 
 test('asset inventory validation catches missing targets and invalid lifecycle data', () => {
@@ -109,11 +109,11 @@ test('asset inventory diagnostics and overlays are inspectable in browser debug 
   }));
 
   expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.totalRecords).toBe(1061);
-  expect(diagnostics.civicAssets).toBe(25);
+  expect(diagnostics.totalRecords).toBe(1067);
+  expect(diagnostics.civicAssets).toBe(31);
   expect(diagnostics.publicRealmAssets).toBe(953);
   expect(diagnostics.utilityAssets).toBe(83);
-  expect(diagnostics.overlayFeatures).toBe(1061);
+  expect(diagnostics.overlayFeatures).toBe(1067);
   expect(diagnostics.panelText).toContain('Asset Inventory');
 });
 

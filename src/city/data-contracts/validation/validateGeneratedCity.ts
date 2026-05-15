@@ -21,6 +21,8 @@ import type {
   CommunityAnchorKind,
   ConstraintKind,
   CultureAnchorKind,
+  EmergencyResponseMode,
+  EmergencyServiceAnchorKind,
   GeospatialFrame,
   GovernmentAnchorKind,
   HazardMitigationKind,
@@ -88,6 +90,7 @@ type GeneratedCityForValidation = Pick<
   | 'communityAnchors'
   | 'cultureAnchors'
   | 'governmentAnchors'
+  | 'emergencyServiceAnchors'
   | 'cityMetrics'
   | 'developmentPhases'
   | 'weatherPresets'
@@ -153,6 +156,7 @@ type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
 type ValidationGovernmentAnchor = GeneratedCityForValidation['governmentAnchors'][number];
+type ValidationEmergencyServiceAnchor = GeneratedCityForValidation['emergencyServiceAnchors'][number];
 type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
@@ -186,6 +190,7 @@ const ASSET_INVENTORY_TARGET_KINDS = [
   'civic-anchor',
   'community-anchor',
   'culture-anchor',
+  'emergency-service-anchor',
   'government-anchor',
   'green-stormwater-feature',
   'park-feature',
@@ -314,6 +319,22 @@ const GOVERNMENT_ANCHOR_KINDS = [
   'court',
   'service-counter'
 ] as const satisfies readonly GovernmentAnchorKind[];
+const EMERGENCY_SERVICE_ANCHOR_KINDS = [
+  'ambulance-post',
+  'command-post',
+  'fire-station',
+  'police-station',
+  'public-shelter',
+  'staging-area'
+] as const satisfies readonly EmergencyServiceAnchorKind[];
+const EMERGENCY_RESPONSE_MODES = [
+  'command',
+  'fire',
+  'medical',
+  'multi-agency',
+  'police',
+  'shelter'
+] as const satisfies readonly EmergencyResponseMode[];
 const ACCESS_CONTROL_KINDS = [
   'bollard-line',
   'checkpoint',
@@ -3014,6 +3035,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateCommunityAnchors(city, issues, assetBindingsById);
   validateCultureAnchors(city, issues, assetBindingsById);
   validateGovernmentAnchors(city, issues, assetBindingsById);
+  validateEmergencyServiceAnchors(city, issues, assetBindingsById);
 
   for (const tree of city.trees) {
     if (tree.plantingContext === 'park' && (!tree.parkId || !hasObjectId(city, tree.parkId) || tree.parentId !== tree.parkId)) {
@@ -10424,6 +10446,198 @@ function createGovernmentAnchorIssue(
     category: 'zoning',
     objectId: anchor.id,
     ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from the government civic anchor and civic plaza zones.`),
+    message
+  };
+}
+
+function validateEmergencyServiceAnchors(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const anchorsByKind = new Map<EmergencyServiceAnchorKind, ValidationEmergencyServiceAnchor[]>();
+  const emergencyBaseAnchor = city.civicAnchors.find((anchor) => anchor.serviceType === 'emergency');
+  const districtsById = new Set(city.districts.map((district) => district.id));
+  const roadsById = new Set(city.roads.map((road) => road.id));
+  const fireSafetyProfilesById = new Map(city.buildingFireSafetyProfiles.map((profile) => [profile.id, profile]));
+  const navigationNodesById = new Map(city.navigationGraphNodes.map((node) => [node.id, node]));
+  const navigationEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
+  const curbZonesById = new Map(city.curbZones.map((curbZone) => [curbZone.id, curbZone]));
+  const serviceAccessCorridorsById = new Set(city.serviceAccessCorridors.map((corridor) => corridor.id));
+  const hydrantsById = new Set(
+    city.utilityNodes.filter((node) => node.waterSupply?.equipmentKind === 'hydrant').map((node) => node.id)
+  );
+
+  for (const anchor of city.emergencyServiceAnchors) {
+    const civicAnchor = city.civicAnchors.find((candidate) => candidate.id === anchor.civicAnchorId);
+    const building = city.buildings.find((candidate) => candidate.id === anchor.buildingId);
+    const parcel = city.parcels.find((candidate) => candidate.id === anchor.parcelId);
+    const serviceArea = city.administrativeBoundaries.find((candidate) => candidate.id === anchor.serviceAreaBoundaryId);
+    const binding = assetBindingsById.get(anchor.renderBindingId);
+
+    if (EMERGENCY_SERVICE_ANCHOR_KINDS.includes(anchor.anchorKind)) {
+      anchorsByKind.set(anchor.anchorKind, [...(anchorsByKind.get(anchor.anchorKind) ?? []), anchor]);
+    } else {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'invalid-kind', `Emergency service anchor ${anchor.id} must declare a supported emergency service kind.`));
+    }
+
+    if (!EMERGENCY_RESPONSE_MODES.includes(anchor.responseMode)) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'invalid-response-mode', `Emergency service anchor ${anchor.id} must declare a supported response mode.`));
+    }
+
+    if (!civicAnchor || civicAnchor.serviceType !== 'emergency' || anchor.parentId !== anchor.civicAnchorId) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'missing-emergency-civic-anchor', `Emergency service anchor ${anchor.id} must be parented to the emergency civic anchor.`));
+    }
+
+    if (!building || building.kind !== 'building' || building.parcelId !== anchor.parcelId) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'building-parcel-mismatch', `Emergency service anchor ${anchor.id} must reference an existing building and its parcel.`));
+    }
+
+    if (!parcel || parcel.id !== anchor.parcelId) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'missing-parcel', `Emergency service anchor ${anchor.id} must reference an existing parcel.`));
+    }
+
+    if (!districtsById.has(anchor.districtId)) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'missing-district', `Emergency service anchor ${anchor.id} must reference an existing district.`));
+    }
+
+    if (!roadsById.has(anchor.roadId)) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'missing-road', `Emergency service anchor ${anchor.id} must reference an existing dispatch road.`));
+    }
+
+    if (!serviceArea || serviceArea.boundaryKind !== 'service-area' || !serviceArea.serviceTypes.includes('emergency')) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'missing-emergency-service-area', `Emergency service anchor ${anchor.id} must reference an emergency service-area boundary.`));
+    }
+
+    if (
+      anchor.dispatch.unitCapacity <= 0 ||
+      anchor.dispatch.responderCapacity <= 0 ||
+      anchor.dispatch.vehiclesAvailable <= 0 ||
+      anchor.dispatch.stagingBays <= 0 ||
+      anchor.dispatch.dispatchPriority <= 0 ||
+      !anchor.dispatch.operates24h
+    ) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'invalid-dispatch-capacity', `Emergency service anchor ${anchor.id} must expose 24h dispatch units, responders, vehicles, staging bays, and priority.`));
+    }
+
+    if (
+      anchor.coverage.radiusMeters <= 0 ||
+      anchor.coverage.targetDistrictIds.length === 0 ||
+      anchor.coverage.coveredRoadIds.length === 0 ||
+      anchor.coverage.coveredBuildingFireSafetyProfileIds.length === 0 ||
+      anchor.coverage.estimatedResponseSeconds <= 0 ||
+      anchor.coverage.coverageScore <= 0
+    ) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'invalid-response-coverage', `Emergency service anchor ${anchor.id} must expose dispatch coverage, target districts, roads, fire-safety profiles, response time, and score.`));
+    }
+
+    for (const districtId of anchor.coverage.targetDistrictIds) {
+      if (!districtsById.has(districtId)) {
+        issues.push(createEmergencyServiceAnchorIssue(anchor, `missing-target-district-${toIssueIdToken(districtId)}`, `Emergency service anchor ${anchor.id} references missing target district ${districtId}.`));
+      }
+    }
+
+    for (const roadId of anchor.coverage.coveredRoadIds) {
+      if (!roadsById.has(roadId)) {
+        issues.push(createEmergencyServiceAnchorIssue(anchor, `missing-covered-road-${toIssueIdToken(roadId)}`, `Emergency service anchor ${anchor.id} references missing covered road ${roadId}.`));
+      }
+    }
+
+    for (const profileId of anchor.coverage.coveredBuildingFireSafetyProfileIds) {
+      const profile = fireSafetyProfilesById.get(profileId);
+      if (!profile) {
+        issues.push(createEmergencyServiceAnchorIssue(anchor, `missing-fire-safety-profile-${toIssueIdToken(profileId)}`, `Emergency service anchor ${anchor.id} references missing fire-safety profile ${profileId}.`));
+      } else if (!profile.hydrantWithinReach || !profile.fireLaneClearance || !profile.emergencyAccess.serviceAccessProvided) {
+        issues.push(createEmergencyServiceAnchorIssue(anchor, `unserviceable-fire-safety-profile-${toIssueIdToken(profileId)}`, `Emergency service anchor ${anchor.id} may only cover profiles with hydrant, fire-lane, and service access.`));
+      }
+    }
+
+    for (const nodeId of anchor.access.navigationNodeIds) {
+      const node = navigationNodesById.get(nodeId);
+      if (!node || node.mode !== 'emergency') {
+        issues.push(createEmergencyServiceAnchorIssue(anchor, `missing-emergency-navigation-node-${toIssueIdToken(nodeId)}`, `Emergency service anchor ${anchor.id} references missing emergency navigation node ${nodeId}.`));
+      }
+    }
+
+    for (const edgeId of anchor.access.navigationEdgeIds) {
+      const edge = navigationEdgesById.get(edgeId);
+      if (!edge || edge.mode !== 'emergency') {
+        issues.push(createEmergencyServiceAnchorIssue(anchor, `missing-emergency-navigation-edge-${toIssueIdToken(edgeId)}`, `Emergency service anchor ${anchor.id} references missing emergency navigation edge ${edgeId}.`));
+      }
+    }
+
+    for (const curbZoneId of anchor.access.fireLaneCurbZoneIds) {
+      const curbZone = curbZonesById.get(curbZoneId);
+      if (!curbZone || !curbZone.management.fireLaneClearance) {
+        issues.push(createEmergencyServiceAnchorIssue(anchor, `missing-fire-lane-${toIssueIdToken(curbZoneId)}`, `Emergency service anchor ${anchor.id} references missing fire-lane curb zone ${curbZoneId}.`));
+      }
+    }
+
+    for (const corridorId of anchor.access.serviceAccessCorridorIds) {
+      if (!serviceAccessCorridorsById.has(corridorId)) {
+        issues.push(createEmergencyServiceAnchorIssue(anchor, `missing-service-access-${toIssueIdToken(corridorId)}`, `Emergency service anchor ${anchor.id} references missing service access corridor ${corridorId}.`));
+      }
+    }
+
+    for (const hydrantId of anchor.access.hydrantNodeIds) {
+      if (!hydrantsById.has(hydrantId)) {
+        issues.push(createEmergencyServiceAnchorIssue(anchor, `missing-hydrant-${toIssueIdToken(hydrantId)}`, `Emergency service anchor ${anchor.id} references missing hydrant ${hydrantId}.`));
+      }
+    }
+
+    if (anchor.anchorKind === 'public-shelter' && anchor.staging.shelterCapacityPeople <= 0) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'missing-shelter-capacity', `Public shelter anchor ${anchor.id} must expose shelter capacity.`));
+    }
+
+    if (anchor.anchorKind === 'ambulance-post' && anchor.staging.ambulanceBays <= 0) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'missing-ambulance-bays', `Ambulance post ${anchor.id} must expose ambulance bay capacity.`));
+    }
+
+    if ((anchor.anchorKind === 'command-post' || anchor.anchorKind === 'staging-area') && !anchor.staging.commandPostReady) {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'missing-command-readiness', `Command and staging anchors must be command-post ready.`));
+    }
+
+    if (!binding || binding.objectKind !== 'emergency-service-anchor') {
+      issues.push(createEmergencyServiceAnchorIssue(anchor, 'missing-render-binding', `Emergency service anchor ${anchor.id} must reference an emergency-service-anchor render binding.`));
+    }
+  }
+
+  if (emergencyBaseAnchor && city.emergencyServiceAnchors.length === 0) {
+    issues.push({
+      id: 'missing-emergency-service-anchors',
+      severity: 'error',
+      category: 'zoning',
+      objectId: emergencyBaseAnchor.id,
+      ...createIssueFocus(emergencyBaseAnchor.center, 'Generate emergency service anchors from the emergency civic anchor and emergency navigation graph.'),
+      message: 'Emergency civic anchors must expose fire, police, ambulance, shelter, command, and staging anchors.'
+    });
+  }
+
+  for (const anchorKind of EMERGENCY_SERVICE_ANCHOR_KINDS) {
+    if (!anchorsByKind.has(anchorKind)) {
+      issues.push({
+        id: `missing-emergency-service-anchor-${anchorKind}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: emergencyBaseAnchor?.id,
+        ...createIssueFocus(emergencyBaseAnchor?.center, `Create the ${anchorKind} emergency service anchor from the emergency civic anchor.`),
+        message: `Emergency service anchors must include ${anchorKind}.`
+      });
+    }
+  }
+}
+
+function createEmergencyServiceAnchorIssue(
+  anchor: ValidationEmergencyServiceAnchor,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `emergency-service-anchor-${issueIdSuffix}-${toIssueIdToken(anchor.id)}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: anchor.id,
+    ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from emergency civic, fire-safety, and navigation graph data.`),
     message
   };
 }

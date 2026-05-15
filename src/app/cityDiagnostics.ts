@@ -25,6 +25,8 @@ import type {
   CultureAnchorKind,
   CurbActivationKind,
   CurbActivationStatus,
+  EmergencyResponseMode,
+  EmergencyServiceAnchorKind,
   GovernmentAnchorKind,
   GreenStormwaterFeatureKind,
   MaintenanceOperationKind,
@@ -114,6 +116,7 @@ export interface CityDiagnostics {
   readonly communityAnchors: CommunityAnchorDiagnostics;
   readonly cultureAnchors: CultureAnchorDiagnostics;
   readonly governmentAnchors: GovernmentAnchorDiagnostics;
+  readonly emergencyServiceAnchors: EmergencyServiceAnchorDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
   readonly laneRestrictions: LaneRestrictionDiagnostics;
   readonly intersectionBehavior: IntersectionBehaviorDiagnostics;
@@ -467,6 +470,16 @@ export interface CityDiagnostics {
     readonly governmentDailyVisitors: number;
     readonly governmentStaffCapacity: number;
     readonly governmentPlazaLinks: number;
+    readonly emergencyServiceAnchors: number;
+    readonly emergencyServiceAnchorKinds: number;
+    readonly emergencyServiceResponseModes: number;
+    readonly emergencyServiceUnits: number;
+    readonly emergencyServiceVehicles: number;
+    readonly emergencyServiceResponders: number;
+    readonly emergencyServiceShelterCapacity: number;
+    readonly emergencyServiceFireSafetyProfilesCovered: number;
+    readonly emergencyServiceCoveredRoads: number;
+    readonly emergencyServiceCommandReadyAnchors: number;
     readonly buildingTypologyKinds: number;
     readonly buildingsWithTypology: number;
     readonly buildingFootprintGrammarKinds: number;
@@ -1011,6 +1024,26 @@ export interface GovernmentAnchorDiagnostics {
   readonly publicAccessAnchors: number;
 }
 
+export interface EmergencyServiceAnchorDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Partial<Record<EmergencyServiceAnchorKind, number>>>;
+  readonly byResponseMode: Readonly<Partial<Record<EmergencyResponseMode, number>>>;
+  readonly anchorKinds: number;
+  readonly responseModes: number;
+  readonly unitCapacity: number;
+  readonly responders: number;
+  readonly vehicles: number;
+  readonly stagingBays: number;
+  readonly shelterCapacityPeople: number;
+  readonly commandReadyAnchors: number;
+  readonly fireSafetyProfilesCovered: number;
+  readonly coveredRoads: number;
+  readonly emergencyNavigationNodes: number;
+  readonly fireLaneLinks: number;
+  readonly averageResponseSeconds: number;
+  readonly averageCoverageScore: number;
+}
+
 export interface CultureAnchorDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Partial<Record<CultureAnchorKind, number>>>;
@@ -1382,6 +1415,7 @@ export function createCityDiagnostics(
   const communityAnchors = createCommunityAnchorDiagnostics(city);
   const cultureAnchors = createCultureAnchorDiagnostics(city);
   const governmentAnchors = createGovernmentAnchorDiagnostics(city);
+  const emergencyServiceAnchors = createEmergencyServiceAnchorDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
   const laneRestrictions = createLaneRestrictionDiagnostics(city);
   const intersectionBehavior = createIntersectionBehaviorDiagnostics(city);
@@ -1457,6 +1491,7 @@ export function createCityDiagnostics(
     communityAnchors,
     cultureAnchors,
     governmentAnchors,
+    emergencyServiceAnchors,
     roadNetwork,
     laneRestrictions,
     intersectionBehavior,
@@ -1801,6 +1836,16 @@ export function createCityDiagnostics(
       governmentDailyVisitors: governmentAnchors.dailyVisitors,
       governmentStaffCapacity: governmentAnchors.staffCapacity,
       governmentPlazaLinks: governmentAnchors.plazaLinkedAnchors,
+      emergencyServiceAnchors: emergencyServiceAnchors.total,
+      emergencyServiceAnchorKinds: emergencyServiceAnchors.anchorKinds,
+      emergencyServiceResponseModes: emergencyServiceAnchors.responseModes,
+      emergencyServiceUnits: emergencyServiceAnchors.unitCapacity,
+      emergencyServiceVehicles: emergencyServiceAnchors.vehicles,
+      emergencyServiceResponders: emergencyServiceAnchors.responders,
+      emergencyServiceShelterCapacity: emergencyServiceAnchors.shelterCapacityPeople,
+      emergencyServiceFireSafetyProfilesCovered: emergencyServiceAnchors.fireSafetyProfilesCovered,
+      emergencyServiceCoveredRoads: emergencyServiceAnchors.coveredRoads,
+      emergencyServiceCommandReadyAnchors: emergencyServiceAnchors.commandReadyAnchors,
       buildingTypologyKinds: buildingTypologies.typologyKinds,
       buildingsWithTypology: buildingTypologies.buildingsWithTypology,
       buildingFootprintGrammarKinds: buildingFootprints.grammarKinds,
@@ -3005,6 +3050,75 @@ function createGovernmentAnchorDiagnostics(city: GeneratedCity): GovernmentAncho
     plazaLinkedAnchors,
     securityScreenedAnchors,
     publicAccessAnchors
+  };
+}
+
+function createEmergencyServiceAnchorDiagnostics(city: GeneratedCity): EmergencyServiceAnchorDiagnostics {
+  const byKind: Partial<Record<EmergencyServiceAnchorKind, number>> = {};
+  const byResponseMode: Partial<Record<EmergencyResponseMode, number>> = {};
+  const fireSafetyProfileIds = new Set<string>();
+  const coveredRoadIds = new Set<string>();
+  const navigationNodeIds = new Set<string>();
+  const fireLaneIds = new Set<string>();
+  let unitCapacity = 0;
+  let responders = 0;
+  let vehicles = 0;
+  let stagingBays = 0;
+  let shelterCapacityPeople = 0;
+  let commandReadyAnchors = 0;
+  let responseSeconds = 0;
+  let coverageScore = 0;
+
+  for (const anchor of city.emergencyServiceAnchors) {
+    byKind[anchor.anchorKind] = (byKind[anchor.anchorKind] ?? 0) + 1;
+    byResponseMode[anchor.responseMode] = (byResponseMode[anchor.responseMode] ?? 0) + 1;
+    unitCapacity += anchor.dispatch.unitCapacity;
+    responders += anchor.dispatch.responderCapacity;
+    vehicles += anchor.dispatch.vehiclesAvailable;
+    stagingBays += anchor.dispatch.stagingBays;
+    shelterCapacityPeople += anchor.staging.shelterCapacityPeople;
+    responseSeconds += anchor.coverage.estimatedResponseSeconds;
+    coverageScore += anchor.coverage.coverageScore;
+
+    if (anchor.staging.commandPostReady) {
+      commandReadyAnchors += 1;
+    }
+
+    for (const profileId of anchor.coverage.coveredBuildingFireSafetyProfileIds) {
+      fireSafetyProfileIds.add(profileId);
+    }
+
+    for (const roadId of anchor.coverage.coveredRoadIds) {
+      coveredRoadIds.add(roadId);
+    }
+
+    for (const nodeId of anchor.access.navigationNodeIds) {
+      navigationNodeIds.add(nodeId);
+    }
+
+    for (const curbZoneId of anchor.access.fireLaneCurbZoneIds) {
+      fireLaneIds.add(curbZoneId);
+    }
+  }
+
+  return {
+    total: city.emergencyServiceAnchors.length,
+    byKind,
+    byResponseMode,
+    anchorKinds: Object.keys(byKind).length,
+    responseModes: Object.keys(byResponseMode).length,
+    unitCapacity,
+    responders,
+    vehicles,
+    stagingBays,
+    shelterCapacityPeople,
+    commandReadyAnchors,
+    fireSafetyProfilesCovered: fireSafetyProfileIds.size,
+    coveredRoads: coveredRoadIds.size,
+    emergencyNavigationNodes: navigationNodeIds.size,
+    fireLaneLinks: fireLaneIds.size,
+    averageResponseSeconds: Number((responseSeconds / Math.max(1, city.emergencyServiceAnchors.length)).toFixed(2)),
+    averageCoverageScore: Number((coverageScore / Math.max(1, city.emergencyServiceAnchors.length)).toFixed(2))
   };
 }
 

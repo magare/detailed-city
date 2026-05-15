@@ -20,6 +20,7 @@ import type {
   CivicAnchorContract,
   CommunityAnchorContract,
   CultureAnchorContract,
+  EmergencyServiceAnchorContract,
   GovernmentAnchorContract,
   CityMetricContract,
   CityObjectIndex,
@@ -254,6 +255,8 @@ export interface CultureAnchor extends CultureAnchorContract {}
 
 export interface GovernmentAnchor extends GovernmentAnchorContract {}
 
+export interface EmergencyServiceAnchor extends EmergencyServiceAnchorContract {}
+
 export interface ActiveFrontage extends ActiveFrontageContract {
   frontageSide: BuildingFrontageSide;
 }
@@ -421,6 +424,7 @@ export type GeneratedCityObject =
   | CommunityAnchor
   | CultureAnchor
   | GovernmentAnchor
+  | EmergencyServiceAnchor
   | ActiveFrontage
   | ParkPatch
   | ParkFeature
@@ -502,6 +506,7 @@ export interface GeneratedCity {
   communityAnchors: CommunityAnchor[];
   cultureAnchors: CultureAnchor[];
   governmentAnchors: GovernmentAnchor[];
+  emergencyServiceAnchors: EmergencyServiceAnchor[];
   activeFrontages: ActiveFrontage[];
   parks: ParkPatch[];
   parkFeatures: ParkFeature[];

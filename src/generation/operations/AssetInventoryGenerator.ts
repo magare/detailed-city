@@ -9,6 +9,7 @@ import type {
   CivicAnchor,
   CommunityAnchor,
   CultureAnchor,
+  EmergencyServiceAnchor,
   GeneratedCity,
   GovernmentAnchor,
   GreenStormwaterFeature,
@@ -27,6 +28,7 @@ export interface AssetInventoryGeneratorInput {
   readonly communityAnchors: readonly CommunityAnchor[];
   readonly cultureAnchors: readonly CultureAnchor[];
   readonly governmentAnchors: readonly GovernmentAnchor[];
+  readonly emergencyServiceAnchors: readonly EmergencyServiceAnchor[];
   readonly utilityNodes: readonly UtilityNode[];
   readonly utilityEdges: readonly UtilityEdge[];
   readonly streetLights: readonly StreetLight[];
@@ -42,6 +44,7 @@ type InventoryTarget = Extract<
   | CivicAnchor
   | CommunityAnchor
   | CultureAnchor
+  | EmergencyServiceAnchor
   | GovernmentAnchor
   | UtilityNode
   | UtilityEdge
@@ -76,6 +79,7 @@ export class AssetInventoryGenerator {
       ...input.communityAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.cultureAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.governmentAnchors.map((object) => civicTarget(object, object.renderBindingId)),
+      ...input.emergencyServiceAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.utilityNodes.map((object) => utilityTarget(object, UTILITY_NODE_BINDING_ID, [object.accessPoint.objectId])),
       ...input.utilityEdges.map((object) => utilityTarget(object, UTILITY_EDGE_BINDING_ID, object.accessPointIds)),
       ...input.streetLights.map((object) => publicRealmTarget(object, STREET_LIGHT_BINDING_ID, [object.sidewalkId, object.roadId])),
@@ -92,7 +96,7 @@ export class AssetInventoryGenerator {
   }
 }
 
-function civicTarget<T extends CivicAnchor | CommunityAnchor | CultureAnchor | GovernmentAnchor>(
+function civicTarget<T extends CivicAnchor | CommunityAnchor | CultureAnchor | GovernmentAnchor | EmergencyServiceAnchor>(
   object: T,
   renderBindingId: CityId
 ): TargetDescriptor<T> {
@@ -210,6 +214,7 @@ function getExpectedServiceLifeYears(object: InventoryTarget): number {
     case 'civic-anchor':
     case 'community-anchor':
     case 'culture-anchor':
+    case 'emergency-service-anchor':
     case 'government-anchor':
       return 40;
     case 'street-light':
@@ -239,6 +244,7 @@ function getReplacementCost(object: InventoryTarget): number {
     case 'civic-anchor':
     case 'community-anchor':
     case 'culture-anchor':
+    case 'emergency-service-anchor':
     case 'government-anchor':
       return 850000 + stableHash(object.id) % 220000;
     case 'street-light':
@@ -264,6 +270,9 @@ function getCriticality(object: InventoryTarget): AssetCriticality {
   }
   if (object.kind === 'civic-anchor' && (object.serviceType === 'emergency' || object.serviceType === 'healthcare')) {
     return 'high';
+  }
+  if (object.kind === 'emergency-service-anchor') {
+    return object.anchorKind === 'public-shelter' ? 'medium' : 'high';
   }
   if (object.kind === 'street-light' && object.nightSafety.emergencyRouteSupport) {
     return 'high';
