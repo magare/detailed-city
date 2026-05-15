@@ -25,7 +25,11 @@ export class TransitMeshBuilder {
   }
 
   private buildStopMarkers(stops: readonly TransitStop[]): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), this.materials.transitStop, stops.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone('transit', 'transitStop'),
+      stops.length
+    );
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
 

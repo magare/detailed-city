@@ -56,6 +56,7 @@ import { validateCityLodPolicy } from '../lodPolicy';
 import { validateSourceMetadata } from '../sourceMetadata';
 import type { GeneratedCity } from '../../../types/city';
 import { CITY_BLUEPRINT } from '../../blueprint/cityBlueprint';
+import { isMaterialZoneId } from '../../rendering-handoff/material-zones/materialZoneDefinitions';
 import { getPolygonBounds, isPointInsidePolygon, polygonsIntersect } from '../../../utils/geometry';
 
 type GeneratedCityForValidation = Pick<
@@ -9995,6 +9996,14 @@ function validateAssetCatalog(assetCatalog: readonly AssetDefinition[], issues: 
         objectId: asset.id,
         message: `Asset ${asset.id} should declare a materialZone tag.`
       });
+    } else if (!isMaterialZoneId(asset.tags.materialZone)) {
+      issues.push({
+        id: `invalid-asset-material-zone-${asset.id}-${toIssueIdToken(asset.tags.materialZone)}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: asset.id,
+        message: `Asset ${asset.id} references unregistered material zone ${asset.tags.materialZone}.`
+      });
     }
 
     if (asset.format === 'procedural' && asset.tags.fallback !== true) {
@@ -10121,6 +10130,14 @@ function validateRenderBindings(
         category: 'asset',
         objectId: binding.id,
         message: `Render binding ${binding.id} should declare a material zone.`
+      });
+    } else if (!isMaterialZoneId(binding.materialZone)) {
+      issues.push({
+        id: `invalid-render-binding-material-zone-${binding.id}-${toIssueIdToken(binding.materialZone)}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: binding.id,
+        message: `Render binding ${binding.id} references unregistered material zone ${binding.materialZone}.`
       });
     }
 

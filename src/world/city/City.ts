@@ -94,7 +94,7 @@ export class City implements Updatable {
     const geometry = new THREE.PlaneGeometry(size, size, 1, 1);
     geometry.rotateX(-Math.PI / 2);
 
-    const mesh = new THREE.Mesh(geometry, this.materials.terrain);
+    const mesh = new THREE.Mesh(geometry, this.materials.getMaterialForZone('terrain', 'terrain'));
     mesh.name = 'GroundPlane';
     mesh.receiveShadow = true;
     this.layerGroups.terrain.add(mesh);
@@ -106,7 +106,7 @@ export class City implements Updatable {
         road.orientation === 'vertical'
           ? new THREE.BoxGeometry(road.width, 0.08, road.length)
           : new THREE.BoxGeometry(road.length, 0.08, road.width);
-      const mesh = new THREE.Mesh(geometry, this.materials.asphalt);
+      const mesh = new THREE.Mesh(geometry, this.materials.getMaterialForZone('asphalt', 'asphalt'));
       mesh.name = road.id;
       mesh.position.set(road.center.x, 0.04, road.center.z);
       mesh.receiveShadow = true;
@@ -118,7 +118,7 @@ export class City implements Updatable {
   private addWaterways(waterways: Waterway[]): void {
     for (const waterway of waterways) {
       const geometry = new THREE.BoxGeometry(waterway.length, 0.06, waterway.width);
-      const mesh = new THREE.Mesh(geometry, this.materials.water);
+      const mesh = new THREE.Mesh(geometry, this.materials.getMaterialForZone('water', 'water'));
       mesh.name = waterway.id;
       mesh.position.set(waterway.center.x, 0.08, waterway.center.z);
       mesh.receiveShadow = true;
@@ -130,7 +130,7 @@ export class City implements Updatable {
   private addParks(parks: ParkPatch[]): void {
     for (const park of parks) {
       const geometry = new THREE.BoxGeometry(park.size.x, 0.1, park.size.z);
-      const mesh = new THREE.Mesh(geometry, this.materials.park);
+      const mesh = new THREE.Mesh(geometry, this.materials.getMaterialForZone('park', 'park'));
       mesh.name = park.id;
       mesh.position.set(park.center.x, 0.11, park.center.z);
       mesh.receiveShadow = true;
@@ -165,7 +165,7 @@ export class City implements Updatable {
         edge.waterfrontKind === 'flood-wall' ? 1.6 : 0.16,
         Math.max(1, bounds.maxZ - bounds.minZ)
       );
-      const mesh = new THREE.Mesh(geometry, this.materials.waterfrontEdge);
+      const mesh = new THREE.Mesh(geometry, this.materials.getMaterialForZone('waterfront', 'waterfrontEdge'));
       mesh.name = edge.id;
       mesh.position.set(edge.center.x, edge.waterfrontKind === 'flood-wall' ? 0.82 : 0.16, edge.center.z);
       mesh.receiveShadow = true;
@@ -191,7 +191,7 @@ export class City implements Updatable {
     }
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const buildings = new THREE.InstancedMesh(geometry, this.materials.building, buildingPlans.length);
+    const buildings = new THREE.InstancedMesh(geometry, this.materials.getMaterialForZone('building', 'building'), buildingPlans.length);
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
 
@@ -255,8 +255,16 @@ export class City implements Updatable {
       return;
     }
 
-    const trunkMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.35, 0.45, 1, 6), this.materials.treeTrunk, trees.length);
-    const canopyMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 7), this.materials.treeCanopy, trees.length);
+    const trunkMesh = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(0.35, 0.45, 1, 6),
+      this.materials.getMaterialForZone('tree-trunk', 'treeTrunk'),
+      trees.length
+    );
+    const canopyMesh = new THREE.InstancedMesh(
+      new THREE.ConeGeometry(1, 1, 7),
+      this.materials.getMaterialForZone('tree-canopy', 'treeCanopy'),
+      trees.length
+    );
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
 
@@ -329,7 +337,11 @@ export class City implements Updatable {
       return;
     }
 
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), this.materials.trafficCalming, devices.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone('traffic-calming', 'trafficCalming'),
+      devices.length
+    );
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
 

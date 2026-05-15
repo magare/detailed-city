@@ -17,13 +17,13 @@ export class ParkFeatureMeshBuilder {
     const group = new THREE.Group();
     group.name = 'ParkFeatures';
 
-    this.addFeatureBatch(group, features, 'lawn', 'ParkFeatureLawnInstances', this.materials.park, 0.18);
-    this.addFeatureBatch(group, features, 'path', 'ParkFeaturePathInstances', this.materials.refugeIsland, 0.24);
-    this.addFeatureBatch(group, features, 'planting', 'ParkFeaturePlantingInstances', this.materials.treeCanopy, 0.34);
-    this.addFeatureBatch(group, features, 'sports', 'ParkFeatureSportsInstances', this.materials.signPanelBlue, 0.28);
-    this.addFeatureBatch(group, features, 'seating', 'ParkFeatureSeatingInstances', this.materials.streetFurnitureWood, 0.38);
-    this.addFeatureBatch(group, features, 'water-feature', 'ParkFeatureWaterInstances', this.materials.water, 0.2);
-    this.addFeatureBatch(group, features, 'shade', 'ParkFeatureShadeInstances', this.materials.streetFurnitureMetal, 1.6);
+    this.addFeatureBatch(group, features, 'lawn', 'ParkFeatureLawnInstances', 'park-lawn', 0.18);
+    this.addFeatureBatch(group, features, 'path', 'ParkFeaturePathInstances', 'park-path', 0.24);
+    this.addFeatureBatch(group, features, 'planting', 'ParkFeaturePlantingInstances', 'park-planting', 0.34);
+    this.addFeatureBatch(group, features, 'sports', 'ParkFeatureSportsInstances', 'park-sports', 0.28);
+    this.addFeatureBatch(group, features, 'seating', 'ParkFeatureSeatingInstances', 'park-seating', 0.38);
+    this.addFeatureBatch(group, features, 'water-feature', 'ParkFeatureWaterInstances', 'park-water-feature', 0.2);
+    this.addFeatureBatch(group, features, 'shade', 'ParkFeatureShadeInstances', 'park-shade', 1.6);
 
     return group;
   }
@@ -33,7 +33,7 @@ export class ParkFeatureMeshBuilder {
     features: readonly ParkFeature[],
     featureKind: ParkFeature['featureKind'],
     name: string,
-    material: THREE.Material,
+    materialZone: string,
     heightMeters: number
   ): void {
     const items = features.filter((feature) => feature.featureKind === featureKind);
@@ -42,7 +42,11 @@ export class ParkFeatureMeshBuilder {
       return;
     }
 
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, items.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone(materialZone),
+      items.length
+    );
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
 

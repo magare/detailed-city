@@ -38,8 +38,8 @@ export class StreetFurnitureMeshBuilder {
       return;
     }
 
-    const seatMesh = this.createBoxMesh('StreetFurnitureBenchSeatInstances', benches, this.materials.streetFurnitureWood);
-    const backMesh = this.createBoxMesh('StreetFurnitureBenchBackInstances', benches, this.materials.streetFurnitureWood);
+    const seatMesh = this.createBoxMesh('StreetFurnitureBenchSeatInstances', benches, 'bench');
+    const backMesh = this.createBoxMesh('StreetFurnitureBenchBackInstances', benches, 'bench');
     const matrix = new THREE.Matrix4();
 
     benches.forEach((bench, index) => {
@@ -65,7 +65,7 @@ export class StreetFurnitureMeshBuilder {
       return;
     }
 
-    const mesh = this.createCylinderMesh('StreetFurnitureBinInstances', bins, this.materials.streetFurnitureAccent, 8);
+    const mesh = this.createCylinderMesh('StreetFurnitureBinInstances', bins, 'bin', 8);
     group.add(mesh);
   }
 
@@ -76,7 +76,7 @@ export class StreetFurnitureMeshBuilder {
 
     const mesh = new THREE.InstancedMesh(
       new THREE.TorusGeometry(0.5, 0.045, 6, 14),
-      this.materials.streetFurnitureMetal,
+      this.materials.getMaterialForZone('bike-rack', 'streetFurnitureMetal'),
       bikeRacks.length
     );
     const matrix = new THREE.Matrix4();
@@ -95,7 +95,7 @@ export class StreetFurnitureMeshBuilder {
       return;
     }
 
-    const mesh = this.createCylinderMesh('StreetFurnitureBollardInstances', bollards, this.materials.streetFurnitureMetal, 10);
+    const mesh = this.createCylinderMesh('StreetFurnitureBollardInstances', bollards, 'bollard', 10);
     group.add(mesh);
   }
 
@@ -104,8 +104,8 @@ export class StreetFurnitureMeshBuilder {
       return;
     }
 
-    const bodyMesh = this.createBoxMesh('StreetFurnitureKioskBodyInstances', kiosks, this.materials.streetFurnitureAccent);
-    const roofMesh = this.createBoxMesh('StreetFurnitureKioskRoofInstances', kiosks, this.materials.streetFurnitureMetal);
+    const bodyMesh = this.createBoxMesh('StreetFurnitureKioskBodyInstances', kiosks, 'kiosk');
+    const roofMesh = this.createBoxMesh('StreetFurnitureKioskRoofInstances', kiosks, 'street-furniture');
     const matrix = new THREE.Matrix4();
 
     kiosks.forEach((kiosk, index) => {
@@ -135,8 +135,8 @@ export class StreetFurnitureMeshBuilder {
       return;
     }
 
-    const roofMesh = this.createBoxMesh('StreetFurnitureBusShelterRoofInstances', shelters, this.materials.streetFurnitureMetal);
-    const glassMesh = this.createBoxMesh('StreetFurnitureBusShelterGlassInstances', shelters, this.materials.shelterGlass);
+    const roofMesh = this.createBoxMesh('StreetFurnitureBusShelterRoofInstances', shelters, 'street-furniture');
+    const glassMesh = this.createBoxMesh('StreetFurnitureBusShelterGlassInstances', shelters, 'bus-shelter');
     const matrix = new THREE.Matrix4();
 
     shelters.forEach((shelter, index) => {
@@ -167,8 +167,8 @@ export class StreetFurnitureMeshBuilder {
       return;
     }
 
-    const topRailMesh = this.createBoxMesh('StreetFurnitureRailingTopInstances', railings, this.materials.streetFurnitureMetal);
-    const postMesh = this.createCylinderMesh('StreetFurnitureRailingPostInstances', railings, this.materials.streetFurnitureMetal, 8);
+    const topRailMesh = this.createBoxMesh('StreetFurnitureRailingTopInstances', railings, 'railing');
+    const postMesh = this.createCylinderMesh('StreetFurnitureRailingPostInstances', railings, 'railing', 8);
     const matrix = new THREE.Matrix4();
 
     railings.forEach((railing, index) => {
@@ -190,24 +190,24 @@ export class StreetFurnitureMeshBuilder {
       return;
     }
 
-    const postMesh = this.createCylinderMesh('StreetFurnitureSignPostInstances', signs, this.materials.streetFurnitureMetal, 8);
+    const postMesh = this.createCylinderMesh('StreetFurnitureSignPostInstances', signs, 'street-furniture', 8);
     group.add(postMesh);
-    this.addSignPanels(group, filterFurniture(signs, 'regulatory-sign'), 'StreetFurnitureRegulatorySignPanelInstances', this.materials.signPanelWhite);
-    this.addSignPanels(group, filterFurniture(signs, 'street-name-sign'), 'StreetFurnitureStreetNameSignPanelInstances', this.materials.signPanelGreen);
-    this.addSignPanels(group, filterFurniture(signs, 'wayfinding-sign'), 'StreetFurnitureWayfindingSignPanelInstances', this.materials.signPanelBlue);
+    this.addSignPanels(group, filterFurniture(signs, 'regulatory-sign'), 'StreetFurnitureRegulatorySignPanelInstances', 'regulatory-sign');
+    this.addSignPanels(group, filterFurniture(signs, 'street-name-sign'), 'StreetFurnitureStreetNameSignPanelInstances', 'street-name-sign');
+    this.addSignPanels(group, filterFurniture(signs, 'wayfinding-sign'), 'StreetFurnitureWayfindingSignPanelInstances', 'wayfinding-sign');
   }
 
   private addSignPanels(
     group: THREE.Group,
     signs: readonly StreetFurniture[],
     name: string,
-    material: THREE.Material
+    materialZone: string
   ): void {
     if (signs.length === 0) {
       return;
     }
 
-    const mesh = this.createBoxMesh(name, signs, material);
+    const mesh = this.createBoxMesh(name, signs, materialZone);
     const matrix = new THREE.Matrix4();
 
     signs.forEach((sign, index) => {
@@ -227,9 +227,13 @@ export class StreetFurnitureMeshBuilder {
   private createBoxMesh(
     name: string,
     items: readonly StreetFurniture[],
-    material: THREE.Material
+    materialZone: string
   ): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, items.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone(materialZone),
+      items.length
+    );
     mesh.name = name;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -239,10 +243,14 @@ export class StreetFurnitureMeshBuilder {
   private createCylinderMesh(
     name: string,
     items: readonly StreetFurniture[],
-    material: THREE.Material,
+    materialZone: string,
     radialSegments: number
   ): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.5, 0.5, 1, radialSegments), material, items.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(0.5, 0.5, 1, radialSegments),
+      this.materials.getMaterialForZone(materialZone),
+      items.length
+    );
     const matrix = new THREE.Matrix4();
 
     mesh.name = name;

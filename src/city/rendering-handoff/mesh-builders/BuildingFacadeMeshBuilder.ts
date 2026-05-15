@@ -39,13 +39,13 @@ export class BuildingFacadeMeshBuilder {
     const balconies = this.createBalconyPlacements(detailedBuildings);
 
     if (frames.length > 0) {
-      group.add(this.createInstancedBoxes('BuildingFacadeFrameInstances', frames, this.materials.facadeFrame));
+      group.add(this.createInstancedBoxes('BuildingFacadeFrameInstances', frames, 'building'));
     }
     if (windows.length > 0) {
-      group.add(this.createInstancedBoxes('BuildingFacadeWindowInstances', windows, this.materials.storefrontGlass));
+      group.add(this.createInstancedBoxes('BuildingFacadeWindowInstances', windows, 'storefront-glass'));
     }
     if (balconies.length > 0) {
-      group.add(this.createInstancedBoxes('BuildingFacadeBalconyInstances', balconies, this.materials.facadeBalcony));
+      group.add(this.createInstancedBoxes('BuildingFacadeBalconyInstances', balconies, 'metal'));
     }
 
     return group;
@@ -156,9 +156,13 @@ export class BuildingFacadeMeshBuilder {
   private createInstancedBoxes(
     name: string,
     placements: readonly FacadePlacement[],
-    material: THREE.Material
+    materialZone: string
   ): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, placements.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone(materialZone),
+      placements.length
+    );
     const matrix = new THREE.Matrix4();
 
     mesh.name = name;

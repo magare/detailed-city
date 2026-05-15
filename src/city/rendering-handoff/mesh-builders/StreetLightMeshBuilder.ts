@@ -23,17 +23,17 @@ export class StreetLightMeshBuilder {
 
     const poleMesh = new THREE.InstancedMesh(
       new THREE.CylinderGeometry(1, 1, 1, 8),
-      this.materials.streetLightPole,
+      this.materials.getMaterialForZone('street-light', 'streetLightPole'),
       streetLights.length
     );
     const fixtureMesh = new THREE.InstancedMesh(
       new THREE.BoxGeometry(1, 1, 1),
-      this.materials.streetLightPole,
+      this.materials.getMaterialForZone('street-light', 'streetLightPole'),
       streetLights.length
     );
     const glowMesh = new THREE.InstancedMesh(
       new THREE.SphereGeometry(1, 8, 6),
-      this.materials.streetLightGlow,
+      this.materials.getMaterialForZone('street-light-glow', 'streetLightGlow'),
       streetLights.length
     );
     const matrix = new THREE.Matrix4();

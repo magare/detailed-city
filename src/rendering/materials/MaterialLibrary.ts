@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { MaterialZoneId } from '../../city/rendering-handoff/material-zones/materialZoneDefinitions';
 import type { DistrictKind, WeatherPreset } from '../../types/city';
 
 export class MaterialLibrary {
@@ -41,6 +42,36 @@ export class MaterialLibrary {
     color: 0xc8c0ad,
     roughness: 0.8,
     metalness: 0.03
+  });
+
+  readonly concrete = new THREE.MeshStandardMaterial({
+    color: 0xbdb8aa,
+    roughness: 0.82,
+    metalness: 0.02
+  });
+
+  readonly brick = new THREE.MeshStandardMaterial({
+    color: 0x9f6f55,
+    roughness: 0.86,
+    metalness: 0.02
+  });
+
+  readonly metal = new THREE.MeshStandardMaterial({
+    color: 0x515b62,
+    roughness: 0.64,
+    metalness: 0.32
+  });
+
+  readonly utility = new THREE.MeshStandardMaterial({
+    color: 0x60706f,
+    roughness: 0.72,
+    metalness: 0.18
+  });
+
+  readonly overlay = new THREE.MeshBasicMaterial({
+    color: 0x7aa7ff,
+    transparent: true,
+    opacity: 0.42
   });
 
   readonly treeTrunk = new THREE.MeshStandardMaterial({
@@ -208,6 +239,126 @@ export class MaterialLibrary {
     new THREE.MeshStandardMaterial({ color: 0x2e6a9e, roughness: 0.55 })
   ] as const;
 
+  private readonly materialByZone: Readonly<Record<MaterialZoneId, THREE.Material>> = {
+    terrain: this.terrain,
+    asphalt: this.asphalt,
+    'lane-paint': this.lanePaint,
+    'crosswalk-paint': this.lanePaint,
+    'tactile-paving': this.tactilePaving,
+    'curb-concrete': this.refugeIsland,
+    'traffic-calming': this.trafficCalming,
+    water: this.water,
+    park: this.park,
+    'park-lawn': this.park,
+    'park-path': this.refugeIsland,
+    'park-planting': this.treeCanopy,
+    'park-sports': this.signPanelBlue,
+    'park-seating': this.streetFurnitureWood,
+    'park-water-feature': this.water,
+    'park-shade': this.streetFurnitureMetal,
+    plaza: this.plazaHardscape,
+    'plaza-zone': this.plazaHardscape,
+    waterfront: this.waterfrontEdge,
+    'waterfront-edge': this.waterfrontEdge,
+    'waterfront-open-space': this.waterfrontEdge,
+    building: this.building,
+    brick: this.brick,
+    civic: this.building,
+    'civic-anchor': this.building,
+    'community-anchor': this.plazaHardscape,
+    'culture-anchor': this.storefrontSign,
+    'government-anchor': this.building,
+    roof: this.rooftop,
+    solar: this.roofSolarPanel,
+    'green-roof': this.roofGreen,
+    terrace: this.roofTerrace,
+    metal: this.metal,
+    'storefront-window': this.storefrontGlass,
+    'storefront-glass': this.storefrontGlass,
+    'storefront-awning': this.storefrontAwning,
+    'storefront-sign': this.storefrontSign,
+    'entrance-door': this.entranceDoor,
+    'night-window': this.windowGlow,
+    'window-glow': this.windowGlow,
+    'tree-trunk': this.treeTrunk,
+    bark: this.treeTrunk,
+    'tree-canopy': this.treeCanopy,
+    foliage: this.treeCanopy,
+    'street-light': this.streetLightPole,
+    'street-light-glow': this.streetLightGlow,
+    'street-furniture': this.streetFurnitureMetal,
+    bench: this.streetFurnitureWood,
+    bin: this.streetFurnitureAccent,
+    'bike-rack': this.streetFurnitureMetal,
+    bollard: this.streetFurnitureMetal,
+    'bus-shelter': this.shelterGlass,
+    kiosk: this.streetFurnitureAccent,
+    railing: this.streetFurnitureMetal,
+    signage: this.signPanelWhite,
+    'regulatory-sign': this.signPanelWhite,
+    'street-name-sign': this.signPanelGreen,
+    'wayfinding-sign': this.signPanelBlue,
+    transit: this.transitStop,
+    'bus-stop': this.transitStop,
+    vehicle: this.vehicleBody[0],
+    'vehicle-body': this.vehicleBody[0],
+    'lane-marking': this.lanePaint,
+    'zebra-crossing': this.lanePaint,
+    'stop-bar': this.lanePaint,
+    'turn-arrow': this.lanePaint,
+    'refuge-island': this.refugeIsland
+  };
+
+  private readonly materialByFallbackName: Readonly<Record<string, THREE.Material>> = {
+    terrain: this.terrain,
+    asphalt: this.asphalt,
+    lanePaint: this.lanePaint,
+    tactilePaving: this.tactilePaving,
+    refugeIsland: this.refugeIsland,
+    trafficCalming: this.trafficCalming,
+    park: this.park,
+    'park-lawn': this.park,
+    'park-path': this.refugeIsland,
+    'park-planting': this.treeCanopy,
+    'park-sports': this.signPanelBlue,
+    'park-seating': this.streetFurnitureWood,
+    'park-water-feature': this.water,
+    'park-shade': this.streetFurnitureMetal,
+    plazaHardscape: this.plazaHardscape,
+    concrete: this.concrete,
+    brick: this.brick,
+    metal: this.metal,
+    utility: this.utility,
+    overlay: this.overlay,
+    treeTrunk: this.treeTrunk,
+    treeCanopy: this.treeCanopy,
+    water: this.water,
+    building: this.building,
+    rooftop: this.rooftop,
+    roofSolarPanel: this.roofSolarPanel,
+    roofGreen: this.roofGreen,
+    roofTerrace: this.roofTerrace,
+    windowGlow: this.windowGlow,
+    storefrontGlass: this.storefrontGlass,
+    facadeFrame: this.facadeFrame,
+    facadeBalcony: this.facadeBalcony,
+    storefrontAwning: this.storefrontAwning,
+    storefrontSign: this.storefrontSign,
+    entranceDoor: this.entranceDoor,
+    streetLightPole: this.streetLightPole,
+    streetLightGlow: this.streetLightGlow,
+    streetFurnitureMetal: this.streetFurnitureMetal,
+    streetFurnitureWood: this.streetFurnitureWood,
+    streetFurnitureAccent: this.streetFurnitureAccent,
+    shelterGlass: this.shelterGlass,
+    waterfrontEdge: this.waterfrontEdge,
+    signPanelWhite: this.signPanelWhite,
+    signPanelGreen: this.signPanelGreen,
+    signPanelBlue: this.signPanelBlue,
+    transitStop: this.transitStop,
+    vehicleBody: this.vehicleBody[0]
+  };
+
   applyWeatherPreset(preset: WeatherPreset): void {
     const wetness = preset.surfaceWetness;
     this.asphalt.color.lerpColors(new THREE.Color(0x22282d), new THREE.Color(0x171c21), wetness);
@@ -218,6 +369,14 @@ export class MaterialLibrary {
     this.water.roughness = 0.28 + preset.precipitationIntensity * 0.18;
     this.water.opacity = 0.82 + Math.min(preset.precipitationIntensity * 0.08, 0.1);
     this.storefrontGlass.roughness = 0.2 + wetness * 0.08;
+  }
+
+  getMaterialForZone(zoneId: string, fallbackMaterial?: string): THREE.Material {
+    return this.materialByZone[zoneId] ?? this.getFallbackMaterial(fallbackMaterial);
+  }
+
+  getFallbackMaterial(fallbackMaterial?: string): THREE.Material {
+    return (fallbackMaterial && this.materialByFallbackName[fallbackMaterial]) || this.overlay;
   }
 
   getBuildingColor(district: DistrictKind, height: number): THREE.Color {
@@ -236,6 +395,11 @@ export class MaterialLibrary {
     this.trafficCalming.dispose();
     this.park.dispose();
     this.plazaHardscape.dispose();
+    this.concrete.dispose();
+    this.brick.dispose();
+    this.metal.dispose();
+    this.utility.dispose();
+    this.overlay.dispose();
     this.treeTrunk.dispose();
     this.treeCanopy.dispose();
     this.water.dispose();

@@ -1,4 +1,8 @@
 import type { AssetDefinition, CityId, CityObjectKind, RenderBinding } from '../../data-contracts/cityContracts';
+import {
+  createMaterialZoneDiagnostics,
+  type MaterialZoneDiagnostics
+} from '../material-zones/materialZoneDefinitions';
 
 export interface AssetBindingDiagnostics {
   readonly assetDefinitions: number;
@@ -10,6 +14,7 @@ export interface AssetBindingDiagnostics {
   readonly unboundAssetDefinitions: number;
   readonly renderableObjectKinds: readonly CityObjectKind[];
   readonly materialZones: readonly string[];
+  readonly materialZoneRegistry: MaterialZoneDiagnostics;
   readonly semanticTags: readonly string[];
 }
 
@@ -64,6 +69,7 @@ export function createAssetBindingDiagnostics(
     unboundAssetDefinitions: assetCatalog.filter((asset) => !boundAssetIds.has(asset.id)).length,
     renderableObjectKinds: [...renderableObjectKinds].sort(),
     materialZones: [...materialZones].sort(),
+    materialZoneRegistry: createMaterialZoneDiagnostics(assetCatalog, assetBindings),
     semanticTags: [...semanticTags].sort()
   };
 }

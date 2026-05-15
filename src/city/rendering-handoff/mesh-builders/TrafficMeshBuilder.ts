@@ -55,25 +55,25 @@ export class TrafficMeshBuilder {
       this.createPaintPlaneInstances(
         'LaneDashInstances',
         filterMarkings(plan.markings, 'lane-dash'),
-        this.materials.lanePaint,
+        'lane-paint',
         metadataByObjectId
       ),
       this.createPaintPlaneInstances(
         'ZebraCrossingStripeInstances',
         filterMarkings(plan.markings, 'zebra-crossing-stripe'),
-        this.materials.lanePaint,
+        'crosswalk-paint',
         metadataByObjectId
       ),
       this.createPaintPlaneInstances(
         'StopBarInstances',
         filterMarkings(plan.markings, 'stop-bar'),
-        this.materials.lanePaint,
+        'lane-paint',
         metadataByObjectId
       ),
       this.createPaintPlaneInstances(
         'TactilePavingInstances',
         filterMarkings(plan.markings, 'tactile-paving'),
-        this.materials.tactilePaving,
+        'tactile-paving',
         metadataByObjectId
       ),
       this.createTurnArrowInstances(filterMarkings(plan.markings, 'turn-arrow'), metadataByObjectId),
@@ -86,10 +86,14 @@ export class TrafficMeshBuilder {
   private createPaintPlaneInstances(
     name: string,
     markings: readonly LaneMarkingPlan[],
-    material: THREE.Material,
+    materialZone: string,
     metadataByObjectId: Readonly<Record<string, CityPickingMetadata>>
   ): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), material, markings.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.PlaneGeometry(1, 1),
+      this.materials.getMaterialForZone(materialZone),
+      markings.length
+    );
     const matrix = new THREE.Matrix4();
 
     mesh.name = name;
@@ -109,7 +113,11 @@ export class TrafficMeshBuilder {
     markings: readonly LaneMarkingPlan[],
     metadataByObjectId: Readonly<Record<string, CityPickingMetadata>>
   ): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(createTurnArrowGeometry(), this.materials.lanePaint, markings.length);
+    const mesh = new THREE.InstancedMesh(
+      createTurnArrowGeometry(),
+      this.materials.getMaterialForZone('lane-paint', 'lanePaint'),
+      markings.length
+    );
     const matrix = new THREE.Matrix4();
 
     mesh.name = 'TurnArrowInstances';
@@ -129,7 +137,11 @@ export class TrafficMeshBuilder {
     markings: readonly LaneMarkingPlan[],
     metadataByObjectId: Readonly<Record<string, CityPickingMetadata>>
   ): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), this.materials.refugeIsland, markings.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone('curb-concrete', 'refugeIsland'),
+      markings.length
+    );
     const matrix = new THREE.Matrix4();
 
     mesh.name = 'RefugeIslandInstances';

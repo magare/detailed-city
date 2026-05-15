@@ -59,17 +59,7 @@ export class BuildingRoofMeshBuilder {
   }
 
   private getMaterial(detail: BuildingRoofDetailContract): THREE.Material {
-    switch (detail.materialZone) {
-      case 'solar':
-        return this.materials.roofSolarPanel;
-      case 'green-roof':
-        return this.materials.roofGreen;
-      case 'terrace':
-        return this.materials.roofTerrace;
-      case 'metal':
-      case 'roof':
-        return this.materials.rooftop;
-    }
+    return this.materials.getMaterialForZone(detail.materialZone, 'rooftop');
   }
 }
 

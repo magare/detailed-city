@@ -17,12 +17,12 @@ export class WaterfrontOpenSpaceMeshBuilder {
     const group = new THREE.Group();
     group.name = 'WaterfrontOpenSpaces';
 
-    this.addSurfaceBatch(group, openSpaces, 'promenade', 'WaterfrontPromenadeInstances', this.materials.plazaHardscape);
-    this.addSurfaceBatch(group, openSpaces, 'boardwalk', 'WaterfrontBoardwalkInstances', this.materials.streetFurnitureWood);
-    this.addSurfaceBatch(group, openSpaces, 'overlook', 'WaterfrontOverlookInstances', this.materials.storefrontSign);
-    this.addSurfaceBatch(group, openSpaces, 'pier-landing', 'WaterfrontPierLandingInstances', this.materials.streetFurnitureWood);
-    this.addSurfaceBatch(group, openSpaces, 'water-access', 'WaterfrontWaterAccessInstances', this.materials.waterfrontEdge);
-    this.addSurfaceBatch(group, openSpaces, 'ecological-edge', 'WaterfrontEcologicalEdgeInstances', this.materials.park);
+    this.addSurfaceBatch(group, openSpaces, 'promenade', 'WaterfrontPromenadeInstances', 'waterfront');
+    this.addSurfaceBatch(group, openSpaces, 'boardwalk', 'WaterfrontBoardwalkInstances', 'park-seating');
+    this.addSurfaceBatch(group, openSpaces, 'overlook', 'WaterfrontOverlookInstances', 'storefront-sign');
+    this.addSurfaceBatch(group, openSpaces, 'pier-landing', 'WaterfrontPierLandingInstances', 'park-seating');
+    this.addSurfaceBatch(group, openSpaces, 'water-access', 'WaterfrontWaterAccessInstances', 'waterfront-edge');
+    this.addSurfaceBatch(group, openSpaces, 'ecological-edge', 'WaterfrontEcologicalEdgeInstances', 'park');
     this.addRailings(group, openSpaces.filter((openSpace) => openSpace.railingLengthMeters > 0));
     this.addSeatingMarkers(group, openSpaces.filter((openSpace) => openSpace.seatingCapacity > 0));
 
@@ -34,7 +34,7 @@ export class WaterfrontOpenSpaceMeshBuilder {
     openSpaces: readonly WaterfrontOpenSpace[],
     kind: WaterfrontOpenSpace['openSpaceKind'],
     name: string,
-    material: THREE.Material
+    materialZone: string
   ): void {
     const items = openSpaces.filter((openSpace) => openSpace.openSpaceKind === kind);
 
@@ -42,7 +42,11 @@ export class WaterfrontOpenSpaceMeshBuilder {
       return;
     }
 
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, items.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone(materialZone),
+      items.length
+    );
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
 
@@ -70,7 +74,11 @@ export class WaterfrontOpenSpaceMeshBuilder {
       return;
     }
 
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), this.materials.streetFurnitureMetal, openSpaces.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone('railing', 'streetFurnitureMetal'),
+      openSpaces.length
+    );
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
 
@@ -98,7 +106,11 @@ export class WaterfrontOpenSpaceMeshBuilder {
       return;
     }
 
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), this.materials.streetFurnitureWood, openSpaces.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone('bench', 'streetFurnitureWood'),
+      openSpaces.length
+    );
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
 

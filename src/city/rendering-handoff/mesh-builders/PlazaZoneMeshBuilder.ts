@@ -17,12 +17,12 @@ export class PlazaZoneMeshBuilder {
     const group = new THREE.Group();
     group.name = 'PlazaZones';
 
-    this.addZoneBatch(group, zones, 'hardscape', 'PlazaHardscapeInstances', this.materials.plazaHardscape, 0.16);
-    this.addZoneBatch(group, zones, 'event', 'PlazaEventZoneInstances', this.materials.storefrontSign, 0.22);
-    this.addZoneBatch(group, zones, 'active-edge', 'PlazaActiveEdgeInstances', this.materials.storefrontAwning, 0.32);
-    this.addZoneBatch(group, zones, 'seating', 'PlazaSeatingZoneInstances', this.materials.streetFurnitureWood, 0.42);
-    this.addZoneBatch(group, zones, 'shade', 'PlazaShadeZoneInstances', this.materials.streetFurnitureMetal, 1.85);
-    this.addZoneBatch(group, zones, 'paving', 'PlazaPavingBandInstances', this.materials.refugeIsland, 0.2);
+    this.addZoneBatch(group, zones, 'hardscape', 'PlazaHardscapeInstances', 'plaza', 0.16);
+    this.addZoneBatch(group, zones, 'event', 'PlazaEventZoneInstances', 'storefront-sign', 0.22);
+    this.addZoneBatch(group, zones, 'active-edge', 'PlazaActiveEdgeInstances', 'storefront-awning', 0.32);
+    this.addZoneBatch(group, zones, 'seating', 'PlazaSeatingZoneInstances', 'park-seating', 0.42);
+    this.addZoneBatch(group, zones, 'shade', 'PlazaShadeZoneInstances', 'park-shade', 1.85);
+    this.addZoneBatch(group, zones, 'paving', 'PlazaPavingBandInstances', 'curb-concrete', 0.2);
 
     return group;
   }
@@ -32,7 +32,7 @@ export class PlazaZoneMeshBuilder {
     zones: readonly PlazaZone[],
     zoneKind: PlazaZone['zoneKind'],
     name: string,
-    material: THREE.Material,
+    materialZone: string,
     heightMeters: number
   ): void {
     const items = zones.filter((zone) => zone.zoneKind === zoneKind);
@@ -41,7 +41,11 @@ export class PlazaZoneMeshBuilder {
       return;
     }
 
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, items.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone(materialZone),
+      items.length
+    );
     const matrix = new THREE.Matrix4();
     const rotation = new THREE.Quaternion();
 

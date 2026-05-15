@@ -336,7 +336,7 @@ export class DebugPanel {
       ),
       createMetric(
         'Assets',
-        `${diagnostics.assetBindingDiagnostics.assetDefinitions} assets, ${diagnostics.assetBindingDiagnostics.renderBindings} bindings`
+        `${diagnostics.assetBindingDiagnostics.assetDefinitions} assets, ${diagnostics.assetBindingDiagnostics.renderBindings} bindings, ${diagnostics.assetBindingDiagnostics.materialZoneRegistry.definitions} zones`
       ),
       createMetric(
         'Export',

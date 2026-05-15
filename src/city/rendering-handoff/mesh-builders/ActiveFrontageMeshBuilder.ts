@@ -33,7 +33,7 @@ export class ActiveFrontageMeshBuilder {
   }
 
   private createStorefrontWindows(activeFrontages: readonly ActiveFrontage[]): THREE.InstancedMesh {
-    const mesh = this.createBoxMesh('ActiveFrontageStorefrontWindowInstances', activeFrontages, this.materials.storefrontGlass);
+    const mesh = this.createBoxMesh('ActiveFrontageStorefrontWindowInstances', activeFrontages, 'storefront-glass');
     const matrix = new THREE.Matrix4();
 
     activeFrontages.forEach((frontage, index) => {
@@ -50,7 +50,7 @@ export class ActiveFrontageMeshBuilder {
   }
 
   private createEntranceDoors(activeFrontages: readonly ActiveFrontage[]): THREE.InstancedMesh {
-    const mesh = this.createBoxMesh('ActiveFrontageEntranceDoorInstances', activeFrontages, this.materials.entranceDoor);
+    const mesh = this.createBoxMesh('ActiveFrontageEntranceDoorInstances', activeFrontages, 'entrance-door');
     const matrix = new THREE.Matrix4();
 
     activeFrontages.forEach((frontage, index) => {
@@ -68,7 +68,7 @@ export class ActiveFrontageMeshBuilder {
   }
 
   private createAwnings(activeFrontages: readonly ActiveFrontage[]): THREE.InstancedMesh {
-    const mesh = this.createBoxMesh('ActiveFrontageAwningInstances', activeFrontages, this.materials.storefrontAwning);
+    const mesh = this.createBoxMesh('ActiveFrontageAwningInstances', activeFrontages, 'storefront-awning');
     const matrix = new THREE.Matrix4();
 
     activeFrontages.forEach((frontage, index) => {
@@ -86,7 +86,7 @@ export class ActiveFrontageMeshBuilder {
   }
 
   private createStorefrontSigns(activeFrontages: readonly ActiveFrontage[]): THREE.InstancedMesh {
-    const mesh = this.createBoxMesh('ActiveFrontageSignInstances', activeFrontages, this.materials.storefrontSign);
+    const mesh = this.createBoxMesh('ActiveFrontageSignInstances', activeFrontages, 'storefront-sign');
     const matrix = new THREE.Matrix4();
 
     activeFrontages.forEach((frontage, index) => {
@@ -104,7 +104,7 @@ export class ActiveFrontageMeshBuilder {
   }
 
   private createNightWindows(activeFrontages: readonly ActiveFrontage[]): THREE.InstancedMesh {
-    const mesh = this.createBoxMesh('ActiveFrontageNightWindowInstances', activeFrontages, this.materials.windowGlow);
+    const mesh = this.createBoxMesh('ActiveFrontageNightWindowInstances', activeFrontages, 'window-glow');
     const matrix = new THREE.Matrix4();
 
     activeFrontages.forEach((frontage, index) => {
@@ -124,9 +124,13 @@ export class ActiveFrontageMeshBuilder {
   private createBoxMesh(
     name: string,
     activeFrontages: readonly ActiveFrontage[],
-    material: THREE.Material
+    materialZone: string
   ): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, activeFrontages.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      this.materials.getMaterialForZone(materialZone),
+      activeFrontages.length
+    );
     mesh.name = name;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
