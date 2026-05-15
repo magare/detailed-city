@@ -39,6 +39,7 @@ export type CityOverlayId =
   | 'community-anchors'
   | 'culture-anchors'
   | 'government-anchors'
+  | 'healthcare-anchors'
   | 'emergency-service-anchors'
   | 'building-access'
   | 'building-fire-safety'
@@ -122,6 +123,7 @@ export function createCityOverlayDatasets(
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
+    createDataset('healthcare-anchors', 'Healthcare Anchors', 'domain-data', createHealthcareAnchorFeatures(city)),
     createDataset('emergency-service-anchors', 'Emergency Service Anchors', 'domain-data', createEmergencyServiceAnchorFeatures(city)),
     createDataset('building-access', 'Building Access', 'domain-data', createBuildingAccessFeatures(city)),
     createDataset('building-fire-safety', 'Building Fire Safety', 'domain-data', createBuildingFireSafetyFeatures(city)),
@@ -675,6 +677,37 @@ function createGovernmentAnchorFeatures(city: GeneratedCity): CityOverlayFeature
       dailyVisitors: anchor.dailyVisitors,
       staffCapacity: anchor.staffCapacity,
       publicAccess: anchor.publicAccess
+    }
+  }));
+}
+
+function createHealthcareAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.healthcareAnchors.map((anchor) => ({
+    id: `overlay:healthcare-anchors:${anchor.id}`,
+    overlayId: 'healthcare-anchors',
+    objectId: anchor.id,
+    objectKind: anchor.kind,
+    ownerDomain: anchor.ownerDomain,
+    label: anchor.name ?? anchor.id,
+    geometry: { type: 'point', point: anchor.center },
+    metadata: {
+      anchorKind: anchor.anchorKind,
+      civicAnchorId: anchor.civicAnchorId,
+      buildingId: anchor.buildingId,
+      roadId: anchor.roadId,
+      dailyPatients: anchor.arrivals.dailyPatients,
+      bedCapacity: anchor.capacity.bedCapacity,
+      examRooms: anchor.capacity.examRooms,
+      pharmacyCounters: anchor.capacity.pharmacyCounters,
+      urgentCareBays: anchor.capacity.urgentCareBays,
+      ambulanceBays: anchor.capacity.ambulanceBays,
+      acceptsAmbulance: anchor.acceptsAmbulance,
+      emergencyDepartment: anchor.emergencyDepartment,
+      coverageRadiusMeters: anchor.coverage.radiusMeters,
+      coverageScore: anchor.coverage.coverageScore,
+      ambulanceResponseSeconds: anchor.coverage.estimatedAmbulanceResponseSeconds,
+      coveredNavigationNodes: anchor.coverage.coveredNavigationNodeIds.length,
+      ambulanceRouteEdges: anchor.arrivals.ambulanceNavigationEdgeIds.length
     }
   }));
 }

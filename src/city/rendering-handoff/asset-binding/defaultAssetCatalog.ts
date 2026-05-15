@@ -57,6 +57,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:building:community-anchor:primitive', 'building', 'Community Anchor Primitive', 'community-anchor', 9.5, 'lod2'),
   createProceduralAsset('asset:building:culture-anchor:primitive', 'building', 'Culture Anchor Primitive', 'culture-anchor', 9, 'lod2'),
   createProceduralAsset('asset:building:government-anchor:primitive', 'building', 'Government Anchor Primitive', 'government-anchor', 10, 'lod2'),
+  createProceduralAsset('asset:building:healthcare-anchor:primitive', 'building', 'Healthcare Anchor Primitive', 'healthcare-anchor', 10.5, 'lod3'),
   createProceduralAsset('asset:building:emergency-service-anchor:primitive', 'building', 'Emergency Service Anchor Primitive', 'emergency-service-anchor', 11, 'lod3'),
   createProceduralAsset('asset:utility:inventory-node:primitive', 'utility', 'Utility Inventory Node Primitive', 'utility-node', 3.6, 'lod2'),
   createProceduralAsset('asset:utility:inventory-edge:primitive', 'utility', 'Utility Inventory Edge Primitive', 'utility-edge', 12, 'lod2'),
@@ -432,6 +433,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'civic',
     fallbackMaterial: 'storefrontSign',
     fallbackGeometry: 'culture-anchor-marker'
+  },
+  {
+    id: 'binding:civic:healthcare-anchor',
+    objectKind: 'healthcare-anchor',
+    semanticTag: 'healthcare-anchor',
+    assetId: 'asset:building:healthcare-anchor:primitive',
+    materialZone: 'civic',
+    fallbackMaterial: 'building',
+    fallbackGeometry: 'healthcare-anchor-marker'
   },
   {
     id: 'binding:civic:emergency-service-anchor',

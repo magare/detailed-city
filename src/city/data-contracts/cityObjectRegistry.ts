@@ -67,6 +67,7 @@ const PARK_FEATURE_KIND = String.raw`(?:lawn|path|planting|sports|seating|water-
 const PLAZA_ZONE_KIND = String.raw`(?:active-edge|event|hardscape|paving|seating|shade)`;
 const GOVERNMENT_ANCHOR_KIND = String.raw`(?:administrative-offices|city-hall|civic-plaza-interface|courts|service-counters)`;
 const EMERGENCY_SERVICE_ANCHOR_KIND = String.raw`(?:ambulance-post|command-post|fire-station|police-station|public-shelter|staging-area)`;
+const HEALTHCARE_ANCHOR_KIND = String.raw`(?:ambulance-bay|clinic|hospital|pharmacy|urgent-care)`;
 const NAVIGATION_MODE = String.raw`(?:vehicle|pedestrian|bike|transit|service|emergency|freight)`;
 const NAVIGATION_ROUTE_KIND = String.raw`(?:baseline|transfer|service|emergency|freight)`;
 const SERVICE_ACCESS_CORRIDOR_KIND = String.raw`(?:maintenance-path|restricted-corridor|service-yard|utility-easement|vault-access)`;
@@ -74,7 +75,7 @@ const NAMED_PLACE_KIND = String.raw`(?:civic-anchor|district|neighborhood|park|s
 const GAZETTEER_ENTRY_KIND = String.raw`(?:address|anchor|place|street)`;
 const ACCESS_CONTROL_KIND = String.raw`(?:bollard-line|checkpoint|fence|gate|guardrail|turnstile|wall)`;
 const GREEN_STORMWATER_KIND = String.raw`(?:bioswale|curb-cut|flow-through-planter|permeable-pavement|pervious-strip|rain-garden|tree-trench)`;
-const ASSET_INVENTORY_TARGET_KIND = String.raw`(?:civic-anchor|community-anchor|culture-anchor|emergency-service-anchor|government-anchor|green-stormwater-feature|park-feature|plaza-zone|street-furniture|street-light|utility-edge|utility-node|water-transport-access|waterfront-open-space)`;
+const ASSET_INVENTORY_TARGET_KIND = String.raw`(?:civic-anchor|community-anchor|culture-anchor|emergency-service-anchor|government-anchor|healthcare-anchor|green-stormwater-feature|park-feature|plaza-zone|street-furniture|street-light|utility-edge|utility-node|water-transport-access|waterfront-open-space)`;
 const MAINTENANCE_OPERATION_KIND = String.raw`(?:inspection|repair|replacement|street-work|temporary-closure)`;
 const PERMIT_INSPECTION_KIND = String.raw`(?:development-permit|temporary-closure-permit|code-check|approval|inspection|compliance-review)`;
 
@@ -102,6 +103,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
       'culture-anchor',
       'emergency-service-anchor',
       'government-anchor',
+      'healthcare-anchor',
       'green-stormwater-feature',
       'park-feature',
       'plaza-zone',
@@ -207,13 +209,28 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     'gazetteer-entry',
     ['gazetteer-entry-<address|anchor|place|street>-<source-id>'],
     [exact(String.raw`gazetteer-entry-${GAZETTEER_ENTRY_KIND}-${NAMED_ID}(?:-${NAMED_ID})*`)],
-    required(['address-point', 'civic-anchor', 'community-anchor', 'culture-anchor', 'government-anchor', 'named-place', 'road-segment'])
+    required([
+      'address-point',
+      'civic-anchor',
+      'community-anchor',
+      'culture-anchor',
+      'government-anchor',
+      'healthcare-anchor',
+      'named-place',
+      'road-segment'
+    ])
   ),
   entry(
     'green-stormwater-feature',
     ['green-stormwater-<feature-kind>-<road-id>-<index>'],
     [exact(String.raw`green-stormwater-${GREEN_STORMWATER_KIND}-${ROAD_ID}-\d+`)],
     required(['road-segment'])
+  ),
+  entry(
+    'healthcare-anchor',
+    ['healthcare-anchor-<healthcare-anchor-kind>'],
+    [exact(String.raw`healthcare-anchor-${HEALTHCARE_ANCHOR_KIND}`)],
+    required(['civic-anchor'])
   ),
   entry(
     'freight-loading-dock',

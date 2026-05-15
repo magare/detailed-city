@@ -28,6 +28,7 @@ import type {
   EmergencyResponseMode,
   EmergencyServiceAnchorKind,
   GovernmentAnchorKind,
+  HealthcareAnchorKind,
   GreenStormwaterFeatureKind,
   MaintenanceOperationKind,
   MaintenanceOperationStatus,
@@ -118,6 +119,7 @@ export interface CityDiagnostics {
   readonly communityAnchors: CommunityAnchorDiagnostics;
   readonly cultureAnchors: CultureAnchorDiagnostics;
   readonly governmentAnchors: GovernmentAnchorDiagnostics;
+  readonly healthcareAnchors: HealthcareAnchorDiagnostics;
   readonly emergencyServiceAnchors: EmergencyServiceAnchorDiagnostics;
   readonly waterTransportAccess: WaterTransportAccessDiagnostics;
   readonly roadNetwork: RoadNetworkDiagnostics;
@@ -482,6 +484,13 @@ export interface CityDiagnostics {
     readonly governmentDailyVisitors: number;
     readonly governmentStaffCapacity: number;
     readonly governmentPlazaLinks: number;
+    readonly healthcareAnchors: number;
+    readonly healthcareAnchorKinds: number;
+    readonly healthcareDailyPatients: number;
+    readonly healthcareBeds: number;
+    readonly healthcareAmbulanceBays: number;
+    readonly healthcareAmbulanceRouteEdges: number;
+    readonly healthcareEmergencyDepartments: number;
     readonly emergencyServiceAnchors: number;
     readonly emergencyServiceAnchorKinds: number;
     readonly emergencyServiceResponseModes: number;
@@ -1008,6 +1017,7 @@ export interface AddressingGazetteerDiagnostics {
   readonly communityAnchorsWithAddresses: number;
   readonly cultureAnchorsWithAddresses: number;
   readonly governmentAnchorsWithAddresses: number;
+  readonly healthcareAnchorsWithAddresses: number;
 }
 
 export interface CivicAnchorDiagnostics {
@@ -1053,6 +1063,28 @@ export interface EmergencyServiceAnchorDiagnostics {
   readonly emergencyNavigationNodes: number;
   readonly fireLaneLinks: number;
   readonly averageResponseSeconds: number;
+  readonly averageCoverageScore: number;
+}
+
+export interface HealthcareAnchorDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Partial<Record<HealthcareAnchorKind, number>>>;
+  readonly anchorKinds: number;
+  readonly dailyPatients: number;
+  readonly bedCapacity: number;
+  readonly examRooms: number;
+  readonly pharmacyCounters: number;
+  readonly urgentCareBays: number;
+  readonly ambulanceBays: number;
+  readonly staffCapacity: number;
+  readonly ambulanceAcceptingAnchors: number;
+  readonly emergencyDepartmentAnchors: number;
+  readonly transitLinkedAnchors: number;
+  readonly healthcareCoverageNodes: number;
+  readonly healthcareCoverageEdges: number;
+  readonly ambulanceRouteNodes: number;
+  readonly ambulanceRouteEdges: number;
+  readonly averageAmbulanceResponseSeconds: number;
   readonly averageCoverageScore: number;
 }
 
@@ -1448,6 +1480,7 @@ export function createCityDiagnostics(
   const communityAnchors = createCommunityAnchorDiagnostics(city);
   const cultureAnchors = createCultureAnchorDiagnostics(city);
   const governmentAnchors = createGovernmentAnchorDiagnostics(city);
+  const healthcareAnchors = createHealthcareAnchorDiagnostics(city);
   const emergencyServiceAnchors = createEmergencyServiceAnchorDiagnostics(city);
   const waterTransportAccess = createWaterTransportAccessDiagnostics(city);
   const roadNetwork = createRoadNetworkDiagnostics(city);
@@ -1525,6 +1558,7 @@ export function createCityDiagnostics(
     communityAnchors,
     cultureAnchors,
     governmentAnchors,
+    healthcareAnchors,
     emergencyServiceAnchors,
     waterTransportAccess,
     roadNetwork,
@@ -1880,6 +1914,13 @@ export function createCityDiagnostics(
       governmentDailyVisitors: governmentAnchors.dailyVisitors,
       governmentStaffCapacity: governmentAnchors.staffCapacity,
       governmentPlazaLinks: governmentAnchors.plazaLinkedAnchors,
+      healthcareAnchors: healthcareAnchors.total,
+      healthcareAnchorKinds: healthcareAnchors.anchorKinds,
+      healthcareDailyPatients: healthcareAnchors.dailyPatients,
+      healthcareBeds: healthcareAnchors.bedCapacity,
+      healthcareAmbulanceBays: healthcareAnchors.ambulanceBays,
+      healthcareAmbulanceRouteEdges: healthcareAnchors.ambulanceRouteEdges,
+      healthcareEmergencyDepartments: healthcareAnchors.emergencyDepartmentAnchors,
       emergencyServiceAnchors: emergencyServiceAnchors.total,
       emergencyServiceAnchorKinds: emergencyServiceAnchors.anchorKinds,
       emergencyServiceResponseModes: emergencyServiceAnchors.responseModes,
@@ -3097,6 +3138,84 @@ function createGovernmentAnchorDiagnostics(city: GeneratedCity): GovernmentAncho
   };
 }
 
+function createHealthcareAnchorDiagnostics(city: GeneratedCity): HealthcareAnchorDiagnostics {
+  const byKind: Partial<Record<HealthcareAnchorKind, number>> = {};
+  const coverageNodeIds = new Set<string>();
+  const coverageEdgeIds = new Set<string>();
+  const ambulanceNodeIds = new Set<string>();
+  const ambulanceEdgeIds = new Set<string>();
+  let dailyPatients = 0;
+  let bedCapacity = 0;
+  let examRooms = 0;
+  let pharmacyCounters = 0;
+  let urgentCareBays = 0;
+  let ambulanceBays = 0;
+  let staffCapacity = 0;
+  let ambulanceAcceptingAnchors = 0;
+  let emergencyDepartmentAnchors = 0;
+  let transitLinkedAnchors = 0;
+  let responseSeconds = 0;
+  let coverageScore = 0;
+
+  for (const anchor of city.healthcareAnchors) {
+    byKind[anchor.anchorKind] = (byKind[anchor.anchorKind] ?? 0) + 1;
+    dailyPatients += anchor.arrivals.dailyPatients;
+    bedCapacity += anchor.capacity.bedCapacity;
+    examRooms += anchor.capacity.examRooms;
+    pharmacyCounters += anchor.capacity.pharmacyCounters;
+    urgentCareBays += anchor.capacity.urgentCareBays;
+    ambulanceBays += anchor.capacity.ambulanceBays;
+    staffCapacity += anchor.capacity.staffCapacity;
+    responseSeconds += anchor.coverage.estimatedAmbulanceResponseSeconds;
+    coverageScore += anchor.coverage.coverageScore;
+
+    if (anchor.acceptsAmbulance) {
+      ambulanceAcceptingAnchors += 1;
+    }
+    if (anchor.emergencyDepartment) {
+      emergencyDepartmentAnchors += 1;
+    }
+    if (anchor.arrivals.transitStopIds.length > 0) {
+      transitLinkedAnchors += 1;
+    }
+
+    for (const nodeId of anchor.coverage.coveredNavigationNodeIds) {
+      coverageNodeIds.add(nodeId);
+    }
+    for (const edgeId of anchor.coverage.coveredNavigationEdgeIds) {
+      coverageEdgeIds.add(edgeId);
+    }
+    for (const nodeId of anchor.arrivals.ambulanceNavigationNodeIds) {
+      ambulanceNodeIds.add(nodeId);
+    }
+    for (const edgeId of anchor.arrivals.ambulanceNavigationEdgeIds) {
+      ambulanceEdgeIds.add(edgeId);
+    }
+  }
+
+  return {
+    total: city.healthcareAnchors.length,
+    byKind,
+    anchorKinds: Object.keys(byKind).length,
+    dailyPatients,
+    bedCapacity,
+    examRooms,
+    pharmacyCounters,
+    urgentCareBays,
+    ambulanceBays,
+    staffCapacity,
+    ambulanceAcceptingAnchors,
+    emergencyDepartmentAnchors,
+    transitLinkedAnchors,
+    healthcareCoverageNodes: coverageNodeIds.size,
+    healthcareCoverageEdges: coverageEdgeIds.size,
+    ambulanceRouteNodes: ambulanceNodeIds.size,
+    ambulanceRouteEdges: ambulanceEdgeIds.size,
+    averageAmbulanceResponseSeconds: Number((responseSeconds / Math.max(1, city.healthcareAnchors.length)).toFixed(2)),
+    averageCoverageScore: Number((coverageScore / Math.max(1, city.healthcareAnchors.length)).toFixed(2))
+  };
+}
+
 function createEmergencyServiceAnchorDiagnostics(city: GeneratedCity): EmergencyServiceAnchorDiagnostics {
   const byKind: Partial<Record<EmergencyServiceAnchorKind, number>> = {};
   const byResponseMode: Partial<Record<EmergencyResponseMode, number>> = {};
@@ -3566,7 +3685,8 @@ function createAddressingGazetteerDiagnostics(city: GeneratedCity): AddressingGa
     civicAnchorsWithAddresses: city.civicAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
     communityAnchorsWithAddresses: city.communityAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
     cultureAnchorsWithAddresses: city.cultureAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
-    governmentAnchorsWithAddresses: city.governmentAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length
+    governmentAnchorsWithAddresses: city.governmentAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
+    healthcareAnchorsWithAddresses: city.healthcareAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length
   };
 }
 

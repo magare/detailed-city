@@ -289,6 +289,7 @@ export interface ProceduralSeedDomainSections {
   readonly communityAnchors: GeneratedCity['communityAnchors'];
   readonly cultureAnchors: GeneratedCity['cultureAnchors'];
   readonly governmentAnchors: GeneratedCity['governmentAnchors'];
+  readonly healthcareAnchors: GeneratedCity['healthcareAnchors'];
   readonly emergencyServiceAnchors: GeneratedCity['emergencyServiceAnchors'];
   readonly waterTransportAccess: GeneratedCity['waterTransportAccess'];
   readonly activeFrontages: GeneratedCity['activeFrontages'];
@@ -364,6 +365,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly communityAnchors: number;
   readonly cultureAnchors: number;
   readonly governmentAnchors: number;
+  readonly healthcareAnchors: number;
   readonly emergencyServiceAnchors: number;
   readonly waterTransportAccess: number;
   readonly activeFrontages: number;
@@ -511,6 +513,7 @@ export function createProceduralSeedJsonExport(
       communityAnchors: city.communityAnchors,
       cultureAnchors: city.cultureAnchors,
       governmentAnchors: city.governmentAnchors,
+      healthcareAnchors: city.healthcareAnchors,
       emergencyServiceAnchors: city.emergencyServiceAnchors,
       waterTransportAccess: city.waterTransportAccess,
       activeFrontages: city.activeFrontages,
@@ -667,6 +670,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'communityAnchors'
     | 'cultureAnchors'
     | 'governmentAnchors'
+    | 'healthcareAnchors'
     | 'emergencyServiceAnchors'
     | 'waterTransportAccess'
     | 'cityMetrics'
@@ -791,6 +795,7 @@ export function createProceduralSeedDomainSectionCounts(
     communityAnchors: city.communityAnchors.length,
     cultureAnchors: city.cultureAnchors.length,
     governmentAnchors: city.governmentAnchors.length,
+    healthcareAnchors: city.healthcareAnchors.length,
     emergencyServiceAnchors: city.emergencyServiceAnchors.length,
     waterTransportAccess: city.waterTransportAccess.length,
     activeFrontages: city.activeFrontages.length,
@@ -875,6 +880,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'communityAnchors') +
     getArrayLength(city, 'cultureAnchors') +
     getArrayLength(city, 'governmentAnchors') +
+    getArrayLength(city, 'healthcareAnchors') +
     getArrayLength(city, 'emergencyServiceAnchors') +
     getArrayLength(city, 'waterTransportAccess') +
     getArrayLength(city, 'activeFrontages') +

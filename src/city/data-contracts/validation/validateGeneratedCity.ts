@@ -25,6 +25,7 @@ import type {
   EmergencyServiceAnchorKind,
   GeospatialFrame,
   GovernmentAnchorKind,
+  HealthcareAnchorKind,
   HazardMitigationKind,
   IntersectionControlType,
   LaneRole,
@@ -92,6 +93,7 @@ type GeneratedCityForValidation = Pick<
   | 'communityAnchors'
   | 'cultureAnchors'
   | 'governmentAnchors'
+  | 'healthcareAnchors'
   | 'emergencyServiceAnchors'
   | 'waterTransportAccess'
   | 'cityMetrics'
@@ -159,6 +161,7 @@ type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
 type ValidationGovernmentAnchor = GeneratedCityForValidation['governmentAnchors'][number];
+type ValidationHealthcareAnchor = GeneratedCityForValidation['healthcareAnchors'][number];
 type ValidationEmergencyServiceAnchor = GeneratedCityForValidation['emergencyServiceAnchors'][number];
 type ValidationWaterTransportAccess = GeneratedCityForValidation['waterTransportAccess'][number];
 type ValidationParcel = GeneratedCityForValidation['parcels'][number];
@@ -196,6 +199,7 @@ const ASSET_INVENTORY_TARGET_KINDS = [
   'culture-anchor',
   'emergency-service-anchor',
   'government-anchor',
+  'healthcare-anchor',
   'green-stormwater-feature',
   'park-feature',
   'plaza-zone',
@@ -357,6 +361,13 @@ const EMERGENCY_RESPONSE_MODES = [
   'police',
   'shelter'
 ] as const satisfies readonly EmergencyResponseMode[];
+const HEALTHCARE_ANCHOR_KINDS = [
+  'ambulance-bay',
+  'clinic',
+  'hospital',
+  'pharmacy',
+  'urgent-care'
+] as const satisfies readonly HealthcareAnchorKind[];
 const ACCESS_CONTROL_KINDS = [
   'bollard-line',
   'checkpoint',
@@ -3057,6 +3068,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateCommunityAnchors(city, issues, assetBindingsById);
   validateCultureAnchors(city, issues, assetBindingsById);
   validateGovernmentAnchors(city, issues, assetBindingsById);
+  validateHealthcareAnchors(city, issues, assetBindingsById);
   validateEmergencyServiceAnchors(city, issues, assetBindingsById);
   validateWaterTransportAccess(city, issues, assetBindingsById);
 
@@ -5838,7 +5850,13 @@ function validateAddressingGazetteer(city: GeneratedCityForValidation, issues: V
     }
   }
 
-  for (const anchor of [...city.civicAnchors, ...city.communityAnchors, ...city.cultureAnchors, ...city.governmentAnchors]) {
+  for (const anchor of [
+    ...city.civicAnchors,
+    ...city.communityAnchors,
+    ...city.cultureAnchors,
+    ...city.governmentAnchors,
+    ...city.healthcareAnchors
+  ]) {
     if (!anchor.addressPointIds || anchor.addressPointIds.length === 0) {
       issues.push({
         id: `invalid-anchor-${anchor.id}-missing-address`,
@@ -10469,6 +10487,211 @@ function createGovernmentAnchorIssue(
     category: 'zoning',
     objectId: anchor.id,
     ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from the government civic anchor and civic plaza zones.`),
+    message
+  };
+}
+
+function validateHealthcareAnchors(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const anchorsByKind = new Map<HealthcareAnchorKind, ValidationHealthcareAnchor[]>();
+  const healthcareBaseAnchor = city.civicAnchors.find((anchor) => anchor.serviceType === 'healthcare');
+  const roadsById = new Map(city.roads.map((road) => [road.id, road]));
+  const districtsById = new Map(city.districts.map((district) => [district.id, district]));
+  const navigationNodesById = new Map(city.navigationGraphNodes.map((node) => [node.id, node]));
+  const navigationEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
+  const transitStopsById = new Map(city.transitStops.map((stop) => [stop.id, stop]));
+
+  for (const anchor of city.healthcareAnchors) {
+    const civicAnchor = city.civicAnchors.find((candidate) => candidate.id === anchor.civicAnchorId);
+    const building = city.buildings.find((candidate) => candidate.id === anchor.buildingId);
+    const parcel = city.parcels.find((candidate) => candidate.id === anchor.parcelId);
+    const serviceArea = city.administrativeBoundaries.find((candidate) => candidate.id === anchor.serviceAreaBoundaryId);
+    const binding = assetBindingsById.get(anchor.renderBindingId);
+
+    if (HEALTHCARE_ANCHOR_KINDS.includes(anchor.anchorKind)) {
+      anchorsByKind.set(anchor.anchorKind, [...(anchorsByKind.get(anchor.anchorKind) ?? []), anchor]);
+    } else {
+      issues.push(createHealthcareAnchorIssue(anchor, 'invalid-kind', `Healthcare anchor ${anchor.id} must declare a supported healthcare anchor kind.`));
+    }
+
+    if (!civicAnchor || civicAnchor.serviceType !== 'healthcare' || anchor.parentId !== anchor.civicAnchorId) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-healthcare-civic-anchor', `Healthcare anchor ${anchor.id} must be parented to the healthcare civic anchor.`));
+    }
+
+    if (!building || building.kind !== 'building' || building.parcelId !== anchor.parcelId) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'building-parcel-mismatch', `Healthcare anchor ${anchor.id} must reference an existing building and its parcel.`));
+    }
+
+    if (!parcel || parcel.id !== anchor.parcelId) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-parcel', `Healthcare anchor ${anchor.id} must reference an existing parcel.`));
+    }
+
+    if (!districtsById.has(anchor.districtId) || (civicAnchor && civicAnchor.districtId !== anchor.districtId)) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'district-mismatch', `Healthcare anchor ${anchor.id} must stay in the healthcare civic anchor district.`));
+    }
+
+    if (!roadsById.has(anchor.roadId)) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-road', `Healthcare anchor ${anchor.id} must reference an existing patient arrival road.`));
+    }
+
+    if (!serviceArea || serviceArea.boundaryKind !== 'service-area' || !serviceArea.serviceTypes.includes('emergency')) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-healthcare-service-area', `Healthcare anchor ${anchor.id} must reference an emergency-capable service-area boundary.`));
+    }
+
+    if (
+      anchor.capacity.bedCapacity < 0 ||
+      anchor.capacity.examRooms < 0 ||
+      anchor.capacity.pharmacyCounters < 0 ||
+      anchor.capacity.urgentCareBays < 0 ||
+      anchor.capacity.ambulanceBays < 0 ||
+      anchor.capacity.staffCapacity <= 0 ||
+      anchor.arrivals.dailyPatients <= 0 ||
+      anchor.arrivals.appointmentShare < 0 ||
+      anchor.arrivals.appointmentShare > 1 ||
+      anchor.arrivals.emergencyArrivalShare < 0 ||
+      anchor.arrivals.emergencyArrivalShare > 1 ||
+      anchor.scheduleProfileId.length === 0
+    ) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'invalid-capacity', `Healthcare anchor ${anchor.id} must expose non-negative care capacity plus positive patient, staffing, and schedule metrics.`));
+    }
+
+    if (
+      anchor.coverage.radiusMeters <= 0 ||
+      anchor.coverage.targetDistrictIds.length === 0 ||
+      anchor.coverage.coveredNavigationNodeIds.length === 0 ||
+      anchor.coverage.coveredNavigationEdgeIds.length === 0 ||
+      anchor.coverage.estimatedAmbulanceResponseSeconds <= 0 ||
+      anchor.coverage.coverageScore <= 0
+    ) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'invalid-healthcare-coverage', `Healthcare anchor ${anchor.id} must expose coverage, route hooks, response time, and coverage score.`));
+    }
+
+    for (const districtId of anchor.coverage.targetDistrictIds) {
+      if (!districtsById.has(districtId)) {
+        issues.push(createHealthcareAnchorIssue(anchor, `missing-target-district-${toIssueIdToken(districtId)}`, `Healthcare anchor ${anchor.id} references missing target district ${districtId}.`));
+      }
+    }
+
+    for (const nodeId of anchor.coverage.coveredNavigationNodeIds) {
+      if (!navigationNodesById.has(nodeId)) {
+        issues.push(createHealthcareAnchorIssue(anchor, `missing-navigation-node-${toIssueIdToken(nodeId)}`, `Healthcare anchor ${anchor.id} references missing navigation node ${nodeId}.`));
+      }
+    }
+
+    for (const edgeId of anchor.coverage.coveredNavigationEdgeIds) {
+      if (!navigationEdgesById.has(edgeId)) {
+        issues.push(createHealthcareAnchorIssue(anchor, `missing-navigation-edge-${toIssueIdToken(edgeId)}`, `Healthcare anchor ${anchor.id} references missing navigation edge ${edgeId}.`));
+      }
+    }
+
+    for (const entranceId of anchor.arrivals.publicEntranceIds) {
+      if (!building?.publicEntranceIds.includes(entranceId)) {
+        issues.push(createHealthcareAnchorIssue(anchor, `missing-public-entrance-${toIssueIdToken(entranceId)}`, `Healthcare anchor ${anchor.id} references missing public entrance ${entranceId}.`));
+      }
+    }
+
+    for (const entranceId of anchor.arrivals.serviceEntranceIds) {
+      if (!(building?.serviceEntranceIds ?? []).includes(entranceId)) {
+        issues.push(createHealthcareAnchorIssue(anchor, `missing-service-entrance-${toIssueIdToken(entranceId)}`, `Healthcare anchor ${anchor.id} references missing service entrance ${entranceId}.`));
+      }
+    }
+
+    for (const transitStopId of anchor.arrivals.transitStopIds) {
+      if (!transitStopsById.has(transitStopId)) {
+        issues.push(createHealthcareAnchorIssue(anchor, `missing-transit-stop-${toIssueIdToken(transitStopId)}`, `Healthcare anchor ${anchor.id} references missing transit stop ${transitStopId}.`));
+      }
+    }
+
+    for (const roadId of anchor.arrivals.ambulanceAccessRoadIds) {
+      if (!roadsById.has(roadId)) {
+        issues.push(createHealthcareAnchorIssue(anchor, `missing-ambulance-road-${toIssueIdToken(roadId)}`, `Healthcare anchor ${anchor.id} references missing ambulance access road ${roadId}.`));
+      }
+    }
+
+    if (anchor.acceptsAmbulance) {
+      if (anchor.capacity.ambulanceBays <= 0 || anchor.arrivals.ambulanceNavigationNodeIds.length === 0 || anchor.arrivals.ambulanceNavigationEdgeIds.length === 0) {
+        issues.push(createHealthcareAnchorIssue(anchor, 'missing-ambulance-access', `Ambulance-accepting healthcare anchor ${anchor.id} must expose ambulance bays and emergency route hooks.`));
+      }
+
+      for (const nodeId of anchor.arrivals.ambulanceNavigationNodeIds) {
+        const node = navigationNodesById.get(nodeId);
+        if (!node || node.mode !== 'emergency') {
+          issues.push(createHealthcareAnchorIssue(anchor, `missing-ambulance-navigation-node-${toIssueIdToken(nodeId)}`, `Healthcare anchor ${anchor.id} must route ambulances through emergency navigation nodes.`));
+        }
+      }
+
+      for (const edgeId of anchor.arrivals.ambulanceNavigationEdgeIds) {
+        const edge = navigationEdgesById.get(edgeId);
+        if (!edge || edge.mode !== 'emergency') {
+          issues.push(createHealthcareAnchorIssue(anchor, `missing-ambulance-navigation-edge-${toIssueIdToken(edgeId)}`, `Healthcare anchor ${anchor.id} must route ambulances through emergency navigation edges.`));
+        }
+      }
+    }
+
+    if (anchor.anchorKind === 'hospital' && (!anchor.emergencyDepartment || anchor.capacity.bedCapacity <= 0)) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-hospital-care-capacity', `Hospital anchor ${anchor.id} must expose inpatient beds and an emergency department.`));
+    }
+
+    if (anchor.anchorKind === 'urgent-care' && anchor.capacity.urgentCareBays <= 0) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-urgent-care-bays', `Urgent care anchor ${anchor.id} must expose urgent care bay capacity.`));
+    }
+
+    if (anchor.anchorKind === 'pharmacy' && anchor.capacity.pharmacyCounters <= 0) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-pharmacy-counters', `Pharmacy anchor ${anchor.id} must expose pharmacy counter capacity.`));
+    }
+
+    if (anchor.anchorKind === 'clinic' && anchor.capacity.examRooms <= 0) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-clinic-exam-rooms', `Clinic anchor ${anchor.id} must expose exam room capacity.`));
+    }
+
+    if (anchor.anchorKind === 'ambulance-bay' && anchor.capacity.ambulanceBays <= 0) {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-ambulance-bays', `Ambulance bay anchor ${anchor.id} must expose ambulance bay capacity.`));
+    }
+
+    if (!binding || binding.objectKind !== 'healthcare-anchor') {
+      issues.push(createHealthcareAnchorIssue(anchor, 'missing-render-binding', `Healthcare anchor ${anchor.id} must reference a healthcare-anchor render binding.`));
+    }
+  }
+
+  if (healthcareBaseAnchor && city.healthcareAnchors.length === 0) {
+    issues.push({
+      id: 'missing-healthcare-anchors',
+      severity: 'error',
+      category: 'zoning',
+      objectId: healthcareBaseAnchor.id,
+      ...createIssueFocus(healthcareBaseAnchor.center, 'Generate healthcare anchors from the healthcare civic anchor and navigation graph.'),
+      message: 'Healthcare civic anchors must expose hospital, clinic, pharmacy, urgent care, and ambulance access hooks.'
+    });
+  }
+
+  for (const anchorKind of HEALTHCARE_ANCHOR_KINDS) {
+    if (!anchorsByKind.has(anchorKind)) {
+      issues.push({
+        id: `missing-healthcare-anchor-${anchorKind}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: healthcareBaseAnchor?.id,
+        ...createIssueFocus(healthcareBaseAnchor?.center, `Create the ${anchorKind} healthcare anchor from the healthcare civic anchor.`),
+        message: `Healthcare anchors must include ${anchorKind}.`
+      });
+    }
+  }
+}
+
+function createHealthcareAnchorIssue(
+  anchor: ValidationHealthcareAnchor,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `healthcare-anchor-${issueIdSuffix}-${toIssueIdToken(anchor.id)}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: anchor.id,
+    ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from healthcare civic and navigation graph data.`),
     message
   };
 }

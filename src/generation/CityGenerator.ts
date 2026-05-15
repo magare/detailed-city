@@ -18,6 +18,7 @@ import { CommunityAnchorGenerator } from './civic/CommunityAnchorGenerator';
 import { CultureAnchorGenerator } from './civic/CultureAnchorGenerator';
 import { EmergencyServiceAnchorGenerator } from './civic/EmergencyServiceAnchorGenerator';
 import { GovernmentAnchorGenerator } from './civic/GovernmentAnchorGenerator';
+import { HealthcareAnchorGenerator } from './civic/HealthcareAnchorGenerator';
 import { applyConstraintFilters } from './constraints/applyConstraintFilters';
 import { ConstraintGenerator } from './constraints/ConstraintGenerator';
 import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGenerator';
@@ -375,6 +376,14 @@ export class CityGenerator {
       emergencyServiceAnchors,
       roads: stormwater.roads
     });
+    const healthcareAnchors = new HealthcareAnchorGenerator().create({
+      civicAnchors,
+      buildings: entranceAddress.buildings,
+      navigationGraphNodes: navigationGraphs.navigationGraphNodes,
+      navigationGraphEdges: accessControl.navigationGraphEdges,
+      roads: stormwater.roads,
+      transitStops: transit.stops
+    });
     const governmentAnchors = new GovernmentAnchorGenerator().create({
       civicAnchors,
       buildings: entranceAddress.buildings,
@@ -402,7 +411,8 @@ export class CityGenerator {
       civicAnchors,
       communityAnchors,
       cultureAnchors,
-      governmentAnchors
+      governmentAnchors,
+      healthcareAnchors
     });
     const cityMetrics = new CityMetricGenerator(this.config).create({
       bounds,
@@ -421,6 +431,7 @@ export class CityGenerator {
       communityAnchors: addressingGazetteer.communityAnchors,
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
+      healthcareAnchors: addressingGazetteer.healthcareAnchors,
       emergencyServiceAnchors,
       waterTransportAccess,
       utilityNodes: serviceAccess.utilityNodes,
@@ -513,6 +524,7 @@ export class CityGenerator {
       communityAnchors: addressingGazetteer.communityAnchors,
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
+      healthcareAnchors: addressingGazetteer.healthcareAnchors,
       emergencyServiceAnchors,
       waterTransportAccess,
       activeFrontages: entranceAddress.activeFrontages,

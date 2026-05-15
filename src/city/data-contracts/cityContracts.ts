@@ -39,6 +39,7 @@ export type CityObjectKind =
   | 'freight-loading-dock'
   | 'freight-route'
   | 'government-anchor'
+  | 'healthcare-anchor'
   | 'hazard-zone'
   | 'intersection'
   | 'lane'
@@ -689,6 +690,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Government anchors expose city hall, administrative, court, service counter, and civic plaza public-administration nodes.'
+    },
+    {
+      objectKind: 'healthcare-anchor',
+      scope: 'building',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Healthcare anchors expose hospitals, clinics, pharmacies, urgent care, ambulance bays, patient arrival demand, and coverage route hooks.'
     },
     {
       objectKind: 'emergency-service-anchor',
@@ -2876,6 +2884,56 @@ export interface EmergencyServiceAnchorContract extends CityObjectBase<'emergenc
     readonly serviceAccessCorridorIds: readonly CityId[];
     readonly hydrantNodeIds: readonly CityId[];
   };
+  readonly scheduleProfileId: CityId;
+  readonly renderBindingId: CityId;
+}
+
+export type HealthcareAnchorKind =
+  | 'ambulance-bay'
+  | 'clinic'
+  | 'hospital'
+  | 'pharmacy'
+  | 'urgent-care';
+
+export interface HealthcareAnchorContract extends CityObjectBase<'healthcare-anchor'> {
+  readonly anchorKind: HealthcareAnchorKind;
+  readonly civicAnchorId: CityId;
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly districtId: CityId;
+  readonly roadId: CityId;
+  readonly serviceAreaBoundaryId: CityId;
+  readonly center: Point2D;
+  readonly capacity: {
+    readonly bedCapacity: number;
+    readonly examRooms: number;
+    readonly pharmacyCounters: number;
+    readonly urgentCareBays: number;
+    readonly ambulanceBays: number;
+    readonly staffCapacity: number;
+  };
+  readonly arrivals: {
+    readonly dailyPatients: number;
+    readonly appointmentShare: number;
+    readonly emergencyArrivalShare: number;
+    readonly publicEntranceIds: readonly CityId[];
+    readonly serviceEntranceIds: readonly CityId[];
+    readonly transitStopIds: readonly CityId[];
+    readonly ambulanceAccessRoadIds: readonly CityId[];
+    readonly ambulanceNavigationNodeIds: readonly CityId[];
+    readonly ambulanceNavigationEdgeIds: readonly CityId[];
+  };
+  readonly coverage: {
+    readonly radiusMeters: number;
+    readonly targetDistrictIds: readonly CityId[];
+    readonly coveredNavigationNodeIds: readonly CityId[];
+    readonly coveredNavigationEdgeIds: readonly CityId[];
+    readonly estimatedAmbulanceResponseSeconds: number;
+    readonly coverageScore: number;
+  };
+  readonly acceptsAmbulance: boolean;
+  readonly emergencyDepartment: boolean;
+  readonly addressPointIds?: readonly CityId[];
   readonly scheduleProfileId: CityId;
   readonly renderBindingId: CityId;
 }

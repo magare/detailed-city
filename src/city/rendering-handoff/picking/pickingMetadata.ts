@@ -82,6 +82,7 @@ type PickableObjectSource = Pick<
   | 'curbActivations'
   | 'emergencyServiceAnchors'
   | 'governmentAnchors'
+  | 'healthcareAnchors'
   | 'gazetteerEntries'
   | 'namedPlaces'
   | 'parks'
@@ -118,6 +119,7 @@ export function createCityPickingMetadataCatalog(
     ...city.communityAnchors,
     ...city.cultureAnchors,
     ...city.governmentAnchors,
+    ...city.healthcareAnchors,
     ...city.emergencyServiceAnchors,
     ...city.activeFrontages,
     ...city.parks,
@@ -268,6 +270,21 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
   } else if (object.kind === 'government-anchor') {
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
+  } else if (object.kind === 'healthcare-anchor') {
+    references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
+    references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
+    const arrivals = record.arrivals as
+      | {
+          transitStopIds?: readonly unknown[];
+          ambulanceNavigationNodeIds?: readonly unknown[];
+        }
+      | undefined;
+    references.transitStopId =
+      typeof arrivals?.transitStopIds?.[0] === 'string' ? arrivals.transitStopIds[0] : references.transitStopId;
+    references.navigationNodeId =
+      typeof arrivals?.ambulanceNavigationNodeIds?.[0] === 'string'
+        ? arrivals.ambulanceNavigationNodeIds[0]
+        : references.navigationNodeId;
   } else if (object.kind === 'named-place') {
     references.roadId =
       record.placeKind === 'street' && typeof record.sourceObjectId === 'string' ? record.sourceObjectId : undefined;
