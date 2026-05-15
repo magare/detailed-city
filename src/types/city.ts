@@ -1,6 +1,7 @@
 import type {
   AssetDefinition,
   ActiveFrontageContract,
+  AddressPointContract,
   AdministrativeBoundaryContract,
   BikeConflictZoneContract,
   BikeGraphEdgeContract,
@@ -9,6 +10,7 @@ import type {
   BikeSegmentContract,
   BikeSignalContract,
   BuildingContract,
+  BuildingEntranceContract,
   BuildingFrontageSide,
   CadastreRecordContract,
   BlockContract,
@@ -218,6 +220,10 @@ export interface BuildingPlan extends BuildingContract {
   roofStyle: RoofStyle;
 }
 
+export interface BuildingEntrance extends BuildingEntranceContract {}
+
+export interface AddressPoint extends AddressPointContract {}
+
 export interface CivicAnchor extends CivicAnchorContract {}
 
 export interface CommunityAnchor extends CommunityAnchorContract {}
@@ -327,6 +333,7 @@ export interface UtilityEdge extends UtilityEdgeContract {}
 
 export type GeneratedCityObject =
   | AssetDefinition
+  | AddressPoint
   | AdministrativeBoundaryPlan
   | DetailedStreetSlice
   | CityMetricPlan
@@ -372,6 +379,7 @@ export type GeneratedCityObject =
   | SidewalkContract
   | Parcel
   | BuildingPlan
+  | BuildingEntrance
   | CadastreRecord
   | CivicAnchor
   | CommunityAnchor
@@ -433,6 +441,8 @@ export interface GeneratedCity {
   freightRoutes: FreightRoute[];
   serviceAlleys: ServiceAlley[];
   serviceAccessCorridors: ServiceAccessCorridor[];
+  buildingEntrances: BuildingEntrance[];
+  addressPoints: AddressPoint[];
   weatherPresets: WeatherPreset[];
   solarShadingSamples: SolarShadingSample[];
   urbanHeatZones: UrbanHeatZone[];

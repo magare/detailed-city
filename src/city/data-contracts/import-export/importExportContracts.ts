@@ -233,6 +233,8 @@ export interface ProceduralSeedDomainSections {
   readonly utilityNodes: GeneratedCity['utilityNodes'];
   readonly utilityEdges: GeneratedCity['utilityEdges'];
   readonly serviceAccessCorridors: GeneratedCity['serviceAccessCorridors'];
+  readonly buildingEntrances: GeneratedCity['buildingEntrances'];
+  readonly addressPoints: GeneratedCity['addressPoints'];
   readonly constraints: GeneratedCity['constraints'];
   readonly hazardZones: GeneratedCity['hazardZones'];
   readonly topographyZones: GeneratedCity['topographyZones'];
@@ -291,6 +293,8 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly utilityNodes: number;
   readonly utilityEdges: number;
   readonly serviceAccessCorridors: number;
+  readonly buildingEntrances: number;
+  readonly addressPoints: number;
   readonly constraints: number;
   readonly hazardZones: number;
   readonly topographyZones: number;
@@ -427,6 +431,8 @@ export function createProceduralSeedJsonExport(
       utilityNodes: city.utilityNodes,
       utilityEdges: city.utilityEdges,
       serviceAccessCorridors: city.serviceAccessCorridors,
+      buildingEntrances: city.buildingEntrances,
+      addressPoints: city.addressPoints,
       constraints: city.constraints,
       hazardZones: city.hazardZones,
       topographyZones: city.topographyZones,
@@ -592,6 +598,8 @@ export function createProceduralSeedDomainSectionCounts(
     | 'utilityNodes'
     | 'utilityEdges'
     | 'serviceAccessCorridors'
+    | 'buildingEntrances'
+    | 'addressPoints'
     | 'constraints'
     | 'hazardZones'
     | 'topographyZones'
@@ -644,6 +652,8 @@ export function createProceduralSeedDomainSectionCounts(
     utilityNodes: city.utilityNodes.length,
     utilityEdges: city.utilityEdges.length,
     serviceAccessCorridors: city.serviceAccessCorridors.length,
+    buildingEntrances: city.buildingEntrances.length,
+    addressPoints: city.addressPoints.length,
     constraints: city.constraints.length,
     hazardZones: city.hazardZones.length,
     topographyZones: city.topographyZones.length,
@@ -714,6 +724,8 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'utilityNodes') +
     getArrayLength(city, 'utilityEdges') +
     getArrayLength(city, 'serviceAccessCorridors') +
+    getArrayLength(city, 'buildingEntrances') +
+    getArrayLength(city, 'addressPoints') +
     getArrayLength(city, 'constraints') +
     getArrayLength(city, 'hazardZones') +
     getArrayLength(city, 'topographyZones') +

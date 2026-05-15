@@ -353,6 +353,10 @@ export class DebugPanel {
         `${diagnostics.buildingRoofs.roofStyles} styles, ${diagnostics.buildingRoofs.detailModules} details, ${diagnostics.buildingRoofs.heightExemptions} exempt`
       ),
       createMetric(
+        'Entrances',
+        `${diagnostics.buildingAccess.entrances} entries, ${diagnostics.buildingAccess.addressPoints} addresses, ${diagnostics.buildingAccess.loadingDoors} loading`
+      ),
+      createMetric(
         'Assets',
         `${diagnostics.assetBindingDiagnostics.assetDefinitions} assets, ${diagnostics.assetBindingDiagnostics.renderBindings} bindings, ${diagnostics.assetBindingDiagnostics.materialZoneRegistry.definitions} zones`
       ),

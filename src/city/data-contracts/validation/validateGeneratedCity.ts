@@ -73,6 +73,8 @@ type GeneratedCityForValidation = Pick<
   | 'bikeSignals'
   | 'blocks'
   | 'buildings'
+  | 'buildingEntrances'
+  | 'addressPoints'
   | 'cadastreRecords'
   | 'civicAnchors'
   | 'communityAnchors'
@@ -125,6 +127,8 @@ type GeneratedCityForValidation = Pick<
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
+type ValidationBuildingEntrance = GeneratedCityForValidation['buildingEntrances'][number];
+type ValidationAddressPoint = GeneratedCityForValidation['addressPoints'][number];
 type ValidationCadastreRecord = GeneratedCityForValidation['cadastreRecords'][number];
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
@@ -493,6 +497,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateTelecom(city, issues);
   validateThermalEnergy(city, issues);
   validateServiceAccessCorridors(city, issues);
+  validateBuildingEntrancesAndAddresses(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
     DEFAULT_STREET_PROFILES.map((profile) => [profile.id, profile])
@@ -4434,6 +4439,192 @@ function createServiceAccessCorridorIssue(
     category: 'utility-coverage',
     objectId: corridor.id,
     affectedBoundary: corridor.boundary,
+    message
+  };
+}
+
+function validateBuildingEntrancesAndAddresses(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const entranceIds = new Set(city.buildingEntrances.map((entrance) => entrance.id));
+  const addressPointIds = new Set(city.addressPoints.map((addressPoint) => addressPoint.id));
+  const activeFrontageIds = new Set(city.activeFrontages.map((frontage) => frontage.id));
+  const serviceAccessIds = new Set(city.serviceAccessCorridors.map((corridor) => corridor.id));
+  const entrancesById = new Map(city.buildingEntrances.map((entrance) => [entrance.id, entrance]));
+
+  if (city.buildingEntrances.length === 0 || city.addressPoints.length === 0) {
+    issues.push({
+      id: 'missing-building-entrance-address-objects',
+      severity: 'error',
+      category: 'zoning',
+      message: 'Buildings must expose generated entrance and address point objects.'
+    });
+  }
+
+  for (const entrance of city.buildingEntrances) {
+    if (entrance.widthMeters <= 0 || entrance.door.clearWidthMeters <= 0) {
+      issues.push(createBuildingEntranceIssue(entrance, 'invalid-door-geometry', `Building entrance ${entrance.id} must expose positive door and clear-width geometry.`));
+    }
+    validateEntranceReference(city, issues, entrance, entrance.buildingId, 'building', 'building');
+    validateEntranceReference(city, issues, entrance, entrance.parcelId, 'parcel', 'parcel');
+    validateEntranceReference(city, issues, entrance, entrance.roadId, 'road', 'road-segment');
+    if (entrance.sidewalkId) {
+      validateEntranceReference(city, issues, entrance, entrance.sidewalkId, 'sidewalk', 'sidewalk');
+    }
+    if (!addressPointIds.has(entrance.addressPointId)) {
+      issues.push(createBuildingEntranceIssue(entrance, `missing-address-point-${toIssueIdToken(entrance.addressPointId)}`, `Building entrance ${entrance.id} references missing address point ${entrance.addressPointId}.`));
+    }
+    for (const frontageId of entrance.activeFrontageIds) {
+      if (!activeFrontageIds.has(frontageId)) {
+        issues.push(createBuildingEntranceIssue(entrance, `missing-active-frontage-${toIssueIdToken(frontageId)}`, `Building entrance ${entrance.id} references missing active frontage ${frontageId}.`));
+      }
+    }
+    for (const corridorId of entrance.serviceAccessCorridorIds) {
+      if (!serviceAccessIds.has(corridorId)) {
+        issues.push(createBuildingEntranceIssue(entrance, `missing-service-access-corridor-${toIssueIdToken(corridorId)}`, `Building entrance ${entrance.id} references missing service access corridor ${corridorId}.`));
+      }
+    }
+    if ((entrance.entranceKind === 'public-door' || entrance.entranceKind === 'lobby' || entrance.entranceKind === 'ramp') && (!entrance.accessible || !entrance.stepFree)) {
+      issues.push(createBuildingEntranceIssue(entrance, 'public-entry-not-accessible', `Public building entrance ${entrance.id} must be accessible and step-free.`));
+    }
+    if (entrance.entranceKind === 'service-entry' && entrance.serviceAccessCorridorIds.length === 0) {
+      issues.push(createBuildingEntranceIssue(entrance, 'missing-service-access', `Service entrance ${entrance.id} must link to service access corridors.`));
+    }
+    if (entrance.entranceKind === 'loading-door' && (!entrance.loading || entrance.loading.loadingBays <= 0 || entrance.serviceAccessCorridorIds.length === 0)) {
+      issues.push(createBuildingEntranceIssue(entrance, 'invalid-loading-door', `Loading entrance ${entrance.id} must expose loading metadata and service access corridors.`));
+    }
+    if (entrance.entranceKind === 'ramp' && (!entrance.ramp || entrance.ramp.slopePercent <= 0 || entrance.ramp.slopePercent > 8.33)) {
+      issues.push(createBuildingEntranceIssue(entrance, 'invalid-ramp', `Ramp entrance ${entrance.id} must expose a usable slope no steeper than 8.33%.`));
+    }
+    if (entrance.entranceKind === 'lobby' && (!entrance.lobby || entrance.lobby.areaSqM <= 0)) {
+      issues.push(createBuildingEntranceIssue(entrance, 'invalid-lobby', `Lobby entrance ${entrance.id} must expose positive lobby area metadata.`));
+    }
+  }
+
+  for (const addressPoint of city.addressPoints) {
+    validateAddressReference(city, issues, addressPoint, addressPoint.buildingId, 'building', 'building');
+    validateAddressReference(city, issues, addressPoint, addressPoint.parcelId, 'parcel', 'parcel');
+    validateAddressReference(city, issues, addressPoint, addressPoint.roadId, 'road', 'road-segment');
+    if (!addressPoint.streetName || !addressPoint.buildingNumber || !addressPoint.postalCode) {
+      issues.push(createAddressPointIssue(addressPoint, 'missing-address-fields', `Address point ${addressPoint.id} must expose street name, building number, and postal code.`));
+    }
+    if (addressPoint.entranceIds.length === 0) {
+      issues.push(createAddressPointIssue(addressPoint, 'missing-entrances', `Address point ${addressPoint.id} must link to at least one entrance.`));
+    }
+    for (const entranceId of addressPoint.entranceIds) {
+      if (!entranceIds.has(entranceId)) {
+        issues.push(createAddressPointIssue(addressPoint, `missing-entrance-${toIssueIdToken(entranceId)}`, `Address point ${addressPoint.id} references missing entrance ${entranceId}.`));
+      }
+    }
+    for (const frontageId of addressPoint.activeFrontageIds) {
+      if (!activeFrontageIds.has(frontageId)) {
+        issues.push(createAddressPointIssue(addressPoint, `missing-active-frontage-${toIssueIdToken(frontageId)}`, `Address point ${addressPoint.id} references missing active frontage ${frontageId}.`));
+      }
+    }
+  }
+
+  for (const building of city.buildings) {
+    if (building.publicEntranceIds.length === 0 || !building.publicEntranceIds.some((entranceId) => entrancesById.get(entranceId)?.accessible)) {
+      issues.push(createBuildingAccessIssue(building, 'missing-accessible-public-entrance', `Building ${building.id} must expose at least one accessible public entrance.`));
+    }
+    for (const entranceId of building.entranceIds) {
+      if (!entranceIds.has(entranceId)) {
+        issues.push(createBuildingAccessIssue(building, `missing-entrance-${toIssueIdToken(entranceId)}`, `Building ${building.id} references missing entrance ${entranceId}.`));
+      }
+    }
+    if (!building.addressPointIds || building.addressPointIds.length === 0) {
+      issues.push(createBuildingAccessIssue(building, 'missing-address-point', `Building ${building.id} must expose at least one address point.`));
+    } else {
+      for (const addressPointId of building.addressPointIds) {
+        if (!addressPointIds.has(addressPointId)) {
+          issues.push(createBuildingAccessIssue(building, `missing-address-point-${toIssueIdToken(addressPointId)}`, `Building ${building.id} references missing address point ${addressPointId}.`));
+        }
+      }
+    }
+    if ((building.typology.serviceAccess === 'curb-loading' || building.typology.serviceAccess === 'yard-loading') && (!building.loadingEntranceIds || building.loadingEntranceIds.length === 0)) {
+      issues.push(createBuildingAccessIssue(building, 'missing-loading-entrance', `Loading/service building ${building.id} must expose a loading entrance.`));
+    }
+    if (!building.serviceEntranceIds || building.serviceEntranceIds.length === 0) {
+      issues.push(createBuildingAccessIssue(building, 'missing-service-entrance', `Building ${building.id} must expose a service entrance.`));
+    }
+  }
+
+  for (const frontage of city.activeFrontages) {
+    for (const entranceId of frontage.publicEntranceIds) {
+      const entrance = entrancesById.get(entranceId);
+      if (!entrance || entrance.buildingId !== frontage.buildingId) {
+        issues.push({
+          id: `invalid-active-frontage-${frontage.id}-missing-public-entrance-${toIssueIdToken(entranceId)}`,
+          severity: 'error',
+          category: 'zoning',
+          objectId: frontage.id,
+          affectedPoint: frontage.position,
+          message: `Active frontage ${frontage.id} references missing public entrance ${entranceId}.`
+        });
+      }
+    }
+  }
+}
+
+function validateEntranceReference(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  entrance: ValidationBuildingEntrance,
+  objectId: CityId,
+  suffixKind: string,
+  expectedKind: CityObjectKind
+): void {
+  const object = city.objectIndex.objectsById[objectId];
+  if (!object || object.kind !== expectedKind) {
+    issues.push(createBuildingEntranceIssue(entrance, `missing-${suffixKind}-${toIssueIdToken(objectId)}`, `Building entrance ${entrance.id} references missing ${suffixKind} ${objectId}.`));
+  }
+}
+
+function validateAddressReference(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  addressPoint: ValidationAddressPoint,
+  objectId: CityId,
+  suffixKind: string,
+  expectedKind: CityObjectKind
+): void {
+  const object = city.objectIndex.objectsById[objectId];
+  if (!object || object.kind !== expectedKind) {
+    issues.push(createAddressPointIssue(addressPoint, `missing-${suffixKind}-${toIssueIdToken(objectId)}`, `Address point ${addressPoint.id} references missing ${suffixKind} ${objectId}.`));
+  }
+}
+
+function createBuildingEntranceIssue(
+  entrance: ValidationBuildingEntrance,
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `invalid-building-entrance-${entrance.id}-${suffix}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: entrance.id,
+    affectedPoint: entrance.position,
+    message
+  };
+}
+
+function createAddressPointIssue(addressPoint: ValidationAddressPoint, suffix: string, message: string): ValidationIssue {
+  return {
+    id: `invalid-address-point-${addressPoint.id}-${suffix}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: addressPoint.id,
+    affectedPoint: addressPoint.position,
+    message
+  };
+}
+
+function createBuildingAccessIssue(building: ValidationBuilding, suffix: string, message: string): ValidationIssue {
+  return {
+    id: `invalid-building-${building.id}-${suffix}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: building.id,
+    affectedBoundary: building.footprint,
     message
   };
 }

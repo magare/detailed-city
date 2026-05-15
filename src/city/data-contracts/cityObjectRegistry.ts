@@ -41,6 +41,7 @@ const SIDEWALK_SIDE = String.raw`(?:left|right)`;
 const SIDEWALK_ID = String.raw`${ROAD_ID}-sidewalk-${SIDEWALK_SIDE}`;
 const CROSSING_ID = String.raw`crossing-(?:${INTERSECTION_ID}-${ROAD_ID}|midblock-${ROAD_ID}-\d+)`;
 const BUILDING_ID = String.raw`building-\d+-\d+-\d+-\d+`;
+const BUILDING_ENTRANCE_KIND = String.raw`(?:primary|lobby|ramp|service|loading)`;
 const PARCEL_ID = String.raw`parcel-\d+-\d+-\d+-\d+`;
 const FREIGHT_ROUTE_KIND = String.raw`(?:industrial-haul|retail-delivery|warehouse-link)`;
 const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shelter|kiosk|railing|regulatory-sign|street-name-sign|wayfinding-sign)`;
@@ -75,7 +76,14 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   ),
   entry('asset', ['asset:<category>:<semantic-name>:primitive'], [exact(String.raw`asset:${NAMED_ID}(?::${NAMED_ID})+:primitive`)], none()),
   entry('block', ['block-<grid-x>-<grid-z>'], [exact(String.raw`block-\d+-\d+`)], required(['district'])),
+  entry('address-point', ['<building-id>-address-primary'], [exact(String.raw`${BUILDING_ID}-address-primary`)], required(['building'])),
   entry('building', ['building-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(BUILDING_ID)], required(['parcel'])),
+  entry(
+    'building-entrance',
+    ['<building-id>-entrance-<primary|lobby|ramp|service|loading>'],
+    [exact(String.raw`${BUILDING_ID}-entrance-${BUILDING_ENTRANCE_KIND}`)],
+    required(['building'])
+  ),
   entry(
     'bike-conflict-zone',
     ['bike-conflict-zone-<road-id>-<side>-<suffix>'],

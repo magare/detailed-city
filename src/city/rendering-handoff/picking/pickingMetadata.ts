@@ -65,8 +65,10 @@ interface CityPickingUserData {
 
 type PickableObjectSource = Pick<
   GeneratedCity,
+  | 'addressPoints'
   | 'activeFrontages'
   | 'buildings'
+  | 'buildingEntrances'
   | 'civicAnchors'
   | 'communityAnchors'
   | 'cultureAnchors'
@@ -93,7 +95,9 @@ export function createCityPickingMetadataCatalog(
 ): CityPickingCatalog {
   const pickableObjects: GeneratedRuntimeCityObject[] = [
     ...city.roads,
+    ...city.addressPoints,
     ...city.buildings,
+    ...city.buildingEntrances,
     ...city.civicAnchors,
     ...city.communityAnchors,
     ...city.cultureAnchors,

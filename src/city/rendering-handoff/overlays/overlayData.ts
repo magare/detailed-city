@@ -33,6 +33,7 @@ export type CityOverlayId =
   | 'community-anchors'
   | 'culture-anchors'
   | 'government-anchors'
+  | 'building-access'
   | 'constraints'
   | 'resilience-goals'
   | 'service-access'
@@ -102,6 +103,7 @@ export function createCityOverlayDatasets(
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
+    createDataset('building-access', 'Building Access', 'domain-data', createBuildingAccessFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('service-access', 'Service Access', 'domain-data', createServiceAccessFeatures(city)),
@@ -649,6 +651,49 @@ function createGovernmentAnchorFeatures(city: GeneratedCity): CityOverlayFeature
       publicAccess: anchor.publicAccess
     }
   }));
+}
+
+function createBuildingAccessFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  const entranceFeatures = city.buildingEntrances.map((entrance) => ({
+    id: `overlay:building-access:${entrance.id}`,
+    overlayId: 'building-access' as const,
+    objectId: entrance.id,
+    objectKind: entrance.kind,
+    ownerDomain: entrance.ownerDomain,
+    label: `${entrance.entranceKind} ${entrance.id}`,
+    geometry: { type: 'point' as const, point: entrance.position },
+    metadata: {
+      featureType: 'entrance',
+      entranceKind: entrance.entranceKind,
+      accessLevel: entrance.accessLevel,
+      buildingId: entrance.buildingId,
+      roadId: entrance.roadId,
+      accessible: entrance.accessible,
+      stepFree: entrance.stepFree,
+      activeFrontages: entrance.activeFrontageIds.length,
+      serviceAccessCorridors: entrance.serviceAccessCorridorIds.length
+    }
+  }));
+  const addressFeatures = city.addressPoints.map((addressPoint) => ({
+    id: `overlay:building-access:${addressPoint.id}`,
+    overlayId: 'building-access' as const,
+    objectId: addressPoint.id,
+    objectKind: addressPoint.kind,
+    ownerDomain: addressPoint.ownerDomain,
+    label: `${addressPoint.buildingNumber} ${addressPoint.streetName}`,
+    geometry: { type: 'point' as const, point: addressPoint.position },
+    metadata: {
+      featureType: 'address',
+      buildingId: addressPoint.buildingId,
+      parcelId: addressPoint.parcelId,
+      roadId: addressPoint.roadId,
+      postalCode: addressPoint.postalCode,
+      entrances: addressPoint.entranceIds.length,
+      activeFrontages: addressPoint.activeFrontageIds.length
+    }
+  }));
+
+  return [...entranceFeatures, ...addressFeatures];
 }
 
 function createConstraintFeatures(city: GeneratedCity): CityOverlayFeature[] {

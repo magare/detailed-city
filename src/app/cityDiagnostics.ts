@@ -81,6 +81,7 @@ export interface CityDiagnostics {
   readonly buildingStructureShells: BuildingStructureShellDiagnostics;
   readonly buildingFacades: BuildingFacadeDiagnostics;
   readonly buildingRoofs: BuildingRoofDiagnostics;
+  readonly buildingAccess: BuildingAccessDiagnostics;
   readonly civicAnchors: CivicAnchorDiagnostics;
   readonly communityAnchors: CommunityAnchorDiagnostics;
   readonly cultureAnchors: CultureAnchorDiagnostics;
@@ -173,6 +174,15 @@ export interface CityDiagnostics {
     readonly buildingsWithServiceAccess: number;
     readonly utilityNodesWithServiceAccess: number;
     readonly utilityEdgesWithServiceAccess: number;
+    readonly buildingEntrances: number;
+    readonly publicBuildingEntrances: number;
+    readonly lobbyEntrances: number;
+    readonly rampEntrances: number;
+    readonly serviceEntrances: number;
+    readonly loadingEntrances: number;
+    readonly addressPoints: number;
+    readonly buildingsWithAddressPoints: number;
+    readonly buildingsWithAccessiblePublicEntrances: number;
     readonly powerGridNodes: number;
     readonly powerGridEdges: number;
     readonly powerTransformers: number;
@@ -677,6 +687,19 @@ export interface BuildingRoofDiagnostics {
   readonly averageUsableAreaSqM: number;
 }
 
+export interface BuildingAccessDiagnostics {
+  readonly entrances: number;
+  readonly publicDoors: number;
+  readonly lobbies: number;
+  readonly ramps: number;
+  readonly serviceEntries: number;
+  readonly loadingDoors: number;
+  readonly addressPoints: number;
+  readonly buildingsWithAddresses: number;
+  readonly buildingsWithAccessiblePublicEntrances: number;
+  readonly activeFrontageLinkedEntrances: number;
+}
+
 export interface CivicAnchorDiagnostics {
   readonly total: number;
   readonly byServiceType: Readonly<Partial<Record<CivicAnchorServiceType, number>>>;
@@ -1058,6 +1081,7 @@ export function createCityDiagnostics(
   const buildingStructureShells = createBuildingStructureShellDiagnostics(city);
   const buildingFacades = createBuildingFacadeDiagnostics(city);
   const buildingRoofs = createBuildingRoofDiagnostics(city);
+  const buildingAccess = createBuildingAccessDiagnostics(city);
   const civicAnchors = createCivicAnchorDiagnostics(city);
   const communityAnchors = createCommunityAnchorDiagnostics(city);
   const cultureAnchors = createCultureAnchorDiagnostics(city);
@@ -1121,6 +1145,7 @@ export function createCityDiagnostics(
     buildingStructureShells,
     buildingFacades,
     buildingRoofs,
+    buildingAccess,
     civicAnchors,
     communityAnchors,
     cultureAnchors,
@@ -1204,6 +1229,15 @@ export function createCityDiagnostics(
       buildingsWithServiceAccess: serviceAccess.buildingsLinked,
       utilityNodesWithServiceAccess: serviceAccess.utilityNodesLinked,
       utilityEdgesWithServiceAccess: serviceAccess.utilityEdgesLinked,
+      buildingEntrances: buildingAccess.entrances,
+      publicBuildingEntrances: buildingAccess.publicDoors,
+      lobbyEntrances: buildingAccess.lobbies,
+      rampEntrances: buildingAccess.ramps,
+      serviceEntrances: buildingAccess.serviceEntries,
+      loadingEntrances: buildingAccess.loadingDoors,
+      addressPoints: buildingAccess.addressPoints,
+      buildingsWithAddressPoints: buildingAccess.buildingsWithAddresses,
+      buildingsWithAccessiblePublicEntrances: buildingAccess.buildingsWithAccessiblePublicEntrances,
       powerGridNodes: powerGrid.nodes,
       powerGridEdges: powerGrid.edges,
       powerTransformers: powerGrid.transformers,
@@ -2374,6 +2408,29 @@ function createBuildingRoofDiagnostics(city: GeneratedCity): BuildingRoofDiagnos
     roofAccessCores: byDetailKind['roof-access'] ?? 0,
     heightExemptions,
     averageUsableAreaSqM: Number((usableAreaTotal / Math.max(1, buildingsWithGrammar)).toFixed(2))
+  };
+}
+
+function createBuildingAccessDiagnostics(city: GeneratedCity): BuildingAccessDiagnostics {
+  const accessiblePublicEntranceIds = new Set(
+    city.buildingEntrances
+      .filter((entrance) => entrance.accessLevel === 'public' && entrance.accessible && entrance.stepFree)
+      .map((entrance) => entrance.id)
+  );
+
+  return {
+    entrances: city.buildingEntrances.length,
+    publicDoors: city.buildingEntrances.filter((entrance) => entrance.entranceKind === 'public-door').length,
+    lobbies: city.buildingEntrances.filter((entrance) => entrance.entranceKind === 'lobby').length,
+    ramps: city.buildingEntrances.filter((entrance) => entrance.entranceKind === 'ramp').length,
+    serviceEntries: city.buildingEntrances.filter((entrance) => entrance.entranceKind === 'service-entry').length,
+    loadingDoors: city.buildingEntrances.filter((entrance) => entrance.entranceKind === 'loading-door').length,
+    addressPoints: city.addressPoints.length,
+    buildingsWithAddresses: city.buildings.filter((building) => (building.addressPointIds ?? []).length > 0).length,
+    buildingsWithAccessiblePublicEntrances: city.buildings.filter((building) =>
+      building.publicEntranceIds.some((entranceId) => accessiblePublicEntranceIds.has(entranceId))
+    ).length,
+    activeFrontageLinkedEntrances: city.buildingEntrances.filter((entrance) => entrance.activeFrontageIds.length > 0).length
   };
 }
 

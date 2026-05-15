@@ -11,6 +11,7 @@ import type {
 type GeneratedCityObjectSource = Pick<
   GeneratedCity,
   | 'assetCatalog'
+  | 'addressPoints'
   | 'activeFrontages'
   | 'administrativeBoundaries'
   | 'bikeConflictZones'
@@ -21,6 +22,7 @@ type GeneratedCityObjectSource = Pick<
   | 'bikeSignals'
   | 'blocks'
   | 'buildings'
+  | 'buildingEntrances'
   | 'cadastreRecords'
   | 'civicAnchors'
   | 'communityAnchors'
@@ -103,6 +105,8 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.freightRoutes,
     ...city.serviceAlleys,
     ...city.serviceAccessCorridors,
+    ...city.buildingEntrances,
+    ...city.addressPoints,
     ...city.weatherPresets,
     ...city.solarShadingSamples,
     ...city.urbanHeatZones,

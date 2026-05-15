@@ -18,6 +18,8 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const runtimeObjectIndex = createGeneratedRuntimeObjectIndex(city, traffic);
   const catalog = createCityPickingMetadataCatalog(city, traffic, runtimeObjectIndex);
   const building = city.buildings[0];
+  const buildingEntrance = city.buildingEntrances[0];
+  const addressPoint = city.addressPoints[0];
   const parcel = city.parcels.find((candidate) => candidate.id === building.parcelId);
   const activeFrontage = city.activeFrontages[0];
   const streetLight = city.streetLights[0];
@@ -32,6 +34,8 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.communityAnchors.length +
       city.cultureAnchors.length +
       city.governmentAnchors.length +
+      city.buildingEntrances.length +
+      city.addressPoints.length +
       city.activeFrontages.length +
       city.parks.length +
       city.parkFeatures.length +
@@ -50,6 +54,8 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   );
   expect(catalog.countsByKind['road-segment']).toBe(city.roads.length);
   expect(catalog.countsByKind.building).toBe(city.buildings.length);
+  expect(catalog.countsByKind['building-entrance']).toBe(city.buildingEntrances.length);
+  expect(catalog.countsByKind['address-point']).toBe(city.addressPoints.length);
   expect(catalog.countsByKind['civic-anchor']).toBe(city.civicAnchors.length);
   expect(catalog.countsByKind['community-anchor']).toBe(city.communityAnchors.length);
   expect(catalog.countsByKind['culture-anchor']).toBe(city.cultureAnchors.length);
@@ -77,6 +83,31 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       parcelId: building.parcelId,
       blockId: parcel?.blockId,
       districtId: parcel?.districtId
+    }
+  });
+  expect(catalog.metadataByObjectId[buildingEntrance.id]).toMatchObject({
+    objectId: buildingEntrance.id,
+    kind: 'building-entrance',
+    ownerDomain: 'buildings',
+    parentId: buildingEntrance.buildingId,
+    lod: buildingEntrance.lod,
+    references: {
+      buildingId: buildingEntrance.buildingId,
+      parcelId: buildingEntrance.parcelId,
+      roadId: buildingEntrance.roadId,
+      sidewalkId: buildingEntrance.sidewalkId
+    }
+  });
+  expect(catalog.metadataByObjectId[addressPoint.id]).toMatchObject({
+    objectId: addressPoint.id,
+    kind: 'address-point',
+    ownerDomain: 'buildings',
+    parentId: addressPoint.buildingId,
+    lod: addressPoint.lod,
+    references: {
+      buildingId: addressPoint.buildingId,
+      parcelId: addressPoint.parcelId,
+      roadId: addressPoint.roadId
     }
   });
   expect(catalog.metadataByObjectId[streetLight.id]).toMatchObject({

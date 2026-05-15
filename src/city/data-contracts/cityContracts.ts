@@ -8,7 +8,9 @@ export type CityObjectKind =
   | 'administrative-boundary'
   | 'asset'
   | 'block'
+  | 'address-point'
   | 'building'
+  | 'building-entrance'
   | 'cadastre-record'
   | 'city-metric'
   | 'civic-anchor'
@@ -405,6 +407,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       description: 'Administrative boundaries define city limits, wards, neighborhoods, service areas, ownership zones, and jurisdiction overlays.'
     },
     {
+      objectKind: 'address-point',
+      scope: 'building',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod2', 'lod3', 'lod4'],
+      description: 'Address points bind buildings, entrances, street names, numbers, and active frontage lookup metadata.'
+    },
+    {
       objectKind: 'asset',
       scope: 'asset',
       defaultTier: 'lod1',
@@ -431,6 +440,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2', 'lod3'],
       description: 'Building massing starts at LOD1 and can gain roof/facade detail at nearer tiers.'
+    },
+    {
+      objectKind: 'building-entrance',
+      scope: 'building',
+      defaultTier: 'lod4',
+      allowedTiers: ['lod3', 'lod4'],
+      description: 'Building entrances expose public doors, lobbies, ramps, service entries, and loading doors for address and access validation.'
     },
     {
       objectKind: 'civic-anchor',
@@ -2763,6 +2779,61 @@ export interface BuildingRoofGrammarContract {
   }[];
 }
 
+export type BuildingEntranceKind = 'loading-door' | 'lobby' | 'public-door' | 'ramp' | 'service-entry';
+export type BuildingEntranceAccessLevel = 'public' | 'resident' | 'restricted' | 'service';
+
+export interface BuildingEntranceContract extends CityObjectBase<'building-entrance'> {
+  readonly entranceKind: BuildingEntranceKind;
+  readonly accessLevel: BuildingEntranceAccessLevel;
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly roadId: CityId;
+  readonly sidewalkId?: CityId;
+  readonly activeFrontageIds: readonly CityId[];
+  readonly serviceAccessCorridorIds: readonly CityId[];
+  readonly addressPointId: CityId;
+  readonly position: Point2D;
+  readonly frontageSide: BuildingFrontageSide;
+  readonly facingDirectionRadians: number;
+  readonly widthMeters: number;
+  readonly accessible: boolean;
+  readonly stepFree: boolean;
+  readonly door: {
+    readonly automatic: boolean;
+    readonly clearWidthMeters: number;
+    readonly swing: 'inward' | 'outward' | 'sliding';
+  };
+  readonly lobby?: {
+    readonly areaSqM: number;
+    readonly weatherProtected: boolean;
+    readonly publicHoursProfile: CityId;
+  };
+  readonly ramp?: {
+    readonly slopePercent: number;
+    readonly widthMeters: number;
+    readonly landingLengthMeters: number;
+  };
+  readonly loading?: {
+    readonly loadingDockId?: CityId;
+    readonly loadingBays: number;
+    readonly clearHeightMeters: number;
+  };
+}
+
+export interface AddressPointContract extends CityObjectBase<'address-point'> {
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly roadId: CityId;
+  readonly position: Point2D;
+  readonly streetName: string;
+  readonly buildingNumber: string;
+  readonly unitRange?: string;
+  readonly postalCode: string;
+  readonly entranceIds: readonly CityId[];
+  readonly activeFrontageIds: readonly CityId[];
+  readonly primary: boolean;
+}
+
 export interface BuildingContract extends CityObjectBase<'building'> {
   readonly parcelId: CityId;
   readonly zoningDistrictId: CityId;
@@ -2781,6 +2852,9 @@ export interface BuildingContract extends CityObjectBase<'building'> {
   readonly primaryFrontageSide: BuildingFrontageSide;
   readonly entranceIds: readonly CityId[];
   readonly publicEntranceIds: readonly CityId[];
+  readonly serviceEntranceIds?: readonly CityId[];
+  readonly loadingEntranceIds?: readonly CityId[];
+  readonly addressPointIds?: readonly CityId[];
   readonly groundElevationMeters?: number;
   readonly finishedFloorElevationMeters?: number;
   readonly maxFootprintGradePercent?: number;
