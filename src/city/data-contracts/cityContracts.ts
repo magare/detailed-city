@@ -8,6 +8,7 @@ export type CityObjectKind =
   | 'access-control'
   | 'administrative-boundary'
   | 'asset'
+  | 'asset-inventory-record'
   | 'block'
   | 'address-point'
   | 'building'
@@ -130,6 +131,52 @@ export interface CityObjectBase<Kind extends CityObjectKind = CityObjectKind> {
   readonly lod: LodTier;
   readonly tags?: Readonly<Record<string, string | number | boolean>>;
   readonly metadata?: SourceMetadata;
+}
+
+export type AssetInventoryScope = 'civic' | 'public-realm' | 'utility';
+export type AssetLifecycleStage = 'commissioned' | 'in-service' | 'renewal-due' | 'retired';
+export type AssetConditionRating = 'excellent' | 'good' | 'fair' | 'poor';
+export type AssetOperationalStatus = 'active' | 'maintenance-watch' | 'out-of-service';
+export type AssetCriticality = 'low' | 'medium' | 'high';
+
+export interface AssetInventoryRecordContract extends CityObjectBase<'asset-inventory-record'> {
+  readonly assetObjectId: CityId;
+  readonly assetObjectKind: CityObjectKind;
+  readonly assetLookupKey: string;
+  readonly inventoryScope: AssetInventoryScope;
+  readonly ownerEntityId: CityId;
+  readonly responsibleDepartmentId: CityId;
+  readonly renderBindingId: CityId;
+  readonly renderAssetId: CityId;
+  readonly lifecycle: {
+    readonly stage: AssetLifecycleStage;
+    readonly installedYear: number;
+    readonly expectedServiceLifeYears: number;
+    readonly replacementYear: number;
+  };
+  readonly warranty: {
+    readonly providerEntityId: CityId;
+    readonly expiresYear: number;
+    readonly coverage: 'parts' | 'parts-and-labor' | 'structural';
+  };
+  readonly replacementCost: {
+    readonly amountUsd: number;
+    readonly estimateYear: number;
+  };
+  readonly condition: {
+    readonly rating: AssetConditionRating;
+    readonly score: number;
+    readonly lastInspectionYear: number;
+    readonly nextInspectionYear: number;
+  };
+  readonly operationalStatus: AssetOperationalStatus;
+  readonly criticality: AssetCriticality;
+  readonly source: {
+    readonly sourceType: SourceType;
+    readonly sourceId: string;
+    readonly generationStep: string;
+  };
+  readonly inspectionAccessObjectIds: readonly CityId[];
 }
 
 export type DevelopmentPhaseKind = 'baseline' | 'future-expansion' | 'temporary-condition';
@@ -469,6 +516,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: CITY_LOD_TIERS,
       description: 'Renderable asset definitions may provide primitive or future binary variants at any LOD.'
+    },
+    {
+      objectKind: 'asset-inventory-record',
+      scope: 'asset',
+      defaultTier: 'lod1',
+      allowedTiers: ['lod1'],
+      description: 'Operations-owned inventory records expose ownership, lifecycle, warranty, condition, replacement cost, status, and source lookup for renderable civic, public-realm, and utility assets.'
     },
     {
       objectKind: 'block',

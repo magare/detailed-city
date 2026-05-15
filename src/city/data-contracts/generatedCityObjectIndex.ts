@@ -12,6 +12,7 @@ type GeneratedCityObjectSource = Pick<
   GeneratedCity,
   | 'accessControls'
   | 'assetCatalog'
+  | 'assetInventoryRecords'
   | 'addressPoints'
   | 'activeFrontages'
   | 'administrativeBoundaries'
@@ -126,6 +127,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.sidewalkGraph.edges,
     ...city.parcels,
     ...city.cadastreRecords,
+    ...city.assetInventoryRecords,
     ...city.buildings,
     ...city.civicAnchors,
     ...city.communityAnchors,

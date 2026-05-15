@@ -1,5 +1,6 @@
 import type {
   AssetDefinition,
+  AssetInventoryRecordContract,
   AccessControlContract,
   ActiveFrontageContract,
   AddressPointContract,
@@ -217,6 +218,8 @@ export interface Parcel extends ParcelContract {
 
 export interface CadastreRecord extends CadastreRecordContract {}
 
+export interface AssetInventoryRecord extends AssetInventoryRecordContract {}
+
 export interface BuildingPlan extends BuildingContract {
   center: Point2D;
   size: { x: number; z: number };
@@ -395,6 +398,7 @@ export type GeneratedCityObject =
   | BuildingPlan
   | BuildingEntrance
   | CadastreRecord
+  | AssetInventoryRecord
   | CivicAnchor
   | CommunityAnchor
   | CultureAnchor
@@ -469,6 +473,7 @@ export interface GeneratedCity {
   sidewalkGraph: SidewalkGraph;
   parcels: Parcel[];
   cadastreRecords: CadastreRecord[];
+  assetInventoryRecords: AssetInventoryRecord[];
   buildings: BuildingPlan[];
   civicAnchors: CivicAnchor[];
   communityAnchors: CommunityAnchor[];

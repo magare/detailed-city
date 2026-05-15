@@ -35,6 +35,7 @@ import { CyclingNetworkGenerator } from './mobility/CyclingNetworkGenerator';
 import { FreightLogisticsGenerator } from './mobility/FreightLogisticsGenerator';
 import { NavigationGraphGenerator } from './mobility/NavigationGraphGenerator';
 import { TransitGenerator } from './mobility/TransitGenerator';
+import { AssetInventoryGenerator } from './operations/AssetInventoryGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { GreenStormwaterGenerator } from './public-realm/GreenStormwaterGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
@@ -376,6 +377,21 @@ export class CityGenerator {
       parks: parksWithFeatures,
       resilienceGoals
     });
+    const assetInventoryRecords = new AssetInventoryGenerator().create({
+      assetBindings: DEFAULT_RENDER_BINDINGS,
+      civicAnchors: addressingGazetteer.civicAnchors,
+      communityAnchors: addressingGazetteer.communityAnchors,
+      cultureAnchors: addressingGazetteer.cultureAnchors,
+      governmentAnchors: addressingGazetteer.governmentAnchors,
+      utilityNodes: serviceAccess.utilityNodes,
+      utilityEdges: serviceAccess.utilityEdges,
+      streetLights: powerGrid.streetLights,
+      streetFurniture,
+      parkFeatures,
+      plazaZones,
+      greenStormwaterFeatures,
+      waterfrontOpenSpaces
+    });
 
     const generatedWithoutMetadata: Omit<GeneratedCity, 'objectIndex' | 'validation'> = {
       schemaVersion: CITY_CONTRACT_SCHEMA_VERSION,
@@ -431,6 +447,7 @@ export class CityGenerator {
       greenStormwaterFeatures,
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
+      assetInventoryRecords,
       buildings: entranceAddress.buildings,
       civicAnchors: addressingGazetteer.civicAnchors,
       communityAnchors: addressingGazetteer.communityAnchors,

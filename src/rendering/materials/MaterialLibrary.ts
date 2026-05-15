@@ -337,6 +337,8 @@ export class MaterialLibrary {
     brick: this.brick,
     metal: this.metal,
     utility: this.utility,
+    'utility-node': this.utility,
+    'utility-edge': this.utility,
     overlay: this.overlay,
     treeTrunk: this.treeTrunk,
     treeCanopy: this.treeCanopy,

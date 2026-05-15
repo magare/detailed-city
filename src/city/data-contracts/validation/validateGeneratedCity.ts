@@ -82,6 +82,7 @@ type GeneratedCityForValidation = Pick<
   | 'gazetteerEntries'
   | 'greenStormwaterFeatures'
   | 'cadastreRecords'
+  | 'assetInventoryRecords'
   | 'civicAnchors'
   | 'communityAnchors'
   | 'cultureAnchors'
@@ -139,6 +140,7 @@ type ValidationAddressPoint = GeneratedCityForValidation['addressPoints'][number
 type ValidationNamedPlace = GeneratedCityForValidation['namedPlaces'][number];
 type ValidationGazetteerEntry = GeneratedCityForValidation['gazetteerEntries'][number];
 type ValidationCadastreRecord = GeneratedCityForValidation['cadastreRecords'][number];
+type ValidationAssetInventoryRecord = GeneratedCityForValidation['assetInventoryRecords'][number];
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
@@ -171,6 +173,25 @@ type ValidationWaterfrontEdge = GeneratedCityForValidation['waterfrontEdges'][nu
 type ValidationWaterfrontOpenSpace = GeneratedCityForValidation['waterfrontOpenSpaces'][number];
 type ValidationWaterway = GeneratedCityForValidation['waterways'][number];
 type ValidationZoningDistrict = GeneratedCityForValidation['zoningDistricts'][number];
+
+const ASSET_INVENTORY_TARGET_KINDS = [
+  'civic-anchor',
+  'community-anchor',
+  'culture-anchor',
+  'government-anchor',
+  'green-stormwater-feature',
+  'park-feature',
+  'plaza-zone',
+  'street-furniture',
+  'street-light',
+  'utility-edge',
+  'utility-node',
+  'waterfront-open-space'
+] as const satisfies readonly CityObjectKind[];
+
+const STREET_LIGHT_RENDER_BINDING_ID = 'binding:street-light:pole-fixture';
+const UTILITY_NODE_INVENTORY_RENDER_BINDING_ID = 'binding:utility:inventory-node';
+const UTILITY_EDGE_INVENTORY_RENDER_BINDING_ID = 'binding:utility:inventory-edge';
 
 const REQUIRED_RENDER_BINDING_IDS = [
   'binding:terrain:ground',
@@ -952,6 +973,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   const navigationGraphEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
   const accessControlsById = new Map(city.accessControls.map((control) => [control.id, control]));
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
+  validateAssetInventoryRecords(city, issues, assetBindingsById);
   const transitRoutesById = new Map(city.transitRoutes.map((route) => [route.id, route]));
   const districtsById = new Map(city.districts.map((district) => [district.id, district]));
   const activeFrontagesById = new Map(city.activeFrontages.map((frontage) => [frontage.id, frontage]));
@@ -3524,6 +3546,126 @@ function validateParcelModel(
       });
     }
   }
+}
+
+function validateAssetInventoryRecords(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const assetIds = new Set(city.assetCatalog.map((asset) => asset.id));
+  const targetObjects = city.objectIndex.objects.filter((object) =>
+    ASSET_INVENTORY_TARGET_KINDS.includes(object.kind as (typeof ASSET_INVENTORY_TARGET_KINDS)[number])
+  );
+  const recordsByTargetId = new Map<CityId, ValidationAssetInventoryRecord[]>();
+
+  for (const record of city.assetInventoryRecords) {
+    recordsByTargetId.set(record.assetObjectId, [...(recordsByTargetId.get(record.assetObjectId) ?? []), record]);
+  }
+
+  for (const target of targetObjects) {
+    if (!recordsByTargetId.has(target.id)) {
+      issues.push({
+        id: `missing-asset-inventory-record-${target.id}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: target.id,
+        message: `Renderable ${target.kind} ${target.id} must have an operations asset inventory record.`
+      });
+    }
+  }
+
+  for (const [targetId, records] of recordsByTargetId) {
+    if (records.length > 1) {
+      for (const record of records) {
+        issues.push(createAssetInventoryIssue(record, 'duplicate-target', `Asset ${targetId} must have exactly one inventory record.`));
+      }
+    }
+  }
+
+  for (const record of city.assetInventoryRecords) {
+    const target = city.objectIndex.objectsById[record.assetObjectId];
+    const binding = assetBindingsById.get(record.renderBindingId);
+
+    if (!target) {
+      issues.push(createAssetInventoryIssue(record, 'missing-target', `Inventory record ${record.id} references missing asset object ${record.assetObjectId}.`));
+      continue;
+    }
+
+    if (record.parentId !== record.assetObjectId || record.assetObjectKind !== target.kind) {
+      issues.push(createAssetInventoryIssue(record, 'target-mismatch', `Inventory record ${record.id} must be parented to and typed as ${target.id}.`));
+    }
+
+    if (!ASSET_INVENTORY_TARGET_KINDS.includes(target.kind as (typeof ASSET_INVENTORY_TARGET_KINDS)[number])) {
+      issues.push(createAssetInventoryIssue(record, 'unsupported-target-kind', `Inventory record ${record.id} targets unsupported kind ${target.kind}.`));
+    }
+
+    const expectedBindingId = getInventoryTargetRenderBindingId(target);
+    if (!expectedBindingId || record.renderBindingId !== expectedBindingId) {
+      issues.push(createAssetInventoryIssue(record, 'render-binding-mismatch', `Inventory record ${record.id} must use the target asset render binding.`));
+    }
+
+    if (!binding || binding.objectKind !== target.kind) {
+      issues.push(createAssetInventoryIssue(record, 'invalid-render-binding', `Inventory record ${record.id} must reference a render binding for ${target.kind}.`));
+    } else if (binding.assetId !== record.renderAssetId || !assetIds.has(record.renderAssetId)) {
+      issues.push(createAssetInventoryIssue(record, 'invalid-render-asset', `Inventory record ${record.id} must reference the render binding asset ${binding.assetId}.`));
+    }
+
+    if (
+      record.ownerEntityId.length === 0 ||
+      record.responsibleDepartmentId.length === 0 ||
+      record.assetLookupKey.length === 0 ||
+      record.source.sourceId.length === 0 ||
+      record.source.generationStep.length === 0
+    ) {
+      issues.push(createAssetInventoryIssue(record, 'missing-lookup-ownership-source', `Inventory record ${record.id} must expose owner, department, lookup key, and source metadata.`));
+    }
+
+    if (
+      record.lifecycle.installedYear > record.lifecycle.replacementYear ||
+      record.lifecycle.expectedServiceLifeYears <= 0 ||
+      record.replacementCost.amountUsd <= 0 ||
+      record.condition.score < 0 ||
+      record.condition.score > 100 ||
+      record.condition.lastInspectionYear > record.condition.nextInspectionYear ||
+      record.warranty.expiresYear < record.lifecycle.installedYear
+    ) {
+      issues.push(createAssetInventoryIssue(record, 'invalid-lifecycle-condition-cost', `Inventory record ${record.id} must expose coherent lifecycle, warranty, replacement cost, and condition values.`));
+    }
+  }
+}
+
+function getInventoryTargetRenderBindingId(target: { readonly kind: CityObjectKind }): CityId | undefined {
+  if (target.kind === 'street-light') {
+    return STREET_LIGHT_RENDER_BINDING_ID;
+  }
+  if (target.kind === 'utility-node') {
+    return UTILITY_NODE_INVENTORY_RENDER_BINDING_ID;
+  }
+  if (target.kind === 'utility-edge') {
+    return UTILITY_EDGE_INVENTORY_RENDER_BINDING_ID;
+  }
+  if ('assetBindingId' in target && typeof target.assetBindingId === 'string') {
+    return target.assetBindingId;
+  }
+  if ('renderBindingId' in target && typeof target.renderBindingId === 'string') {
+    return target.renderBindingId;
+  }
+  return undefined;
+}
+
+function createAssetInventoryIssue(
+  record: ValidationAssetInventoryRecord,
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `asset-inventory-${suffix}-${record.id}`,
+    severity: 'error',
+    category: 'asset',
+    objectId: record.id,
+    message
+  };
 }
 
 function validateGreenStormwaterFeatures(

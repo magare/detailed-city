@@ -70,6 +70,7 @@ const NAMED_PLACE_KIND = String.raw`(?:civic-anchor|district|neighborhood|park|s
 const GAZETTEER_ENTRY_KIND = String.raw`(?:address|anchor|place|street)`;
 const ACCESS_CONTROL_KIND = String.raw`(?:bollard-line|checkpoint|fence|gate|guardrail|turnstile|wall)`;
 const GREEN_STORMWATER_KIND = String.raw`(?:bioswale|curb-cut|flow-through-planter|permeable-pavement|pervious-strip|rain-garden|tree-trench)`;
+const ASSET_INVENTORY_TARGET_KIND = String.raw`(?:civic-anchor|community-anchor|culture-anchor|government-anchor|green-stormwater-feature|park-feature|plaza-zone|street-furniture|street-light|utility-edge|utility-node|waterfront-open-space)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -85,6 +86,25 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     optional(['administrative-boundary'])
   ),
   entry('asset', ['asset:<category>:<semantic-name>:primitive'], [exact(String.raw`asset:${NAMED_ID}(?::${NAMED_ID})+:primitive`)], none()),
+  entry(
+    'asset-inventory-record',
+    ['asset-inventory-<target-kind>-<target-object-id>'],
+    [exact(String.raw`asset-inventory-${ASSET_INVENTORY_TARGET_KIND}-${NAMED_ID}(?:-${NAMED_ID})*`)],
+    required([
+      'civic-anchor',
+      'community-anchor',
+      'culture-anchor',
+      'government-anchor',
+      'green-stormwater-feature',
+      'park-feature',
+      'plaza-zone',
+      'street-furniture',
+      'street-light',
+      'utility-edge',
+      'utility-node',
+      'waterfront-open-space'
+    ])
+  ),
   entry('block', ['block-<grid-x>-<grid-z>'], [exact(String.raw`block-\d+-\d+`)], required(['district'])),
   entry('address-point', ['<building-id>-address-primary'], [exact(String.raw`${BUILDING_ID}-address-primary`)], required(['building'])),
   entry('building', ['building-<block-x>-<block-z>-<lot-x>-<lot-z>'], [exact(BUILDING_ID)], required(['parcel'])),

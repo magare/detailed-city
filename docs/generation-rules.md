@@ -14,10 +14,11 @@ Generation must produce contract-valid city data first. Rendering consumes that 
 8. Generate active frontage facades from detailed-street building, parcel, road, sidewalk, and entrance contracts.
 9. Generate public realm: trees, lighting, furniture, signs, green stormwater features, plazas, waterfront edges.
 10. Generate utilities and service access skeletons.
-11. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
-12. Stamp generated objects with deterministic source metadata.
-13. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, slice tags, and budgets.
-14. Hand validated objects to mesh builders and scene-layer adapters.
+11. Generate operations asset inventory records for renderable civic, public-realm, and utility assets.
+12. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
+13. Stamp generated objects with deterministic source metadata.
+14. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, slice tags, and budgets.
+15. Hand validated objects to mesh builders and scene-layer adapters.
 
 ## City Intent
 
@@ -87,3 +88,9 @@ Generated districts must copy their blueprint character rules into the district 
 - Traffic vehicles are generated as data plans with road/lane references, ordered intersection route nodes, profile-derived speed, stop-zone offsets, and incident hook IDs, then rendered by `TrafficMeshBuilder`.
 - Future pedestrians, transit vehicles, service crews, and emergency agents should follow the same pattern.
 - Agents must reference route graph nodes, spawn points, destinations, schedules, and pooling limits.
+
+## Operations Rules
+
+- Asset inventory records are operations-owned domain objects generated from existing renderable civic, public-realm, and utility objects after those target objects and render bindings exist.
+- Inventory IDs, lookup keys, lifecycle fields, replacement costs, owner entities, source metadata, and inspection-access references must derive from the target object ID plus seed/config state, not renderer object names or runtime inspection state.
+- Each inventory record must point back to one target city object as `parentId`, carry the target object kind, and reference a render binding plus catalog asset that validators can resolve.

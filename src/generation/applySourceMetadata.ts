@@ -86,6 +86,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     },
     parcels: city.parcels.map((parcel) => withProceduralMetadata(parcel, 'building-parcels')),
     cadastreRecords: city.cadastreRecords.map((record) => withProceduralMetadata(record, 'land-cadastre')),
+    assetInventoryRecords: city.assetInventoryRecords.map((record) =>
+      withProceduralMetadata(record, 'operations-asset-inventory')
+    ),
     buildings: city.buildings.map((building) => withProceduralMetadata(building, 'building-massing')),
     civicAnchors: city.civicAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-anchor-base')),
     communityAnchors: city.communityAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-community-anchors')),

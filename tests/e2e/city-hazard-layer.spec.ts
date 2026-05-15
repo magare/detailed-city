@@ -62,6 +62,7 @@ test('hazard layer is deterministic, indexed, and connected to land context', ()
     'cycling-network',
     'navigation-graphs',
     'freight-logistics',
+    'asset-inventory',
     'civic-anchors',
     'community-anchors',
     'culture-anchors',

@@ -278,6 +278,7 @@ export interface ProceduralSeedDomainSections {
   readonly sidewalkGraph: GeneratedCity['sidewalkGraph'];
   readonly parcels: GeneratedCity['parcels'];
   readonly cadastreRecords: GeneratedCity['cadastreRecords'];
+  readonly assetInventoryRecords: GeneratedCity['assetInventoryRecords'];
   readonly buildings: GeneratedCity['buildings'];
   readonly civicAnchors: GeneratedCity['civicAnchors'];
   readonly communityAnchors: GeneratedCity['communityAnchors'];
@@ -345,6 +346,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly sidewalkGraphEdges: number;
   readonly parcels: number;
   readonly cadastreRecords: number;
+  readonly assetInventoryRecords: number;
   readonly buildings: number;
   readonly civicAnchors: number;
   readonly communityAnchors: number;
@@ -484,6 +486,7 @@ export function createProceduralSeedJsonExport(
       sidewalkGraph: city.sidewalkGraph,
       parcels: city.parcels,
       cadastreRecords: city.cadastreRecords,
+      assetInventoryRecords: city.assetInventoryRecords,
       buildings: city.buildings,
       civicAnchors: city.civicAnchors,
       communityAnchors: city.communityAnchors,
@@ -638,6 +641,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'blocks'
     | 'buildings'
     | 'cadastreRecords'
+    | 'assetInventoryRecords'
     | 'civicAnchors'
     | 'communityAnchors'
     | 'cultureAnchors'
@@ -748,6 +752,7 @@ export function createProceduralSeedDomainSectionCounts(
     sidewalkGraphEdges: city.sidewalkGraph.edges.length,
     parcels: city.parcels.length,
     cadastreRecords: city.cadastreRecords.length,
+    assetInventoryRecords: city.assetInventoryRecords.length,
     buildings: city.buildings.length,
     civicAnchors: city.civicAnchors.length,
     communityAnchors: city.communityAnchors.length,
@@ -824,6 +829,7 @@ export function countProceduralSeedDomainObjects(
     getNestedArrayLength(city, 'sidewalkGraph', 'edges') +
     getArrayLength(city, 'parcels') +
     getArrayLength(city, 'cadastreRecords') +
+    getArrayLength(city, 'assetInventoryRecords') +
     getArrayLength(city, 'buildings') +
     getArrayLength(city, 'civicAnchors') +
     getArrayLength(city, 'communityAnchors') +

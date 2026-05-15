@@ -8,6 +8,10 @@ import {
 } from '../city/blueprint/master-plan/masterPlan';
 import type {
   AccessControlKind,
+  AssetConditionRating,
+  AssetCriticality,
+  AssetInventoryScope,
+  AssetOperationalStatus,
   BuildingFacadeRhythm,
   BuildingFootprintGrammarKind,
   BuildingRoofDetailKind,
@@ -79,6 +83,7 @@ export interface CityDiagnostics {
   readonly telecom: TelecomDiagnostics;
   readonly thermalEnergy: ThermalEnergyDiagnostics;
   readonly serviceAccess: ServiceAccessDiagnostics;
+  readonly assetInventory: AssetInventoryDiagnostics;
   readonly accessControls: AccessControlDiagnostics;
   readonly publicLighting: PublicLightingDiagnostics;
   readonly signageWayfinding: SignageWayfindingDiagnostics;
@@ -183,6 +188,12 @@ export interface CityDiagnostics {
     readonly buildingsWithServiceAccess: number;
     readonly utilityNodesWithServiceAccess: number;
     readonly utilityEdgesWithServiceAccess: number;
+    readonly assetInventoryRecords: number;
+    readonly assetInventoryCivicAssets: number;
+    readonly assetInventoryPublicRealmAssets: number;
+    readonly assetInventoryUtilityAssets: number;
+    readonly assetInventoryMaintenanceWatch: number;
+    readonly assetInventoryReplacementCostUsd: number;
     readonly accessControls: number;
     readonly accessControlGates: number;
     readonly accessControlCheckpoints: number;
@@ -550,6 +561,24 @@ export interface ServiceAccessDiagnostics {
   readonly utilityEdgesLinked: number;
   readonly cadastreEasementLinks: number;
   readonly emergencyAccessCorridors: number;
+}
+
+export interface AssetInventoryDiagnostics {
+  readonly totalRecords: number;
+  readonly byScope: Readonly<Record<AssetInventoryScope, number>>;
+  readonly byStatus: Readonly<Record<AssetOperationalStatus, number>>;
+  readonly byCondition: Readonly<Record<AssetConditionRating, number>>;
+  readonly byCriticality: Readonly<Record<AssetCriticality, number>>;
+  readonly coveredAssetObjects: number;
+  readonly uniqueOwnerEntities: number;
+  readonly uniqueDepartments: number;
+  readonly maintenanceWatchAssets: number;
+  readonly renewalDueAssets: number;
+  readonly totalReplacementCostUsd: number;
+  readonly averageConditionScore: number;
+  readonly lookupKeys: number;
+  readonly recordsWithRenderAssets: number;
+  readonly recordsWithInspectionAccess: number;
 }
 
 export interface AccessControlDiagnostics {
@@ -1195,6 +1224,7 @@ export function createCityDiagnostics(
   const telecom = createTelecomDiagnostics(city);
   const thermalEnergy = createThermalEnergyDiagnostics(city);
   const serviceAccess = createServiceAccessDiagnostics(city);
+  const assetInventory = createAssetInventoryDiagnostics(city);
   const accessControls = createAccessControlDiagnostics(city);
   const publicLighting = createPublicLightingDiagnostics(city);
   const signageWayfinding = createSignageWayfindingDiagnostics(city);
@@ -1264,6 +1294,7 @@ export function createCityDiagnostics(
     telecom,
     thermalEnergy,
     serviceAccess,
+    assetInventory,
     accessControls,
     publicLighting,
     signageWayfinding,
@@ -1359,6 +1390,12 @@ export function createCityDiagnostics(
       buildingsWithServiceAccess: serviceAccess.buildingsLinked,
       utilityNodesWithServiceAccess: serviceAccess.utilityNodesLinked,
       utilityEdgesWithServiceAccess: serviceAccess.utilityEdgesLinked,
+      assetInventoryRecords: assetInventory.totalRecords,
+      assetInventoryCivicAssets: assetInventory.byScope.civic,
+      assetInventoryPublicRealmAssets: assetInventory.byScope['public-realm'],
+      assetInventoryUtilityAssets: assetInventory.byScope.utility,
+      assetInventoryMaintenanceWatch: assetInventory.maintenanceWatchAssets,
+      assetInventoryReplacementCostUsd: assetInventory.totalReplacementCostUsd,
       accessControls: accessControls.total,
       accessControlGates: accessControls.gates,
       accessControlCheckpoints: accessControls.checkpoints,
@@ -1855,6 +1892,79 @@ function createServiceAccessDiagnostics(city: GeneratedCity): ServiceAccessDiagn
     utilityEdgesLinked: city.utilityEdges.filter((edge) => (edge.serviceAccessCorridorIds ?? []).length > 0).length,
     cadastreEasementLinks,
     emergencyAccessCorridors
+  };
+}
+
+function createAssetInventoryDiagnostics(city: GeneratedCity): AssetInventoryDiagnostics {
+  const byScope = {
+    civic: 0,
+    'public-realm': 0,
+    utility: 0
+  } satisfies Record<AssetInventoryScope, number>;
+  const byStatus = {
+    active: 0,
+    'maintenance-watch': 0,
+    'out-of-service': 0
+  } satisfies Record<AssetOperationalStatus, number>;
+  const byCondition = {
+    excellent: 0,
+    good: 0,
+    fair: 0,
+    poor: 0
+  } satisfies Record<AssetConditionRating, number>;
+  const byCriticality = {
+    low: 0,
+    medium: 0,
+    high: 0
+  } satisfies Record<AssetCriticality, number>;
+  const coveredAssetObjects = new Set<string>();
+  const ownerEntities = new Set<string>();
+  const departments = new Set<string>();
+  const lookupKeys = new Set<string>();
+  let totalReplacementCostUsd = 0;
+  let conditionScore = 0;
+  let renewalDueAssets = 0;
+  let recordsWithRenderAssets = 0;
+  let recordsWithInspectionAccess = 0;
+
+  for (const record of city.assetInventoryRecords) {
+    byScope[record.inventoryScope] += 1;
+    byStatus[record.operationalStatus] += 1;
+    byCondition[record.condition.rating] += 1;
+    byCriticality[record.criticality] += 1;
+    coveredAssetObjects.add(record.assetObjectId);
+    ownerEntities.add(record.ownerEntityId);
+    departments.add(record.responsibleDepartmentId);
+    lookupKeys.add(record.assetLookupKey);
+    totalReplacementCostUsd += record.replacementCost.amountUsd;
+    conditionScore += record.condition.score;
+    if (record.lifecycle.stage === 'renewal-due') {
+      renewalDueAssets += 1;
+    }
+    if (record.renderAssetId.length > 0) {
+      recordsWithRenderAssets += 1;
+    }
+    if (record.inspectionAccessObjectIds.length > 0) {
+      recordsWithInspectionAccess += 1;
+    }
+  }
+
+  return {
+    totalRecords: city.assetInventoryRecords.length,
+    byScope,
+    byStatus,
+    byCondition,
+    byCriticality,
+    coveredAssetObjects: coveredAssetObjects.size,
+    uniqueOwnerEntities: ownerEntities.size,
+    uniqueDepartments: departments.size,
+    maintenanceWatchAssets: byStatus['maintenance-watch'],
+    renewalDueAssets,
+    totalReplacementCostUsd,
+    averageConditionScore: roundDiagnosticRatio(conditionScore / Math.max(1, city.assetInventoryRecords.length)),
+    lookupKeys: lookupKeys.size,
+    recordsWithRenderAssets,
+    recordsWithInspectionAccess
   };
 }
 

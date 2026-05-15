@@ -30,6 +30,7 @@ Validation is a first-class city system. It protects the project from procedural
 | Active frontages | Retail, hospitality, and mixed-use detailed-street frontages reference valid buildings, parcels, roads, sidewalks, public entrances, and facade render bindings. |
 | Zoning | Building use, height, density, frontage, and buffers match district rules. |
 | Utilities | Hydrants, drains, lights, power, water, waste, and service access coverage. |
+| Operations asset inventory | Renderable civic, public-realm, and utility assets have exactly one inventory record with target parentage, owner/department, lifecycle, warranty, replacement cost, condition, operational status, source metadata, inspection access, render binding, and catalog asset references. |
 | Assets | Valid catalog IDs, category, format, scale, tags, LOD variants, asset URLs, render binding object kind, semantic tag, material zone, fallback material/geometry, and asset ID references. |
 | Import/export | Supported exchange format, local x/z meter frame, deterministic seed/config provenance, object count consistency, and no renderer-only transient state. |
 | LOD | Terrain, networks, buildings, facades, props, agents, utilities, overlays, and assets have object-kind LOD policy coverage and supported tiers. |
@@ -59,6 +60,7 @@ Validation is a first-class city system. It protects the project from procedural
 - Lane and sidewalk parent references back to their road segment.
 - Runtime traffic markings via `validateTrafficPlan`: lane-marking and traffic-vehicle registry ID patterns, LOD policy compliance, marking road/lane/crossing/intersection references, positive marking dimensions, marking asset bindings, and vehicle road/lane/route/speed/stop/incident-hook sanity.
 - Asset catalog and binding rules: duplicate assets, unsupported category/format, invalid scale, missing tags/material zone, binary URL and extension mismatches, missing attribution/license, missing LOD variant assets, invalid render binding object kinds, missing semantic tags/material zones/fallbacks, missing bound asset IDs, and required renderable binding coverage.
+- Operations asset inventory coverage validates one record per renderable civic/public-realm/utility target, target parentage and kind, owner/department/source metadata, lifecycle/warranty/replacement-cost/condition coherence, inspection-access references, render binding IDs, and catalog asset references.
 - Import/export contract seed: supported format contracts for GeoJSON, CityJSON-style domain data, OSM-inspired features, glTF asset bindings, CSV tables, and procedural seed JSON; procedural seed exports validate schema version, format, seed, local x/z geospatial frame, object count consistency, and absence of renderer-only fields.
 - Intersection center coordinates, connected road references, road count, and hierarchy mix.
 - Crossing parent intersection/road/sidewalk references and sidewalk graph connectivity.

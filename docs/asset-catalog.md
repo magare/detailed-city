@@ -43,11 +43,12 @@ Asset selection should be driven by domain semantics:
 - `materialZone` maps surfaces to atlases: asphalt, concrete, glass, brick, metal, water, sign, foliage.
 - `fallbackMaterial` and `fallbackGeometry` must exist for every major object kind.
 - Green stormwater render bindings use the procedural `green-stormwater` asset and registered material zones so rain gardens, bioswales, pervious strips, permeable paving, curb cuts, and tree trenches remain visible without external assets.
+- Utility asset inventory bindings use procedural utility-node and utility-edge fallbacks so inventory records can resolve render assets before dedicated utility models exist.
 - Procedural fallback assets are valid catalog entries when no binary asset exists yet.
 
 The validator checks catalog IDs, category, format, meter scale, tags, binary URL presence and extension, top-level attribution/license, LOD variant references, registered object-kind binding targets, semantic tags, material zones, asset IDs, fallback material, and fallback geometry. Missing required fallback coverage is reported as a warning; malformed asset definitions or invalid binding object kinds are errors.
 
-The executable seed currently includes procedural street-prop fallbacks for street lights, benches, bins, bike racks, bollards, bus shelters, kiosks, regulatory signs, street-name signs, and wayfinding signs. Road-marking fallbacks cover lane dashes, zebra crossings, stop bars, turn arrows, tactile paving, and refuge islands. Facade fallbacks cover storefront windows, awnings, signs, entrance doors, and night windows. These fallback assets carry internal procedural license, attribution, and source metadata. Those bindings let validators and diagnostics prove that generated public-realm, mobility, and active-frontage objects have a render path before binary assets exist.
+The executable seed currently includes procedural street-prop fallbacks for street lights, benches, bins, bike racks, bollards, bus shelters, kiosks, regulatory signs, street-name signs, and wayfinding signs. Road-marking fallbacks cover lane dashes, zebra crossings, stop bars, turn arrows, tactile paving, and refuge islands. Facade fallbacks cover storefront windows, awnings, signs, entrance doors, and night windows. Utility inventory fallbacks cover utility nodes and utility edges that are inspectable as operations assets. These fallback assets carry internal procedural license, attribution, and source metadata. Those bindings let validators and diagnostics prove that generated public-realm, mobility, active-frontage, and utility inventory objects have a render path before binary assets exist.
 
 ## Naming
 

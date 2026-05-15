@@ -29,6 +29,7 @@ export type CityOverlayId =
   | 'cycling-network'
   | 'navigation-graphs'
   | 'freight-logistics'
+  | 'asset-inventory'
   | 'civic-anchors'
   | 'community-anchors'
   | 'culture-anchors'
@@ -104,6 +105,7 @@ export function createCityOverlayDatasets(
     createDataset('cycling-network', 'Cycling Network', 'domain-data', createCyclingNetworkFeatures(city)),
     createDataset('navigation-graphs', 'Navigation Graphs', 'domain-data', createNavigationGraphFeatures(city)),
     createDataset('freight-logistics', 'Freight Logistics', 'domain-data', createFreightLogisticsFeatures(city)),
+    createDataset('asset-inventory', 'Asset Inventory', 'domain-data', createAssetInventoryFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
@@ -1037,6 +1039,38 @@ function createFreightLogisticsFeatures(city: GeneratedCity): CityOverlayFeature
   }));
 
   return [...routeFeatures, ...dockFeatures, ...alleyFeatures];
+}
+
+function createAssetInventoryFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.assetInventoryRecords.map((record) => {
+    const target = city.objectIndex.objectsById[record.assetObjectId];
+
+    return {
+      id: `overlay:asset-inventory:${record.id}`,
+      overlayId: 'asset-inventory',
+      objectId: record.id,
+      objectKind: record.kind,
+      ownerDomain: record.ownerDomain,
+      label: record.assetLookupKey,
+      geometry: target ? getObjectGeometry(target) : { type: 'none' },
+      metadata: {
+        assetObjectId: record.assetObjectId,
+        assetObjectKind: record.assetObjectKind,
+        inventoryScope: record.inventoryScope,
+        ownerEntityId: record.ownerEntityId,
+        responsibleDepartmentId: record.responsibleDepartmentId,
+        renderBindingId: record.renderBindingId,
+        renderAssetId: record.renderAssetId,
+        lifecycleStage: record.lifecycle.stage,
+        replacementYear: record.lifecycle.replacementYear,
+        conditionRating: record.condition.rating,
+        conditionScore: record.condition.score,
+        operationalStatus: record.operationalStatus,
+        criticality: record.criticality,
+        replacementCostUsd: record.replacementCost.amountUsd
+      }
+    };
+  });
 }
 
 function createCyclingNetworkFeatures(city: GeneratedCity): CityOverlayFeature[] {
