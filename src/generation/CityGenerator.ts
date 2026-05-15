@@ -168,7 +168,8 @@ export class CityGenerator {
     const streetLights = new StreetLightGenerator().create({
       slices: verticalSlicesWithCurbs,
       roads: sliceTagged.roads,
-      curbZones
+      curbZones,
+      intersections: sliceTagged.intersections
     });
     const streetFurniture = new StreetFurnitureGenerator().create({
       slices: verticalSlicesWithCurbs,

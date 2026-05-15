@@ -21,6 +21,7 @@ import type {
   GovernmentAnchorKind,
   ServiceAccessCorridorKind,
   SourceType,
+  StreetLightFixtureType,
   WeatherPresetKind,
   WeatherSeason
 } from '../city/data-contracts/cityContracts';
@@ -77,6 +78,7 @@ export interface CityDiagnostics {
   readonly thermalEnergy: ThermalEnergyDiagnostics;
   readonly serviceAccess: ServiceAccessDiagnostics;
   readonly accessControls: AccessControlDiagnostics;
+  readonly publicLighting: PublicLightingDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -427,6 +429,11 @@ export interface CityDiagnostics {
     readonly treeCanopyAreaSquareMeters: number;
     readonly treeSoilVolumeCubicMeters: number;
     readonly streetLights: number;
+    readonly citywideStreetLights: number;
+    readonly nightEnabledStreetLights: number;
+    readonly decorativeStreetLights: number;
+    readonly criticalLightingStreetLights: number;
+    readonly darkCriticalLightingPaths: number;
     readonly streetFurniture: number;
     readonly detailedStreetFurniture: number;
     readonly citywideStreetFurniture: number;
@@ -543,6 +550,20 @@ export interface AccessControlDiagnostics {
   readonly emergencyOverrideControls: number;
   readonly navigationControlledEdges: number;
   readonly restrictedNavigationEdges: number;
+}
+
+export interface PublicLightingDiagnostics {
+  readonly total: number;
+  readonly citywide: number;
+  readonly detailedStreet: number;
+  readonly nightEnabled: number;
+  readonly decorative: number;
+  readonly criticalPathLights: number;
+  readonly darkCriticalPathLights: number;
+  readonly averageCoverageRadiusMeters: number;
+  readonly averageEstimatedIlluminanceLux: number;
+  readonly lowGlareFixtures: number;
+  readonly fixtureTypes: Readonly<Record<StreetLightFixtureType, number>>;
 }
 
 export interface PowerGridDiagnostics {
@@ -1132,6 +1153,7 @@ export function createCityDiagnostics(
   const thermalEnergy = createThermalEnergyDiagnostics(city);
   const serviceAccess = createServiceAccessDiagnostics(city);
   const accessControls = createAccessControlDiagnostics(city);
+  const publicLighting = createPublicLightingDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -1198,6 +1220,7 @@ export function createCityDiagnostics(
     thermalEnergy,
     serviceAccess,
     accessControls,
+    publicLighting,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -1539,6 +1562,11 @@ export function createCityDiagnostics(
       treeCanopyAreaSquareMeters: plantingModel.canopyAreaSquareMeters,
       treeSoilVolumeCubicMeters: plantingModel.soilVolumeCubicMeters,
       streetLights: city.streetLights.length,
+      citywideStreetLights: publicLighting.citywide,
+      nightEnabledStreetLights: publicLighting.nightEnabled,
+      decorativeStreetLights: publicLighting.decorative,
+      criticalLightingStreetLights: publicLighting.criticalPathLights,
+      darkCriticalLightingPaths: publicLighting.darkCriticalPathLights,
       streetFurniture: city.streetFurniture.length,
       detailedStreetFurniture: city.streetFurniture.filter((item) => item.placementContext === 'detailed-street').length,
       citywideStreetFurniture: city.streetFurniture.filter((item) => item.placementContext === 'citywide-street').length,
@@ -1823,6 +1851,63 @@ function createAccessControlDiagnostics(city: GeneratedCity): AccessControlDiagn
     emergencyOverrideControls,
     navigationControlledEdges: controlledEdgeIds.size,
     restrictedNavigationEdges
+  };
+}
+
+function createPublicLightingDiagnostics(city: GeneratedCity): PublicLightingDiagnostics {
+  const fixtureTypes = {
+    'cutoff-led': 0,
+    'decorative-pedestrian': 0,
+    'double-arm': 0,
+    'pedestrian-scale': 0,
+    'single-arm': 0
+  } satisfies Record<StreetLightFixtureType, number>;
+  let citywide = 0;
+  let detailedStreet = 0;
+  let nightEnabled = 0;
+  let decorative = 0;
+  let criticalPathLights = 0;
+  let darkCriticalPathLights = 0;
+  let lowGlareFixtures = 0;
+
+  for (const light of city.streetLights) {
+    fixtureTypes[light.fixtureType] += 1;
+    if (light.placementContext === 'citywide-street') {
+      citywide += 1;
+    } else {
+      detailedStreet += 1;
+    }
+    if (light.nightLighting.enabledByDefault) {
+      nightEnabled += 1;
+    }
+    if (light.decorativeLighting.enabled) {
+      decorative += 1;
+    }
+    if (light.coverage.criticalPedestrianPath) {
+      criticalPathLights += 1;
+      if (light.nightSafety.darkPathRisk !== 'low') {
+        darkCriticalPathLights += 1;
+      }
+    }
+    if (light.glareControl.glareRating === 'low') {
+      lowGlareFixtures += 1;
+    }
+  }
+
+  return {
+    total: city.streetLights.length,
+    citywide,
+    detailedStreet,
+    nightEnabled,
+    decorative,
+    criticalPathLights,
+    darkCriticalPathLights,
+    averageCoverageRadiusMeters: roundDiagnosticRatio(average(city.streetLights.map((light) => light.coverage.radiusMeters))),
+    averageEstimatedIlluminanceLux: roundDiagnosticRatio(
+      average(city.streetLights.map((light) => light.nightSafety.estimatedIlluminanceLux))
+    ),
+    lowGlareFixtures,
+    fixtureTypes
   };
 }
 
@@ -3335,6 +3420,10 @@ function createSourceMetadataDiagnostics(
 
 function roundDiagnosticRatio(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function average(values: readonly number[]): number {
+  return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
 
 function isCriticalFacilityBuilding(building: GeneratedCity['buildings'][number]): boolean {

@@ -164,6 +164,7 @@ type ValidationResilienceGoal = GeneratedCityForValidation['resilienceGoals'][nu
 type ValidationCrossing = GeneratedCityForValidation['crossings'][number];
 type ValidationIntersection = GeneratedCityForValidation['intersections'][number];
 type ValidationRoad = GeneratedCityForValidation['roads'][number];
+type ValidationStreetLight = GeneratedCityForValidation['streetLights'][number];
 type ValidationWaterfrontEdge = GeneratedCityForValidation['waterfrontEdges'][number];
 type ValidationWaterfrontOpenSpace = GeneratedCityForValidation['waterfrontOpenSpaces'][number];
 type ValidationWaterway = GeneratedCityForValidation['waterways'][number];
@@ -2294,18 +2295,28 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   }
 
   for (const streetLight of city.streetLights) {
-    const slice = slicesById.get(streetLight.sliceId);
+    const slice = streetLight.sliceId ? slicesById.get(streetLight.sliceId) : undefined;
     const road = roadsById.get(streetLight.roadId);
     const sidewalk = city.objectIndex.objectsById[streetLight.sidewalkId];
-    const curbZone = curbZonesById.get(streetLight.curbZoneId);
+    const curbZone = streetLight.curbZoneId ? curbZonesById.get(streetLight.curbZoneId) : undefined;
 
-    if (!slice) {
+    if (streetLight.placementContext === 'detailed-street' && !slice) {
       issues.push({
         id: `missing-street-light-slice-${streetLight.id}`,
         severity: 'error',
         category: 'identifier',
         objectId: streetLight.id,
         message: `Street light ${streetLight.id} must reference a detailed street slice.`
+      });
+    }
+
+    if (streetLight.placementContext === 'citywide-street' && streetLight.sliceId) {
+      issues.push({
+        id: `invalid-citywide-street-light-slice-${streetLight.id}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: streetLight.id,
+        message: `Citywide street light ${streetLight.id} should not reference a detailed street slice.`
       });
     }
 
@@ -2339,7 +2350,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
-    if (!curbZone || curbZone.curbUse === 'no-stopping') {
+    if (streetLight.placementContext === 'detailed-street' && (!curbZone || curbZone.curbUse === 'no-stopping')) {
       issues.push({
         id: `invalid-street-light-curb-zone-${streetLight.id}`,
         severity: 'error',
@@ -2352,11 +2363,16 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     if (
       !isFiniteNumber(streetLight.position.x) ||
       !isFiniteNumber(streetLight.position.z) ||
+      !isFiniteNumber(streetLight.alongRoadMeters) ||
+      !isFiniteNumber(streetLight.offsetFromRoadEdgeMeters) ||
       streetLight.heightMeters <= 0 ||
       streetLight.poleRadiusMeters <= 0 ||
       streetLight.armLengthMeters <= 0 ||
       streetLight.fixtureLengthMeters <= 0 ||
-      streetLight.coverageRadiusMeters <= 0
+      streetLight.coverageRadiusMeters <= 0 ||
+      streetLight.coverage.radiusMeters <= 0 ||
+      streetLight.coverage.overlapScore < 0 ||
+      streetLight.coverage.overlapScore > 1
     ) {
       issues.push({
         id: `invalid-street-light-geometry-${streetLight.id}`,
@@ -2364,6 +2380,34 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
         category: 'geometry',
         objectId: streetLight.id,
         message: 'Street light must have finite position and positive pole, fixture, arm, and coverage dimensions.'
+      });
+    }
+
+    if (
+      streetLight.nightSafety.targetIlluminanceLux <= 0 ||
+      streetLight.nightSafety.estimatedIlluminanceLux <= 0 ||
+      streetLight.nightSafety.darkPathRisk === 'high' ||
+      (streetLight.coverage.criticalPedestrianPath &&
+        streetLight.nightSafety.estimatedIlluminanceLux < streetLight.nightSafety.targetIlluminanceLux)
+    ) {
+      issues.push({
+        id: `dark-critical-street-light-path-${streetLight.id}`,
+        severity: streetLight.coverage.criticalPedestrianPath ? 'error' : 'warning',
+        category: 'utility-coverage',
+        objectId: streetLight.id,
+        ...createIssueFocus(streetLight.position, `Increase public lighting coverage near ${streetLight.id}.`),
+        message: `Street light ${streetLight.id} must meet night-safety illuminance for its public path role.`
+      });
+    }
+
+    if (!streetLight.glareControl.shielded || streetLight.glareControl.glareRating === 'high') {
+      issues.push({
+        id: `high-glare-street-light-${streetLight.id}`,
+        severity: 'warning',
+        category: 'utility-coverage',
+        objectId: streetLight.id,
+        ...createIssueFocus(streetLight.position, `Use a shielded cutoff fixture for ${streetLight.id}.`),
+        message: `Street light ${streetLight.id} should use glare-controlled fixtures.`
       });
     }
 
@@ -2387,7 +2431,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
 
-    if (streetLight.tags?.detailedStreetSliceId !== streetLight.sliceId) {
+    if (streetLight.placementContext === 'detailed-street' && streetLight.tags?.detailedStreetSliceId !== streetLight.sliceId) {
       issues.push({
         id: `missing-street-light-slice-tag-${streetLight.id}`,
         severity: 'error',
@@ -2397,6 +2441,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
       });
     }
   }
+  validatePublicLightingCoverage(city.streetLights, roadsById, issues);
 
   for (const streetFurniture of city.streetFurniture) {
     const isDetailedStreetFurniture = streetFurniture.placementContext === 'detailed-street';
@@ -10877,6 +10922,78 @@ function validateRenderBindings(
 
 function includesValue<T extends string>(values: readonly T[], value: string): value is T {
   return values.includes(value as T);
+}
+
+function validatePublicLightingCoverage(
+  streetLights: readonly ValidationStreetLight[],
+  roadsById: ReadonlyMap<string, ValidationRoad>,
+  issues: ValidationIssue[]
+): void {
+  const lightsByRoadSide = new Map<string, ValidationStreetLight[]>();
+
+  for (const streetLight of streetLights) {
+    const key = `${streetLight.roadId}:${streetLight.side}`;
+    lightsByRoadSide.set(key, [...(lightsByRoadSide.get(key) ?? []), streetLight]);
+  }
+
+  for (const road of roadsById.values()) {
+    if (!isCriticalPublicLightingRoad(road)) {
+      continue;
+    }
+
+    for (const sidewalk of road.sidewalks) {
+      const side = sidewalk.id.endsWith('left') ? 'left' : 'right';
+      const lights = (lightsByRoadSide.get(`${road.id}:${side}`) ?? [])
+        .slice()
+        .sort((left, right) => left.alongRoadMeters - right.alongRoadMeters);
+
+      if (lights.length === 0) {
+        issues.push({
+          id: `missing-public-lighting-${road.id}-${side}`,
+          severity: 'error',
+          category: 'utility-coverage',
+          objectId: road.id,
+          message: `Critical public route ${road.id} must have ${side} sidewalk lighting coverage.`
+        });
+        continue;
+      }
+
+      const maxGapMeters = getMaxPublicLightingGapMeters(road);
+      const firstGap = lights[0].alongRoadMeters;
+      const lastGap = road.length - lights[lights.length - 1].alongRoadMeters;
+      const internalGap = lights.reduce((maxGap, light, index) => {
+        const previous = lights[index - 1];
+        return previous ? Math.max(maxGap, light.alongRoadMeters - previous.alongRoadMeters) : maxGap;
+      }, 0);
+      const darkGapMeters = Math.max(firstGap, internalGap, lastGap);
+
+      if (darkGapMeters > maxGapMeters) {
+        issues.push({
+          id: `dark-public-lighting-gap-${road.id}-${side}`,
+          severity: 'error',
+          category: 'utility-coverage',
+          objectId: road.id,
+          message: `Critical public route ${road.id} has a ${Math.round(darkGapMeters)}m lighting gap on the ${side} sidewalk.`
+        });
+      }
+    }
+  }
+}
+
+function isCriticalPublicLightingRoad(road: ValidationRoad): boolean {
+  return road.transitEligible || road.hierarchy === 'arterial' || road.hierarchy === 'collector' || road.hierarchy === 'promenade';
+}
+
+function getMaxPublicLightingGapMeters(road: ValidationRoad): number {
+  if (road.hierarchy === 'arterial' || road.hierarchy === 'transit-corridor') {
+    return 64;
+  }
+
+  if (road.hierarchy === 'collector' || road.hierarchy === 'promenade') {
+    return 72;
+  }
+
+  return 90;
 }
 
 function countBy<T, K extends string>(values: readonly T[], getKey: (value: T) => K): Partial<Record<K, number>> {

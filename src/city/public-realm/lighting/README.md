@@ -2,4 +2,4 @@
 
 Owns poles, fixtures, light coverage, night safety, color temperature, glare, and decorative lighting.
 
-The first executable lighting seed creates `street-light` objects on active curb zones in the detailed street slice. Each light references its sidewalk, road, curb zone, coverage radius, color temperature, night emissive behavior, and a placeholder power circuit.
+The executable lighting seed creates `street-light` objects for the detailed street slice and citywide sidewalks. Each light references its sidewalk, road, optional slice/curb zone, fixture type, lighting purpose, coverage radius, night-safety illuminance, glare control, decorative-lighting role, and served power circuit.

@@ -64,6 +64,7 @@ Validation is a first-class city system. It protects the project from procedural
 - Curb zone road/sidewalk/slice references, range validity, same-sidewalk conflicts, and loading clearance around crossings.
 - Park tree parents and street tree sidewalk/road/curb references, tree pit dimensions, and furnishing-zone fit.
 - Street light sidewalk/road/curb references, dimensions, color temperature, and missing power circuit warnings.
+- Public lighting coverage validates citywide/detailed placement context, fixture/night-safety/glare metadata, served power circuits, and critical sidewalk lighting gaps on arterial, collector, promenade, and transit-eligible routes.
 - Street furniture/sign sidewalk/road/curb references, dimensions, asset bindings, furnishing-zone fit, crossing-clearance avoidance, bus-shelter-to-bus-stop compatibility, and sign-face metadata.
 - Parcel parent block, district/block references, positive dimensions, max height, bounded coverage ratio, frontage roads, and allowed uses.
 - Building references to parcels, positive footprint/height/floor count, parcel fit, coverage, height, allowed uses, primary frontage fields, and public entrance IDs.

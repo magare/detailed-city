@@ -36,6 +36,7 @@ export type CityOverlayId =
   | 'building-access'
   | 'addressing-gazetteer'
   | 'access-controls'
+  | 'public-lighting'
   | 'constraints'
   | 'resilience-goals'
   | 'service-access'
@@ -108,6 +109,7 @@ export function createCityOverlayDatasets(
     createDataset('building-access', 'Building Access', 'domain-data', createBuildingAccessFeatures(city)),
     createDataset('addressing-gazetteer', 'Addressing Gazetteer', 'domain-data', createAddressingGazetteerFeatures(city)),
     createDataset('access-controls', 'Access Controls', 'domain-data', createAccessControlFeatures(city)),
+    createDataset('public-lighting', 'Public Lighting', 'domain-data', createPublicLightingFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('service-access', 'Service Access', 'domain-data', createServiceAccessFeatures(city)),
@@ -755,6 +757,29 @@ function createAccessControlFeatures(city: GeneratedCity): CityOverlayFeature[] 
       normallyOpen: control.normallyOpen,
       restrictedModes: control.restrictedModes.length,
       navigationEdges: control.navigationGraphEdgeIds.length
+    }
+  }));
+}
+
+function createPublicLightingFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.streetLights.map((light) => ({
+    id: `overlay:public-lighting:${light.id}`,
+    overlayId: 'public-lighting' as const,
+    objectId: light.id,
+    objectKind: light.kind,
+    ownerDomain: light.ownerDomain,
+    label: light.name ?? light.id,
+    geometry: { type: 'point' as const, point: light.position },
+    metadata: {
+      placementContext: light.placementContext,
+      fixtureType: light.fixtureType,
+      lightingPurpose: light.lightingPurpose,
+      coverageRadiusMeters: light.coverage.radiusMeters,
+      estimatedIlluminanceLux: light.nightSafety.estimatedIlluminanceLux,
+      criticalPedestrianPath: light.coverage.criticalPedestrianPath,
+      darkPathRisk: light.nightSafety.darkPathRisk,
+      glareRating: light.glareControl.glareRating,
+      decorative: light.decorativeLighting.enabled
     }
   }));
 }

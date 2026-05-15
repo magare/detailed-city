@@ -3084,13 +3084,23 @@ export interface CurbZoneContract extends CityObjectBase<'curb-zone'> {
 }
 
 
+export type StreetLightPlacementContext = 'citywide-street' | 'detailed-street';
+export type StreetLightFixtureType = 'cutoff-led' | 'decorative-pedestrian' | 'double-arm' | 'pedestrian-scale' | 'single-arm';
+export type StreetLightPurpose = 'arterial-safety' | 'local-wayfinding' | 'promenade-comfort' | 'transit-stop-safety';
+export type StreetLightDarkPathRisk = 'low' | 'medium' | 'high';
+
 export interface StreetLightContract extends CityObjectBase<'street-light'> {
-  readonly sliceId: CityId;
+  readonly placementContext: StreetLightPlacementContext;
+  readonly fixtureType: StreetLightFixtureType;
+  readonly lightingPurpose: StreetLightPurpose;
+  readonly sliceId?: CityId;
   readonly roadId: CityId;
   readonly sidewalkId: CityId;
-  readonly curbZoneId: CityId;
+  readonly curbZoneId?: CityId;
   readonly position: Point2D;
   readonly side: CurbSide;
+  readonly alongRoadMeters: number;
+  readonly offsetFromRoadEdgeMeters: number;
   readonly heightMeters: number;
   readonly poleRadiusMeters: number;
   readonly armLengthMeters: number;
@@ -3098,6 +3108,28 @@ export interface StreetLightContract extends CityObjectBase<'street-light'> {
   readonly coverageRadiusMeters: number;
   readonly colorTemperatureKelvin: number;
   readonly powerCircuitId?: CityId;
+  readonly coverage: {
+    readonly radiusMeters: number;
+    readonly overlapScore: number;
+    readonly criticalPedestrianPath: boolean;
+    readonly nearestTransitStopId?: CityId;
+  };
+  readonly nightSafety: {
+    readonly targetIlluminanceLux: number;
+    readonly estimatedIlluminanceLux: number;
+    readonly darkPathRisk: StreetLightDarkPathRisk;
+    readonly emergencyRouteSupport: boolean;
+  };
+  readonly glareControl: {
+    readonly shielded: boolean;
+    readonly glareRating: 'low' | 'medium' | 'high';
+    readonly cutoffAngleDegrees: number;
+  };
+  readonly decorativeLighting: {
+    readonly enabled: boolean;
+    readonly districtIdentity: boolean;
+    readonly eventReady: boolean;
+  };
   readonly nightLighting: {
     readonly enabledByDefault: boolean;
     readonly emissiveIntensity: number;

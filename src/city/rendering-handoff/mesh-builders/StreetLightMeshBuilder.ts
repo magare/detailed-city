@@ -53,14 +53,18 @@ export class StreetLightMeshBuilder {
       matrix.compose(
         new THREE.Vector3(streetLight.position.x, streetLight.heightMeters, streetLight.position.z),
         rotation,
-        new THREE.Vector3(streetLight.fixtureLengthMeters, 0.18, 0.34)
+        new THREE.Vector3(streetLight.armLengthMeters, 0.18, streetLight.fixtureLengthMeters)
       );
       fixtureMesh.setMatrixAt(index, matrix);
 
       matrix.compose(
         new THREE.Vector3(streetLight.position.x, streetLight.heightMeters - 0.18, streetLight.position.z),
         rotation,
-        new THREE.Vector3(0.42, 0.42, 0.42)
+        new THREE.Vector3(
+          0.32 + streetLight.nightLighting.emissiveIntensity * 0.16,
+          0.32 + streetLight.nightLighting.emissiveIntensity * 0.16,
+          0.32 + streetLight.nightLighting.emissiveIntensity * 0.16
+        )
       );
       glowMesh.setMatrixAt(index, matrix);
     });
