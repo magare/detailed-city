@@ -28,6 +28,7 @@ import { CadastreGenerator } from './land/CadastreGenerator';
 import { HazardZoneGenerator } from './land/HazardZoneGenerator';
 import { SoilGeologyGenerator } from './land/SoilGeologyGenerator';
 import { TopographyGenerator } from './land/TopographyGenerator';
+import { AccessControlGenerator } from './land/AccessControlGenerator';
 import { WaterfrontGenerator } from './land/WaterfrontGenerator';
 import { CityMetricGenerator } from './metrics/CityMetricGenerator';
 import { CyclingNetworkGenerator } from './mobility/CyclingNetworkGenerator';
@@ -305,6 +306,14 @@ export class CityGenerator {
       serviceAlleys: freightLogistics.serviceAlleys,
       utilityNodes: serviceAccess.utilityNodes
     });
+    const accessControl = new AccessControlGenerator().create({
+      hazardZones,
+      navigationGraphEdges: navigationGraphs.navigationGraphEdges,
+      roads: stormwater.roads,
+      serviceAccessCorridors: serviceAccess.serviceAccessCorridors,
+      sidewalkGraph: sliceTagged.sidewalkGraph,
+      transitStops: transit.stops
+    });
     const civicAnchors = new CivicAnchorGenerator().create({
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
       districts: landAndBuildingsWithTopography.districts,
@@ -386,6 +395,7 @@ export class CityGenerator {
       crossings: sliceTagged.crossings,
       curbZones,
       trafficCalmingDevices,
+      accessControls: accessControl.accessControls,
       transitStops: transit.stops,
       transitRoutes: transit.routes,
       bikeSegments: cycling.bikeSegments,
@@ -395,7 +405,7 @@ export class CityGenerator {
       bikeSignals: cycling.bikeSignals,
       bikeConflictZones: cycling.bikeConflictZones,
       navigationGraphNodes: navigationGraphs.navigationGraphNodes,
-      navigationGraphEdges: navigationGraphs.navigationGraphEdges,
+      navigationGraphEdges: accessControl.navigationGraphEdges,
       navigationRoutes: navigationGraphs.navigationRoutes,
       freightLoadingDocks: freightLogistics.loadingDocks,
       freightRoutes: freightLogistics.routes,

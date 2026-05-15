@@ -35,6 +35,7 @@ export type CityOverlayId =
   | 'government-anchors'
   | 'building-access'
   | 'addressing-gazetteer'
+  | 'access-controls'
   | 'constraints'
   | 'resilience-goals'
   | 'service-access'
@@ -106,6 +107,7 @@ export function createCityOverlayDatasets(
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
     createDataset('building-access', 'Building Access', 'domain-data', createBuildingAccessFeatures(city)),
     createDataset('addressing-gazetteer', 'Addressing Gazetteer', 'domain-data', createAddressingGazetteerFeatures(city)),
+    createDataset('access-controls', 'Access Controls', 'domain-data', createAccessControlFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('service-access', 'Service Access', 'domain-data', createServiceAccessFeatures(city)),
@@ -733,6 +735,28 @@ function createAddressingGazetteerFeatures(city: GeneratedCity): CityOverlayFeat
   }));
 
   return [...placeFeatures, ...gazetteerFeatures];
+}
+
+function createAccessControlFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.accessControls.map((control) => ({
+    id: `overlay:access-controls:${control.id}`,
+    overlayId: 'access-controls' as const,
+    objectId: control.id,
+    objectKind: control.kind,
+    ownerDomain: control.ownerDomain,
+    label: control.name ?? control.id,
+    geometry: { type: 'polyline' as const, points: control.centerline },
+    metadata: {
+      controlKind: control.controlKind,
+      ruleKind: control.ruleKind,
+      publicAccess: control.publicAccess,
+      privateAccess: control.privateAccess,
+      emergencyOverride: control.emergencyOverride,
+      normallyOpen: control.normallyOpen,
+      restrictedModes: control.restrictedModes.length,
+      navigationEdges: control.navigationGraphEdgeIds.length
+    }
+  }));
 }
 
 function createConstraintFeatures(city: GeneratedCity): CityOverlayFeature[] {

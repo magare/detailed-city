@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { AccessControlMeshBuilder } from '../../city/rendering-handoff/mesh-builders/AccessControlMeshBuilder';
 import { ActiveFrontageMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ActiveFrontageMeshBuilder';
 import { BuildingFacadeMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingFacadeMeshBuilder';
 import { BuildingMassMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingMassMeshBuilder';
@@ -109,6 +110,7 @@ export class City implements Updatable {
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
     this.addTrafficCalmingDevices(generated.trafficCalmingDevices);
+    this.addAccessControls(generated);
     this.addTransit(generated);
     this.addBuildings(generated);
     this.addBuildingFacades(generated);
@@ -254,6 +256,15 @@ export class City implements Updatable {
     if (mesh) {
       this.layerGroups.networks.add(mesh);
     }
+  }
+
+  private addAccessControls(generated: GeneratedCity): void {
+    const group = new AccessControlMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(generated.accessControls);
+
+    this.layerGroups.networks.add(group);
   }
 
   private addTraffic(trafficPlan: TrafficPlan): void {

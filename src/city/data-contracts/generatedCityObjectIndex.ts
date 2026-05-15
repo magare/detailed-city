@@ -10,6 +10,7 @@ import type {
 
 type GeneratedCityObjectSource = Pick<
   GeneratedCity,
+  | 'accessControls'
   | 'assetCatalog'
   | 'addressPoints'
   | 'activeFrontages'
@@ -92,6 +93,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.crossings,
     ...city.curbZones,
     ...city.trafficCalmingDevices,
+    ...city.accessControls,
     ...city.transitStops,
     ...city.transitRoutes,
     ...city.bikeSegments,

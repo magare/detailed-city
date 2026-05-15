@@ -2,6 +2,8 @@ import type {
   AssetDefinition,
   AssetFormat,
   BuildingEntranceStrategy,
+  AccessControlKind,
+  AccessControlRuleKind,
   BuildingFacadeMaterialZone,
   BuildingFacadeRhythm,
   BuildingFootprintGrammarKind,
@@ -63,6 +65,7 @@ type GeneratedCityForValidation = Pick<
   GeneratedCity,
   | 'assetBindings'
   | 'assetCatalog'
+  | 'accessControls'
   | 'activeFrontages'
   | 'administrativeBoundaries'
   | 'bikeConflictZones'
@@ -129,6 +132,7 @@ type GeneratedCityForValidation = Pick<
 
 type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
+type ValidationAccessControl = GeneratedCityForValidation['accessControls'][number];
 type ValidationBuildingEntrance = GeneratedCityForValidation['buildingEntrances'][number];
 type ValidationAddressPoint = GeneratedCityForValidation['addressPoints'][number];
 type ValidationNamedPlace = GeneratedCityForValidation['namedPlaces'][number];
@@ -192,6 +196,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:street-furniture:regulatory-sign',
   'binding:street-furniture:street-name-sign',
   'binding:street-furniture:wayfinding-sign',
+  'binding:access-control:barrier',
   'binding:road:lane-marking',
   'binding:road:zebra-crossing',
   'binding:road:stop-bar',
@@ -229,6 +234,7 @@ const REQUIRED_RENDERABLE_OBJECT_KINDS = [
   'tree-planting',
   'street-light',
   'street-furniture',
+  'access-control',
   'lane-marking',
   'traffic-calming-device',
   'transit-stop',
@@ -275,6 +281,23 @@ const GOVERNMENT_ANCHOR_KINDS = [
   'court',
   'service-counter'
 ] as const satisfies readonly GovernmentAnchorKind[];
+const ACCESS_CONTROL_KINDS = [
+  'bollard-line',
+  'checkpoint',
+  'fence',
+  'gate',
+  'guardrail',
+  'turnstile',
+  'wall'
+] as const satisfies readonly AccessControlKind[];
+const ACCESS_CONTROL_RULE_KINDS = [
+  'authorized-only',
+  'emergency-only',
+  'paid-access',
+  'private-property',
+  'public-pass-through',
+  'service-only'
+] as const satisfies readonly AccessControlRuleKind[];
 const CULTURE_ANCHOR_KINDS = [
   'event-space',
   'gallery',
@@ -501,6 +524,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateTelecom(city, issues);
   validateThermalEnergy(city, issues);
   validateServiceAccessCorridors(city, issues);
+  validateAccessControls(city, issues);
   validateBuildingEntrancesAndAddresses(city, issues);
   validateAddressingGazetteer(city, issues);
   validateDevelopmentPhases(city, issues);
@@ -922,6 +946,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   const bikeConflictZonesById = new Map(city.bikeConflictZones.map((zone) => [zone.id, zone]));
   const navigationGraphNodesById = new Map(city.navigationGraphNodes.map((node) => [node.id, node]));
   const navigationGraphEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
+  const accessControlsById = new Map(city.accessControls.map((control) => [control.id, control]));
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
   const sidewalkGraphNodeIds = new Set(city.sidewalkGraph.nodes.map((node) => node.id));
   const crossingGraphEdgeIds = new Set(
@@ -1569,6 +1594,28 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
           category: 'graph',
           objectId: edge.id,
           message: `Navigation graph edge ${edge.id} references missing lane ${laneId}.`
+        });
+      }
+    }
+
+    for (const accessControlId of edge.accessControlIds ?? []) {
+      const control = accessControlsById.get(accessControlId);
+      if (!control || !control.navigationGraphEdgeIds.includes(edge.id)) {
+        issues.push({
+          id: `invalid-navigation-edge-access-control-${edge.id}-${accessControlId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: edge.id,
+          message: `Navigation graph edge ${edge.id} references missing or unlinked access control ${accessControlId}.`
+        });
+      }
+      if (!edge.restrictions.some((restriction) => restriction === `access-control:${accessControlId}`)) {
+        issues.push({
+          id: `missing-navigation-edge-access-restriction-${edge.id}-${accessControlId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: edge.id,
+          message: `Navigation graph edge ${edge.id} must expose an access-control restriction for ${accessControlId}.`
         });
       }
     }
@@ -4444,6 +4491,135 @@ function createServiceAccessCorridorIssue(
     category: 'utility-coverage',
     objectId: corridor.id,
     affectedBoundary: corridor.boundary,
+    message
+  };
+}
+
+function validateAccessControls(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const navigationEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
+  const controlsByKind = countBy(city.accessControls, (control) => control.controlKind);
+  const navigationControlledEdges = city.navigationGraphEdges.filter((edge) => (edge.accessControlIds ?? []).length > 0);
+
+  if (city.accessControls.length === 0) {
+    issues.push({
+      id: 'missing-access-controls',
+      severity: 'error',
+      category: 'land',
+      message: 'The city must expose barriers, gates, fences, bollards, turnstiles, and checkpoints as access-control objects.'
+    });
+  }
+
+  for (const kind of ACCESS_CONTROL_KINDS) {
+    if ((controlsByKind[kind] ?? 0) === 0) {
+      issues.push({
+        id: `missing-access-control-kind-${kind}`,
+        severity: 'error',
+        category: 'land',
+        message: `Access control generation must include at least one ${kind}.`
+      });
+    }
+  }
+
+  if (navigationControlledEdges.length === 0) {
+    issues.push({
+      id: 'missing-access-controlled-navigation-edges',
+      severity: 'error',
+      category: 'graph',
+      message: 'Access controls must annotate at least one navigation graph edge with access restrictions.'
+    });
+  }
+
+  for (const control of city.accessControls) {
+    if (!includesValue(ACCESS_CONTROL_KINDS, control.controlKind) || !includesValue(ACCESS_CONTROL_RULE_KINDS, control.ruleKind)) {
+      issues.push(createAccessControlIssue(control, 'invalid-kind', `Access control ${control.id} uses an unknown control or rule kind.`));
+    }
+
+    if (
+      control.centerline.length < 2 ||
+      control.boundary.length < 4 ||
+      control.heightMeters <= 0 ||
+      control.widthMeters <= 0 ||
+      control.clearanceMeters < 0
+    ) {
+      issues.push(createAccessControlIssue(control, 'invalid-geometry', `Access control ${control.id} must expose usable centerline, boundary, height, width, and clearance values.`));
+    }
+
+    const allowedModes = new Set(control.allowedModes);
+    const restrictedModes = new Set(control.restrictedModes);
+    if (
+      control.allowedModes.length === 0 ||
+      control.allowedModes.some((mode) => restrictedModes.has(mode)) ||
+      control.restrictedModes.some((mode) => allowedModes.has(mode))
+    ) {
+      issues.push(createAccessControlIssue(control, 'invalid-mode-rules', `Access control ${control.id} must declare non-overlapping allowed and restricted navigation modes.`));
+    }
+
+    if (!control.publicAccess && control.authorizedRoleIds.length === 0) {
+      issues.push(createAccessControlIssue(control, 'missing-authorized-roles', `Private or restricted access control ${control.id} must declare authorized roles.`));
+    }
+
+    if ((control.controlKind === 'gate' || control.controlKind === 'checkpoint') && control.serviceAccessCorridorIds.length === 0) {
+      issues.push(createAccessControlIssue(control, 'missing-service-corridor', `Gate or checkpoint ${control.id} must link to a service access corridor.`));
+    }
+
+    if (control.controlKind === 'turnstile' && control.transitStopIds.length === 0) {
+      issues.push(createAccessControlIssue(control, 'missing-transit-stop', `Turnstile ${control.id} must link to a transit stop.`));
+    }
+
+    validateAccessControlReferences(city, issues, control, control.controlledObjectIds, 'controlled-object');
+    validateAccessControlReferences(city, issues, control, control.relatedConstraintIds, 'constraint', 'constraint');
+    validateAccessControlReferences(city, issues, control, control.hazardZoneIds, 'hazard-zone', 'hazard-zone');
+    validateAccessControlReferences(city, issues, control, control.serviceAccessCorridorIds, 'service-access-corridor', 'service-access-corridor');
+    validateAccessControlReferences(city, issues, control, control.roadIds, 'road', 'road-segment');
+    validateAccessControlReferences(city, issues, control, control.sidewalkIds, 'sidewalk', 'sidewalk');
+    validateAccessControlReferences(city, issues, control, control.crossingIds, 'crossing', 'crossing');
+    validateAccessControlReferences(city, issues, control, control.buildingEntranceIds, 'building-entrance', 'building-entrance');
+    validateAccessControlReferences(city, issues, control, control.parcelIds, 'parcel', 'parcel');
+    validateAccessControlReferences(city, issues, control, control.transitStopIds, 'transit-stop', 'transit-stop');
+
+    for (const edgeId of control.navigationGraphEdgeIds) {
+      const edge = navigationEdgesById.get(edgeId);
+      if (!edge || !(edge.accessControlIds ?? []).includes(control.id)) {
+        issues.push({
+          id: `invalid-access-control-navigation-edge-${control.id}-${edgeId}`,
+          severity: 'error',
+          category: 'graph',
+          objectId: control.id,
+          affectedPoint: control.center,
+          message: `Access control ${control.id} references missing or unlinked navigation edge ${edgeId}.`
+        });
+      }
+    }
+  }
+}
+
+function validateAccessControlReferences(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  control: ValidationAccessControl,
+  objectIds: readonly CityId[],
+  suffixKind: string,
+  expectedKind?: CityObjectKind
+): void {
+  for (const objectId of objectIds) {
+    const object = city.objectIndex.objectsById[objectId];
+    if (!object || (expectedKind && object.kind !== expectedKind)) {
+      issues.push(createAccessControlIssue(control, `missing-${suffixKind}-${toIssueIdToken(objectId)}`, `Access control ${control.id} references missing ${suffixKind} ${objectId}.`));
+    }
+  }
+}
+
+function createAccessControlIssue(
+  control: ValidationAccessControl,
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `invalid-access-control-${control.id}-${suffix}`,
+    severity: 'error',
+    category: 'land',
+    objectId: control.id,
+    affectedBoundary: control.boundary,
     message
   };
 }
@@ -10701,6 +10877,14 @@ function validateRenderBindings(
 
 function includesValue<T extends string>(values: readonly T[], value: string): value is T {
   return values.includes(value as T);
+}
+
+function countBy<T, K extends string>(values: readonly T[], getKey: (value: T) => K): Partial<Record<K, number>> {
+  return values.reduce<Partial<Record<K, number>>>((counts, value) => {
+    const key = getKey(value);
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
 }
 
 function validateFreightDeliveryWindow(

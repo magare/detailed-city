@@ -8,7 +8,7 @@ import type {
 } from '../../data-contracts/cityContracts';
 import type { CityPlanningLayer } from '../../cityPlan';
 import type { CitySceneLayerId } from '../scene-layers/sceneLayerDefinitions';
-import type { GeneratedCity, GeneratedRuntimeCityObject, TrafficPlan } from '../../../types/city';
+import type { AccessControl, GeneratedCity, GeneratedRuntimeCityObject, TrafficPlan } from '../../../types/city';
 
 export const CITY_PICKING_USER_DATA_KEY = 'cityPicking';
 
@@ -68,6 +68,7 @@ interface CityPickingUserData {
 type PickableObjectSource = Pick<
   GeneratedCity,
   | 'addressPoints'
+  | 'accessControls'
   | 'activeFrontages'
   | 'buildings'
   | 'buildingEntrances'
@@ -104,6 +105,7 @@ export function createCityPickingMetadataCatalog(
     ...city.buildingEntrances,
     ...city.namedPlaces,
     ...city.gazetteerEntries,
+    ...city.accessControls,
     ...city.civicAnchors,
     ...city.communityAnchors,
     ...city.cultureAnchors,
@@ -254,6 +256,12 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   } else if (object.kind === 'named-place') {
     references.roadId =
       record.placeKind === 'street' && typeof record.sourceObjectId === 'string' ? record.sourceObjectId : undefined;
+  } else if (object.kind === 'access-control') {
+    const accessControl = object as AccessControl;
+    references.roadId = accessControl.roadIds[0];
+    references.sidewalkId = accessControl.sidewalkIds[0];
+    references.crossingId = accessControl.crossingIds[0];
+    references.transitStopId = accessControl.transitStopIds[0];
   } else if (object.kind === 'transit-stop') {
     references.transitStopId = object.id;
   } else if (object.kind === 'transit-route') {

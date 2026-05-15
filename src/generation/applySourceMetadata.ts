@@ -50,6 +50,7 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     trafficCalmingDevices: city.trafficCalmingDevices.map((device) =>
       withProceduralMetadata(device, 'mobility-traffic-calming')
     ),
+    accessControls: city.accessControls.map((control) => withProceduralMetadata(control, 'land-access-controls')),
     streetLights: city.streetLights.map((streetLight) =>
       withProceduralMetadata(streetLight, 'public-realm-street-lights')
     ),

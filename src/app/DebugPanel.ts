@@ -167,6 +167,10 @@ export class DebugPanel {
         `${diagnostics.serviceAccess.total} corridors, ${diagnostics.serviceAccess.restrictedCorridors} restricted, ${diagnostics.serviceAccess.buildingsLinked} buildings`
       ),
       createMetric(
+        'Access Control',
+        `${diagnostics.accessControls.total} controls, ${diagnostics.accessControls.navigationControlledEdges} edges, ${diagnostics.accessControls.privateAccessControls} private`
+      ),
+      createMetric(
         'Power',
         `${diagnostics.powerGrid.nodes} nodes, ${diagnostics.powerGrid.transformers} transformers, ${diagnostics.powerGrid.streetLightsServed} lights`
       ),

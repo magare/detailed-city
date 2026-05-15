@@ -1,5 +1,6 @@
 import type {
   AssetDefinition,
+  AccessControlContract,
   ActiveFrontageContract,
   AddressPointContract,
   AdministrativeBoundaryContract,
@@ -315,6 +316,7 @@ export interface LaneMarkingPlan extends LaneMarkingContract {
 export interface TrafficVehiclePlan extends TrafficVehicleContract {}
 
 export interface TrafficCalmingDevice extends TrafficCalmingDeviceContract {}
+export interface AccessControl extends AccessControlContract {}
 export interface TransitStop extends TransitStopContract {}
 export interface TransitRoute extends TransitRouteContract {}
 export interface BikeSegment extends BikeSegmentContract {}
@@ -360,6 +362,7 @@ export type GeneratedCityObject =
   | StreetLight
   | StreetFurniture
   | TrafficCalmingDevice
+  | AccessControl
   | TransitStop
   | TransitRoute
   | BikeSegment
@@ -434,6 +437,7 @@ export interface GeneratedCity {
   streetLights: StreetLight[];
   streetFurniture: StreetFurniture[];
   trafficCalmingDevices: TrafficCalmingDevice[];
+  accessControls: AccessControl[];
   transitStops: TransitStop[];
   transitRoutes: TransitRoute[];
   bikeSegments: BikeSegment[];

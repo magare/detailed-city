@@ -5,6 +5,7 @@ export const CITY_CONTRACT_SCHEMA_VERSION = 'city-contracts-v1';
 export type CityId = string;
 
 export type CityObjectKind =
+  | 'access-control'
   | 'administrative-boundary'
   | 'asset'
   | 'block'
@@ -401,6 +402,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
     }
   ],
   objectPolicies: [
+    {
+      objectKind: 'access-control',
+      scope: 'network',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3', 'lod4'],
+      description: 'Access controls expose walls, fences, guardrails, bollards, gates, turnstiles, and checkpoints that constrain public, private, service, and emergency movement.'
+    },
     {
       objectKind: 'administrative-boundary',
       scope: 'land',
@@ -1512,6 +1520,21 @@ export type ServiceAccessCorridorKind =
   | 'vault-access';
 export type ServiceAccessSurfaceKind = 'asphalt' | 'concrete' | 'gravel' | 'paver' | 'reinforced-lawn';
 export type ServiceAccessRestrictionKind = 'authorized-only' | 'daytime-access' | 'emergency-only' | 'heavy-vehicle';
+export type AccessControlKind =
+  | 'bollard-line'
+  | 'checkpoint'
+  | 'fence'
+  | 'gate'
+  | 'guardrail'
+  | 'turnstile'
+  | 'wall';
+export type AccessControlRuleKind =
+  | 'authorized-only'
+  | 'emergency-only'
+  | 'paid-access'
+  | 'private-property'
+  | 'public-pass-through'
+  | 'service-only';
 export type PowerGridEquipmentKind =
   | 'backup-supply'
   | 'meter'
@@ -1839,6 +1862,35 @@ export interface ServiceAccessCorridorContract extends CityObjectBase<'service-a
   readonly emergencyAccess: boolean;
 }
 
+export interface AccessControlContract extends CityObjectBase<'access-control'> {
+  readonly controlKind: AccessControlKind;
+  readonly ruleKind: AccessControlRuleKind;
+  readonly center: Point2D;
+  readonly centerline: Polyline2D;
+  readonly boundary: Polygon2D;
+  readonly heightMeters: number;
+  readonly widthMeters: number;
+  readonly clearanceMeters: number;
+  readonly normallyOpen: boolean;
+  readonly publicAccess: boolean;
+  readonly privateAccess: boolean;
+  readonly emergencyOverride: boolean;
+  readonly allowedModes: readonly NavigationMode[];
+  readonly restrictedModes: readonly NavigationMode[];
+  readonly authorizedRoleIds: readonly CityId[];
+  readonly controlledObjectIds: readonly CityId[];
+  readonly relatedConstraintIds: readonly CityId[];
+  readonly hazardZoneIds: readonly CityId[];
+  readonly serviceAccessCorridorIds: readonly CityId[];
+  readonly roadIds: readonly CityId[];
+  readonly sidewalkIds: readonly CityId[];
+  readonly crossingIds: readonly CityId[];
+  readonly buildingEntranceIds: readonly CityId[];
+  readonly parcelIds: readonly CityId[];
+  readonly transitStopIds: readonly CityId[];
+  readonly navigationGraphEdgeIds: readonly CityId[];
+}
+
 export interface ParcelFrontagePriorityContract {
   readonly roadId: CityId;
   readonly side: BlockFrontageSide;
@@ -2079,6 +2131,7 @@ export interface NavigationGraphEdgeContract extends CityObjectBase<'navigation-
   readonly bidirectional: boolean;
   readonly accessible: boolean;
   readonly restrictions: readonly string[];
+  readonly accessControlIds?: readonly CityId[];
 }
 
 export interface NavigationRouteContract extends CityObjectBase<'navigation-route'> {

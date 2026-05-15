@@ -20,6 +20,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const building = city.buildings[0];
   const buildingEntrance = city.buildingEntrances[0];
   const addressPoint = city.addressPoints[0];
+  const accessControl = city.accessControls.find((control) => control.roadIds.length > 0) ?? city.accessControls[0];
   const namedPlace = city.namedPlaces.find((place) => place.placeKind === 'street') ?? city.namedPlaces[0];
   const gazetteerEntry = city.gazetteerEntries[0];
   const parcel = city.parcels.find((candidate) => candidate.id === building.parcelId);
@@ -38,6 +39,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.governmentAnchors.length +
       city.buildingEntrances.length +
       city.addressPoints.length +
+      city.accessControls.length +
       city.namedPlaces.length +
       city.gazetteerEntries.length +
       city.activeFrontages.length +
@@ -60,6 +62,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind.building).toBe(city.buildings.length);
   expect(catalog.countsByKind['building-entrance']).toBe(city.buildingEntrances.length);
   expect(catalog.countsByKind['address-point']).toBe(city.addressPoints.length);
+  expect(catalog.countsByKind['access-control']).toBe(city.accessControls.length);
   expect(catalog.countsByKind['named-place']).toBe(city.namedPlaces.length);
   expect(catalog.countsByKind['gazetteer-entry']).toBe(city.gazetteerEntries.length);
   expect(catalog.countsByKind['civic-anchor']).toBe(city.civicAnchors.length);
@@ -114,6 +117,19 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       buildingId: addressPoint.buildingId,
       parcelId: addressPoint.parcelId,
       roadId: addressPoint.roadId
+    }
+  });
+  expect(catalog.metadataByObjectId[accessControl.id]).toMatchObject({
+    objectId: accessControl.id,
+    kind: 'access-control',
+    ownerDomain: 'land',
+    parentId: accessControl.parentId,
+    lod: accessControl.lod,
+    references: {
+      roadId: accessControl.roadIds[0],
+      sidewalkId: accessControl.sidewalkIds[0],
+      crossingId: accessControl.crossingIds[0],
+      transitStopId: accessControl.transitStopIds[0]
     }
   });
   expect(catalog.metadataByObjectId[namedPlace.id]).toMatchObject({
@@ -280,6 +296,8 @@ test('scene picking metadata resolves regular meshes and instanced meshes', () =
     const laneDashInstances = cityScene.group.getObjectByName('LaneDashInstances');
     const zebraCrossingInstances = cityScene.group.getObjectByName('ZebraCrossingStripeInstances');
     const benchSeatInstances = cityScene.group.getObjectByName('StreetFurnitureBenchSeatInstances');
+    const accessControlInstances = cityScene.group.getObjectByName('AccessControlMetalBarrierInstances');
+    const firstMetalAccessControl = city.accessControls.find((control) => control.controlKind !== 'wall');
 
     expect(roadMesh).toBeTruthy();
     expect(buildingInstances).toBeTruthy();
@@ -287,7 +305,9 @@ test('scene picking metadata resolves regular meshes and instanced meshes', () =
     expect(laneDashInstances).toBeTruthy();
     expect(zebraCrossingInstances).toBeTruthy();
     expect(benchSeatInstances).toBeTruthy();
+    expect(accessControlInstances).toBeTruthy();
     expect(firstZebraCrossing).toBeTruthy();
+    expect(firstMetalAccessControl).toBeTruthy();
 
     const roadPick = cityScene.resolvePickingMetadata([
       { object: roadMesh as THREE.Object3D, distance: 3, point: new THREE.Vector3() } as THREE.Intersection
@@ -311,6 +331,14 @@ test('scene picking metadata resolves regular meshes and instanced meshes', () =
     ]);
     const streetFurniturePick = cityScene.resolvePickingMetadata([
       { object: benchSeatInstances as THREE.Object3D, instanceId: 0, distance: 4, point: new THREE.Vector3() } as THREE.Intersection
+    ]);
+    const accessControlPick = cityScene.resolvePickingMetadata([
+      {
+        object: accessControlInstances as THREE.Object3D,
+        instanceId: 0,
+        distance: 4,
+        point: new THREE.Vector3()
+      } as THREE.Intersection
     ]);
 
     expect(roadPick).toMatchObject({
@@ -384,6 +412,14 @@ test('scene picking metadata resolves regular meshes and instanced meshes', () =
         sidewalkId: city.streetFurniture[0].sidewalkId,
         curbZoneId: city.streetFurniture[0].curbZoneId
       }
+    });
+    expect(accessControlPick).toMatchObject({
+      objectId: firstMetalAccessControl?.id,
+      kind: 'access-control',
+      ownerDomain: 'land',
+      parentId: firstMetalAccessControl?.parentId,
+      instanceId: 0,
+      sceneLayerId: 'networks'
     });
   } finally {
     cityScene.dispose();

@@ -241,6 +241,7 @@ export interface ProceduralSeedDomainSections {
   readonly utilityNodes: GeneratedCity['utilityNodes'];
   readonly utilityEdges: GeneratedCity['utilityEdges'];
   readonly serviceAccessCorridors: GeneratedCity['serviceAccessCorridors'];
+  readonly accessControls: GeneratedCity['accessControls'];
   readonly buildingEntrances: GeneratedCity['buildingEntrances'];
   readonly addressPoints: GeneratedCity['addressPoints'];
   readonly namedPlaces: GeneratedCity['namedPlaces'];
@@ -303,6 +304,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly utilityNodes: number;
   readonly utilityEdges: number;
   readonly serviceAccessCorridors: number;
+  readonly accessControls: number;
   readonly buildingEntrances: number;
   readonly addressPoints: number;
   readonly namedPlaces: number;
@@ -443,6 +445,7 @@ export function createProceduralSeedJsonExport(
       utilityNodes: city.utilityNodes,
       utilityEdges: city.utilityEdges,
       serviceAccessCorridors: city.serviceAccessCorridors,
+      accessControls: city.accessControls,
       buildingEntrances: city.buildingEntrances,
       addressPoints: city.addressPoints,
       namedPlaces: city.namedPlaces,
@@ -644,6 +647,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'utilityNodes'
     | 'utilityEdges'
     | 'serviceAccessCorridors'
+    | 'accessControls'
     | 'buildingEntrances'
     | 'addressPoints'
     | 'namedPlaces'
@@ -700,6 +704,7 @@ export function createProceduralSeedDomainSectionCounts(
     utilityNodes: city.utilityNodes.length,
     utilityEdges: city.utilityEdges.length,
     serviceAccessCorridors: city.serviceAccessCorridors.length,
+    accessControls: city.accessControls.length,
     buildingEntrances: city.buildingEntrances.length,
     addressPoints: city.addressPoints.length,
     namedPlaces: city.namedPlaces.length,
@@ -774,6 +779,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'utilityNodes') +
     getArrayLength(city, 'utilityEdges') +
     getArrayLength(city, 'serviceAccessCorridors') +
+    getArrayLength(city, 'accessControls') +
     getArrayLength(city, 'buildingEntrances') +
     getArrayLength(city, 'addressPoints') +
     getArrayLength(city, 'namedPlaces') +

@@ -30,6 +30,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:street-prop:regulatory-sign:primitive', 'street-prop', 'Regulatory Sign Primitive', 'regulatory-sign', 2.4, 'lod4'),
   createProceduralAsset('asset:street-prop:street-name-sign:primitive', 'street-prop', 'Street Name Sign Primitive', 'street-name-sign', 2.65, 'lod4'),
   createProceduralAsset('asset:street-prop:wayfinding-sign:primitive', 'street-prop', 'Wayfinding Sign Primitive', 'wayfinding-sign', 2.35, 'lod4'),
+  createProceduralAsset('asset:street-prop:access-control:primitive', 'street-prop', 'Access Control Primitive', 'railing', 3.5, 'lod3'),
   createProceduralAsset('asset:road:lane-marking:primitive', 'road', 'Lane Marking Primitive', 'lane-marking', 7.2, 'lod2'),
   createProceduralAsset('asset:road:zebra-crossing:primitive', 'road', 'Zebra Crossing Primitive', 'zebra-crossing', 14, 'lod2'),
   createProceduralAsset('asset:road:stop-bar:primitive', 'road', 'Stop Bar Primitive', 'stop-bar', 12, 'lod2'),
@@ -238,6 +239,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'signage',
     fallbackMaterial: 'signPanelBlue',
     fallbackGeometry: 'wayfinding-post-panel'
+  },
+  {
+    id: 'binding:access-control:barrier',
+    objectKind: 'access-control',
+    semanticTag: 'access-control',
+    assetId: 'asset:street-prop:access-control:primitive',
+    materialZone: 'railing',
+    fallbackMaterial: 'streetFurnitureMetal',
+    fallbackGeometry: 'access-control-barrier'
   },
   {
     id: 'binding:road:lane-marking',

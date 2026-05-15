@@ -68,8 +68,15 @@ const NAVIGATION_ROUTE_KIND = String.raw`(?:baseline|transfer|service|emergency|
 const SERVICE_ACCESS_CORRIDOR_KIND = String.raw`(?:maintenance-path|restricted-corridor|service-yard|utility-easement|vault-access)`;
 const NAMED_PLACE_KIND = String.raw`(?:civic-anchor|district|neighborhood|park|street|ward|waterfront)`;
 const GAZETTEER_ENTRY_KIND = String.raw`(?:address|anchor|place|street)`;
+const ACCESS_CONTROL_KIND = String.raw`(?:bollard-line|checkpoint|fence|gate|guardrail|turnstile|wall)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
+  entry(
+    'access-control',
+    ['access-control-<access-control-kind>-<source-id>'],
+    [exact(String.raw`access-control-${ACCESS_CONTROL_KIND}-${NAMED_ID}(?:-${NAMED_ID})*`)],
+    required(['hazard-zone', 'road-segment', 'service-access-corridor', 'transit-stop'])
+  ),
   entry(
     'administrative-boundary',
     ['administrative-boundary-<boundary-kind>-<slug>'],

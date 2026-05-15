@@ -96,6 +96,7 @@ export function createCitySceneLayerDiagnostics(
       city.freightLoadingDocks.length +
       city.freightRoutes.length +
       city.serviceAlleys.length +
+      city.accessControls.length +
       traffic.markings.length,
     buildings:
       city.buildings.length +
@@ -127,6 +128,7 @@ export function createCitySceneLayerDiagnostics(
       city.hazardZones.length +
       city.resilienceGoals.length +
       city.serviceAccessCorridors.length +
+      city.accessControls.length +
       city.buildingEntrances.length +
       city.addressPoints.length +
       city.namedPlaces.length +

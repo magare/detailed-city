@@ -7,6 +7,7 @@ import {
   type MasterPlanDiagnostics
 } from '../city/blueprint/master-plan/masterPlan';
 import type {
+  AccessControlKind,
   BuildingFacadeRhythm,
   BuildingFootprintGrammarKind,
   BuildingRoofDetailKind,
@@ -75,6 +76,7 @@ export interface CityDiagnostics {
   readonly telecom: TelecomDiagnostics;
   readonly thermalEnergy: ThermalEnergyDiagnostics;
   readonly serviceAccess: ServiceAccessDiagnostics;
+  readonly accessControls: AccessControlDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -175,6 +177,13 @@ export interface CityDiagnostics {
     readonly buildingsWithServiceAccess: number;
     readonly utilityNodesWithServiceAccess: number;
     readonly utilityEdgesWithServiceAccess: number;
+    readonly accessControls: number;
+    readonly accessControlGates: number;
+    readonly accessControlCheckpoints: number;
+    readonly accessControlTurnstiles: number;
+    readonly publicAccessControls: number;
+    readonly privateAccessControls: number;
+    readonly accessControlledNavigationEdges: number;
     readonly buildingEntrances: number;
     readonly publicBuildingEntrances: number;
     readonly lobbyEntrances: number;
@@ -517,6 +526,23 @@ export interface ServiceAccessDiagnostics {
   readonly utilityEdgesLinked: number;
   readonly cadastreEasementLinks: number;
   readonly emergencyAccessCorridors: number;
+}
+
+export interface AccessControlDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<AccessControlKind, number>>;
+  readonly gates: number;
+  readonly checkpoints: number;
+  readonly fences: number;
+  readonly walls: number;
+  readonly guardrails: number;
+  readonly bollardLines: number;
+  readonly turnstiles: number;
+  readonly publicAccessControls: number;
+  readonly privateAccessControls: number;
+  readonly emergencyOverrideControls: number;
+  readonly navigationControlledEdges: number;
+  readonly restrictedNavigationEdges: number;
 }
 
 export interface PowerGridDiagnostics {
@@ -1105,6 +1131,7 @@ export function createCityDiagnostics(
   const telecom = createTelecomDiagnostics(city);
   const thermalEnergy = createThermalEnergyDiagnostics(city);
   const serviceAccess = createServiceAccessDiagnostics(city);
+  const accessControls = createAccessControlDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -1170,6 +1197,7 @@ export function createCityDiagnostics(
     telecom,
     thermalEnergy,
     serviceAccess,
+    accessControls,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -1261,6 +1289,13 @@ export function createCityDiagnostics(
       buildingsWithServiceAccess: serviceAccess.buildingsLinked,
       utilityNodesWithServiceAccess: serviceAccess.utilityNodesLinked,
       utilityEdgesWithServiceAccess: serviceAccess.utilityEdgesLinked,
+      accessControls: accessControls.total,
+      accessControlGates: accessControls.gates,
+      accessControlCheckpoints: accessControls.checkpoints,
+      accessControlTurnstiles: accessControls.turnstiles,
+      publicAccessControls: accessControls.publicAccessControls,
+      privateAccessControls: accessControls.privateAccessControls,
+      accessControlledNavigationEdges: accessControls.navigationControlledEdges,
       buildingEntrances: buildingAccess.entrances,
       publicBuildingEntrances: buildingAccess.publicDoors,
       lobbyEntrances: buildingAccess.lobbies,
@@ -1732,6 +1767,62 @@ function createServiceAccessDiagnostics(city: GeneratedCity): ServiceAccessDiagn
     utilityEdgesLinked: city.utilityEdges.filter((edge) => (edge.serviceAccessCorridorIds ?? []).length > 0).length,
     cadastreEasementLinks,
     emergencyAccessCorridors
+  };
+}
+
+function createAccessControlDiagnostics(city: GeneratedCity): AccessControlDiagnostics {
+  const byKind = {
+    'bollard-line': 0,
+    checkpoint: 0,
+    fence: 0,
+    gate: 0,
+    guardrail: 0,
+    turnstile: 0,
+    wall: 0
+  } satisfies Record<AccessControlKind, number>;
+  const controlledEdgeIds = new Set<string>();
+  let publicAccessControls = 0;
+  let privateAccessControls = 0;
+  let emergencyOverrideControls = 0;
+  let restrictedNavigationEdges = 0;
+
+  for (const control of city.accessControls) {
+    byKind[control.controlKind] += 1;
+    if (control.publicAccess) {
+      publicAccessControls += 1;
+    }
+    if (control.privateAccess) {
+      privateAccessControls += 1;
+    }
+    if (control.emergencyOverride) {
+      emergencyOverrideControls += 1;
+    }
+    for (const edgeId of control.navigationGraphEdgeIds) {
+      controlledEdgeIds.add(edgeId);
+    }
+  }
+
+  for (const edge of city.navigationGraphEdges) {
+    if ((edge.accessControlIds ?? []).length > 0 && edge.restrictions.some((restriction) => restriction.startsWith('access-control:'))) {
+      restrictedNavigationEdges += 1;
+    }
+  }
+
+  return {
+    total: city.accessControls.length,
+    byKind,
+    gates: byKind.gate,
+    checkpoints: byKind.checkpoint,
+    fences: byKind.fence,
+    walls: byKind.wall,
+    guardrails: byKind.guardrail,
+    bollardLines: byKind['bollard-line'],
+    turnstiles: byKind.turnstile,
+    publicAccessControls,
+    privateAccessControls,
+    emergencyOverrideControls,
+    navigationControlledEdges: controlledEdgeIds.size,
+    restrictedNavigationEdges
   };
 }
 
