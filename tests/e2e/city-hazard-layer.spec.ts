@@ -72,6 +72,7 @@ test('hazard layer is deterministic, indexed, and connected to land context', ()
     'culture-anchors',
     'government-anchors',
     'building-access',
+    'building-fire-safety',
     'addressing-gazetteer',
     'access-controls',
     'public-lighting',

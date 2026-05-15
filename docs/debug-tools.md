@@ -33,6 +33,7 @@ The panel currently exposes:
 - Source metadata tagged-object coverage.
 - Traffic vehicle and lane-marking counts.
 - Building and active-frontage counts.
+- Building fire-safety profile, fire-lane, and refuge counts.
 - Asset definition and render binding counts.
 - Asset inventory record count, maintenance-watch count, and owner count.
 - Maintenance operation count, repair queue count, and temporary closure count.
@@ -62,7 +63,7 @@ Clicking or hovering a city object should eventually show:
 
 ## Overlays
 
-The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results. Current executable datasets include administrative boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil/geology, city metrics, building access, addressing/gazetteer, access controls, public lighting, signage/wayfinding, green stormwater, asset inventory, maintenance operations, permits/inspections, curb activations, public amenities, constraints, resilience goals, service access, thermal service and outage maps, parcels, roads, validation issues, and owner domains.
+The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results. Current executable datasets include administrative boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil/geology, city metrics, building access, building fire safety, addressing/gazetteer, access controls, public lighting, signage/wayfinding, green stormwater, asset inventory, maintenance operations, permits/inspections, curb activations, public amenities, constraints, resilience goals, service access, thermal service and outage maps, parcels, roads, validation issues, and owner domains.
 
 Validation issue overlay features now carry focus targets. When a validation issue provides an affected point, affected boundary, or suggested fix, the overlay feature uses that precise geometry and remediation text; otherwise it falls back to the referenced city object geometry.
 

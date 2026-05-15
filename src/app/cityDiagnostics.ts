@@ -13,6 +13,7 @@ import type {
   AssetInventoryScope,
   AssetOperationalStatus,
   BuildingFacadeRhythm,
+  BuildingFireSafetyRiskClass,
   BuildingFootprintGrammarKind,
   BuildingRoofDetailKind,
   BuildingRoofStyleKind,
@@ -107,6 +108,7 @@ export interface CityDiagnostics {
   readonly buildingFacades: BuildingFacadeDiagnostics;
   readonly buildingRoofs: BuildingRoofDiagnostics;
   readonly buildingAccess: BuildingAccessDiagnostics;
+  readonly buildingFireSafety: BuildingFireSafetyDiagnostics;
   readonly addressingGazetteer: AddressingGazetteerDiagnostics;
   readonly civicAnchors: CivicAnchorDiagnostics;
   readonly communityAnchors: CommunityAnchorDiagnostics;
@@ -263,6 +265,12 @@ export interface CityDiagnostics {
     readonly civicAnchorsWithAddresses: number;
     readonly buildingsWithAddressPoints: number;
     readonly buildingsWithAccessiblePublicEntrances: number;
+    readonly buildingFireSafetyProfiles: number;
+    readonly fireSafetyHydrantCoveredBuildings: number;
+    readonly fireSafetyFireLaneBuildings: number;
+    readonly fireSafetySprinkleredBuildings: number;
+    readonly fireSafetyRefugeAreas: number;
+    readonly fireSafetyTotalEgressCapacity: number;
     readonly powerGridNodes: number;
     readonly powerGridEdges: number;
     readonly powerTransformers: number;
@@ -942,6 +950,21 @@ export interface BuildingAccessDiagnostics {
   readonly activeFrontageLinkedEntrances: number;
 }
 
+export interface BuildingFireSafetyDiagnostics {
+  readonly profiles: number;
+  readonly byRiskClass: Readonly<Partial<Record<BuildingFireSafetyRiskClass, number>>>;
+  readonly hydrantCoveredBuildings: number;
+  readonly fireLaneBuildings: number;
+  readonly sprinkleredBuildings: number;
+  readonly sprinklerRequiredBuildings: number;
+  readonly emergencyServiceAccessBuildings: number;
+  readonly refugeAreas: number;
+  readonly totalRefugeCapacityPersons: number;
+  readonly totalEgressCapacityPersons: number;
+  readonly averageHydrantDistanceMeters: number;
+  readonly averageFireLaneLinks: number;
+}
+
 export interface AddressingGazetteerDiagnostics {
   readonly addressPoints: number;
   readonly formattedAddressPoints: number;
@@ -1353,6 +1376,7 @@ export function createCityDiagnostics(
   const buildingFacades = createBuildingFacadeDiagnostics(city);
   const buildingRoofs = createBuildingRoofDiagnostics(city);
   const buildingAccess = createBuildingAccessDiagnostics(city);
+  const buildingFireSafety = createBuildingFireSafetyDiagnostics(city);
   const addressingGazetteer = createAddressingGazetteerDiagnostics(city);
   const civicAnchors = createCivicAnchorDiagnostics(city);
   const communityAnchors = createCommunityAnchorDiagnostics(city);
@@ -1427,6 +1451,7 @@ export function createCityDiagnostics(
     buildingFacades,
     buildingRoofs,
     buildingAccess,
+    buildingFireSafety,
     addressingGazetteer,
     civicAnchors,
     communityAnchors,
@@ -1574,6 +1599,12 @@ export function createCityDiagnostics(
       civicAnchorsWithAddresses: addressingGazetteer.civicAnchorsWithAddresses,
       buildingsWithAddressPoints: buildingAccess.buildingsWithAddresses,
       buildingsWithAccessiblePublicEntrances: buildingAccess.buildingsWithAccessiblePublicEntrances,
+      buildingFireSafetyProfiles: buildingFireSafety.profiles,
+      fireSafetyHydrantCoveredBuildings: buildingFireSafety.hydrantCoveredBuildings,
+      fireSafetyFireLaneBuildings: buildingFireSafety.fireLaneBuildings,
+      fireSafetySprinkleredBuildings: buildingFireSafety.sprinkleredBuildings,
+      fireSafetyRefugeAreas: buildingFireSafety.refugeAreas,
+      fireSafetyTotalEgressCapacity: buildingFireSafety.totalEgressCapacityPersons,
       powerGridNodes: powerGrid.nodes,
       powerGridEdges: powerGrid.edges,
       powerTransformers: powerGrid.transformers,
@@ -3305,6 +3336,47 @@ function createBuildingAccessDiagnostics(city: GeneratedCity): BuildingAccessDia
       building.publicEntranceIds.some((entranceId) => accessiblePublicEntranceIds.has(entranceId))
     ).length,
     activeFrontageLinkedEntrances: city.buildingEntrances.filter((entrance) => entrance.activeFrontageIds.length > 0).length
+  };
+}
+
+function createBuildingFireSafetyDiagnostics(city: GeneratedCity): BuildingFireSafetyDiagnostics {
+  const byRiskClass = city.buildingFireSafetyProfiles.reduce<Partial<Record<BuildingFireSafetyRiskClass, number>>>(
+    (counts, profile) => {
+      counts[profile.riskClass] = (counts[profile.riskClass] ?? 0) + 1;
+      return counts;
+    },
+    {}
+  );
+  const hydrantDistanceTotal = city.buildingFireSafetyProfiles.reduce(
+    (sum, profile) => sum + profile.hydrantDistanceMeters,
+    0
+  );
+  const fireLaneLinkTotal = city.buildingFireSafetyProfiles.reduce(
+    (sum, profile) => sum + profile.fireLaneCurbZoneIds.length,
+    0
+  );
+  const refugeAreas = city.buildingFireSafetyProfiles.flatMap((profile) => profile.refugeAreas);
+
+  return {
+    profiles: city.buildingFireSafetyProfiles.length,
+    byRiskClass,
+    hydrantCoveredBuildings: city.buildingFireSafetyProfiles.filter((profile) => profile.hydrantWithinReach).length,
+    fireLaneBuildings: city.buildingFireSafetyProfiles.filter((profile) => profile.fireLaneClearance).length,
+    sprinkleredBuildings: city.buildingFireSafetyProfiles.filter((profile) => profile.sprinkler.provided).length,
+    sprinklerRequiredBuildings: city.buildingFireSafetyProfiles.filter((profile) => profile.sprinkler.required).length,
+    emergencyServiceAccessBuildings: city.buildingFireSafetyProfiles.filter(
+      (profile) => profile.emergencyAccess.serviceAccessProvided
+    ).length,
+    refugeAreas: refugeAreas.length,
+    totalRefugeCapacityPersons: refugeAreas.reduce((sum, refugeArea) => sum + refugeArea.capacityPersons, 0),
+    totalEgressCapacityPersons: city.buildingFireSafetyProfiles.reduce(
+      (sum, profile) => sum + profile.egress.exitCapacityPersons,
+      0
+    ),
+    averageHydrantDistanceMeters: Number(
+      (hydrantDistanceTotal / Math.max(1, city.buildingFireSafetyProfiles.length)).toFixed(2)
+    ),
+    averageFireLaneLinks: Number((fireLaneLinkTotal / Math.max(1, city.buildingFireSafetyProfiles.length)).toFixed(2))
   };
 }
 

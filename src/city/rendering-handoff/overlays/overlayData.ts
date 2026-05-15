@@ -39,6 +39,7 @@ export type CityOverlayId =
   | 'culture-anchors'
   | 'government-anchors'
   | 'building-access'
+  | 'building-fire-safety'
   | 'addressing-gazetteer'
   | 'access-controls'
   | 'public-lighting'
@@ -119,6 +120,7 @@ export function createCityOverlayDatasets(
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
     createDataset('building-access', 'Building Access', 'domain-data', createBuildingAccessFeatures(city)),
+    createDataset('building-fire-safety', 'Building Fire Safety', 'domain-data', createBuildingFireSafetyFeatures(city)),
     createDataset('addressing-gazetteer', 'Addressing Gazetteer', 'domain-data', createAddressingGazetteerFeatures(city)),
     createDataset('access-controls', 'Access Controls', 'domain-data', createAccessControlFeatures(city)),
     createDataset('public-lighting', 'Public Lighting', 'domain-data', createPublicLightingFeatures(city)),
@@ -714,6 +716,40 @@ function createBuildingAccessFeatures(city: GeneratedCity): CityOverlayFeature[]
   }));
 
   return [...entranceFeatures, ...addressFeatures];
+}
+
+function createBuildingFireSafetyFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  const buildingsById = new Map(city.buildings.map((building) => [building.id, building]));
+
+  return city.buildingFireSafetyProfiles.map((profile) => {
+    const building = buildingsById.get(profile.buildingId);
+
+    return {
+      id: `overlay:building-fire-safety:${profile.id}`,
+      overlayId: 'building-fire-safety' as const,
+      objectId: profile.id,
+      objectKind: profile.kind,
+      ownerDomain: profile.ownerDomain,
+      label: `Fire safety ${profile.buildingId}`,
+      geometry: building
+        ? { type: 'polygon' as const, points: building.footprint }
+        : { type: 'point' as const, point: { x: 0, z: 0 } },
+      metadata: {
+        buildingId: profile.buildingId,
+        riskClass: profile.riskClass,
+        hydrantNodeId: profile.hydrantNodeId,
+        hydrantDistanceMeters: profile.hydrantDistanceMeters,
+        hydrantReachMeters: profile.hydrantReachMeters,
+        fireLanes: profile.fireLaneCurbZoneIds.length,
+        exits: profile.egress.providedExitCount,
+        requiredExits: profile.egress.requiredExitCount,
+        sprinklerRequired: profile.sprinkler.required,
+        sprinklerProvided: profile.sprinkler.provided,
+        refugeAreas: profile.refugeAreas.length,
+        serviceAccess: profile.emergencyAccess.serviceAccessProvided
+      }
+    };
+  });
 }
 
 function createAddressingGazetteerFeatures(city: GeneratedCity): CityOverlayFeature[] {

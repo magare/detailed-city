@@ -10,6 +10,7 @@ import { DEFAULT_RENDER_ASSET_CATALOG, DEFAULT_RENDER_BINDINGS } from '../city/r
 import type { CityConfig, GeneratedCity } from '../types/city';
 import { SeededRandom } from '../utils/random';
 import { ActiveFrontageGenerator } from './buildings/ActiveFrontageGenerator';
+import { BuildingFireSafetyGenerator } from './buildings/BuildingFireSafetyGenerator';
 import { BuildingGenerator } from './buildings/BuildingGenerator';
 import { EntranceAddressGenerator } from './buildings/EntranceAddressGenerator';
 import { CivicAnchorGenerator } from './civic/CivicAnchorGenerator';
@@ -319,6 +320,13 @@ export class CityGenerator {
       serviceAccessCorridors: serviceAccess.serviceAccessCorridors,
       freightLoadingDocks: freightLogistics.loadingDocks
     });
+    const buildingFireSafetyProfiles = new BuildingFireSafetyGenerator().create({
+      buildings: entranceAddress.buildings,
+      buildingEntrances: entranceAddress.buildingEntrances,
+      curbZones,
+      utilityNodes: serviceAccess.utilityNodes,
+      serviceAccessCorridors: serviceAccess.serviceAccessCorridors
+    });
     const navigationGraphs = new NavigationGraphGenerator().create({
       roads: stormwater.roads,
       sidewalkGraph: sliceTagged.sidewalkGraph,
@@ -436,6 +444,7 @@ export class CityGenerator {
       utilityEdges: serviceAccess.utilityEdges,
       serviceAccessCorridors: serviceAccess.serviceAccessCorridors,
       buildingEntrances: entranceAddress.buildingEntrances,
+      buildingFireSafetyProfiles,
       addressPoints: addressingGazetteer.addressPoints,
       namedPlaces: addressingGazetteer.namedPlaces,
       gazetteerEntries: addressingGazetteer.gazetteerEntries,

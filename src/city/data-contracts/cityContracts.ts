@@ -13,6 +13,7 @@ export type CityObjectKind =
   | 'address-point'
   | 'building'
   | 'building-entrance'
+  | 'building-fire-safety'
   | 'cadastre-record'
   | 'city-metric'
   | 'civic-anchor'
@@ -651,6 +652,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod4',
       allowedTiers: ['lod3', 'lod4'],
       description: 'Building entrances expose public doors, lobbies, ramps, service entries, and loading doors for address and access validation.'
+    },
+    {
+      objectKind: 'building-fire-safety',
+      scope: 'building',
+      defaultTier: 'lod4',
+      allowedTiers: ['lod3', 'lod4'],
+      description: 'Building fire-safety profiles bind egress, fire lanes, hydrant reach, sprinkler service, refuge areas, and emergency access to each building.'
     },
     {
       objectKind: 'civic-anchor',
@@ -3105,6 +3113,53 @@ export interface BuildingEntranceContract extends CityObjectBase<'building-entra
     readonly loadingDockId?: CityId;
     readonly loadingBays: number;
     readonly clearHeightMeters: number;
+  };
+}
+
+export type BuildingFireSafetyRiskClass = 'assembly' | 'industrial' | 'low-rise' | 'mid-rise' | 'high-rise';
+
+export interface BuildingRefugeAreaContract {
+  readonly id: CityId;
+  readonly level: number;
+  readonly position: Point2D;
+  readonly areaSqM: number;
+  readonly capacityPersons: number;
+}
+
+export interface BuildingFireSafetyProfileContract extends CityObjectBase<'building-fire-safety'> {
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly roadId: CityId;
+  readonly riskClass: BuildingFireSafetyRiskClass;
+  readonly hydrantNodeId: CityId;
+  readonly hydrantDistanceMeters: number;
+  readonly hydrantReachMeters: number;
+  readonly hydrantWithinReach: boolean;
+  readonly fireLaneCurbZoneIds: readonly CityId[];
+  readonly fireLaneClearance: boolean;
+  readonly egressEntranceIds: readonly CityId[];
+  readonly emergencyAccessEntranceIds: readonly CityId[];
+  readonly serviceAccessCorridorIds: readonly CityId[];
+  readonly egress: {
+    readonly requiredExitCount: number;
+    readonly providedExitCount: number;
+    readonly totalExitWidthMeters: number;
+    readonly minExitSeparationMeters: number;
+    readonly exitCapacityPersons: number;
+  };
+  readonly sprinkler: {
+    readonly required: boolean;
+    readonly provided: boolean;
+    readonly waterServiceNodeId: CityId;
+    readonly pressureZoneId: CityId;
+    readonly estimatedFlowLitersPerSecond: number;
+  };
+  readonly refugeAreas: readonly BuildingRefugeAreaContract[];
+  readonly emergencyAccess: {
+    readonly maxAccessDistanceMeters: number;
+    readonly serviceAccessProvided: boolean;
+    readonly fireLaneProvided: boolean;
+    readonly hydrantReachProvided: boolean;
   };
 }
 

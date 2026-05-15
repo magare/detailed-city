@@ -29,6 +29,7 @@ Validation is a first-class city system. It protects the project from procedural
 | Green stormwater public realm | Rain gardens, bioswales, planters, pervious strips, permeable paving, curb cuts, and tree trenches bind to roads, sidewalks, stormwater utility nodes, runoff edges, tree references where needed, asset bindings, and accessible clear paths. |
 | Parcels | Parcels inside blocks, respect setbacks, have frontage, do not overlap water/roads. |
 | Buildings | Fit parcels, respect height/coverage, expose frontage sides and public entrances, and do not block required access. |
+| Building fire safety | Fire-safety profiles attach to buildings, resolve hydrants and fire-lane curb zones, provide enough egress capacity, expose sprinkler service where required, and include refuge/emergency access rules for elevated risk. |
 | Active frontages | Retail, hospitality, and mixed-use detailed-street frontages reference valid buildings, parcels, roads, sidewalks, public entrances, and facade render bindings. |
 | Zoning | Building use, height, density, frontage, and buffers match district rules. |
 | Utilities | Hydrants, drains, lights, power, water, waste, and service access coverage. |
@@ -80,6 +81,7 @@ Validation is a first-class city system. It protects the project from procedural
 - Green stormwater feature validation checks road parentage, sidewalk clear path, stormwater node/runoff-edge references, tree-trench tree links, positive capacity/geometry metrics, maintenance access, and render binding coverage.
 - Parcel parent block, district/block references, positive dimensions, max height, bounded coverage ratio, frontage roads, and allowed uses.
 - Building references to parcels, positive footprint/height/floor count, parcel fit, coverage, height, allowed uses, primary frontage fields, and public entrance IDs.
+- Building fire-safety profiles validate one profile per building, parent/parcel/road consistency, hydrant reach, fire-lane curb-zone clearance, egress and emergency entrance references, service access corridors, sprinkler water service, and refuge capacity.
 - Active frontage facade slice/building/parcel/road/sidewalk references, active-use membership, public entrance IDs, storefront metadata, slice tags, and facade asset bindings.
 - Tree parent park references.
 

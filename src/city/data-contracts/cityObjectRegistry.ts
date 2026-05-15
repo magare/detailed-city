@@ -125,6 +125,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     required(['building'])
   ),
   entry(
+    'building-fire-safety',
+    ['building-fire-safety-<building-id>'],
+    [exact(String.raw`building-fire-safety-${BUILDING_ID}`)],
+    required(['building'])
+  ),
+  entry(
     'bike-conflict-zone',
     ['bike-conflict-zone-<road-id>-<side>-<suffix>'],
     [exact(String.raw`bike-conflict-zone-${ROAD_ID}-${SIDEWALK_SIDE}-${NAMED_ID}(?:-\d+)?`)],

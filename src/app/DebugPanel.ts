@@ -393,6 +393,10 @@ export class DebugPanel {
         `${diagnostics.buildingAccess.entrances} entries, ${diagnostics.buildingAccess.addressPoints} addresses, ${diagnostics.buildingAccess.loadingDoors} loading`
       ),
       createMetric(
+        'Fire Safety',
+        `${diagnostics.buildingFireSafety.profiles} profiles, ${diagnostics.buildingFireSafety.fireLaneBuildings} lanes, ${diagnostics.buildingFireSafety.refugeAreas} refuge`
+      ),
+      createMetric(
         'Gazetteer',
         `${diagnostics.addressingGazetteer.namedPlaces} places, ${diagnostics.addressingGazetteer.gazetteerEntries} entries, ${diagnostics.addressingGazetteer.reverseLookupEntries} reverse`
       ),

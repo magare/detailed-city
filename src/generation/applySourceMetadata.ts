@@ -27,6 +27,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     buildingEntrances: city.buildingEntrances.map((entrance) =>
       withProceduralMetadata(entrance, 'building-entrances')
     ),
+    buildingFireSafetyProfiles: city.buildingFireSafetyProfiles.map((profile) =>
+      withProceduralMetadata(profile, 'building-fire-safety')
+    ),
     addressPoints: city.addressPoints.map((addressPoint) =>
       withProceduralMetadata(addressPoint, 'building-address-points')
     ),

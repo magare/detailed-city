@@ -77,6 +77,7 @@ type GeneratedCityForValidation = Pick<
   | 'blocks'
   | 'buildings'
   | 'buildingEntrances'
+  | 'buildingFireSafetyProfiles'
   | 'addressPoints'
   | 'namedPlaces'
   | 'gazetteerEntries'
@@ -140,6 +141,7 @@ type ValidationBlock = GeneratedCityForValidation['blocks'][number];
 type ValidationBuilding = GeneratedCityForValidation['buildings'][number];
 type ValidationAccessControl = GeneratedCityForValidation['accessControls'][number];
 type ValidationBuildingEntrance = GeneratedCityForValidation['buildingEntrances'][number];
+type ValidationBuildingFireSafetyProfile = GeneratedCityForValidation['buildingFireSafetyProfiles'][number];
 type ValidationAddressPoint = GeneratedCityForValidation['addressPoints'][number];
 type ValidationNamedPlace = GeneratedCityForValidation['namedPlaces'][number];
 type ValidationGazetteerEntry = GeneratedCityForValidation['gazetteerEntries'][number];
@@ -557,6 +559,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateServiceAccessCorridors(city, issues);
   validateAccessControls(city, issues);
   validateBuildingEntrancesAndAddresses(city, issues);
+  validateBuildingFireSafetyProfiles(city, issues);
   validateAddressingGazetteer(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
@@ -5559,6 +5562,167 @@ function createBuildingAccessIssue(building: ValidationBuilding, suffix: string,
     category: 'zoning',
     objectId: building.id,
     affectedBoundary: building.footprint,
+    message
+  };
+}
+
+function validateBuildingFireSafetyProfiles(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const profilesByBuildingId = groupBy(city.buildingFireSafetyProfiles, (profile) => profile.buildingId);
+  const entrancesById = new Map(city.buildingEntrances.map((entrance) => [entrance.id, entrance]));
+  const utilityNodesById = new Map(city.utilityNodes.map((node) => [node.id, node]));
+  const curbZonesById = new Map(city.curbZones.map((curbZone) => [curbZone.id, curbZone]));
+  const serviceAccessIds = new Set(city.serviceAccessCorridors.map((corridor) => corridor.id));
+
+  if (city.buildingFireSafetyProfiles.length === 0) {
+    issues.push({
+      id: 'missing-building-fire-safety-profiles',
+      severity: 'error',
+      category: 'utility-coverage',
+      message: 'Buildings must expose fire-safety profiles for egress, hydrant reach, sprinklers, refuge, and emergency access.'
+    });
+  }
+
+  for (const building of city.buildings) {
+    const profiles = profilesByBuildingId.get(building.id) ?? [];
+
+    if (profiles.length === 0) {
+      issues.push(createBuildingAccessIssue(building, 'missing-fire-safety-profile', `Building ${building.id} must expose a fire-safety profile.`));
+    }
+
+    if (profiles.length > 1) {
+      issues.push(createBuildingAccessIssue(building, 'duplicate-fire-safety-profile', `Building ${building.id} must expose exactly one fire-safety profile.`));
+    }
+  }
+
+  for (const profile of city.buildingFireSafetyProfiles) {
+    const building = city.buildings.find((candidate) => candidate.id === profile.buildingId);
+    const hydrant = utilityNodesById.get(profile.hydrantNodeId);
+
+    if (!building || profile.parentId !== profile.buildingId) {
+      issues.push(createBuildingFireSafetyIssue(profile, 'missing-building', `Fire-safety profile ${profile.id} must reference its building as parent.`, 'zoning'));
+      continue;
+    }
+
+    if (profile.parcelId !== building.parcelId || profile.roadId !== building.primaryFrontageRoadId) {
+      issues.push(createBuildingFireSafetyIssue(profile, 'building-context-mismatch', `Fire-safety profile ${profile.id} must match the building parcel and frontage road.`, 'zoning', building));
+    }
+
+    if (!hydrant || hydrant.kind !== 'utility-node' || hydrant.waterSupply?.equipmentKind !== 'hydrant') {
+      issues.push(createBuildingFireSafetyIssue(profile, 'missing-hydrant', `Fire-safety profile ${profile.id} references missing hydrant ${profile.hydrantNodeId}.`, 'utility-coverage', building));
+    }
+
+    if (
+      profile.hydrantDistanceMeters <= 0 ||
+      profile.hydrantReachMeters <= 0 ||
+      profile.hydrantDistanceMeters > profile.hydrantReachMeters ||
+      !profile.hydrantWithinReach ||
+      !profile.emergencyAccess.hydrantReachProvided
+    ) {
+      issues.push(createBuildingFireSafetyIssue(profile, 'hydrant-reach-exceeded', `Fire-safety profile ${profile.id} must keep the assigned hydrant within declared emergency reach.`, 'utility-coverage', building));
+    }
+
+    if (!profile.fireLaneClearance || !profile.emergencyAccess.fireLaneProvided || profile.fireLaneCurbZoneIds.length === 0) {
+      issues.push(createBuildingFireSafetyIssue(profile, 'missing-fire-lane', `Fire-safety profile ${profile.id} must link to at least one clear fire-lane curb zone.`, 'graph', building));
+    }
+
+    for (const curbZoneId of profile.fireLaneCurbZoneIds) {
+      const curbZone = curbZonesById.get(curbZoneId);
+      if (
+        !curbZone ||
+        !curbZone.management.fireLaneClearance ||
+        (curbZone.curbUse !== 'emergency' && curbZone.curbUse !== 'no-stopping')
+      ) {
+        issues.push(createBuildingFireSafetyIssue(profile, `invalid-fire-lane-${toIssueIdToken(curbZoneId)}`, `Fire-safety profile ${profile.id} references invalid fire-lane curb zone ${curbZoneId}.`, 'graph', building));
+      }
+    }
+
+    validateFireSafetyEntrances(city, issues, profile, building, entrancesById);
+
+    for (const corridorId of profile.serviceAccessCorridorIds) {
+      if (!serviceAccessIds.has(corridorId)) {
+        issues.push(createBuildingFireSafetyIssue(profile, `missing-service-access-${toIssueIdToken(corridorId)}`, `Fire-safety profile ${profile.id} references missing service access corridor ${corridorId}.`, 'utility-coverage', building));
+      }
+    }
+
+    if (!profile.emergencyAccess.serviceAccessProvided || profile.serviceAccessCorridorIds.length === 0) {
+      issues.push(createBuildingFireSafetyIssue(profile, 'missing-emergency-service-access', `Fire-safety profile ${profile.id} must expose an emergency-capable service access route.`, 'utility-coverage', building));
+    }
+
+    if (profile.sprinkler.required) {
+      const sprinklerNode = utilityNodesById.get(profile.sprinkler.waterServiceNodeId);
+      if (
+        !profile.sprinkler.provided ||
+        !sprinklerNode ||
+        sprinklerNode.kind !== 'utility-node' ||
+        sprinklerNode.utilityType !== 'water' ||
+        profile.sprinkler.estimatedFlowLitersPerSecond <= 0 ||
+        !profile.sprinkler.pressureZoneId
+      ) {
+        issues.push(createBuildingFireSafetyIssue(profile, 'invalid-sprinkler-service', `Fire-safety profile ${profile.id} requires sprinkler service backed by a water utility node and pressure zone.`, 'utility-coverage', building));
+      }
+    }
+
+    if ((profile.riskClass === 'mid-rise' || profile.riskClass === 'high-rise' || profile.riskClass === 'assembly') && profile.refugeAreas.length === 0) {
+      issues.push(createBuildingFireSafetyIssue(profile, 'missing-refuge-area', `Fire-safety profile ${profile.id} must expose refuge areas for elevated or assembly risk.`, 'zoning', building));
+    }
+
+    for (const refugeArea of profile.refugeAreas) {
+      if (refugeArea.level <= 0 || refugeArea.areaSqM <= 0 || refugeArea.capacityPersons <= 0) {
+        issues.push(createBuildingFireSafetyIssue(profile, `invalid-refuge-${toIssueIdToken(refugeArea.id)}`, `Fire-safety profile ${profile.id} refuge area ${refugeArea.id} must expose level, area, and capacity.`, 'zoning', building));
+      }
+    }
+  }
+}
+
+function validateFireSafetyEntrances(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  profile: ValidationBuildingFireSafetyProfile,
+  building: ValidationBuilding,
+  entrancesById: ReadonlyMap<CityId, ValidationBuildingEntrance>
+): void {
+  if (
+    profile.egress.providedExitCount < profile.egress.requiredExitCount ||
+    profile.egress.providedExitCount !== profile.egressEntranceIds.length ||
+    profile.egress.totalExitWidthMeters <= 0 ||
+    profile.egress.exitCapacityPersons <= 0 ||
+    profile.egress.minExitSeparationMeters <= 0
+  ) {
+    issues.push(createBuildingFireSafetyIssue(profile, 'insufficient-egress', `Fire-safety profile ${profile.id} must provide enough separated exit capacity.`, 'graph', building));
+  }
+
+  if (profile.emergencyAccessEntranceIds.length === 0 || profile.emergencyAccess.maxAccessDistanceMeters <= 0) {
+    issues.push(createBuildingFireSafetyIssue(profile, 'missing-emergency-access-entrance', `Fire-safety profile ${profile.id} must expose emergency access entrances and access distance.`, 'graph', building));
+  }
+
+  for (const entranceId of [...profile.egressEntranceIds, ...profile.emergencyAccessEntranceIds]) {
+    const entrance = entrancesById.get(entranceId);
+    if (!entrance || entrance.buildingId !== profile.buildingId) {
+      issues.push(createBuildingFireSafetyIssue(profile, `missing-entrance-${toIssueIdToken(entranceId)}`, `Fire-safety profile ${profile.id} references missing building entrance ${entranceId}.`, 'graph', building));
+    }
+  }
+
+  for (const entranceId of profile.egressEntranceIds) {
+    const entrance = entrancesById.get(entranceId);
+    if (entrance && (entrance.door.clearWidthMeters <= 0 || !city.objectIndex.objectsById[entrance.id])) {
+      issues.push(createBuildingFireSafetyIssue(profile, `invalid-egress-entrance-${toIssueIdToken(entranceId)}`, `Fire-safety profile ${profile.id} references unusable egress entrance ${entranceId}.`, 'graph', building));
+    }
+  }
+}
+
+function createBuildingFireSafetyIssue(
+  profile: ValidationBuildingFireSafetyProfile,
+  suffix: string,
+  message: string,
+  category: ValidationIssue['category'],
+  building?: ValidationBuilding
+): ValidationIssue {
+  return {
+    id: `invalid-building-fire-safety-${profile.id}-${suffix}`,
+    severity: 'error',
+    category,
+    objectId: profile.id,
+    affectedBoundary: building?.footprint,
     message
   };
 }
@@ -11832,6 +11996,17 @@ function countBy<T, K extends string>(values: readonly T[], getKey: (value: T) =
     counts[key] = (counts[key] ?? 0) + 1;
     return counts;
   }, {});
+}
+
+function groupBy<T, K extends string>(values: readonly T[], getKey: (value: T) => K): Map<K, T[]> {
+  const groups = new Map<K, T[]>();
+
+  for (const value of values) {
+    const key = getKey(value);
+    groups.set(key, [...(groups.get(key) ?? []), value]);
+  }
+
+  return groups;
 }
 
 function validateFreightDeliveryWindow(

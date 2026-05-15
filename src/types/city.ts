@@ -13,6 +13,7 @@ import type {
   BikeSignalContract,
   BuildingContract,
   BuildingEntranceContract,
+  BuildingFireSafetyProfileContract,
   BuildingFrontageSide,
   CadastreRecordContract,
   BlockContract,
@@ -237,6 +238,8 @@ export interface BuildingPlan extends BuildingContract {
 
 export interface BuildingEntrance extends BuildingEntranceContract {}
 
+export interface BuildingFireSafetyProfile extends BuildingFireSafetyProfileContract {}
+
 export interface AddressPoint extends AddressPointContract {}
 
 export interface NamedPlace extends NamedPlaceContract {}
@@ -411,6 +414,7 @@ export type GeneratedCityObject =
   | Parcel
   | BuildingPlan
   | BuildingEntrance
+  | BuildingFireSafetyProfile
   | CadastreRecord
   | AssetInventoryRecord
   | CivicAnchor
@@ -480,6 +484,7 @@ export interface GeneratedCity {
   serviceAlleys: ServiceAlley[];
   serviceAccessCorridors: ServiceAccessCorridor[];
   buildingEntrances: BuildingEntrance[];
+  buildingFireSafetyProfiles: BuildingFireSafetyProfile[];
   addressPoints: AddressPoint[];
   namedPlaces: NamedPlace[];
   gazetteerEntries: GazetteerEntry[];

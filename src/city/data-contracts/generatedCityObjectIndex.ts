@@ -25,6 +25,7 @@ type GeneratedCityObjectSource = Pick<
   | 'blocks'
   | 'buildings'
   | 'buildingEntrances'
+  | 'buildingFireSafetyProfiles'
   | 'cadastreRecords'
   | 'civicAnchors'
   | 'communityAnchors'
@@ -120,6 +121,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.serviceAlleys,
     ...city.serviceAccessCorridors,
     ...city.buildingEntrances,
+    ...city.buildingFireSafetyProfiles,
     ...city.addressPoints,
     ...city.namedPlaces,
     ...city.gazetteerEntries,

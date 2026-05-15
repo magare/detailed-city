@@ -243,6 +243,7 @@ export interface ProceduralSeedDomainSections {
   readonly serviceAccessCorridors: GeneratedCity['serviceAccessCorridors'];
   readonly accessControls: GeneratedCity['accessControls'];
   readonly buildingEntrances: GeneratedCity['buildingEntrances'];
+  readonly buildingFireSafetyProfiles: GeneratedCity['buildingFireSafetyProfiles'];
   readonly addressPoints: GeneratedCity['addressPoints'];
   readonly namedPlaces: GeneratedCity['namedPlaces'];
   readonly gazetteerEntries: GeneratedCity['gazetteerEntries'];
@@ -312,6 +313,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly serviceAccessCorridors: number;
   readonly accessControls: number;
   readonly buildingEntrances: number;
+  readonly buildingFireSafetyProfiles: number;
   readonly addressPoints: number;
   readonly namedPlaces: number;
   readonly gazetteerEntries: number;
@@ -459,6 +461,7 @@ export function createProceduralSeedJsonExport(
       serviceAccessCorridors: city.serviceAccessCorridors,
       accessControls: city.accessControls,
       buildingEntrances: city.buildingEntrances,
+      buildingFireSafetyProfiles: city.buildingFireSafetyProfiles,
       addressPoints: city.addressPoints,
       namedPlaces: city.namedPlaces,
       gazetteerEntries: city.gazetteerEntries,
@@ -668,6 +671,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'serviceAccessCorridors'
     | 'accessControls'
     | 'buildingEntrances'
+    | 'buildingFireSafetyProfiles'
     | 'addressPoints'
     | 'namedPlaces'
     | 'gazetteerEntries'
@@ -730,6 +734,7 @@ export function createProceduralSeedDomainSectionCounts(
     serviceAccessCorridors: city.serviceAccessCorridors.length,
     accessControls: city.accessControls.length,
     buildingEntrances: city.buildingEntrances.length,
+    buildingFireSafetyProfiles: city.buildingFireSafetyProfiles.length,
     addressPoints: city.addressPoints.length,
     namedPlaces: city.namedPlaces.length,
     gazetteerEntries: city.gazetteerEntries.length,
@@ -811,6 +816,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'serviceAccessCorridors') +
     getArrayLength(city, 'accessControls') +
     getArrayLength(city, 'buildingEntrances') +
+    getArrayLength(city, 'buildingFireSafetyProfiles') +
     getArrayLength(city, 'addressPoints') +
     getArrayLength(city, 'namedPlaces') +
     getArrayLength(city, 'gazetteerEntries') +
