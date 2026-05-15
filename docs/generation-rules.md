@@ -17,10 +17,11 @@ Generation must produce contract-valid city data first. Rendering consumes that 
 11. Generate operations asset inventory records for renderable civic, public-realm, and utility assets.
 12. Generate maintenance operations from inventory condition, service access, roads, and operation-capable navigation routes.
 13. Generate permit and inspection records from cadastre records plus maintenance operations that create temporary closures.
-14. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
-15. Stamp generated objects with deterministic source metadata.
-16. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, operations records, slice tags, and budgets.
-17. Hand validated objects to mesh builders and scene-layer adapters.
+14. Generate permitted curb activations from active curb zones and approved/compliant permit records.
+15. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
+16. Stamp generated objects with deterministic source metadata.
+17. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, operations records, slice tags, and budgets.
+18. Hand validated objects to mesh builders and scene-layer adapters.
 
 ## City Intent
 
@@ -78,6 +79,7 @@ Generated districts must copy their blueprint character rules into the district 
 - Trees are generated as `tree-planting` objects with parent park/street references before rendering.
 - Street furniture, lamps, signs, hydrants, and green stormwater features must bind to placement zones and generated utility/road references rather than arbitrary coordinates.
 - Detailed-street and citywide furniture/signs are generated from active curb zones or road-profile furnishing zones, with object centers, offsets, clearance envelopes, asset binding IDs, readable LOD, and route/district/frontage sign bindings stored in domain data.
+- Parklets, outdoor dining, temporary seating decks, and interim plazas are generated as `curb-activation` objects from active curb zones plus approved/compliant permit records. They must preserve emergency, transit, drainage, and accessible clearances and expose seasonal removal data before rendering.
 
 ## Building And Facade Rules
 

@@ -26,6 +26,7 @@ import type {
   CityObjectBase,
   DevelopmentPhaseContract,
   ConstraintContract,
+  CurbActivationContract,
   CurbZoneContract,
   CrossingContract,
   DetailedStreetSliceContract,
@@ -165,6 +166,8 @@ export interface CrossingPlan extends CrossingContract {
 }
 
 export interface CurbZone extends CurbZoneContract {}
+
+export interface CurbActivation extends CurbActivationContract {}
 
 export interface StreetLight extends StreetLightContract {}
 
@@ -369,6 +372,7 @@ export type GeneratedCityObject =
   | IntersectionPlan
   | CrossingPlan
   | CurbZone
+  | CurbActivation
   | StreetLight
   | StreetFurniture
   | TrafficCalmingDevice
@@ -448,6 +452,7 @@ export interface GeneratedCity {
   intersections: IntersectionPlan[];
   crossings: CrossingPlan[];
   curbZones: CurbZone[];
+  curbActivations: CurbActivation[];
   streetLights: StreetLight[];
   streetFurniture: StreetFurniture[];
   trafficCalmingDevices: TrafficCalmingDevice[];

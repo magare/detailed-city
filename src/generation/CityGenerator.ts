@@ -39,6 +39,7 @@ import { AssetInventoryGenerator } from './operations/AssetInventoryGenerator';
 import { MaintenanceOperationGenerator } from './operations/MaintenanceOperationGenerator';
 import { PermitInspectionGenerator } from './operations/PermitInspectionGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
+import { CurbActivationGenerator } from './public-realm/CurbActivationGenerator';
 import { GreenStormwaterGenerator } from './public-realm/GreenStormwaterGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
 import { attachSignageWayfindingBindings, StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
@@ -404,6 +405,11 @@ export class CityGenerator {
       cadastreRecords,
       maintenanceOperations
     });
+    const curbActivations = new CurbActivationGenerator().create({
+      curbZones,
+      roads: stormwater.roads,
+      permitInspectionRecords
+    });
 
     const generatedWithoutMetadata: Omit<GeneratedCity, 'objectIndex' | 'validation'> = {
       schemaVersion: CITY_CONTRACT_SCHEMA_VERSION,
@@ -438,6 +444,7 @@ export class CityGenerator {
       intersections: sliceTagged.intersections,
       crossings: sliceTagged.crossings,
       curbZones,
+      curbActivations,
       trafficCalmingDevices,
       accessControls: accessControl.accessControls,
       transitStops: transit.stops,

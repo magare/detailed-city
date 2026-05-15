@@ -257,6 +257,7 @@ export interface ProceduralSeedDomainSections {
   readonly intersections: GeneratedCity['intersections'];
   readonly crossings: GeneratedCity['crossings'];
   readonly curbZones: GeneratedCity['curbZones'];
+  readonly curbActivations: GeneratedCity['curbActivations'];
   readonly trafficCalmingDevices: GeneratedCity['trafficCalmingDevices'];
   readonly transitStops: GeneratedCity['transitStops'];
   readonly transitRoutes: GeneratedCity['transitRoutes'];
@@ -326,6 +327,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly intersections: number;
   readonly crossings: number;
   readonly curbZones: number;
+  readonly curbActivations: number;
   readonly trafficCalmingDevices: number;
   readonly transitStops: number;
   readonly transitRoutes: number;
@@ -469,6 +471,7 @@ export function createProceduralSeedJsonExport(
       intersections: city.intersections,
       crossings: city.crossings,
       curbZones: city.curbZones,
+      curbActivations: city.curbActivations,
       trafficCalmingDevices: city.trafficCalmingDevices,
       transitStops: city.transitStops,
       transitRoutes: city.transitRoutes,
@@ -672,6 +675,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'resilienceGoals'
     | 'crossings'
     | 'curbZones'
+    | 'curbActivations'
     | 'trafficCalmingDevices'
     | 'transitStops'
     | 'transitRoutes'
@@ -738,6 +742,7 @@ export function createProceduralSeedDomainSectionCounts(
     intersections: city.intersections.length,
     crossings: city.crossings.length,
     curbZones: city.curbZones.length,
+    curbActivations: city.curbActivations.length,
     trafficCalmingDevices: city.trafficCalmingDevices.length,
     transitStops: city.transitStops.length,
     transitRoutes: city.transitRoutes.length,
@@ -817,6 +822,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'intersections') +
     getArrayLength(city, 'crossings') +
     getArrayLength(city, 'curbZones') +
+    getArrayLength(city, 'curbActivations') +
     getArrayLength(city, 'trafficCalmingDevices') +
     getArrayLength(city, 'transitStops') +
     getArrayLength(city, 'transitRoutes') +

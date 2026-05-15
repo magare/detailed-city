@@ -97,6 +97,7 @@ type GeneratedCityForValidation = Pick<
   | 'serviceAccessCorridors'
   | 'constraints'
   | 'crossings'
+  | 'curbActivations'
   | 'curbZones'
   | 'districts'
   | 'freightLoadingDocks'
@@ -980,6 +981,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateAssetInventoryRecords(city, issues, assetBindingsById);
   validateMaintenanceOperations(city, issues);
   validatePermitInspectionRecords(city, issues);
+  validateCurbActivations(city, issues, { roadsById, curbZonesById, assetBindingsById });
   const transitRoutesById = new Map(city.transitRoutes.map((route) => [route.id, route]));
   const districtsById = new Map(city.districts.map((district) => [district.id, district]));
   const activeFrontagesById = new Map(city.activeFrontages.map((frontage) => [frontage.id, frontage]));
@@ -3895,6 +3897,111 @@ function createPermitInspectionIssue(
     severity: 'error',
     category: 'operations',
     objectId: record.id,
+    message
+  };
+}
+
+function validateCurbActivations(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  context: {
+    readonly roadsById: ReadonlyMap<CityId, GeneratedCityForValidation['roads'][number]>;
+    readonly curbZonesById: ReadonlyMap<CityId, GeneratedCityForValidation['curbZones'][number]>;
+    readonly assetBindingsById: ReadonlyMap<CityId, RenderBinding>;
+  }
+): void {
+  const permitsById = new Map(city.permitInspectionRecords.map((record) => [record.id, record]));
+
+  for (const activation of city.curbActivations) {
+    const curbZone = context.curbZonesById.get(activation.curbZoneId);
+    const road = context.roadsById.get(activation.roadId);
+    const permit = permitsById.get(activation.permitInspectionRecordId);
+    const binding = context.assetBindingsById.get(activation.assetBindingId);
+
+    if (!curbZone || activation.parentId !== activation.curbZoneId) {
+      issues.push(createCurbActivationIssue(activation, 'missing-curb-zone', `Curb activation ${activation.id} must be parented to existing curb zone ${activation.curbZoneId}.`));
+      continue;
+    }
+
+    if (
+      curbZone.curbUse === 'emergency' ||
+      curbZone.curbUse === 'bus-stop' ||
+      curbZone.curbUse === 'no-stopping' ||
+      !curbZone.management.fireLaneClearance ||
+      !curbZone.management.transitStopClearance
+    ) {
+      issues.push(createCurbActivationIssue(activation, 'unsafe-curb-use', `Curb activation ${activation.id} must preserve emergency, transit, and no-stopping curb clearances.`));
+    }
+
+    if (
+      activation.roadId !== curbZone.roadId ||
+      activation.sidewalkId !== curbZone.sidewalkId ||
+      activation.side !== curbZone.side ||
+      !road
+    ) {
+      issues.push(createCurbActivationIssue(activation, 'curb-context-mismatch', `Curb activation ${activation.id} must mirror its curb zone road, sidewalk, and side.`));
+    }
+
+    if (
+      activation.startMeters < curbZone.startMeters ||
+      activation.endMeters > curbZone.endMeters ||
+      activation.endMeters <= activation.startMeters ||
+      activation.lengthMeters <= 0 ||
+      activation.widthMeters <= 0 ||
+      activation.boundary.length < 4 ||
+      !isFiniteNumber(activation.center.x) ||
+      !isFiniteNumber(activation.center.z)
+    ) {
+      issues.push(createCurbActivationIssue(activation, 'invalid-geometry', `Curb activation ${activation.id} must stay inside its curb zone with finite positive geometry.`));
+    }
+
+    if (!permit || !permit.compliance.passed || !(permit.status === 'approved' || permit.status === 'closed' || permit.status === 'active')) {
+      issues.push(createCurbActivationIssue(activation, 'invalid-permit', `Curb activation ${activation.id} must reference an approved or closed compliant permit/inspection record.`));
+    }
+
+    if (
+      activation.clearances.accessiblePathMeters < 1.8 ||
+      !activation.clearances.emergencyAccess ||
+      !activation.clearances.transitStopClearance ||
+      !activation.clearances.drainageInletClearance
+    ) {
+      issues.push(createCurbActivationIssue(activation, 'blocked-clearance', `Curb activation ${activation.id} must preserve accessible, emergency, transit, and drainage clearances.`));
+    }
+
+    if (
+      activation.protection.barrierCount < 4 ||
+      !activation.protection.reflectiveMarkers ||
+      activation.seatingCapacity <= 0
+    ) {
+      issues.push(createCurbActivationIssue(activation, 'invalid-protection', `Curb activation ${activation.id} must expose barriers, reflectors, and usable seating capacity.`));
+    }
+
+    if (
+      activation.seasonality.activeFromDay < 1 ||
+      activation.seasonality.activeToDay < activation.seasonality.activeFromDay ||
+      activation.seasonality.removalDay < activation.seasonality.activeToDay ||
+      activation.seasonality.removableWithinHours <= 0
+    ) {
+      issues.push(createCurbActivationIssue(activation, 'invalid-seasonality', `Curb activation ${activation.id} must expose a coherent active season and removal window.`));
+    }
+
+    if (!binding || binding.objectKind !== 'curb-activation') {
+      issues.push(createCurbActivationIssue(activation, 'invalid-binding', `Curb activation ${activation.id} must reference a curb-activation render binding.`));
+    }
+  }
+}
+
+function createCurbActivationIssue(
+  activation: GeneratedCityForValidation['curbActivations'][number],
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `curb-activation-${suffix}-${activation.id}`,
+    severity: 'error',
+    category: suffix === 'invalid-binding' ? 'asset' : suffix === 'invalid-geometry' ? 'geometry' : 'graph',
+    objectId: activation.id,
+    affectedBoundary: activation.boundary,
     message
   };
 }

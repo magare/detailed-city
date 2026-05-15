@@ -47,6 +47,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     ),
     crossings: city.crossings.map((crossing) => withProceduralMetadata(crossing, 'mobility-crossings')),
     curbZones: city.curbZones.map((curbZone) => withProceduralMetadata(curbZone, 'mobility-curb-zones')),
+    curbActivations: city.curbActivations.map((activation) =>
+      withProceduralMetadata(activation, 'public-realm-curb-activations')
+    ),
     trafficCalmingDevices: city.trafficCalmingDevices.map((device) =>
       withProceduralMetadata(device, 'mobility-traffic-calming')
     ),

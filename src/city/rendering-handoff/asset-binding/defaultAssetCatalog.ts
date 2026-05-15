@@ -15,6 +15,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:nature:park-shade:primitive', 'nature', 'Park Shade Primitive', 'park-shade', 7, 'lod3'),
   createProceduralAsset('asset:nature:green-stormwater:primitive', 'nature', 'Green Stormwater Primitive', 'green-stormwater', 8.8, 'lod3'),
   createProceduralAsset('asset:street-prop:plaza-zone:primitive', 'street-prop', 'Plaza Zone Primitive', 'plaza-zone', 22, 'lod2'),
+  createProceduralAsset('asset:street-prop:curb-activation:primitive', 'street-prop', 'Curb Activation Primitive', 'plaza', 12, 'lod3'),
   createProceduralAsset('asset:building:massing:primitive', 'building', 'Building Massing Primitive', 'building', 36, 'lod1'),
   createProceduralAsset('asset:building:roof-detail:primitive', 'building', 'Roof Detail Primitive', 'roof', 10, 'lod2'),
   createProceduralAsset('asset:nature:tree-trunk:primitive', 'nature', 'Tree Trunk Primitive', 'tree-trunk', 7, 'lod2'),
@@ -116,6 +117,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'plaza',
     fallbackMaterial: 'plazaHardscape',
     fallbackGeometry: 'plaza-zone-box'
+  },
+  {
+    id: 'binding:curb-activation:platform',
+    objectKind: 'curb-activation',
+    semanticTag: 'curb-activation-platform',
+    assetId: 'asset:street-prop:curb-activation:primitive',
+    materialZone: 'plaza',
+    fallbackMaterial: 'streetFurnitureWood',
+    fallbackGeometry: 'curb-activation-platform'
   },
   {
     id: 'binding:building:massing',

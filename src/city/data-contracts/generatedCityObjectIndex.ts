@@ -34,6 +34,7 @@ type GeneratedCityObjectSource = Pick<
   | 'developmentPhases'
   | 'constraints'
   | 'crossings'
+  | 'curbActivations'
   | 'curbZones'
   | 'districts'
   | 'freightLoadingDocks'
@@ -96,6 +97,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.intersections,
     ...city.crossings,
     ...city.curbZones,
+    ...city.curbActivations,
     ...city.trafficCalmingDevices,
     ...city.accessControls,
     ...city.transitStops,

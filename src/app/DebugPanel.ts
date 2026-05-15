@@ -179,6 +179,10 @@ export class DebugPanel {
         `${diagnostics.permitsInspections.total} records, ${diagnostics.permitsInspections.developmentPermits} development, ${diagnostics.permitsInspections.temporaryClosurePermits} closures`
       ),
       createMetric(
+        'Curb Activation',
+        `${diagnostics.curbActivations.total} active, ${diagnostics.curbActivations.parklets} parklets, ${diagnostics.curbActivations.totalSeats} seats`
+      ),
+      createMetric(
         'Access Control',
         `${diagnostics.accessControls.total} controls, ${diagnostics.accessControls.navigationControlledEdges} edges, ${diagnostics.accessControls.privateAccessControls} private`
       ),

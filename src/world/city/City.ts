@@ -4,6 +4,7 @@ import { ActiveFrontageMeshBuilder } from '../../city/rendering-handoff/mesh-bui
 import { BuildingFacadeMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingFacadeMeshBuilder';
 import { BuildingMassMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingMassMeshBuilder';
 import { BuildingRoofMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingRoofMeshBuilder';
+import { CurbActivationMeshBuilder } from '../../city/rendering-handoff/mesh-builders/CurbActivationMeshBuilder';
 import { GreenStormwaterMeshBuilder } from '../../city/rendering-handoff/mesh-builders/GreenStormwaterMeshBuilder';
 import { ParkFeatureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkFeatureMeshBuilder';
 import { ParkSurfaceMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkSurfaceMeshBuilder';
@@ -105,6 +106,7 @@ export class City implements Updatable {
     this.addParks(generated);
     this.addParkFeatures(generated);
     this.addPlazaZones(generated);
+    this.addCurbActivations(generated);
     this.addWaterfrontEdges(generated);
     this.addWaterfrontOpenSpaces(generated);
     this.addTreePlantings(generated);
@@ -156,6 +158,15 @@ export class City implements Updatable {
       this.materials,
       this.pickingCatalog.metadataByObjectId
     ).build(generated.plazaZones);
+
+    this.layerGroups['public-realm'].add(group);
+  }
+
+  private addCurbActivations(generated: GeneratedCity): void {
+    const group = new CurbActivationMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(generated.curbActivations);
 
     this.layerGroups['public-realm'].add(group);
   }

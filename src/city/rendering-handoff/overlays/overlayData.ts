@@ -32,6 +32,7 @@ export type CityOverlayId =
   | 'asset-inventory'
   | 'maintenance-operations'
   | 'permits-inspections'
+  | 'curb-activations'
   | 'civic-anchors'
   | 'community-anchors'
   | 'culture-anchors'
@@ -110,6 +111,7 @@ export function createCityOverlayDatasets(
     createDataset('asset-inventory', 'Asset Inventory', 'domain-data', createAssetInventoryFeatures(city)),
     createDataset('maintenance-operations', 'Maintenance Operations', 'domain-data', createMaintenanceOperationFeatures(city)),
     createDataset('permits-inspections', 'Permits And Inspections', 'domain-data', createPermitInspectionFeatures(city)),
+    createDataset('curb-activations', 'Curb Activations', 'domain-data', createCurbActivationFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
@@ -1145,6 +1147,35 @@ function createPermitInspectionFeatures(city: GeneratedCity): CityOverlayFeature
       }
     };
   });
+}
+
+function createCurbActivationFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.curbActivations.map((activation) => ({
+    id: `overlay:curb-activations:${activation.id}`,
+    overlayId: 'curb-activations',
+    objectId: activation.id,
+    objectKind: activation.kind,
+    ownerDomain: activation.ownerDomain,
+    label: `${activation.activationKind}:${activation.status}`,
+    geometry: { type: 'polygon', points: activation.boundary },
+    metadata: {
+      activationKind: activation.activationKind,
+      status: activation.status,
+      curbZoneId: activation.curbZoneId,
+      permitInspectionRecordId: activation.permitInspectionRecordId,
+      roadId: activation.roadId,
+      sidewalkId: activation.sidewalkId,
+      seatingCapacity: activation.seatingCapacity,
+      barrierKind: activation.protection.barrierKind,
+      barrierCount: activation.protection.barrierCount,
+      accessiblePathMeters: activation.clearances.accessiblePathMeters,
+      emergencyAccess: activation.clearances.emergencyAccess,
+      transitStopClearance: activation.clearances.transitStopClearance,
+      drainageInletClearance: activation.clearances.drainageInletClearance,
+      season: activation.seasonality.season,
+      removalDay: activation.seasonality.removalDay
+    }
+  }));
 }
 
 function createCyclingNetworkFeatures(city: GeneratedCity): CityOverlayFeature[] {

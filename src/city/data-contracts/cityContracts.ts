@@ -19,6 +19,7 @@ export type CityObjectKind =
   | 'community-anchor'
   | 'constraint'
   | 'crossing'
+  | 'curb-activation'
   | 'curb-zone'
   | 'culture-anchor'
   | 'development-phase'
@@ -733,6 +734,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod3',
       allowedTiers: ['lod3'],
       description: 'Curb allocation is human-scale street detail.'
+    },
+    {
+      objectKind: 'curb-activation',
+      scope: 'public-realm-prop',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod3', 'lod4'],
+      description: 'Curb activations expose parklets, outdoor dining, temporary decks, interim plazas, barriers, permits, and seasonal removal metadata.'
     },
     {
       objectKind: 'district',
@@ -3280,6 +3288,47 @@ export interface CurbZoneContract extends CityObjectBase<'curb-zone'> {
   readonly center: Point2D;
   readonly crossingClearanceMeters: number;
   readonly management: CurbManagementPolicy;
+}
+
+export type CurbActivationKind = 'parklet' | 'outdoor-dining' | 'temporary-seating-deck' | 'interim-plaza';
+export type CurbActivationStatus = 'active' | 'seasonal' | 'pending-removal';
+export type CurbActivationSeason = 'spring' | 'summer' | 'autumn' | 'winter' | 'year-round';
+export type CurbActivationBarrierKind = 'planter-buffer' | 'flex-post' | 'rail-buffer' | 'wheel-stop';
+
+export interface CurbActivationContract extends CityObjectBase<'curb-activation'> {
+  readonly activationKind: CurbActivationKind;
+  readonly status: CurbActivationStatus;
+  readonly curbZoneId: CityId;
+  readonly permitInspectionRecordId: CityId;
+  readonly roadId: CityId;
+  readonly sidewalkId: CityId;
+  readonly side: CurbSide;
+  readonly startMeters: number;
+  readonly endMeters: number;
+  readonly lengthMeters: number;
+  readonly widthMeters: number;
+  readonly center: Point2D;
+  readonly boundary: Polygon2D;
+  readonly seatingCapacity: number;
+  readonly protection: {
+    readonly barrierKind: CurbActivationBarrierKind;
+    readonly barrierCount: number;
+    readonly reflectiveMarkers: boolean;
+  };
+  readonly clearances: {
+    readonly accessiblePathMeters: number;
+    readonly emergencyAccess: boolean;
+    readonly transitStopClearance: boolean;
+    readonly drainageInletClearance: boolean;
+  };
+  readonly seasonality: {
+    readonly season: CurbActivationSeason;
+    readonly activeFromDay: number;
+    readonly activeToDay: number;
+    readonly removalDay: number;
+    readonly removableWithinHours: number;
+  };
+  readonly assetBindingId: CityId;
 }
 
 

@@ -75,6 +75,7 @@ type PickableObjectSource = Pick<
   | 'civicAnchors'
   | 'communityAnchors'
   | 'cultureAnchors'
+  | 'curbActivations'
   | 'governmentAnchors'
   | 'gazetteerEntries'
   | 'namedPlaces'
@@ -114,6 +115,7 @@ export function createCityPickingMetadataCatalog(
     ...city.parks,
     ...city.parkFeatures,
     ...city.plazaZones,
+    ...city.curbActivations,
     ...city.waterways,
     ...city.waterfrontEdges,
     ...city.waterfrontOpenSpaces,

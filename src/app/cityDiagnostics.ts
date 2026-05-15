@@ -22,6 +22,8 @@ import type {
   CityObjectIndex,
   CommunityAnchorKind,
   CultureAnchorKind,
+  CurbActivationKind,
+  CurbActivationStatus,
   GovernmentAnchorKind,
   GreenStormwaterFeatureKind,
   MaintenanceOperationKind,
@@ -91,6 +93,7 @@ export interface CityDiagnostics {
   readonly assetInventory: AssetInventoryDiagnostics;
   readonly maintenanceOperations: MaintenanceOperationDiagnostics;
   readonly permitsInspections: PermitInspectionDiagnostics;
+  readonly curbActivations: CurbActivationDiagnostics;
   readonly accessControls: AccessControlDiagnostics;
   readonly publicLighting: PublicLightingDiagnostics;
   readonly signageWayfinding: SignageWayfindingDiagnostics;
@@ -216,6 +219,11 @@ export interface CityDiagnostics {
     readonly permitInspections: number;
     readonly complianceReviews: number;
     readonly permitComplianceOpenIssues: number;
+    readonly curbActivations: number;
+    readonly parklets: number;
+    readonly outdoorDiningActivations: number;
+    readonly interimPlazaActivations: number;
+    readonly curbActivationSeats: number;
     readonly accessControls: number;
     readonly accessControlGates: number;
     readonly accessControlCheckpoints: number;
@@ -635,6 +643,21 @@ export interface PermitInspectionDiagnostics {
   readonly openComplianceIssues: number;
   readonly closureRoads: number;
   readonly relatedObjects: number;
+}
+
+export interface CurbActivationDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<CurbActivationKind, number>>;
+  readonly byStatus: Readonly<Record<CurbActivationStatus, number>>;
+  readonly parklets: number;
+  readonly outdoorDining: number;
+  readonly temporarySeatingDecks: number;
+  readonly interimPlazas: number;
+  readonly seasonalActivations: number;
+  readonly totalSeats: number;
+  readonly barrierCount: number;
+  readonly permittedActivations: number;
+  readonly removableWithin24Hours: number;
 }
 
 export interface AccessControlDiagnostics {
@@ -1283,6 +1306,7 @@ export function createCityDiagnostics(
   const assetInventory = createAssetInventoryDiagnostics(city);
   const maintenanceOperations = createMaintenanceOperationDiagnostics(city);
   const permitsInspections = createPermitInspectionDiagnostics(city);
+  const curbActivations = createCurbActivationDiagnostics(city);
   const accessControls = createAccessControlDiagnostics(city);
   const publicLighting = createPublicLightingDiagnostics(city);
   const signageWayfinding = createSignageWayfindingDiagnostics(city);
@@ -1355,6 +1379,7 @@ export function createCityDiagnostics(
     assetInventory,
     maintenanceOperations,
     permitsInspections,
+    curbActivations,
     accessControls,
     publicLighting,
     signageWayfinding,
@@ -1471,6 +1496,11 @@ export function createCityDiagnostics(
       permitInspections: permitsInspections.inspections,
       complianceReviews: permitsInspections.complianceReviews,
       permitComplianceOpenIssues: permitsInspections.openComplianceIssues,
+      curbActivations: curbActivations.total,
+      parklets: curbActivations.parklets,
+      outdoorDiningActivations: curbActivations.outdoorDining,
+      interimPlazaActivations: curbActivations.interimPlazas,
+      curbActivationSeats: curbActivations.totalSeats,
       accessControls: accessControls.total,
       accessControlGates: accessControls.gates,
       accessControlCheckpoints: accessControls.checkpoints,
@@ -2152,6 +2182,48 @@ function createPermitInspectionDiagnostics(city: GeneratedCity): PermitInspectio
     openComplianceIssues,
     closureRoads: closureRoads.size,
     relatedObjects: relatedObjects.size
+  };
+}
+
+function createCurbActivationDiagnostics(city: GeneratedCity): CurbActivationDiagnostics {
+  const byKind = {
+    parklet: 0,
+    'outdoor-dining': 0,
+    'temporary-seating-deck': 0,
+    'interim-plaza': 0
+  } satisfies Record<CurbActivationKind, number>;
+  const byStatus = {
+    active: 0,
+    seasonal: 0,
+    'pending-removal': 0
+  } satisfies Record<CurbActivationStatus, number>;
+  let totalSeats = 0;
+  let barrierCount = 0;
+  let removableWithin24Hours = 0;
+
+  for (const activation of city.curbActivations) {
+    byKind[activation.activationKind] += 1;
+    byStatus[activation.status] += 1;
+    totalSeats += activation.seatingCapacity;
+    barrierCount += activation.protection.barrierCount;
+    if (activation.seasonality.removableWithinHours <= 24) {
+      removableWithin24Hours += 1;
+    }
+  }
+
+  return {
+    total: city.curbActivations.length,
+    byKind,
+    byStatus,
+    parklets: byKind.parklet,
+    outdoorDining: byKind['outdoor-dining'],
+    temporarySeatingDecks: byKind['temporary-seating-deck'],
+    interimPlazas: byKind['interim-plaza'],
+    seasonalActivations: byStatus.seasonal,
+    totalSeats,
+    barrierCount,
+    permittedActivations: city.curbActivations.filter((activation) => activation.permitInspectionRecordId).length,
+    removableWithin24Hours
   };
 }
 

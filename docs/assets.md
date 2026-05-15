@@ -31,6 +31,7 @@ src/assets/
 - Active frontage storefront fallbacks include glass, awning, sign, entrance-door, and night-window primitives until facade atlases or building models land.
 - Render bindings must target registered object kinds and carry semantic tags, material zones, fallback material, fallback geometry, and existing asset IDs when bound to an asset.
 - Public-realm green stormwater objects use procedural fallback geometry and the `green-stormwater` material family until external landscape assets are introduced.
+- Public-realm curb activations use procedural platform/barrier fallbacks and existing plaza, park seating, bench, awning, railing, and wood material zones until external parklet and outdoor dining kits are introduced.
 - Operations asset inventory can bind utility nodes and utility edges to procedural utility fallback assets while richer network equipment models are pending.
 - Bind assets through semantic city data and rendering-handoff rules; do not scatter raw asset paths in scene builders.
 - glTF/GLB asset-binding exports use the same asset catalog and render binding contracts, so exported asset manifests remain separate from Three.js runtime objects.

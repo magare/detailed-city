@@ -48,6 +48,7 @@ const STREET_FURNITURE_TYPE = String.raw`(?:bench|bin|bike-rack|bollard|bus-shel
 const TRAFFIC_CALMING_KIND = String.raw`(?:curb-extension|bus-bulb|chicane|pinchpoint|speed-hump|speed-table|speed-cushion|neighborhood-gateway)`;
 const TRANSIT_MODE = String.raw`(?:bus)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
+const CURB_ACTIVATION_KIND = String.raw`(?:parklet|outdoor-dining|temporary-seating-deck|interim-plaza)`;
 const COMMUNITY_ANCHOR_KIND = String.raw`(?:cemetery|community-hall|food-bank|processional-space|recreation-center|shelter|social-service|worship-place)`;
 const CULTURE_ANCHOR_KIND = String.raw`(?:event-space|gallery|heritage-site|museum|theater|venue)`;
 const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
@@ -169,6 +170,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ['curb-zone-<road-id>-<side>-intersection-<index>-no-stopping', 'curb-zone-<road-id>-<side>-segment-<index>-<use>'],
     [exact(String.raw`curb-zone-${ROAD_ID}-${SIDEWALK_SIDE}-(?:intersection-\d+-no-stopping|segment-\d+-${CURB_USE})`)],
     required(['sidewalk'])
+  ),
+  entry(
+    'curb-activation',
+    ['curb-activation-<activation-kind>-<curb-zone-id>'],
+    [exact(String.raw`curb-activation-${CURB_ACTIVATION_KIND}-curb-zone-${ROAD_ID}-${SIDEWALK_SIDE}-segment-\d+-${CURB_USE}`)],
+    required(['curb-zone'])
   ),
   entry(
     'culture-anchor',
