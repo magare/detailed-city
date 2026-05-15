@@ -107,6 +107,7 @@ type GeneratedCityForValidation = Pick<
   | 'navigationGraphEdges'
   | 'navigationGraphNodes'
   | 'navigationRoutes'
+  | 'maintenanceOperations'
   | 'lodPolicy'
   | 'objectIndex'
   | 'parcels'
@@ -141,6 +142,7 @@ type ValidationNamedPlace = GeneratedCityForValidation['namedPlaces'][number];
 type ValidationGazetteerEntry = GeneratedCityForValidation['gazetteerEntries'][number];
 type ValidationCadastreRecord = GeneratedCityForValidation['cadastreRecords'][number];
 type ValidationAssetInventoryRecord = GeneratedCityForValidation['assetInventoryRecords'][number];
+type ValidationMaintenanceOperation = GeneratedCityForValidation['maintenanceOperations'][number];
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
@@ -974,6 +976,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   const accessControlsById = new Map(city.accessControls.map((control) => [control.id, control]));
   const assetBindingsById = new Map(city.assetBindings.map((binding) => [binding.id, binding]));
   validateAssetInventoryRecords(city, issues, assetBindingsById);
+  validateMaintenanceOperations(city, issues);
   const transitRoutesById = new Map(city.transitRoutes.map((route) => [route.id, route]));
   const districtsById = new Map(city.districts.map((district) => [district.id, district]));
   const activeFrontagesById = new Map(city.activeFrontages.map((frontage) => [frontage.id, frontage]));
@@ -3664,6 +3667,123 @@ function createAssetInventoryIssue(
     severity: 'error',
     category: 'asset',
     objectId: record.id,
+    message
+  };
+}
+
+function validateMaintenanceOperations(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[]
+): void {
+  const assetRecordsById = new Map(city.assetInventoryRecords.map((record) => [record.id, record]));
+  const operationRoutesById = new Map(
+    city.navigationRoutes.filter((route) => route.requestClass === 'operation').map((route) => [route.id, route])
+  );
+  const navigationEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
+  const roadsById = new Map(city.roads.map((road) => [road.id, road]));
+  const operationsByAssetRecordId = new Map<CityId, ValidationMaintenanceOperation[]>();
+
+  for (const operation of city.maintenanceOperations) {
+    operationsByAssetRecordId.set(operation.assetInventoryRecordId, [
+      ...(operationsByAssetRecordId.get(operation.assetInventoryRecordId) ?? []),
+      operation
+    ]);
+  }
+
+  for (const record of city.assetInventoryRecords) {
+    if (record.operationalStatus === 'maintenance-watch') {
+      const hasQueueOperation = (operationsByAssetRecordId.get(record.id) ?? []).some((operation) =>
+        operation.operationKind === 'repair' || operation.operationKind === 'replacement'
+      );
+      if (!hasQueueOperation) {
+        issues.push({
+          id: `missing-maintenance-operation-${record.id}`,
+          severity: 'error',
+          category: 'operations',
+          objectId: record.id,
+          message: `Maintenance-watch asset ${record.id} must have a repair or replacement operation.`
+        });
+      }
+    }
+  }
+
+  for (const operation of city.maintenanceOperations) {
+    const record = assetRecordsById.get(operation.assetInventoryRecordId);
+    const route = operationRoutesById.get(operation.navigationRouteId);
+
+    if (!record) {
+      issues.push(createMaintenanceOperationIssue(operation, 'missing-asset-record', `Maintenance operation ${operation.id} references missing asset inventory record ${operation.assetInventoryRecordId}.`));
+      continue;
+    }
+
+    if (
+      operation.parentId !== record.id ||
+      operation.assetObjectId !== record.assetObjectId ||
+      operation.assetObjectKind !== record.assetObjectKind ||
+      operation.responsibleDepartmentId !== record.responsibleDepartmentId
+    ) {
+      issues.push(createMaintenanceOperationIssue(operation, 'asset-mismatch', `Maintenance operation ${operation.id} must match its asset inventory target and department.`));
+    }
+
+    if (!route) {
+      issues.push(createMaintenanceOperationIssue(operation, 'missing-operation-route', `Maintenance operation ${operation.id} must reference an operation navigation route.`));
+    }
+
+    if (
+      operation.scheduledWindow.startDay < 0 ||
+      operation.scheduledWindow.endDay < operation.scheduledWindow.startDay ||
+      operation.repairQueue.sequence <= 0 ||
+      operation.repairQueue.estimatedCrewHours <= 0 ||
+      operation.conditionUpdate.fromScore < 0 ||
+      operation.conditionUpdate.fromScore > 100 ||
+      operation.conditionUpdate.projectedScore < operation.conditionUpdate.fromScore ||
+      operation.conditionUpdate.projectedScore > 100 ||
+      operation.replacement.estimatedCostUsd <= 0
+    ) {
+      issues.push(createMaintenanceOperationIssue(operation, 'invalid-schedule-queue-condition', `Maintenance operation ${operation.id} must expose coherent schedule, queue, cost, and condition update values.`));
+    }
+
+    for (const accessObjectId of operation.serviceAccessObjectIds) {
+      if (!city.objectIndex.objectsById[accessObjectId]) {
+        issues.push(createMaintenanceOperationIssue(operation, `missing-access-${accessObjectId}`, `Maintenance operation ${operation.id} references missing service access object ${accessObjectId}.`));
+      }
+    }
+
+    if (operation.createsTemporaryClosure && operation.closureRoadIds.length === 0) {
+      issues.push(createMaintenanceOperationIssue(operation, 'missing-closure-road', `Temporary maintenance operation ${operation.id} must close at least one road.`));
+    }
+
+    if (!operation.createsTemporaryClosure && (operation.closureRoadIds.length > 0 || operation.temporaryRestrictionIds.length > 0)) {
+      issues.push(createMaintenanceOperationIssue(operation, 'unexpected-closure-data', `Non-closure maintenance operation ${operation.id} must not carry road closures.`));
+    }
+
+    for (const roadId of operation.closureRoadIds) {
+      if (!roadsById.has(roadId)) {
+        issues.push(createMaintenanceOperationIssue(operation, `missing-closure-road-${roadId}`, `Maintenance operation ${operation.id} closes missing road ${roadId}.`));
+      }
+    }
+
+    for (const edgeId of operation.closureNavigationEdgeIds) {
+      const edge = navigationEdgesById.get(edgeId);
+      if (!edge) {
+        issues.push(createMaintenanceOperationIssue(operation, `missing-closure-edge-${edgeId}`, `Maintenance operation ${operation.id} references missing closure navigation edge ${edgeId}.`));
+      } else if (!edge.roadIds.some((roadId) => operation.closureRoadIds.includes(roadId))) {
+        issues.push(createMaintenanceOperationIssue(operation, `closure-edge-road-mismatch-${edgeId}`, `Maintenance operation ${operation.id} closure edge ${edgeId} must reference a closed road.`));
+      }
+    }
+  }
+}
+
+function createMaintenanceOperationIssue(
+  operation: ValidationMaintenanceOperation,
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `maintenance-operation-${suffix}-${operation.id}`,
+    severity: 'error',
+    category: 'operations',
+    objectId: operation.id,
     message
   };
 }

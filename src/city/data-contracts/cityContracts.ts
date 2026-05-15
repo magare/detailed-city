@@ -40,6 +40,7 @@ export type CityObjectKind =
   | 'intersection'
   | 'lane'
   | 'lane-marking'
+  | 'maintenance-operation'
   | 'navigation-graph-edge'
   | 'navigation-graph-node'
   | 'navigation-route'
@@ -177,6 +178,45 @@ export interface AssetInventoryRecordContract extends CityObjectBase<'asset-inve
     readonly generationStep: string;
   };
   readonly inspectionAccessObjectIds: readonly CityId[];
+}
+
+export type MaintenanceOperationKind = 'inspection' | 'repair' | 'replacement' | 'street-work' | 'temporary-closure';
+export type MaintenanceOperationStatus = 'scheduled' | 'queued' | 'in-progress' | 'completed';
+export type MaintenancePriority = 'low' | 'normal' | 'urgent';
+
+export interface MaintenanceOperationContract extends CityObjectBase<'maintenance-operation'> {
+  readonly assetInventoryRecordId: CityId;
+  readonly assetObjectId: CityId;
+  readonly assetObjectKind: CityObjectKind;
+  readonly operationKind: MaintenanceOperationKind;
+  readonly status: MaintenanceOperationStatus;
+  readonly priority: MaintenancePriority;
+  readonly responsibleDepartmentId: CityId;
+  readonly scheduledWindow: {
+    readonly startDay: number;
+    readonly endDay: number;
+    readonly recurrenceDays?: number;
+  };
+  readonly repairQueue: {
+    readonly queueId: CityId;
+    readonly sequence: number;
+    readonly estimatedCrewHours: number;
+  };
+  readonly conditionUpdate: {
+    readonly fromScore: number;
+    readonly projectedScore: number;
+    readonly projectedRating: AssetConditionRating;
+  };
+  readonly replacement: {
+    readonly dueYear: number;
+    readonly estimatedCostUsd: number;
+  };
+  readonly navigationRouteId: CityId;
+  readonly serviceAccessObjectIds: readonly CityId[];
+  readonly closureRoadIds: readonly CityId[];
+  readonly closureNavigationEdgeIds: readonly CityId[];
+  readonly temporaryRestrictionIds: readonly CityId[];
+  readonly createsTemporaryClosure: boolean;
 }
 
 export type DevelopmentPhaseKind = 'baseline' | 'future-expansion' | 'temporary-condition';
@@ -430,6 +470,7 @@ export type LodPolicyScope =
   | 'interior'
   | 'land'
   | 'network'
+  | 'operations'
   | 'overlay'
   | 'public-realm-prop'
   | 'terrain'
@@ -523,6 +564,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1'],
       description: 'Operations-owned inventory records expose ownership, lifecycle, warranty, condition, replacement cost, status, and source lookup for renderable civic, public-realm, and utility assets.'
+    },
+    {
+      objectKind: 'maintenance-operation',
+      scope: 'operations',
+      defaultTier: 'lod1',
+      allowedTiers: ['lod1'],
+      description: 'Operations-owned maintenance work orders schedule inspections, repairs, replacements, street works, and temporary closures for inventory assets.'
     },
     {
       objectKind: 'block',
@@ -3561,6 +3609,7 @@ export interface ValidationIssue {
     | 'lod'
     | 'metadata'
     | 'metrics'
+    | 'operations'
     | 'performance'
     | 'resilience'
     | 'simulation'

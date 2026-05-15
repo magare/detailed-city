@@ -201,13 +201,13 @@ export class App {
     this.viewport.resize();
     this.loop.start();
     this.debugPanel.start();
-    document.body.dataset.sceneReady = 'true';
     document.body.dataset.sceneValidationStatus = this.diagnostics.validation.passed ? 'passed' : 'failed';
     document.body.dataset.sceneValidationIssues = String(this.diagnostics.validation.issues.length);
     for (const layer of this.city.getSceneLayerStates()) {
       setLayerVisibilityDataset(layer.id, layer.visible);
       setLayerOrderDataset(layer.id, layer.renderOrder);
     }
+    document.body.dataset.sceneReady = 'true';
   }
 
   dispose(): void {

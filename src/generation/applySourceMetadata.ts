@@ -75,6 +75,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
       withProceduralMetadata(edge, 'mobility-navigation-graphs')
     ),
     navigationRoutes: city.navigationRoutes.map((route) => withProceduralMetadata(route, 'mobility-navigation-routes')),
+    maintenanceOperations: city.maintenanceOperations.map((operation) =>
+      withProceduralMetadata(operation, 'operations-maintenance')
+    ),
     freightLoadingDocks: city.freightLoadingDocks.map((dock) =>
       withProceduralMetadata(dock, 'mobility-freight-loading-docks')
     ),

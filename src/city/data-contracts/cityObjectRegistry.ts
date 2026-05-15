@@ -71,6 +71,7 @@ const GAZETTEER_ENTRY_KIND = String.raw`(?:address|anchor|place|street)`;
 const ACCESS_CONTROL_KIND = String.raw`(?:bollard-line|checkpoint|fence|gate|guardrail|turnstile|wall)`;
 const GREEN_STORMWATER_KIND = String.raw`(?:bioswale|curb-cut|flow-through-planter|permeable-pavement|pervious-strip|rain-garden|tree-trench)`;
 const ASSET_INVENTORY_TARGET_KIND = String.raw`(?:civic-anchor|community-anchor|culture-anchor|government-anchor|green-stormwater-feature|park-feature|plaza-zone|street-furniture|street-light|utility-edge|utility-node|waterfront-open-space)`;
+const MAINTENANCE_OPERATION_KIND = String.raw`(?:inspection|repair|replacement|street-work|temporary-closure)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -219,6 +220,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
       exact(String.raw`${CROSSING_ID}-(?:zebra-stripe-\d+|stop-bar-\d+|tactile-pad-\d+|refuge-island)`)
     ],
     required(['road-segment', 'lane', 'crossing'])
+  ),
+  entry(
+    'maintenance-operation',
+    ['maintenance-operation-<operation-kind>-<asset-inventory-record-id>'],
+    [exact(String.raw`maintenance-operation-${MAINTENANCE_OPERATION_KIND}-asset-inventory-${ASSET_INVENTORY_TARGET_KIND}-${NAMED_ID}(?:-${NAMED_ID})*`)],
+    required(['asset-inventory-record'])
   ),
   entry(
     'navigation-graph-edge',

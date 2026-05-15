@@ -30,6 +30,7 @@ export type CityOverlayId =
   | 'navigation-graphs'
   | 'freight-logistics'
   | 'asset-inventory'
+  | 'maintenance-operations'
   | 'civic-anchors'
   | 'community-anchors'
   | 'culture-anchors'
@@ -106,6 +107,7 @@ export function createCityOverlayDatasets(
     createDataset('navigation-graphs', 'Navigation Graphs', 'domain-data', createNavigationGraphFeatures(city)),
     createDataset('freight-logistics', 'Freight Logistics', 'domain-data', createFreightLogisticsFeatures(city)),
     createDataset('asset-inventory', 'Asset Inventory', 'domain-data', createAssetInventoryFeatures(city)),
+    createDataset('maintenance-operations', 'Maintenance Operations', 'domain-data', createMaintenanceOperationFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
@@ -1068,6 +1070,40 @@ function createAssetInventoryFeatures(city: GeneratedCity): CityOverlayFeature[]
         operationalStatus: record.operationalStatus,
         criticality: record.criticality,
         replacementCostUsd: record.replacementCost.amountUsd
+      }
+    };
+  });
+}
+
+function createMaintenanceOperationFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.maintenanceOperations.map((operation) => {
+    const target = city.objectIndex.objectsById[operation.assetObjectId];
+
+    return {
+      id: `overlay:maintenance-operations:${operation.id}`,
+      overlayId: 'maintenance-operations',
+      objectId: operation.id,
+      objectKind: operation.kind,
+      ownerDomain: operation.ownerDomain,
+      label: `${operation.operationKind}:${operation.assetObjectId}`,
+      geometry: target ? getObjectGeometry(target) : { type: 'none' },
+      metadata: {
+        assetInventoryRecordId: operation.assetInventoryRecordId,
+        assetObjectId: operation.assetObjectId,
+        assetObjectKind: operation.assetObjectKind,
+        operationKind: operation.operationKind,
+        status: operation.status,
+        priority: operation.priority,
+        responsibleDepartmentId: operation.responsibleDepartmentId,
+        startDay: operation.scheduledWindow.startDay,
+        endDay: operation.scheduledWindow.endDay,
+        crewHours: operation.repairQueue.estimatedCrewHours,
+        fromScore: operation.conditionUpdate.fromScore,
+        projectedScore: operation.conditionUpdate.projectedScore,
+        navigationRouteId: operation.navigationRouteId,
+        closureRoads: operation.closureRoadIds.length,
+        closureEdges: operation.closureNavigationEdgeIds.length,
+        createsTemporaryClosure: operation.createsTemporaryClosure
       }
     };
   });

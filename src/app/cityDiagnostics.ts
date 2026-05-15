@@ -24,6 +24,9 @@ import type {
   CultureAnchorKind,
   GovernmentAnchorKind,
   GreenStormwaterFeatureKind,
+  MaintenanceOperationKind,
+  MaintenanceOperationStatus,
+  MaintenancePriority,
   ServiceAccessCorridorKind,
   SignPanelKind,
   SourceType,
@@ -84,6 +87,7 @@ export interface CityDiagnostics {
   readonly thermalEnergy: ThermalEnergyDiagnostics;
   readonly serviceAccess: ServiceAccessDiagnostics;
   readonly assetInventory: AssetInventoryDiagnostics;
+  readonly maintenanceOperations: MaintenanceOperationDiagnostics;
   readonly accessControls: AccessControlDiagnostics;
   readonly publicLighting: PublicLightingDiagnostics;
   readonly signageWayfinding: SignageWayfindingDiagnostics;
@@ -194,6 +198,13 @@ export interface CityDiagnostics {
     readonly assetInventoryUtilityAssets: number;
     readonly assetInventoryMaintenanceWatch: number;
     readonly assetInventoryReplacementCostUsd: number;
+    readonly maintenanceOperations: number;
+    readonly maintenanceInspections: number;
+    readonly maintenanceRepairs: number;
+    readonly maintenanceStreetWorks: number;
+    readonly maintenanceTemporaryClosures: number;
+    readonly maintenanceConditionUpdates: number;
+    readonly maintenanceClosureRoads: number;
     readonly accessControls: number;
     readonly accessControlGates: number;
     readonly accessControlCheckpoints: number;
@@ -579,6 +590,23 @@ export interface AssetInventoryDiagnostics {
   readonly lookupKeys: number;
   readonly recordsWithRenderAssets: number;
   readonly recordsWithInspectionAccess: number;
+}
+
+export interface MaintenanceOperationDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<MaintenanceOperationKind, number>>;
+  readonly byStatus: Readonly<Record<MaintenanceOperationStatus, number>>;
+  readonly byPriority: Readonly<Record<MaintenancePriority, number>>;
+  readonly inspectionCycles: number;
+  readonly repairQueueItems: number;
+  readonly replacementPlans: number;
+  readonly streetWorks: number;
+  readonly temporaryClosures: number;
+  readonly assetsWithConditionUpdates: number;
+  readonly totalCrewHours: number;
+  readonly closureRoads: number;
+  readonly closureNavigationEdges: number;
+  readonly operationRoutes: number;
 }
 
 export interface AccessControlDiagnostics {
@@ -1225,6 +1253,7 @@ export function createCityDiagnostics(
   const thermalEnergy = createThermalEnergyDiagnostics(city);
   const serviceAccess = createServiceAccessDiagnostics(city);
   const assetInventory = createAssetInventoryDiagnostics(city);
+  const maintenanceOperations = createMaintenanceOperationDiagnostics(city);
   const accessControls = createAccessControlDiagnostics(city);
   const publicLighting = createPublicLightingDiagnostics(city);
   const signageWayfinding = createSignageWayfindingDiagnostics(city);
@@ -1295,6 +1324,7 @@ export function createCityDiagnostics(
     thermalEnergy,
     serviceAccess,
     assetInventory,
+    maintenanceOperations,
     accessControls,
     publicLighting,
     signageWayfinding,
@@ -1396,6 +1426,13 @@ export function createCityDiagnostics(
       assetInventoryUtilityAssets: assetInventory.byScope.utility,
       assetInventoryMaintenanceWatch: assetInventory.maintenanceWatchAssets,
       assetInventoryReplacementCostUsd: assetInventory.totalReplacementCostUsd,
+      maintenanceOperations: maintenanceOperations.total,
+      maintenanceInspections: maintenanceOperations.inspectionCycles,
+      maintenanceRepairs: maintenanceOperations.repairQueueItems,
+      maintenanceStreetWorks: maintenanceOperations.streetWorks,
+      maintenanceTemporaryClosures: maintenanceOperations.temporaryClosures,
+      maintenanceConditionUpdates: maintenanceOperations.assetsWithConditionUpdates,
+      maintenanceClosureRoads: maintenanceOperations.closureRoads,
       accessControls: accessControls.total,
       accessControlGates: accessControls.gates,
       accessControlCheckpoints: accessControls.checkpoints,
@@ -1965,6 +2002,66 @@ function createAssetInventoryDiagnostics(city: GeneratedCity): AssetInventoryDia
     lookupKeys: lookupKeys.size,
     recordsWithRenderAssets,
     recordsWithInspectionAccess
+  };
+}
+
+function createMaintenanceOperationDiagnostics(city: GeneratedCity): MaintenanceOperationDiagnostics {
+  const byKind = {
+    inspection: 0,
+    repair: 0,
+    replacement: 0,
+    'street-work': 0,
+    'temporary-closure': 0
+  } satisfies Record<MaintenanceOperationKind, number>;
+  const byStatus = {
+    scheduled: 0,
+    queued: 0,
+    'in-progress': 0,
+    completed: 0
+  } satisfies Record<MaintenanceOperationStatus, number>;
+  const byPriority = {
+    low: 0,
+    normal: 0,
+    urgent: 0
+  } satisfies Record<MaintenancePriority, number>;
+  const assetsWithConditionUpdates = new Set<string>();
+  const closureRoads = new Set<string>();
+  const closureNavigationEdges = new Set<string>();
+  const operationRoutes = new Set<string>();
+  let totalCrewHours = 0;
+
+  for (const operation of city.maintenanceOperations) {
+    byKind[operation.operationKind] += 1;
+    byStatus[operation.status] += 1;
+    byPriority[operation.priority] += 1;
+    totalCrewHours += operation.repairQueue.estimatedCrewHours;
+    operationRoutes.add(operation.navigationRouteId);
+    if (operation.conditionUpdate.projectedScore > operation.conditionUpdate.fromScore) {
+      assetsWithConditionUpdates.add(operation.assetInventoryRecordId);
+    }
+    for (const roadId of operation.closureRoadIds) {
+      closureRoads.add(roadId);
+    }
+    for (const edgeId of operation.closureNavigationEdgeIds) {
+      closureNavigationEdges.add(edgeId);
+    }
+  }
+
+  return {
+    total: city.maintenanceOperations.length,
+    byKind,
+    byStatus,
+    byPriority,
+    inspectionCycles: byKind.inspection,
+    repairQueueItems: byKind.repair,
+    replacementPlans: byKind.replacement,
+    streetWorks: byKind['street-work'],
+    temporaryClosures: byKind['temporary-closure'],
+    assetsWithConditionUpdates: assetsWithConditionUpdates.size,
+    totalCrewHours,
+    closureRoads: closureRoads.size,
+    closureNavigationEdges: closureNavigationEdges.size,
+    operationRoutes: operationRoutes.size
   };
 }
 

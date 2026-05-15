@@ -36,6 +36,7 @@ import { FreightLogisticsGenerator } from './mobility/FreightLogisticsGenerator'
 import { NavigationGraphGenerator } from './mobility/NavigationGraphGenerator';
 import { TransitGenerator } from './mobility/TransitGenerator';
 import { AssetInventoryGenerator } from './operations/AssetInventoryGenerator';
+import { MaintenanceOperationGenerator } from './operations/MaintenanceOperationGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { GreenStormwaterGenerator } from './public-realm/GreenStormwaterGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
@@ -392,6 +393,12 @@ export class CityGenerator {
       greenStormwaterFeatures,
       waterfrontOpenSpaces
     });
+    const maintenanceOperations = new MaintenanceOperationGenerator().create({
+      assetInventoryRecords,
+      navigationRoutes: navigationGraphs.navigationRoutes,
+      navigationGraphEdges: accessControl.navigationGraphEdges,
+      roads: stormwater.roads
+    });
 
     const generatedWithoutMetadata: Omit<GeneratedCity, 'objectIndex' | 'validation'> = {
       schemaVersion: CITY_CONTRACT_SCHEMA_VERSION,
@@ -439,6 +446,7 @@ export class CityGenerator {
       navigationGraphNodes: navigationGraphs.navigationGraphNodes,
       navigationGraphEdges: accessControl.navigationGraphEdges,
       navigationRoutes: navigationGraphs.navigationRoutes,
+      maintenanceOperations,
       freightLoadingDocks: freightLogistics.loadingDocks,
       freightRoutes: freightLogistics.routes,
       serviceAlleys: freightLogistics.serviceAlleys,

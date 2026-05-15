@@ -41,6 +41,7 @@ import type {
   LandUse,
   LaneContract,
   LaneMarkingContract,
+  MaintenanceOperationContract,
   NavigationGraphEdgeContract,
   NavigationGraphNodeContract,
   NavigationRouteContract,
@@ -334,6 +335,7 @@ export interface BikeConflictZone extends BikeConflictZoneContract {}
 export interface NavigationGraphNode extends NavigationGraphNodeContract {}
 export interface NavigationGraphEdge extends NavigationGraphEdgeContract {}
 export interface NavigationRoute extends NavigationRouteContract {}
+export interface MaintenanceOperation extends MaintenanceOperationContract {}
 export interface FreightLoadingDock extends FreightLoadingDockContract {}
 export interface FreightRoute extends FreightRouteContract {}
 export interface ServiceAlley extends ServiceAlleyContract {}
@@ -380,6 +382,7 @@ export type GeneratedCityObject =
   | NavigationGraphNode
   | NavigationGraphEdge
   | NavigationRoute
+  | MaintenanceOperation
   | NamedPlace
   | FreightLoadingDock
   | FreightRoute
@@ -457,6 +460,7 @@ export interface GeneratedCity {
   navigationGraphNodes: NavigationGraphNode[];
   navigationGraphEdges: NavigationGraphEdge[];
   navigationRoutes: NavigationRoute[];
+  maintenanceOperations: MaintenanceOperation[];
   freightLoadingDocks: FreightLoadingDock[];
   freightRoutes: FreightRoute[];
   serviceAlleys: ServiceAlley[];

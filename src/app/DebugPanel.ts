@@ -171,6 +171,10 @@ export class DebugPanel {
         `${diagnostics.assetInventory.totalRecords} records, ${diagnostics.assetInventory.maintenanceWatchAssets} watch, ${diagnostics.assetInventory.uniqueOwnerEntities} owners`
       ),
       createMetric(
+        'Maintenance',
+        `${diagnostics.maintenanceOperations.total} ops, ${diagnostics.maintenanceOperations.repairQueueItems} repairs, ${diagnostics.maintenanceOperations.temporaryClosures} closures`
+      ),
+      createMetric(
         'Access Control',
         `${diagnostics.accessControls.total} controls, ${diagnostics.accessControls.navigationControlledEdges} edges, ${diagnostics.accessControls.privateAccessControls} private`
       ),
