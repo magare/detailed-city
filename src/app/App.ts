@@ -111,6 +111,7 @@ export class App {
     ]);
     this.debugPanel = new DebugPanel(container, {
       seed: cityConfig.seed,
+      updatedAt: new Date(),
       diagnostics: this.diagnostics,
       getPerformanceDiagnostics: () => this.getPerformanceDiagnostics()
     }, { refreshIntervalMs: getDebugPanelRefreshIntervalMs() });

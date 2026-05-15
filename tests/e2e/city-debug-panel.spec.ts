@@ -12,8 +12,17 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
 
   await expect(panel).toBeVisible();
   const panelText = await panel.textContent();
+  const metricLabels = await panel.locator('.city-debug-panel__label').evaluateAll((elements) =>
+    elements.map((element) => element.textContent)
+  );
+  const updatedValue = await panel
+    .locator('.city-debug-panel__metric', { hasText: 'Updated' })
+    .locator('.city-debug-panel__value')
+    .textContent();
 
   expect(panelText).toContain('Debug');
+  expect(metricLabels[0]).toBe('Updated');
+  expect(updatedValue).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(panelText).toContain('Seed');
   expect(panelText).toContain('detailed-city-v1');
   expect(panelText).toContain('Config');

@@ -7,6 +7,7 @@ export interface DebugPanelStartOptions {
 
 export interface DebugPanelSource {
   readonly seed: string;
+  readonly updatedAt: Date;
   readonly diagnostics: CityDiagnostics;
   readonly getPerformanceDiagnostics: () => RuntimePerformanceDiagnostics;
 }
@@ -113,6 +114,7 @@ export class DebugPanel {
     const coordinatePrecision = diagnostics.geospatial.precision.coordinatePrecisionMeters;
 
     this.body.replaceChildren(
+      createMetric('Updated', formatDate(this.source.updatedAt)),
       createMetric('Seed', this.source.seed),
       createMetric(
         'Config',
@@ -374,6 +376,14 @@ function createMetric(label: string, value: string): HTMLElement {
 
 function getStatusLabel(passed: boolean, issueCount: number): string {
   return `${passed ? 'pass' : 'fail'}, ${issueCount} issues`;
+}
+
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 function isDebugPanelHiddenByUrl(): boolean {
