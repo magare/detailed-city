@@ -53,6 +53,7 @@ import type {
   PerformanceBudget,
   Point2D,
   Polygon2D,
+  PublicAmenityContract,
   RenderBinding,
   ResilienceGoalContract,
   RoadSegmentContract,
@@ -168,6 +169,8 @@ export interface CrossingPlan extends CrossingContract {
 export interface CurbZone extends CurbZoneContract {}
 
 export interface CurbActivation extends CurbActivationContract {}
+
+export interface PublicAmenity extends PublicAmenityContract {}
 
 export interface StreetLight extends StreetLightContract {}
 
@@ -373,6 +376,7 @@ export type GeneratedCityObject =
   | CrossingPlan
   | CurbZone
   | CurbActivation
+  | PublicAmenity
   | StreetLight
   | StreetFurniture
   | TrafficCalmingDevice
@@ -453,6 +457,7 @@ export interface GeneratedCity {
   crossings: CrossingPlan[];
   curbZones: CurbZone[];
   curbActivations: CurbActivation[];
+  publicAmenities: PublicAmenity[];
   streetLights: StreetLight[];
   streetFurniture: StreetFurniture[];
   trafficCalmingDevices: TrafficCalmingDevice[];

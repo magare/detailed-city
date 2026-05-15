@@ -26,6 +26,9 @@ export interface CityPickingReferences {
   readonly parkId?: CityId;
   readonly waterwayId?: CityId;
   readonly waterfrontEdgeId?: CityId;
+  readonly waterfrontOpenSpaceId?: CityId;
+  readonly plazaZoneId?: CityId;
+  readonly serviceAccessCorridorId?: CityId;
   readonly sliceId?: CityId;
   readonly curbZoneId?: CityId;
   readonly intersectionId?: CityId;
@@ -82,6 +85,7 @@ type PickableObjectSource = Pick<
   | 'parks'
   | 'parkFeatures'
   | 'plazaZones'
+  | 'publicAmenities'
   | 'roads'
   | 'streetFurniture'
   | 'streetLights'
@@ -116,6 +120,7 @@ export function createCityPickingMetadataCatalog(
     ...city.parkFeatures,
     ...city.plazaZones,
     ...city.curbActivations,
+    ...city.publicAmenities,
     ...city.waterways,
     ...city.waterfrontEdges,
     ...city.waterfrontOpenSpaces,
@@ -225,6 +230,9 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   copyStringReference(record, references, 'roadSegmentId');
   copyStringReference(record, references, 'laneId');
   copyStringReference(record, references, 'parkId');
+  copyStringReference(record, references, 'waterfrontOpenSpaceId');
+  copyStringReference(record, references, 'plazaZoneId');
+  copyStringReference(record, references, 'serviceAccessCorridorId');
   copyStringReference(record, references, 'sliceId');
   copyStringReference(record, references, 'curbZoneId');
   copyStringReference(record, references, 'intersectionId');

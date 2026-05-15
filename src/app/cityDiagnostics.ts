@@ -31,6 +31,7 @@ import type {
   MaintenancePriority,
   PermitInspectionRecordKind,
   PermitInspectionStatus,
+  PublicAmenityKind,
   ServiceAccessCorridorKind,
   SignPanelKind,
   SourceType,
@@ -94,6 +95,7 @@ export interface CityDiagnostics {
   readonly maintenanceOperations: MaintenanceOperationDiagnostics;
   readonly permitsInspections: PermitInspectionDiagnostics;
   readonly curbActivations: CurbActivationDiagnostics;
+  readonly publicAmenities: PublicAmenityDiagnostics;
   readonly accessControls: AccessControlDiagnostics;
   readonly publicLighting: PublicLightingDiagnostics;
   readonly signageWayfinding: SignageWayfindingDiagnostics;
@@ -224,6 +226,18 @@ export interface CityDiagnostics {
     readonly outdoorDiningActivations: number;
     readonly interimPlazaActivations: number;
     readonly curbActivationSeats: number;
+    readonly publicAmenities: number;
+    readonly publicToilets: number;
+    readonly drinkingFountains: number;
+    readonly shadeStructures: number;
+    readonly coolingPoints: number;
+    readonly chargingPoints: number;
+    readonly publicClocks: number;
+    readonly informationKiosks: number;
+    readonly repairStands: number;
+    readonly accessiblePublicAmenities: number;
+    readonly servicedPublicAmenities: number;
+    readonly publicAmenityDailyUsers: number;
     readonly accessControls: number;
     readonly accessControlGates: number;
     readonly accessControlCheckpoints: number;
@@ -658,6 +672,26 @@ export interface CurbActivationDiagnostics {
   readonly barrierCount: number;
   readonly permittedActivations: number;
   readonly removableWithin24Hours: number;
+}
+
+export interface PublicAmenityDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<PublicAmenityKind, number>>;
+  readonly publicToilets: number;
+  readonly drinkingFountains: number;
+  readonly shadeStructures: number;
+  readonly coolingPoints: number;
+  readonly chargingPoints: number;
+  readonly clocks: number;
+  readonly informationKiosks: number;
+  readonly repairStands: number;
+  readonly accessibleAmenities: number;
+  readonly servicedAmenities: number;
+  readonly waterServedAmenities: number;
+  readonly powerServedAmenities: number;
+  readonly drainageServedAmenities: number;
+  readonly totalDailyUsers: number;
+  readonly averageMaintenanceAccessMeters: number;
 }
 
 export interface AccessControlDiagnostics {
@@ -1307,6 +1341,7 @@ export function createCityDiagnostics(
   const maintenanceOperations = createMaintenanceOperationDiagnostics(city);
   const permitsInspections = createPermitInspectionDiagnostics(city);
   const curbActivations = createCurbActivationDiagnostics(city);
+  const publicAmenities = createPublicAmenityDiagnostics(city);
   const accessControls = createAccessControlDiagnostics(city);
   const publicLighting = createPublicLightingDiagnostics(city);
   const signageWayfinding = createSignageWayfindingDiagnostics(city);
@@ -1380,6 +1415,7 @@ export function createCityDiagnostics(
     maintenanceOperations,
     permitsInspections,
     curbActivations,
+    publicAmenities,
     accessControls,
     publicLighting,
     signageWayfinding,
@@ -1501,6 +1537,18 @@ export function createCityDiagnostics(
       outdoorDiningActivations: curbActivations.outdoorDining,
       interimPlazaActivations: curbActivations.interimPlazas,
       curbActivationSeats: curbActivations.totalSeats,
+      publicAmenities: publicAmenities.total,
+      publicToilets: publicAmenities.publicToilets,
+      drinkingFountains: publicAmenities.drinkingFountains,
+      shadeStructures: publicAmenities.shadeStructures,
+      coolingPoints: publicAmenities.coolingPoints,
+      chargingPoints: publicAmenities.chargingPoints,
+      publicClocks: publicAmenities.clocks,
+      informationKiosks: publicAmenities.informationKiosks,
+      repairStands: publicAmenities.repairStands,
+      accessiblePublicAmenities: publicAmenities.accessibleAmenities,
+      servicedPublicAmenities: publicAmenities.servicedAmenities,
+      publicAmenityDailyUsers: publicAmenities.totalDailyUsers,
       accessControls: accessControls.total,
       accessControlGates: accessControls.gates,
       accessControlCheckpoints: accessControls.checkpoints,
@@ -2224,6 +2272,79 @@ function createCurbActivationDiagnostics(city: GeneratedCity): CurbActivationDia
     barrierCount,
     permittedActivations: city.curbActivations.filter((activation) => activation.permitInspectionRecordId).length,
     removableWithin24Hours
+  };
+}
+
+function createPublicAmenityDiagnostics(city: GeneratedCity): PublicAmenityDiagnostics {
+  const byKind = {
+    'public-toilet': 0,
+    'drinking-fountain': 0,
+    'shade-structure': 0,
+    'misting-cooling-point': 0,
+    'charging-point': 0,
+    clock: 0,
+    'information-kiosk': 0,
+    'repair-stand': 0
+  } satisfies Record<PublicAmenityKind, number>;
+  let accessibleAmenities = 0;
+  let servicedAmenities = 0;
+  let waterServedAmenities = 0;
+  let powerServedAmenities = 0;
+  let drainageServedAmenities = 0;
+  let totalDailyUsers = 0;
+  let maintenanceAccessSum = 0;
+  let maintenanceAccessCount = 0;
+
+  for (const amenity of city.publicAmenities) {
+    byKind[amenity.amenityKind] += 1;
+    totalDailyUsers += amenity.comfort.expectedDailyUsers;
+
+    if (amenity.accessiblePathMeters >= 1.8) {
+      accessibleAmenities += 1;
+    }
+
+    if (amenity.serviceAccess.provided) {
+      servicedAmenities += 1;
+    }
+
+    if (amenity.utilityRequirements.water && amenity.serviceAccess.provided) {
+      waterServedAmenities += 1;
+    }
+
+    if (amenity.utilityRequirements.power && amenity.serviceAccess.provided) {
+      powerServedAmenities += 1;
+    }
+
+    if (amenity.utilityRequirements.drainage && amenity.serviceAccess.provided) {
+      drainageServedAmenities += 1;
+    }
+
+    if (amenity.serviceAccess.required) {
+      maintenanceAccessSum += amenity.serviceAccess.maintenanceAccessMeters;
+      maintenanceAccessCount += 1;
+    }
+  }
+
+  return {
+    total: city.publicAmenities.length,
+    byKind,
+    publicToilets: byKind['public-toilet'],
+    drinkingFountains: byKind['drinking-fountain'],
+    shadeStructures: byKind['shade-structure'],
+    coolingPoints: byKind['misting-cooling-point'],
+    chargingPoints: byKind['charging-point'],
+    clocks: byKind.clock,
+    informationKiosks: byKind['information-kiosk'],
+    repairStands: byKind['repair-stand'],
+    accessibleAmenities,
+    servicedAmenities,
+    waterServedAmenities,
+    powerServedAmenities,
+    drainageServedAmenities,
+    totalDailyUsers,
+    averageMaintenanceAccessMeters: roundToTenths(
+      maintenanceAccessCount === 0 ? 0 : maintenanceAccessSum / maintenanceAccessCount,
+    )
   };
 }
 

@@ -33,6 +33,7 @@ export type CityOverlayId =
   | 'maintenance-operations'
   | 'permits-inspections'
   | 'curb-activations'
+  | 'public-amenities'
   | 'civic-anchors'
   | 'community-anchors'
   | 'culture-anchors'
@@ -112,6 +113,7 @@ export function createCityOverlayDatasets(
     createDataset('maintenance-operations', 'Maintenance Operations', 'domain-data', createMaintenanceOperationFeatures(city)),
     createDataset('permits-inspections', 'Permits And Inspections', 'domain-data', createPermitInspectionFeatures(city)),
     createDataset('curb-activations', 'Curb Activations', 'domain-data', createCurbActivationFeatures(city)),
+    createDataset('public-amenities', 'Public Amenities', 'domain-data', createPublicAmenityFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
@@ -1174,6 +1176,35 @@ function createCurbActivationFeatures(city: GeneratedCity): CityOverlayFeature[]
       drainageInletClearance: activation.clearances.drainageInletClearance,
       season: activation.seasonality.season,
       removalDay: activation.seasonality.removalDay
+    }
+  }));
+}
+
+function createPublicAmenityFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.publicAmenities.map((amenity) => ({
+    id: `overlay:public-amenities:${amenity.id}`,
+    overlayId: 'public-amenities',
+    objectId: amenity.id,
+    objectKind: amenity.kind,
+    ownerDomain: amenity.ownerDomain,
+    label: `${amenity.amenityKind}:${amenity.placementContext}`,
+    geometry: { type: 'polygon', points: amenity.boundary },
+    metadata: {
+      amenityKind: amenity.amenityKind,
+      placementContext: amenity.placementContext,
+      roadId: amenity.roadId ?? '',
+      sidewalkId: amenity.sidewalkId ?? '',
+      plazaZoneId: amenity.plazaZoneId ?? '',
+      waterfrontOpenSpaceId: amenity.waterfrontOpenSpaceId ?? '',
+      serviceAccessCorridorId: amenity.serviceAccessCorridorId ?? '',
+      accessiblePathMeters: amenity.accessiblePathMeters,
+      capacityUsers: amenity.capacityUsers,
+      expectedDailyUsers: amenity.comfort.expectedDailyUsers,
+      waterRequired: amenity.utilityRequirements.water,
+      powerRequired: amenity.utilityRequirements.power,
+      drainageRequired: amenity.utilityRequirements.drainage,
+      serviceAccessProvided: amenity.serviceAccess.provided,
+      maintenanceAccessMeters: amenity.serviceAccess.maintenanceAccessMeters
     }
   }));
 }

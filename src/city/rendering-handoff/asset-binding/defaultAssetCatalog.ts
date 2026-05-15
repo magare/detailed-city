@@ -33,6 +33,14 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:street-prop:street-name-sign:primitive', 'street-prop', 'Street Name Sign Primitive', 'street-name-sign', 2.65, 'lod4'),
   createProceduralAsset('asset:street-prop:wayfinding-sign:primitive', 'street-prop', 'Wayfinding Sign Primitive', 'wayfinding-sign', 2.35, 'lod4'),
   createProceduralAsset('asset:street-prop:access-control:primitive', 'street-prop', 'Access Control Primitive', 'railing', 3.5, 'lod3'),
+  createProceduralAsset('asset:street-prop:public-toilet:primitive', 'street-prop', 'Public Toilet Primitive', 'street-furniture', 3.2, 'lod3'),
+  createProceduralAsset('asset:street-prop:drinking-fountain:primitive', 'street-prop', 'Drinking Fountain Primitive', 'water', 1.1, 'lod3'),
+  createProceduralAsset('asset:street-prop:shade-structure:primitive', 'street-prop', 'Shade Structure Primitive', 'park-shade', 4.2, 'lod3'),
+  createProceduralAsset('asset:street-prop:misting-cooling-point:primitive', 'street-prop', 'Misting Cooling Point Primitive', 'water', 2.25, 'lod3'),
+  createProceduralAsset('asset:street-prop:charging-point:primitive', 'street-prop', 'Charging Point Primitive', 'kiosk', 1.35, 'lod3'),
+  createProceduralAsset('asset:street-prop:clock:primitive', 'street-prop', 'Clock Primitive', 'street-furniture', 3.2, 'lod4'),
+  createProceduralAsset('asset:street-prop:information-kiosk:primitive', 'street-prop', 'Information Kiosk Primitive', 'kiosk', 2.1, 'lod4'),
+  createProceduralAsset('asset:street-prop:repair-stand:primitive', 'street-prop', 'Repair Stand Primitive', 'bike-rack', 1.35, 'lod3'),
   createProceduralAsset('asset:road:lane-marking:primitive', 'road', 'Lane Marking Primitive', 'lane-marking', 7.2, 'lod2'),
   createProceduralAsset('asset:road:zebra-crossing:primitive', 'road', 'Zebra Crossing Primitive', 'zebra-crossing', 14, 'lod2'),
   createProceduralAsset('asset:road:stop-bar:primitive', 'road', 'Stop Bar Primitive', 'stop-bar', 12, 'lod2'),
@@ -271,6 +279,14 @@ export const DEFAULT_RENDER_BINDINGS = [
     fallbackMaterial: 'streetFurnitureMetal',
     fallbackGeometry: 'access-control-barrier'
   },
+  createPublicAmenityBinding('public-toilet', 'street-furniture', 'streetFurnitureMetal', 'public-toilet-box'),
+  createPublicAmenityBinding('drinking-fountain', 'water', 'water', 'drinking-fountain-cylinder'),
+  createPublicAmenityBinding('shade-structure', 'park-shade', 'streetFurnitureMetal', 'shade-structure-canopy'),
+  createPublicAmenityBinding('misting-cooling-point', 'water', 'water', 'misting-cooling-post'),
+  createPublicAmenityBinding('charging-point', 'kiosk', 'streetFurnitureAccent', 'charging-point-box'),
+  createPublicAmenityBinding('clock', 'street-furniture', 'streetFurnitureMetal', 'clock-post-face'),
+  createPublicAmenityBinding('information-kiosk', 'kiosk', 'streetFurnitureAccent', 'information-kiosk-panel'),
+  createPublicAmenityBinding('repair-stand', 'bike-rack', 'streetFurnitureMetal', 'repair-stand-post'),
   {
     id: 'binding:road:lane-marking',
     objectKind: 'lane-marking',
@@ -509,6 +525,23 @@ function createParkFeatureBinding(featureKind: string, semanticTag: string, fall
     assetId: `asset:nature:${semanticTag}:primitive`,
     materialZone: 'park',
     fallbackMaterial: semanticTag,
+    fallbackGeometry
+  };
+}
+
+function createPublicAmenityBinding(
+  amenityKind: string,
+  materialZone: string,
+  fallbackMaterial: string,
+  fallbackGeometry: string
+): RenderBinding {
+  return {
+    id: `binding:public-amenity:${amenityKind}`,
+    objectKind: 'public-amenity',
+    semanticTag: amenityKind,
+    assetId: `asset:street-prop:${amenityKind}:primitive`,
+    materialZone,
+    fallbackMaterial,
     fallbackGeometry
   };
 }

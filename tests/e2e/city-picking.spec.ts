@@ -27,6 +27,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const activeFrontage = city.activeFrontages[0];
   const streetLight = city.streetLights[0];
   const streetFurniture = city.streetFurniture[0];
+  const publicAmenity = city.publicAmenities[0];
   const trafficCalmingDevice = city.trafficCalmingDevices[0];
   const zebraCrossing = traffic.markings.find((marking) => marking.markingType === 'zebra-crossing-stripe');
 
@@ -47,6 +48,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.parkFeatures.length +
       city.plazaZones.length +
       city.curbActivations.length +
+      city.publicAmenities.length +
       city.waterways.length +
       city.waterfrontEdges.length +
       city.waterfrontOpenSpaces.length +
@@ -73,6 +75,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
   expect(catalog.countsByKind['street-furniture']).toBe(city.streetFurniture.length);
+  expect(catalog.countsByKind['public-amenity']).toBe(city.publicAmenities.length);
   expect(catalog.countsByKind['transit-stop']).toBe(city.transitStops.length);
   expect(catalog.countsByKind['transit-route']).toBe(city.transitRoutes.length);
   expect(catalog.countsByKind['park-feature']).toBe(city.parkFeatures.length);
@@ -202,6 +205,18 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       curbZoneId: streetFurniture.curbZoneId
     }
   });
+  expect(catalog.metadataByObjectId[publicAmenity.id]).toMatchObject({
+    objectId: publicAmenity.id,
+    kind: 'public-amenity',
+    ownerDomain: 'public-realm',
+    parentId: publicAmenity.parentId,
+    lod: publicAmenity.lod,
+    references: {
+      roadId: publicAmenity.roadId,
+      sidewalkId: publicAmenity.sidewalkId,
+      serviceAccessCorridorId: publicAmenity.serviceAccessCorridorId
+    }
+  });
   expect(catalog.metadataByObjectId[city.waterfrontEdges[0].id]).toMatchObject({
     objectId: city.waterfrontEdges[0].id,
     kind: 'waterfront-edge',
@@ -310,6 +325,7 @@ test('scene picking metadata resolves regular meshes and instanced meshes', () =
     const zebraCrossingInstances = cityScene.group.getObjectByName('ZebraCrossingStripeInstances');
     const benchSeatInstances = cityScene.group.getObjectByName('StreetFurnitureBenchSeatInstances');
     const curbActivationInstances = cityScene.group.getObjectByName('CurbActivationParkletInstances');
+    const publicAmenityInstances = cityScene.group.getObjectByName('PublicAmenityFountainInstances');
     const accessControlInstances = cityScene.group.getObjectByName('AccessControlMetalBarrierInstances');
     const firstMetalAccessControl = city.accessControls.find((control) => control.controlKind !== 'wall');
     const firstParklet = city.curbActivations.find((activation) => activation.activationKind === 'parklet');
@@ -321,6 +337,7 @@ test('scene picking metadata resolves regular meshes and instanced meshes', () =
     expect(zebraCrossingInstances).toBeTruthy();
     expect(benchSeatInstances).toBeTruthy();
     expect(curbActivationInstances).toBeTruthy();
+    expect(publicAmenityInstances).toBeTruthy();
     expect(accessControlInstances).toBeTruthy();
     expect(firstZebraCrossing).toBeTruthy();
     expect(firstMetalAccessControl).toBeTruthy();
@@ -352,6 +369,14 @@ test('scene picking metadata resolves regular meshes and instanced meshes', () =
     const curbActivationPick = cityScene.resolvePickingMetadata([
       {
         object: curbActivationInstances as THREE.Object3D,
+        instanceId: 0,
+        distance: 4,
+        point: new THREE.Vector3()
+      } as THREE.Intersection
+    ]);
+    const publicAmenityPick = cityScene.resolvePickingMetadata([
+      {
+        object: publicAmenityInstances as THREE.Object3D,
         instanceId: 0,
         distance: 4,
         point: new THREE.Vector3()
@@ -449,6 +474,19 @@ test('scene picking metadata resolves regular meshes and instanced meshes', () =
         roadId: firstParklet?.roadId,
         sidewalkId: firstParklet?.sidewalkId,
         curbZoneId: firstParklet?.curbZoneId
+      }
+    });
+    expect(publicAmenityPick).toMatchObject({
+      objectId: city.publicAmenities[0].id,
+      kind: 'public-amenity',
+      ownerDomain: 'public-realm',
+      parentId: city.publicAmenities[0].parentId,
+      instanceId: 0,
+      sceneLayerId: 'public-realm',
+      references: {
+        roadId: city.publicAmenities[0].roadId,
+        sidewalkId: city.publicAmenities[0].sidewalkId,
+        serviceAccessCorridorId: city.publicAmenities[0].serviceAccessCorridorId
       }
     });
     expect(accessControlPick).toMatchObject({

@@ -22,6 +22,7 @@ Validation is a first-class city system. It protects the project from procedural
 | Sidewalks | Continuous paths, crossings connect both sides, accessible curb ramps. |
 | Curbs | Curb zones attach to sidewalks/roads, do not overlap, and loading stays clear of crossings. |
 | Curb activations | Parklets, outdoor dining, temporary seating decks, and interim plazas attach to safe curb zones, reference approved/compliant permits, preserve emergency/transit/drainage/accessibility clearances, expose seasonal removal, and resolve render bindings. |
+| Public amenities | Public toilets, drinking fountains, shade/cooling fixtures, charging points, clocks, kiosks, and repair stands attach to sidewalks, plazas, or waterfront open spaces, preserve accessible paths and capacity, resolve required utility/service access, and expose render bindings. |
 | Street trees | Street trees bind to sidewalks/roads/curbs and fit inside the furnishing zone. |
 | Street lights | Street lights bind to sidewalks/roads/curbs and carry coverage plus utility placeholders. |
 | Street furniture/signs | Furniture and signs bind to sidewalks/roads/curbs, use explicit placement zones, stay out of pedestrian clear paths, and avoid crossing clearances. |
@@ -71,6 +72,7 @@ Validation is a first-class city system. It protects the project from procedural
 - Crossing parent intersection/road/sidewalk references and sidewalk graph connectivity.
 - Curb zone road/sidewalk/slice references, range validity, same-sidewalk conflicts, and loading clearance around crossings.
 - Curb activation validation checks curb-zone parentage, safe curb uses, matching road/sidewalk/side context, in-zone geometry, approved/compliant permit references, accessible/emergency/transit/drainage clearances, protective barriers, seating capacity, seasonal removal windows, and render binding coverage.
+- Public amenity validation checks sidewalk/plaza/waterfront parentage, placement-context references, finite geometry and clearance envelopes, accessible clear paths, usable capacity and daily-user metrics, service access corridors, water/power/drainage requirements, public-toilet and charging-point utility rules, and render binding coverage.
 - Park tree parents and street tree sidewalk/road/curb references, tree pit dimensions, and furnishing-zone fit.
 - Street light sidewalk/road/curb references, dimensions, color temperature, and missing power circuit warnings.
 - Public lighting coverage validates citywide/detailed placement context, fixture/night-safety/glare metadata, served power circuits, and critical sidewalk lighting gaps on arterial, collector, promenade, and transit-eligible routes.

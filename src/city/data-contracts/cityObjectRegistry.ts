@@ -49,6 +49,7 @@ const TRAFFIC_CALMING_KIND = String.raw`(?:curb-extension|bus-bulb|chicane|pinch
 const TRANSIT_MODE = String.raw`(?:bus)`;
 const CURB_USE = String.raw`(?:parking|loading|ride-hail|bus-stop|emergency|no-stopping)`;
 const CURB_ACTIVATION_KIND = String.raw`(?:parklet|outdoor-dining|temporary-seating-deck|interim-plaza)`;
+const PUBLIC_AMENITY_KIND = String.raw`(?:public-toilet|drinking-fountain|shade-structure|misting-cooling-point|charging-point|clock|information-kiosk|repair-stand)`;
 const COMMUNITY_ANCHOR_KIND = String.raw`(?:cemetery|community-hall|food-bank|processional-space|recreation-center|shelter|social-service|worship-place)`;
 const CULTURE_ANCHOR_KIND = String.raw`(?:event-space|gallery|heritage-site|museum|theater|venue)`;
 const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
@@ -278,6 +279,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ['plaza-zone-<plaza-id>-<zone-kind>-<index>'],
     [exact(String.raw`plaza-zone-${NAMED_ID}-${PLAZA_ZONE_KIND}-\d+`)],
     required(['park'])
+  ),
+  entry(
+    'public-amenity',
+    ['public-amenity-<amenity-kind>-<source-id>'],
+    [exact(String.raw`public-amenity-${PUBLIC_AMENITY_KIND}-${NAMED_ID}(?:-${NAMED_ID})*`)],
+    required(['sidewalk', 'plaza-zone', 'waterfront-open-space'])
   ),
   entry('resilience-goal', ['resilience-goal-<slug>'], [exact(String.raw`resilience-goal-${NAMED_ID}`)], none()),
   entry('road-segment', ['road-v-<index>', 'road-h-<index>'], [exact(ROAD_ID)], none()),

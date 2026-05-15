@@ -50,6 +50,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     curbActivations: city.curbActivations.map((activation) =>
       withProceduralMetadata(activation, 'public-realm-curb-activations')
     ),
+    publicAmenities: city.publicAmenities.map((amenity) =>
+      withProceduralMetadata(amenity, 'public-realm-public-amenities')
+    ),
     trafficCalmingDevices: city.trafficCalmingDevices.map((device) =>
       withProceduralMetadata(device, 'mobility-traffic-calming')
     ),

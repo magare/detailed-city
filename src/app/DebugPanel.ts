@@ -183,6 +183,10 @@ export class DebugPanel {
         `${diagnostics.curbActivations.total} active, ${diagnostics.curbActivations.parklets} parklets, ${diagnostics.curbActivations.totalSeats} seats`
       ),
       createMetric(
+        'Public Amenities',
+        `${diagnostics.publicAmenities.total} fixtures, ${diagnostics.publicAmenities.publicToilets} toilets, ${diagnostics.publicAmenities.totalDailyUsers} daily users`
+      ),
+      createMetric(
         'Access Control',
         `${diagnostics.accessControls.total} controls, ${diagnostics.accessControls.navigationControlledEdges} edges, ${diagnostics.accessControls.privateAccessControls} private`
       ),

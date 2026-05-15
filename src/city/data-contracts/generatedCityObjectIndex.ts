@@ -53,6 +53,7 @@ type GeneratedCityObjectSource = Pick<
   | 'parks'
   | 'parkFeatures'
   | 'plazaZones'
+  | 'publicAmenities'
   | 'resilienceGoals'
   | 'roads'
   | 'sidewalkGraph'
@@ -98,6 +99,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.crossings,
     ...city.curbZones,
     ...city.curbActivations,
+    ...city.publicAmenities,
     ...city.trafficCalmingDevices,
     ...city.accessControls,
     ...city.transitStops,

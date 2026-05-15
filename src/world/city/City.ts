@@ -9,6 +9,7 @@ import { GreenStormwaterMeshBuilder } from '../../city/rendering-handoff/mesh-bu
 import { ParkFeatureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkFeatureMeshBuilder';
 import { ParkSurfaceMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkSurfaceMeshBuilder';
 import { PlazaZoneMeshBuilder } from '../../city/rendering-handoff/mesh-builders/PlazaZoneMeshBuilder';
+import { PublicAmenityMeshBuilder } from '../../city/rendering-handoff/mesh-builders/PublicAmenityMeshBuilder';
 import { RoadMeshBuilder } from '../../city/rendering-handoff/mesh-builders/RoadMeshBuilder';
 import { StreetFurnitureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetFurnitureMeshBuilder';
 import { StreetLightMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetLightMeshBuilder';
@@ -35,6 +36,7 @@ import { MaterialLibrary } from '../../rendering/materials/MaterialLibrary';
 import type {
   ActiveFrontage,
   GeneratedCity,
+  PublicAmenity,
   StreetFurniture,
   StreetLight,
   TrafficCalmingDevice,
@@ -113,6 +115,7 @@ export class City implements Updatable {
     this.addGreenStormwaterFeatures(generated);
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
+    this.addPublicAmenities(generated.publicAmenities);
     this.addTrafficCalmingDevices(generated.trafficCalmingDevices);
     this.addAccessControls(generated);
     this.addTransit(generated);
@@ -255,6 +258,15 @@ export class City implements Updatable {
     ).build(streetFurniture);
 
     this.layerGroups['public-realm'].add(streetFurnitureGroup);
+  }
+
+  private addPublicAmenities(publicAmenities: readonly PublicAmenity[]): void {
+    const publicAmenityGroup = new PublicAmenityMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(publicAmenities);
+
+    this.layerGroups['public-realm'].add(publicAmenityGroup);
   }
 
   private addTransit(generated: GeneratedCity): void {

@@ -51,6 +51,7 @@ export type CityObjectKind =
   | 'park'
   | 'park-feature'
   | 'plaza-zone'
+  | 'public-amenity'
   | 'resilience-goal'
   | 'road-segment'
   | 'sensor'
@@ -741,6 +742,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod3',
       allowedTiers: ['lod3', 'lod4'],
       description: 'Curb activations expose parklets, outdoor dining, temporary decks, interim plazas, barriers, permits, and seasonal removal metadata.'
+    },
+    {
+      objectKind: 'public-amenity',
+      scope: 'public-realm-prop',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod3', 'lod4'],
+      description: 'Public amenities expose comfort fixtures, accessibility, utility service, and maintenance access for public-space use.'
     },
     {
       objectKind: 'district',
@@ -3406,6 +3414,17 @@ export type SignPanelKind =
   | 'storefront-directory'
   | 'street-name-blade';
 
+export type PublicAmenityKind =
+  | 'public-toilet'
+  | 'drinking-fountain'
+  | 'shade-structure'
+  | 'misting-cooling-point'
+  | 'charging-point'
+  | 'clock'
+  | 'information-kiosk'
+  | 'repair-stand';
+export type PublicAmenityPlacementContext = 'detailed-street' | 'citywide-street' | 'plaza' | 'waterfront';
+
 export interface StreetFurnitureContract extends CityObjectBase<'street-furniture'> {
   readonly placementContext: StreetFurniturePlacementContext;
   readonly sliceId?: CityId;
@@ -3448,6 +3467,48 @@ export interface StreetFurnitureContract extends CityObjectBase<'street-furnitur
       readonly valueCode: string;
     };
   };
+}
+
+export interface PublicAmenityContract extends CityObjectBase<'public-amenity'> {
+  readonly amenityKind: PublicAmenityKind;
+  readonly placementContext: PublicAmenityPlacementContext;
+  readonly roadId?: CityId;
+  readonly sidewalkId?: CityId;
+  readonly plazaZoneId?: CityId;
+  readonly waterfrontOpenSpaceId?: CityId;
+  readonly serviceAccessCorridorId?: CityId;
+  readonly side?: CurbSide;
+  readonly position: Point2D;
+  readonly boundary: Polygon2D;
+  readonly orientationRadians: number;
+  readonly dimensions: {
+    readonly widthMeters: number;
+    readonly lengthMeters: number;
+    readonly heightMeters: number;
+  };
+  readonly clearanceEnvelope: {
+    readonly widthMeters: number;
+    readonly lengthMeters: number;
+  };
+  readonly accessiblePathMeters: number;
+  readonly capacityUsers: number;
+  readonly comfort: {
+    readonly shadeProvided: boolean;
+    readonly coolingProvided: boolean;
+    readonly seatingSupported: boolean;
+    readonly expectedDailyUsers: number;
+  };
+  readonly utilityRequirements: {
+    readonly water: boolean;
+    readonly power: boolean;
+    readonly drainage: boolean;
+  };
+  readonly serviceAccess: {
+    readonly required: boolean;
+    readonly provided: boolean;
+    readonly maintenanceAccessMeters: number;
+  };
+  readonly assetBindingId: CityId;
 }
 
 

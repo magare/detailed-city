@@ -110,6 +110,7 @@ type GeneratedCityForValidation = Pick<
   | 'navigationRoutes'
   | 'maintenanceOperations'
   | 'permitInspectionRecords'
+  | 'publicAmenities'
   | 'lodPolicy'
   | 'objectIndex'
   | 'parcels'
@@ -982,6 +983,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateMaintenanceOperations(city, issues);
   validatePermitInspectionRecords(city, issues);
   validateCurbActivations(city, issues, { roadsById, curbZonesById, assetBindingsById });
+  validatePublicAmenities(city, issues, { roadsById, assetBindingsById });
   const transitRoutesById = new Map(city.transitRoutes.map((route) => [route.id, route]));
   const districtsById = new Map(city.districts.map((district) => [district.id, district]));
   const activeFrontagesById = new Map(city.activeFrontages.map((frontage) => [frontage.id, frontage]));
@@ -4002,6 +4004,104 @@ function createCurbActivationIssue(
     category: suffix === 'invalid-binding' ? 'asset' : suffix === 'invalid-geometry' ? 'geometry' : 'graph',
     objectId: activation.id,
     affectedBoundary: activation.boundary,
+    message
+  };
+}
+
+function validatePublicAmenities(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  context: {
+    readonly roadsById: ReadonlyMap<CityId, GeneratedCityForValidation['roads'][number]>;
+    readonly assetBindingsById: ReadonlyMap<CityId, RenderBinding>;
+  }
+): void {
+  const serviceAccessById = new Map(city.serviceAccessCorridors.map((corridor) => [corridor.id, corridor]));
+
+  for (const amenity of city.publicAmenities) {
+    const binding = context.assetBindingsById.get(amenity.assetBindingId);
+
+    if (!amenity.parentId || !city.objectIndex.objectsById[amenity.parentId]) {
+      issues.push(createPublicAmenityIssue(amenity, 'missing-parent', `Public amenity ${amenity.id} must be parented to a sidewalk, plaza zone, or waterfront open space.`));
+    }
+
+    if (
+      amenity.placementContext === 'detailed-street' ||
+      amenity.placementContext === 'citywide-street'
+    ) {
+      if (!amenity.roadId || !context.roadsById.has(amenity.roadId) || !amenity.sidewalkId || !city.objectIndex.objectsById[amenity.sidewalkId]) {
+        issues.push(createPublicAmenityIssue(amenity, 'missing-street-context', `Street public amenity ${amenity.id} must reference an existing road and sidewalk.`));
+      }
+    }
+
+    if (amenity.placementContext === 'plaza' && (!amenity.plazaZoneId || !city.objectIndex.objectsById[amenity.plazaZoneId])) {
+      issues.push(createPublicAmenityIssue(amenity, 'missing-plaza-context', `Plaza public amenity ${amenity.id} must reference an existing plaza zone.`));
+    }
+
+    if (
+      amenity.placementContext === 'waterfront' &&
+      (!amenity.waterfrontOpenSpaceId || !city.objectIndex.objectsById[amenity.waterfrontOpenSpaceId])
+    ) {
+      issues.push(createPublicAmenityIssue(amenity, 'missing-waterfront-context', `Waterfront public amenity ${amenity.id} must reference an existing waterfront open space.`));
+    }
+
+    if (
+      !isFiniteNumber(amenity.position.x) ||
+      !isFiniteNumber(amenity.position.z) ||
+      amenity.boundary.length < 4 ||
+      amenity.dimensions.widthMeters <= 0 ||
+      amenity.dimensions.lengthMeters <= 0 ||
+      amenity.dimensions.heightMeters <= 0 ||
+      amenity.clearanceEnvelope.widthMeters < amenity.dimensions.widthMeters ||
+      amenity.clearanceEnvelope.lengthMeters < amenity.dimensions.lengthMeters
+    ) {
+      issues.push(createPublicAmenityIssue(amenity, 'invalid-geometry', `Public amenity ${amenity.id} must expose finite positive dimensions, position, and clearance geometry.`));
+    }
+
+    if (amenity.accessiblePathMeters < 1.8 || amenity.capacityUsers <= 0 || amenity.comfort.expectedDailyUsers <= 0) {
+      issues.push(createPublicAmenityIssue(amenity, 'inaccessible-or-empty', `Public amenity ${amenity.id} must preserve accessible clear path and usable capacity.`));
+    }
+
+    if (amenity.serviceAccess.required) {
+      const serviceAccess = amenity.serviceAccessCorridorId ? serviceAccessById.get(amenity.serviceAccessCorridorId) : undefined;
+
+      if (!serviceAccess || !amenity.serviceAccess.provided || amenity.serviceAccess.maintenanceAccessMeters > 420) {
+        issues.push(createPublicAmenityIssue(amenity, 'missing-service-access', `Public amenity ${amenity.id} must reference nearby service access for inspection and restocking.`));
+      }
+    }
+
+    if (
+      (amenity.utilityRequirements.water || amenity.utilityRequirements.power || amenity.utilityRequirements.drainage) &&
+      (!amenity.serviceAccess.provided || !amenity.serviceAccessCorridorId)
+    ) {
+      issues.push(createPublicAmenityIssue(amenity, 'unserved-utility', `Public amenity ${amenity.id} must expose service access for required water, power, or drainage.`));
+    }
+
+    if (amenity.amenityKind === 'public-toilet' && (!amenity.utilityRequirements.water || !amenity.utilityRequirements.drainage)) {
+      issues.push(createPublicAmenityIssue(amenity, 'unserved-public-toilet', `Public toilet ${amenity.id} must require water and drainage service.`));
+    }
+
+    if (amenity.amenityKind === 'charging-point' && !amenity.utilityRequirements.power) {
+      issues.push(createPublicAmenityIssue(amenity, 'unpowered-charging-point', `Charging point ${amenity.id} must require power service.`));
+    }
+
+    if (!binding || binding.objectKind !== 'public-amenity') {
+      issues.push(createPublicAmenityIssue(amenity, 'invalid-binding', `Public amenity ${amenity.id} must reference a public-amenity render binding.`));
+    }
+  }
+}
+
+function createPublicAmenityIssue(
+  amenity: GeneratedCityForValidation['publicAmenities'][number],
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `public-amenity-${suffix}-${amenity.id}`,
+    severity: 'error',
+    category: suffix === 'invalid-binding' ? 'asset' : suffix === 'invalid-geometry' ? 'geometry' : 'graph',
+    objectId: amenity.id,
+    affectedBoundary: amenity.boundary,
     message
   };
 }

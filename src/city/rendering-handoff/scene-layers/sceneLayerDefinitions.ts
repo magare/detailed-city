@@ -113,6 +113,7 @@ export function createCitySceneLayerDiagnostics(
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length +
+      city.publicAmenities.length +
       city.bikeParking.length +
       city.waterfrontEdges.length +
       city.waterfrontOpenSpaces.length,

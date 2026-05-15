@@ -42,6 +42,7 @@ import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { CurbActivationGenerator } from './public-realm/CurbActivationGenerator';
 import { GreenStormwaterGenerator } from './public-realm/GreenStormwaterGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
+import { PublicAmenityGenerator } from './public-realm/PublicAmenityGenerator';
 import { attachSignageWayfindingBindings, StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
 import { StreetTreeGenerator } from './public-realm/StreetTreeGenerator';
@@ -304,6 +305,12 @@ export class CityGenerator {
       utilityNodes: gasDistrictEnergy.utilityNodes,
       utilityEdges: gasDistrictEnergy.utilityEdges
     });
+    const publicAmenities = new PublicAmenityGenerator().create({
+      streetFurniture,
+      plazaZones,
+      waterfrontOpenSpaces,
+      serviceAccessCorridors: serviceAccess.serviceAccessCorridors
+    });
     const entranceAddress = new EntranceAddressGenerator().create({
       buildings: serviceAccess.buildings,
       parcels: soilGeology.parcels,
@@ -445,6 +452,7 @@ export class CityGenerator {
       crossings: sliceTagged.crossings,
       curbZones,
       curbActivations,
+      publicAmenities,
       trafficCalmingDevices,
       accessControls: accessControl.accessControls,
       transitStops: transit.stops,
