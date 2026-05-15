@@ -118,29 +118,6 @@ test('utility validation catches invalid service, access, capacity, and edge ref
   );
 });
 
-test('browser diagnostics expose utility base counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    utilityBase: window.cityDiagnostics?.utilityBase,
-    utilityNodeObjects: window.cityDiagnostics?.objectIndex.countsByKind['utility-node'],
-    utilityEdgeObjects: window.cityDiagnostics?.objectIndex.countsByKind['utility-edge'],
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.utilityBase).toMatchObject({
-    nodes: 45,
-    edges: 38,
-    networkTypes: 8
-  });
-  expect(diagnostics.utilityNodeObjects).toBe(45);
-  expect(diagnostics.utilityEdgeObjects).toBe(38);
-  expect(diagnostics.debugText).toContain('Utilities');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

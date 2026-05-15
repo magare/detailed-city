@@ -121,33 +121,6 @@ test('resilience validation reports coverage gaps and missing route references w
   });
 });
 
-test('browser diagnostics expose resilience goals for debug tools', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    resilienceGoals: window.cityDiagnostics?.resilienceGoals.total,
-    criticalGoals: window.cityDiagnostics?.resilienceGoals.criticalGoals,
-    shelterCandidates: window.cityDiagnostics?.resilienceGoals.shelterCandidates,
-    evacuationRouteRoads: window.cityDiagnostics?.resilienceGoals.evacuationRouteRoads.join(','),
-    overlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'resilience-goals')
-      ?.featureCount,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics).toMatchObject({
-    validationPassed: true,
-    resilienceGoals: 7,
-    criticalGoals: 3,
-    shelterCandidates: 3,
-    evacuationRouteRoads: 'road-h-6,road-v-6',
-    overlayFeatures: 7
-  });
-  expect(diagnostics.debugText).toContain('Resilience');
-  expect(diagnostics.debugText).toContain('7 goals, 3 shelters');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

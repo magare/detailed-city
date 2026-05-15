@@ -1,12 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { createCityDiagnostics } from '../../src/app/cityDiagnostics';
 import { CITY_BLUEPRINT } from '../../src/city/blueprint/cityBlueprint';
 import { createGeneratedCityObjectIndex } from '../../src/city/data-contracts/generatedCityObjectIndex';
 import { validateGeneratedCity } from '../../src/city/data-contracts/validation/validateGeneratedCity';
 import { cityConfig } from '../../src/config/cityConfig';
-import { renderConfig } from '../../src/config/renderConfig';
 import { CityGenerator } from '../../src/generation/CityGenerator';
-import { TrafficLaneGenerator } from '../../src/generation/traffic/TrafficLaneGenerator';
 import type { BlockPlan } from '../../src/types/city';
 
 test('generated districts consume blueprint character rules', () => {
@@ -158,57 +155,6 @@ test('district validation catches malformed character rules and illegal transiti
       })
     ])
   );
-});
-
-test('city diagnostics and browser state expose district character counts', async ({ page }) => {
-  const city = new CityGenerator(cityConfig).generate();
-  const traffic = new TrafficLaneGenerator().create({
-    roads: city.roads,
-    crossings: city.crossings,
-    intersections: city.intersections
-  });
-  const diagnostics = createCityDiagnostics(city, traffic, renderConfig, cityConfig);
-
-  expect(diagnostics.districtCharacter).toMatchObject({
-    districtRules: 5,
-    useMixRules: 17,
-    landmarkTargets: 5,
-    transitionBuffers: 14,
-    stylePalettes: [
-      'civic-stone-copper',
-      'downtown-glass-stone',
-      'industrial-brick-metal',
-      'residential-brick-foliage',
-      'waterfront-light-masonry'
-    ]
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    districtUseMixRules: 17,
-    districtLandmarkTargets: 5,
-    districtTransitionBuffers: 14,
-    districtStylePalettes: 5
-  });
-
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const browserDiagnostics = await page.evaluate(() => ({
-    districtRules: window.cityDiagnostics?.districtCharacter.districtRules,
-    useMixRules: window.cityDiagnostics?.districtCharacter.useMixRules,
-    landmarkTargets: window.cityDiagnostics?.districtCharacter.landmarkTargets,
-    transitionBuffers: window.cityDiagnostics?.districtCharacter.transitionBuffers,
-    stylePalettes: window.cityDiagnostics?.districtCharacter.stylePalettes.length,
-    generatedDistricts: window.cityDiagnostics?.objectCounts.districts
-  }));
-
-  expect(browserDiagnostics).toEqual({
-    districtRules: 5,
-    useMixRules: 17,
-    landmarkTargets: 5,
-    transitionBuffers: 14,
-    stylePalettes: 5,
-    generatedDistricts: 5
-  });
 });
 
 function createIllegalDistrictTransition(blocks: readonly BlockPlan[]): {

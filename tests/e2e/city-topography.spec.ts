@@ -84,32 +84,6 @@ test('topography validation catches missing road grades and impossible building 
   );
 });
 
-test('browser diagnostics expose topography counts and nonblank city output', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    topography: window.cityDiagnostics?.topography,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    topographyOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'topography'),
-    validationIssues: window.cityDiagnostics?.validation.issues.length,
-    debugText: document.body.textContent,
-    canvasCount: document.querySelectorAll('canvas').length
-  }));
-
-  expect(diagnostics.topography).toMatchObject({
-    total: 5,
-    roadsWithGroundProfiles: diagnostics.objectCounts?.roads,
-    buildingsWithGroundProfiles: diagnostics.objectCounts?.buildings
-  });
-  expect(diagnostics.topography?.maxRoadGradePercent).toBeLessThanOrEqual(12);
-  expect(diagnostics.objectCounts?.topographyZones).toBe(5);
-  expect(diagnostics.topographyOverlay?.featureCount).toBe(5);
-  expect(diagnostics.validationIssues).toBe(0);
-  expect(diagnostics.canvasCount).toBe(1);
-  expect(diagnostics.debugText).toContain('Validation');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

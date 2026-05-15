@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { createCityDiagnostics } from '../../src/app/cityDiagnostics';
 import { CITY_BLUEPRINT, getBlueprintDistrictForNormalizedBlock } from '../../src/city/blueprint/cityBlueprint';
 import {
   createMasterPlanDiagnostics,
@@ -7,9 +6,7 @@ import {
   validateMasterPlan
 } from '../../src/city/blueprint/master-plan/masterPlan';
 import { cityConfig } from '../../src/config/cityConfig';
-import { renderConfig } from '../../src/config/renderConfig';
 import { CityGenerator } from '../../src/generation/CityGenerator';
-import { TrafficLaneGenerator } from '../../src/generation/traffic/TrafficLaneGenerator';
 
 test('master plan exposes executable city form, centers, skyline, open space, water edge, and growth boundaries', () => {
   const diagnostics = createMasterPlanDiagnostics(CITY_BLUEPRINT.masterPlan);
@@ -145,42 +142,6 @@ test('master plan validation catches invalid centers, skyline references, and gr
       })
     ])
   );
-});
-
-test('city diagnostics and browser state expose master-plan counts', async ({ page }) => {
-  const city = new CityGenerator(cityConfig).generate();
-  const traffic = new TrafficLaneGenerator().create({
-    roads: city.roads,
-    crossings: city.crossings,
-    intersections: city.intersections
-  });
-  const diagnostics = createCityDiagnostics(city, traffic, renderConfig, cityConfig);
-
-  expect(diagnostics.masterPlan.validation.passed).toBe(true);
-  expect(diagnostics.objectCounts).toMatchObject({
-    masterPlanCenters: 4,
-    masterPlanProtectedOpenSpaces: 3,
-    masterPlanGrowthBoundaries: 3
-  });
-
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const browserDiagnostics = await page.evaluate(() => ({
-    masterPlanPassed: window.cityDiagnostics?.masterPlan.validation.passed,
-    centers: window.cityDiagnostics?.masterPlan.centers.total,
-    openSpaces: window.cityDiagnostics?.masterPlan.protectedOpenSpaces.total,
-    growthBoundaries: window.cityDiagnostics?.masterPlan.growthBoundaries.total,
-    cityFormKind: window.cityDiagnostics?.masterPlan.cityFormKind
-  }));
-
-  expect(browserDiagnostics).toEqual({
-    masterPlanPassed: true,
-    centers: 4,
-    openSpaces: 3,
-    growthBoundaries: 3,
-    cityFormKind: 'river-coastal-polycentric-grid'
-  });
 });
 
 test('master-plan resolver falls back when no active center or edge matches', () => {

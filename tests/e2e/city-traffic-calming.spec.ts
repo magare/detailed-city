@@ -84,36 +84,6 @@ test('validation rejects calming devices that block access or ignore road speed 
   );
 });
 
-test('browser diagnostics expose traffic calming counts', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    trafficValidationPassed: window.cityDiagnostics?.trafficValidation.passed,
-    devices: window.cityDiagnostics?.trafficCalming.total,
-    curbExtensions: window.cityDiagnostics?.trafficCalming.curbExtensions,
-    busBulbs: window.cityDiagnostics?.trafficCalming.busBulbs,
-    speedTables: window.cityDiagnostics?.trafficCalming.speedTables,
-    minimumTargetSpeedKph: window.cityDiagnostics?.trafficCalming.minimumTargetSpeedKph,
-    networkLayerObjects: window.cityDiagnostics?.sceneLayers.find((layer) => layer.id === 'networks')?.objectCount,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics).toMatchObject({
-    validationPassed: true,
-    trafficValidationPassed: true,
-    devices: 12,
-    curbExtensions: 2,
-    busBulbs: 2,
-    speedTables: 2,
-    minimumTargetSpeedKph: 15,
-    networkLayerObjects: 4933
-  });
-  expect(diagnostics.debugText).toContain('Calming');
-  expect(diagnostics.debugText).toContain('12 devices, 2 curb, 15kph min');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

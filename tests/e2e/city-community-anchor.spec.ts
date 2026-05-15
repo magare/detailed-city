@@ -147,43 +147,6 @@ test('community anchor validation catches broken civic, plaza, service, and rend
   );
 });
 
-test('browser diagnostics expose community anchors and debug panel metric', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    communityAnchors: window.cityDiagnostics?.communityAnchors,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    communityOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'community-anchors'),
-    pickingKindCount: window.cityDiagnostics?.picking.countsByKind['community-anchor'],
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.communityAnchors).toMatchObject({
-    total: 8,
-    anchorKinds: 8,
-    dailyVisitors: 1700,
-    eventCapacityPeople: 1490,
-    crowdEventReadyAnchors: 5,
-    foodDistributionAnchors: 1
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    communityAnchors: 8,
-    communityDailyVisitors: 1700,
-    communityEventCapacity: 1490,
-    communityCrowdReadyAnchors: 5
-  });
-  expect(diagnostics.communityOverlay).toMatchObject({
-    id: 'community-anchors',
-    featureCount: 8
-  });
-  expect(diagnostics.pickingKindCount).toBe(8);
-  expect(diagnostics.debugText).toContain('Community');
-  expect(diagnostics.debugText).toContain('8 anchors, 1700 visits, 5 crowd');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

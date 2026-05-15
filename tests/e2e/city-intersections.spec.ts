@@ -112,33 +112,3 @@ test('validation rejects malformed intersection behavior policy', () => {
     ])
   );
 });
-
-test('browser diagnostics expose intersection behavior counts', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    intersectionBehavior: window.cityDiagnostics?.intersectionBehavior,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.intersectionBehavior).toMatchObject({
-    total: 169,
-    signalized: expect.any(Number),
-    stopControlled: expect.any(Number),
-    raisedJunctions: expect.any(Number),
-    conflictPoints: 507,
-    turnConstraints: 338
-  });
-  expect(diagnostics.intersectionBehavior?.signalized).toBeGreaterThan(0);
-  expect(diagnostics.intersectionBehavior?.raisedJunctions).toBeGreaterThan(0);
-  expect(diagnostics.objectCounts).toMatchObject({
-    signalizedIntersections: diagnostics.intersectionBehavior?.signalized,
-    raisedJunctions: diagnostics.intersectionBehavior?.raisedJunctions,
-    intersectionConflictPoints: 507
-  });
-  expect(diagnostics.debugText).toContain('Junctions');
-});

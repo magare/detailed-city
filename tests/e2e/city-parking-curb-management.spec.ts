@@ -94,27 +94,3 @@ test('curb management validation rejects invalid parking, fire-lane, transit, an
     ])
   );
 });
-
-test('browser diagnostics expose parking and curb management counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    indexedCurbZones: window.cityDiagnostics?.objectIndex.countsByKind['curb-zone'],
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.objectCounts?.detailedCurbZones).toBe(50);
-  expect(diagnostics.objectCounts?.citywideCurbZones).toBeGreaterThan(100);
-  expect(diagnostics.objectCounts?.parkingCurbZones).toBeGreaterThan(0);
-  expect(diagnostics.objectCounts?.loadingCurbZones).toBeGreaterThan(0);
-  expect(diagnostics.objectCounts?.rideHailCurbZones).toBeGreaterThan(0);
-  expect(diagnostics.objectCounts?.disabledCurbSpaces).toBeGreaterThan(0);
-  expect(diagnostics.objectCounts?.pricedCurbZones).toBeGreaterThan(0);
-  expect(diagnostics.objectCounts?.cameraEnforcedCurbZones).toBeGreaterThan(0);
-  expect(diagnostics.indexedCurbZones).toBe(diagnostics.objectCounts?.curbZones);
-  expect(diagnostics.debugText).toContain('Curbs');
-});

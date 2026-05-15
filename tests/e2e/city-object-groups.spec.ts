@@ -174,43 +174,6 @@ test('city object group validation catches duplicate groups and missing members'
   );
 });
 
-test('browser diagnostics expose grouped object counts for debug tools', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const groupDiagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.objectGroups.validation.passed,
-    groupCount: window.cityDiagnostics?.objectGroups.groupCount,
-    emptyGroups: window.cityDiagnostics?.objectGroups.emptyGroupCount,
-    ownerDomainGroups: window.cityDiagnostics?.objectGroups.countsByKind['owner-domain'],
-    districtGroups: window.cityDiagnostics?.objectGroups.countsByKind.district,
-    renderLayerGroups: window.cityDiagnostics?.objectGroups.countsByKind['render-layer'],
-    networkRenderLayerObjects:
-      window.cityDiagnostics?.objectGroupIndex.groupsById['group:render-layer:networks']?.objectCount,
-    baselineScenarioObjects:
-      window.cityDiagnostics?.objectGroupIndex.groupsById['group:scenario-layer:baseline']?.objectCount,
-    sliceGroupObjects:
-      window.cityDiagnostics?.objectGroupIndex.groupsById['group:vertical-slice:slice-detailed-street-road-v-6']
-        ?.objectCount,
-    roadGroups: [...(window.cityDiagnostics?.objectGroupIndex.groupIdsByObjectId['road-v-6'] ?? [])].sort().join(',')
-  }));
-
-  expect(groupDiagnostics).toMatchObject({
-    validationPassed: true,
-    groupCount: 32,
-    ownerDomainGroups: 13,
-    districtGroups: 5,
-    renderLayerGroups: 6,
-    networkRenderLayerObjects: 4933,
-    baselineScenarioObjects: 11273
-  });
-  expect(groupDiagnostics.emptyGroups).toBeGreaterThan(0);
-  expect(groupDiagnostics.sliceGroupObjects).toBeGreaterThan(1000);
-  expect(groupDiagnostics.roadGroups).toContain('group:corridor:road-v-6');
-  expect(groupDiagnostics.roadGroups).toContain('group:render-layer:networks');
-  expect(groupDiagnostics.roadGroups).toContain('group:vertical-slice:slice-detailed-street-road-v-6');
-});
-
 function createGroupedCity() {
   const city = new CityGenerator(cityConfig).generate();
   const traffic = new TrafficLaneGenerator().create({

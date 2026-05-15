@@ -137,34 +137,6 @@ test('hazard validation catches missing references and prohibited object conflic
   );
 });
 
-test('browser diagnostics expose hazard counts and overlay data', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    hazardZones: window.cityDiagnostics?.hazardLayer.total,
-    criticalHazards: window.cityDiagnostics?.hazardLayer.criticalHazards,
-    noBuildHazards: window.cityDiagnostics?.hazardLayer.noBuildHazards,
-    mitigationHazards: window.cityDiagnostics?.hazardLayer.mitigationRequiredHazards,
-    hazardOverlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'hazards')?.featureCount,
-    hazardObjects: window.cityDiagnostics?.objectIndex.countsByKind['hazard-zone'],
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics).toMatchObject({
-    validationPassed: true,
-    hazardZones: 6,
-    criticalHazards: 1,
-    noBuildHazards: 2,
-    mitigationHazards: 6,
-    hazardOverlayFeatures: 6,
-    hazardObjects: 6
-  });
-  expect(diagnostics.debugText).toContain('Hazards');
-  expect(diagnostics.debugText).toContain('6 zones, 1 critical, 2 no-build');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

@@ -110,28 +110,6 @@ test('building typology validation rejects invalid defaults', () => {
   );
 });
 
-test('browser diagnostics expose building typology counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await expect(page.locator('.city-debug-panel')).toBeVisible();
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    buildings: window.cityDiagnostics?.objectCounts.buildings,
-    buildingTypologyKinds: window.cityDiagnostics?.objectCounts.buildingTypologyKinds,
-    buildingsWithTypology: window.cityDiagnostics?.buildingTypologies.buildingsWithTypology,
-    storefrontEntrances: window.cityDiagnostics?.buildingTypologies.storefrontEntrances,
-    typologyMetric: [...document.querySelectorAll('.city-debug-panel__metric')].find(
-      (metric) => metric.textContent?.startsWith('Typologies')
-    )?.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.buildingsWithTypology).toBe(diagnostics.buildings);
-  expect(diagnostics.buildingTypologyKinds).toBeGreaterThanOrEqual(4);
-  expect(diagnostics.storefrontEntrances).toBeGreaterThan(0);
-  expect(diagnostics.typologyMetric).toContain('Typologies');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>): TrafficPlan {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

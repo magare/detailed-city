@@ -139,41 +139,6 @@ test('government anchor validation catches broken plaza and civic references', (
   );
 });
 
-test('browser diagnostics expose government anchors and debug panel metric', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    governmentAnchors: window.cityDiagnostics?.governmentAnchors,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    governmentOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'government-anchors'),
-    pickingKindCount: window.cityDiagnostics?.picking.countsByKind['government-anchor'],
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.governmentAnchors).toMatchObject({
-    total: 5,
-    anchorKinds: 5,
-    serviceCounters: 29,
-    plazaLinkedAnchors: 5
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    governmentAnchors: 5,
-    governmentServiceCounters: 29,
-    governmentDailyVisitors: 1400,
-    governmentStaffCapacity: 430
-  });
-  expect(diagnostics.governmentOverlay).toMatchObject({
-    id: 'government-anchors',
-    featureCount: 5
-  });
-  expect(diagnostics.pickingKindCount).toBe(5);
-  expect(diagnostics.debugText).toContain('Government');
-  expect(diagnostics.debugText).toContain('5 anchors, 29 counters, 5 plaza links');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

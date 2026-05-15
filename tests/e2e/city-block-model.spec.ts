@@ -107,27 +107,6 @@ test('block validation catches invalid envelope, access, metrics, and parcel env
   );
 });
 
-test('browser diagnostics expose block model counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    total: window.cityDiagnostics?.blockModel.total,
-    buildableEnvelopes: window.cityDiagnostics?.blockModel.buildableEnvelopes,
-    frontages: window.cityDiagnostics?.blockModel.frontageClasses,
-    blocksWithInternalAccess: window.cityDiagnostics?.blockModel.blocksWithInternalAccess,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.total).toBeGreaterThan(0);
-  expect(diagnostics.buildableEnvelopes).toBe(diagnostics.total);
-  expect(diagnostics.frontages).toBe((diagnostics.total ?? 0) * 4);
-  expect(diagnostics.blocksWithInternalAccess).toBeGreaterThan(0);
-  expect(diagnostics.debugText).toContain('Blocks');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

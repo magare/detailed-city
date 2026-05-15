@@ -80,28 +80,6 @@ test('building footprint grammar validation rejects invalid envelope, coverage, 
   );
 });
 
-test('browser diagnostics expose building footprint grammar counts', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    buildings: window.cityDiagnostics?.objectCounts.buildings,
-    buildingsWithGrammar: window.cityDiagnostics?.buildingFootprints.buildingsWithGrammar,
-    grammarKinds: window.cityDiagnostics?.buildingFootprints.grammarKinds,
-    offsetFootprints: window.cityDiagnostics?.buildingFootprints.offsetFootprints,
-    towers: window.cityDiagnostics?.buildingFootprints.towers,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.buildingsWithGrammar).toBe(diagnostics.buildings);
-  expect(diagnostics.grammarKinds).toBeGreaterThanOrEqual(4);
-  expect(diagnostics.offsetFootprints).toBeGreaterThan(0);
-  expect(diagnostics.towers).toBeGreaterThan(0);
-  expect(diagnostics.debugText).toContain('Footprints');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

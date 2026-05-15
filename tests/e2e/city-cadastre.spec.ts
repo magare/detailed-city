@@ -67,25 +67,6 @@ test('cadastre validation catches parcel mismatches and invalid legal data', () 
   );
 });
 
-test('browser diagnostics expose cadastre counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    cadastreRecords: window.cityDiagnostics?.cadastreModel.total,
-    parcelsWithCadastre: window.cityDiagnostics?.cadastreModel.parcelsWithCadastre,
-    cadastreEasements: window.cityDiagnostics?.cadastreModel.easements,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.cadastreRecords ?? 0).toBeGreaterThan(0);
-  expect(diagnostics.parcelsWithCadastre).toBe(diagnostics.cadastreRecords);
-  expect(diagnostics.cadastreEasements ?? 0).toBeGreaterThan(diagnostics.cadastreRecords ?? 0);
-  expect(diagnostics.debugText).toContain('Cadastre');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

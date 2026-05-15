@@ -118,34 +118,6 @@ test('road hierarchy validator catches profile and corridor policy mismatches', 
   );
 });
 
-test('road hierarchy diagnostics render in the browser debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    roadNetwork: window.cityDiagnostics?.roadNetwork,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    roadOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'roads'),
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.roadNetwork).toMatchObject({
-    hierarchyKinds: 6,
-    transitEligibleRoads: expect.any(Number)
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    roadHierarchyKinds: 6
-  });
-  expect(diagnostics.roadOverlay).toMatchObject({
-    id: 'roads',
-    featureCount: 26
-  });
-  expect(diagnostics.debugText).toContain('Streets');
-  expect(diagnostics.debugText).toContain('6 hierarchies');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

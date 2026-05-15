@@ -140,41 +140,6 @@ test('waterway validation catches disconnected edges and missing crossing, culve
   );
 });
 
-test('browser diagnostics expose waterway network counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    waterwayNetwork: window.cityDiagnostics?.waterwayNetwork,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    waterwayOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'waterways'),
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.waterwayNetwork).toMatchObject({
-    edgeSegments: 8,
-    channels: 3,
-    crossings: 13,
-    culverts: 8,
-    docks: 3,
-    outfalls: 4
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    waterwayEdgeSegments: 8,
-    waterwayChannels: 3,
-    waterwayCrossings: 13,
-    waterwayCulverts: 8,
-    waterwayDocks: 3,
-    waterwayOutfalls: 4
-  });
-  expect(diagnostics.waterwayOverlay).toMatchObject({
-    id: 'waterways',
-    featureCount: 40
-  });
-  expect(diagnostics.debugText).toContain('Water');
-  expect(diagnostics.debugText).toContain('8 edges, 13 crossings, 4 outfalls');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

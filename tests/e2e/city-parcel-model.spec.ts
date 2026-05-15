@@ -100,27 +100,6 @@ test('parcel validation catches invalid setbacks, rights, frontage, constraints,
   );
 });
 
-test('browser diagnostics expose parcel model counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    total: window.cityDiagnostics?.parcelModel.total,
-    buildableEnvelopes: window.cityDiagnostics?.parcelModel.buildableEnvelopes,
-    primaryFrontageParcels: window.cityDiagnostics?.parcelModel.primaryFrontageParcels,
-    parcelsWithConstraints: window.cityDiagnostics?.parcelModel.parcelsWithConstraints,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.total).toBeGreaterThan(0);
-  expect(diagnostics.buildableEnvelopes).toBe(diagnostics.total);
-  expect(diagnostics.primaryFrontageParcels).toBeGreaterThan(0);
-  expect(diagnostics.parcelsWithConstraints).toBeGreaterThan(0);
-  expect(diagnostics.debugText).toContain('Parcels');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

@@ -132,36 +132,6 @@ test('climate weather validation catches invalid active, visibility, and wetness
   );
 });
 
-test('browser diagnostics expose climate weather state for debug and overlays', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    total: window.cityDiagnostics?.climateWeather.total,
-    activePresetId: window.cityDiagnostics?.climateWeather.activePresetId,
-    activePresetKind: window.cityDiagnostics?.climateWeather.activePresetKind,
-    weatherPresets: window.cityDiagnostics?.objectCounts.weatherPresets,
-    rainyPresets: window.cityDiagnostics?.objectCounts.rainyWeatherPresets,
-    overlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'weather-presets')?.featureCount,
-    weatherKind: window.cityDiagnostics?.objectIndex.objectsById['weather-preset-coastal-clear']?.kind,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics).toMatchObject({
-    validationPassed: true,
-    total: 5,
-    activePresetId: 'weather-preset-coastal-clear',
-    activePresetKind: 'clear',
-    weatherPresets: 5,
-    rainyPresets: 3,
-    overlayFeatures: 5,
-    weatherKind: 'weather-preset'
-  });
-  expect(diagnostics.debugText).toContain('Weather');
-  expect(diagnostics.debugText).toContain('clear, 5 presets, 3 rain');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

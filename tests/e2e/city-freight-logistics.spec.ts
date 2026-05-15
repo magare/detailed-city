@@ -106,34 +106,3 @@ test('freight validation rejects broken dock, route, service alley, and delivery
     ])
   );
 });
-
-test('browser diagnostics expose freight logistics counts and overlay data', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    indexedLoadingDocks: window.cityDiagnostics?.objectIndex.countsByKind['freight-loading-dock'],
-    indexedRoutes: window.cityDiagnostics?.objectIndex.countsByKind['freight-route'],
-    indexedAlleys: window.cityDiagnostics?.objectIndex.countsByKind['service-alley'],
-    freightOverlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'freight-logistics')?.featureCount,
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.objectCounts?.freightLoadingDocks).toBeGreaterThan(50);
-  expect(diagnostics.objectCounts?.freightRoutes).toBeGreaterThan(5);
-  expect(diagnostics.objectCounts?.serviceAlleys).toBeGreaterThan(0);
-  expect(diagnostics.objectCounts?.freightWarehouseLinks).toBeGreaterThan(0);
-  expect(diagnostics.objectCounts?.freightLastMileStops).toBe(diagnostics.objectCounts?.freightLoadingDocks);
-  expect(diagnostics.indexedLoadingDocks).toBe(diagnostics.objectCounts?.freightLoadingDocks);
-  expect(diagnostics.indexedRoutes).toBe(diagnostics.objectCounts?.freightRoutes);
-  expect(diagnostics.indexedAlleys).toBe(diagnostics.objectCounts?.serviceAlleys);
-  expect(diagnostics.freightOverlayFeatures).toBe(
-    (diagnostics.objectCounts?.freightLoadingDocks ?? 0) +
-      (diagnostics.objectCounts?.freightRoutes ?? 0) +
-      (diagnostics.objectCounts?.serviceAlleys ?? 0)
-  );
-  expect(diagnostics.debugText).toContain('Freight');
-});

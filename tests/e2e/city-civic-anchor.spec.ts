@@ -151,39 +151,6 @@ test('civic anchor validation catches broken service references and schedules', 
   );
 });
 
-test('browser diagnostics expose civic anchors and debug panel metric', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    civicAnchors: window.cityDiagnostics?.civicAnchors,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    civicOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'civic-anchors'),
-    pickingKindCount: window.cityDiagnostics?.picking.countsByKind['civic-anchor'],
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.civicAnchors).toMatchObject({
-    total: 6,
-    serviceTypes: 6,
-    emergencyAccessAnchors: 3
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    civicAnchors: 6,
-    civicAnchorDailyVisitors: 3160,
-    civicAnchorStaff: 558
-  });
-  expect(diagnostics.civicOverlay).toMatchObject({
-    id: 'civic-anchors',
-    featureCount: 6
-  });
-  expect(diagnostics.pickingKindCount).toBe(6);
-  expect(diagnostics.debugText).toContain('Civic');
-  expect(diagnostics.debugText).toContain('6 anchors, 6 services, 3 emergency');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

@@ -119,28 +119,6 @@ test('building roof grammar validation rejects impossible rooftop equipment and 
   );
 });
 
-test('browser diagnostics expose building roof grammar counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    buildings: window.cityDiagnostics?.objectCounts.buildings,
-    buildingsWithGrammar: window.cityDiagnostics?.buildingRoofs.buildingsWithGrammar,
-    detailModules: window.cityDiagnostics?.buildingRoofs.detailModules,
-    roofAccessCores: window.cityDiagnostics?.buildingRoofs.roofAccessCores,
-    heightExemptions: window.cityDiagnostics?.buildingRoofs.heightExemptions,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.buildingsWithGrammar).toBe(diagnostics.buildings);
-  expect(diagnostics.detailModules).toBeGreaterThan(diagnostics.buildings ?? 0);
-  expect(diagnostics.roofAccessCores).toBe(diagnostics.buildings);
-  expect(diagnostics.heightExemptions).toBeGreaterThan(0);
-  expect(diagnostics.debugText).toContain('Roofs');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

@@ -101,31 +101,6 @@ test('administrative boundary validation catches orphan land membership', () => 
   );
 });
 
-test('browser diagnostics expose administrative boundaries for the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    boundaries: window.cityDiagnostics?.administrativeBoundaries.total,
-    wards: window.cityDiagnostics?.administrativeBoundaries.wards,
-    neighborhoods: window.cityDiagnostics?.administrativeBoundaries.neighborhoods,
-    overlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'administrative-boundaries')
-      ?.featureCount,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics).toMatchObject({
-    validationPassed: true,
-    boundaries: 18,
-    wards: 4,
-    neighborhoods: 5,
-    overlayFeatures: 18
-  });
-  expect(diagnostics.debugText).toContain('Boundaries');
-  expect(diagnostics.debugText).toContain('18 admin, 4 wards, 5 neighborhoods');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

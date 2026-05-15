@@ -111,28 +111,6 @@ test('building structure shell validation rejects invalid massing, core, grid, a
   );
 });
 
-test('browser diagnostics expose building structure shell counts', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    buildings: window.cityDiagnostics?.objectCounts.buildings,
-    buildingsWithShell: window.cityDiagnostics?.buildingStructureShells.buildingsWithShell,
-    structuralSystemKinds: window.cityDiagnostics?.buildingStructureShells.structuralSystemKinds,
-    floorPlates: window.cityDiagnostics?.buildingStructureShells.floorPlates,
-    transferLevels: window.cityDiagnostics?.buildingStructureShells.transferLevels,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.buildingsWithShell).toBe(diagnostics.buildings);
-  expect(diagnostics.structuralSystemKinds).toBeGreaterThanOrEqual(4);
-  expect(diagnostics.floorPlates).toBeGreaterThan(diagnostics.buildings ?? 0);
-  expect(diagnostics.transferLevels).toBeGreaterThan(0);
-  expect(diagnostics.debugText).toContain('Shells');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

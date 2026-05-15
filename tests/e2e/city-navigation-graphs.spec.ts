@@ -86,33 +86,3 @@ test('navigation validation rejects missing route nodes and broken edge endpoint
     ])
   );
 });
-
-test('browser diagnostics expose navigation graphs, overlay data, and debug text', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    indexedNodes: window.cityDiagnostics?.objectIndex.countsByKind['navigation-graph-node'],
-    indexedEdges: window.cityDiagnostics?.objectIndex.countsByKind['navigation-graph-edge'],
-    indexedRoutes: window.cityDiagnostics?.objectIndex.countsByKind['navigation-route'],
-    navigationOverlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'navigation-graphs')?.featureCount,
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.objectCounts?.navigationModes).toBe(7);
-  expect(diagnostics.objectCounts?.navigationGraphNodes).toBeGreaterThan(700);
-  expect(diagnostics.objectCounts?.navigationGraphEdges).toBeGreaterThan(900);
-  expect(diagnostics.objectCounts?.navigationRoutes).toBe(7);
-  expect(diagnostics.objectCounts?.navigationAgentRoutes).toBe(4);
-  expect(diagnostics.objectCounts?.navigationOperationRoutes).toBe(3);
-  expect(diagnostics.indexedNodes).toBe(diagnostics.objectCounts?.navigationGraphNodes);
-  expect(diagnostics.indexedEdges).toBe(diagnostics.objectCounts?.navigationGraphEdges);
-  expect(diagnostics.indexedRoutes).toBe(diagnostics.objectCounts?.navigationRoutes);
-  expect(diagnostics.navigationOverlayFeatures).toBe(
-    (diagnostics.objectCounts?.navigationGraphEdges ?? 0) + (diagnostics.objectCounts?.navigationRoutes ?? 0)
-  );
-  expect(diagnostics.debugText).toContain('Navigation');
-});

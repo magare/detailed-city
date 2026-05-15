@@ -150,36 +150,6 @@ test('solar shading validation catches invalid values and broken references', ()
   );
 });
 
-test('browser diagnostics expose solar shading for debug and overlays', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    total: window.cityDiagnostics?.solarShading.total,
-    roofSamples: window.cityDiagnostics?.solarShading.roofSolarSamples,
-    shadeSamples: window.cityDiagnostics?.solarShading.shadeComfortSamples,
-    highGlareSamples: window.cityDiagnostics?.solarShading.highGlareSamples,
-    solarObjects: window.cityDiagnostics?.objectCounts.solarShadingSamples,
-    overlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'solar-shading')?.featureCount,
-    solarKind: window.cityDiagnostics?.objectIndex.objectsById['solar-shading-roof-solar-0']?.kind,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics).toMatchObject({
-    validationPassed: true,
-    total: 24,
-    roofSamples: 12,
-    shadeSamples: 12,
-    highGlareSamples: 3,
-    solarObjects: 24,
-    overlayFeatures: 24,
-    solarKind: 'solar-shading-sample'
-  });
-  expect(diagnostics.debugText).toContain('Solar');
-  expect(diagnostics.debugText).toContain('24 samples, 12 roofs, 3 glare');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

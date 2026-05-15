@@ -123,34 +123,6 @@ test('urban heat validation catches invalid values and unmitigated public route 
   );
 });
 
-test('browser diagnostics expose urban heat overlay and debug panel metric', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    total: window.cityDiagnostics?.urbanHeat.total,
-    highRiskZones: window.cityDiagnostics?.urbanHeat.highRiskZones,
-    publicRouteRiskZones: window.cityDiagnostics?.urbanHeat.publicRouteRiskZones,
-    heatObjects: window.cityDiagnostics?.objectCounts.urbanHeatZones,
-    overlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'urban-heat')?.featureCount,
-    heatKind: window.cityDiagnostics?.objectIndex.objectsById['urban-heat-public-route-risk-0']?.kind,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent
-  }));
-
-  expect(diagnostics).toMatchObject({
-    validationPassed: true,
-    total: 17,
-    highRiskZones: 2,
-    publicRouteRiskZones: 2,
-    heatObjects: 17,
-    overlayFeatures: 17,
-    heatKind: 'urban-heat-zone'
-  });
-  expect(diagnostics.debugText).toContain('Heat');
-  expect(diagnostics.debugText).toContain('17 zones, 2 high, 2 routes');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

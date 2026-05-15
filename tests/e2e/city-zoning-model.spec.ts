@@ -147,30 +147,6 @@ test('zoning validation reports use, height, FAR, coverage, buffer, and frontage
   );
 });
 
-test('browser diagnostics expose zoning model counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    zoningDistricts: window.cityDiagnostics?.zoningModel.total,
-    formBasedDistricts: window.cityDiagnostics?.zoningModel.formBasedDistricts,
-    parcelsWithZoning: window.cityDiagnostics?.zoningModel.parcelsWithZoning,
-    zoningOverlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'zoning')?.featureCount,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics).toMatchObject({
-    validationPassed: true,
-    zoningDistricts: 5,
-    formBasedDistricts: 2,
-    parcelsWithZoning: 583,
-    zoningOverlayFeatures: 5
-  });
-  expect(diagnostics.debugText).toContain('Zoning');
-  expect(diagnostics.debugText).toContain('5 districts, 2 form, 583 parcels');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

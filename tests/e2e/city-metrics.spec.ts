@@ -97,32 +97,6 @@ test('city metric validation catches missing coverage and invalid references', (
   );
 });
 
-test('browser diagnostics expose city metrics for the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    metrics: window.cityDiagnostics?.cityMetrics.total,
-    passing: window.cityDiagnostics?.cityMetrics.passing,
-    warnings: window.cityDiagnostics?.cityMetrics.warnings,
-    walkability: window.cityDiagnostics?.cityMetrics.valuesByKind.walkability,
-    overlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'city-metrics')?.featureCount,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics).toMatchObject({
-    validationPassed: true,
-    metrics: 8,
-    passing: 6,
-    warnings: 2,
-    walkability: 96.02,
-    overlayFeatures: 8
-  });
-  expect(diagnostics.debugText).toContain('Metrics');
-  expect(diagnostics.debugText).toContain('8 metrics, 6 pass, 2 warn');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

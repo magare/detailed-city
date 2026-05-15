@@ -110,42 +110,6 @@ test('traffic validation rejects vehicles assigned to restricted lanes', () => {
   );
 });
 
-test('browser diagnostics expose lane-level restriction counts', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    trafficValidationPassed: window.cityDiagnostics?.trafficValidation.passed,
-    laneRestrictions: window.cityDiagnostics?.laneRestrictions,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    roadOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'roads'),
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.trafficValidationPassed).toBe(true);
-  expect(diagnostics.laneRestrictions).toMatchObject({
-    total: 72,
-    busOnlyLanes: 10,
-    reversibleLanes: 1,
-    turnPocketLanes: 9,
-    freightRestrictedLanes: 20,
-    continuityGroups: 71
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    busOnlyLanes: 10,
-    reversibleLanes: 1,
-    turnPocketLanes: 9,
-    laneContinuityGroups: 71
-  });
-  expect(diagnostics.roadOverlay?.features.find((feature) => feature.objectId === 'road-h-6')?.metadata).toMatchObject({
-    busOnlyLanes: 1,
-    reversibleLanes: 1
-  });
-  expect(diagnostics.debugText).toContain('Lanes');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

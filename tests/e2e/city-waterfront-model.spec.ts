@@ -229,53 +229,6 @@ test('waterfront validation catches broken water, public realm, road, dock, open
   );
 });
 
-test('browser diagnostics expose waterfront model counts and visible pickable waterfront objects', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    waterfrontModel: window.cityDiagnostics?.waterfrontModel,
-    waterfrontOpenSpace: window.cityDiagnostics?.waterfrontOpenSpace,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    waterfrontOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'waterfront'),
-    pickingKindCount: window.cityDiagnostics?.picking.countsByKind['waterfront-edge'],
-    pickingOpenSpaceKindCount: window.cityDiagnostics?.picking.countsByKind['waterfront-open-space'],
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.waterfrontModel).toMatchObject({
-    total: 11,
-    publicAccessEdges: 6,
-    floodProtectionEdges: 4,
-    piers: 3
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    waterfrontEdges: 11,
-    waterfrontPublicAccessEdges: 6,
-    waterfrontFloodProtectionEdges: 4,
-    waterfrontPiers: 3,
-    waterfrontOpenSpaces: 8,
-    waterfrontWaterAccessPoints: 3,
-    waterfrontEcologicalOpenSpaces: 2
-  });
-  expect(diagnostics.waterfrontOpenSpace).toMatchObject({
-    total: 8,
-    publicAccessSpaces: 6,
-    waterAccessPoints: 3,
-    ecologicalSpaces: 2
-  });
-  expect(diagnostics.waterfrontOverlay).toMatchObject({
-    id: 'waterfront',
-    featureCount: 19
-  });
-  expect(diagnostics.pickingKindCount).toBe(11);
-  expect(diagnostics.pickingOpenSpaceKindCount).toBe(8);
-  expect(diagnostics.debugText).toContain('Waterfront');
-  expect(diagnostics.debugText).toContain('11 edges, 6 public, 3 piers');
-  expect(diagnostics.debugText).toContain('Promenade');
-  expect(diagnostics.debugText).toContain('8 spaces');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

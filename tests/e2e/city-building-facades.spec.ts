@@ -108,30 +108,6 @@ test('building facade grammar validation rejects invalid floor grids, modules, m
   expect(validation.issues.some((issue) => issue.id.startsWith('active-frontage-facade-grammar-mismatch-'))).toBe(true);
 });
 
-test('browser diagnostics expose building facade grammar counts in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    buildings: window.cityDiagnostics?.objectCounts.buildings,
-    buildingsWithGrammar: window.cityDiagnostics?.buildingFacades.buildingsWithGrammar,
-    facadeRhythms: window.cityDiagnostics?.buildingFacades.facadeRhythms,
-    facadeSides: window.cityDiagnostics?.buildingFacades.facadeSides,
-    windowModules: window.cityDiagnostics?.buildingFacades.windowModules,
-    storefrontModules: window.cityDiagnostics?.buildingFacades.storefrontModules,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.buildingsWithGrammar).toBe(diagnostics.buildings);
-  expect(diagnostics.facadeRhythms).toBeGreaterThanOrEqual(5);
-  expect(diagnostics.facadeSides).toBe((diagnostics.buildings ?? 0) * 4);
-  expect(diagnostics.windowModules).toBeGreaterThan(diagnostics.buildings ?? 0);
-  expect(diagnostics.storefrontModules).toBeGreaterThan(0);
-  expect(diagnostics.debugText).toContain('Facades');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

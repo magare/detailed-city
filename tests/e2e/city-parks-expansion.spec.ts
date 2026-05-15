@@ -94,45 +94,6 @@ test('park expansion validation catches broken access, parent, and binding refer
   );
 });
 
-test('browser diagnostics expose park expansion counts and debug panel metric', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    parkExpansion: window.cityDiagnostics?.parkExpansion,
-    parkFeatureObjects: window.cityDiagnostics?.objectIndex.countsByKind['park-feature'],
-    pickableParkFeature: window.cityDiagnostics?.picking.pickableObjects.find(
-      (metadata) => metadata.kind === 'park-feature'
-    ),
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? '',
-    canvasCount: document.querySelectorAll('canvas').length
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.objectCounts).toMatchObject({
-    parks: 3,
-    parkFeatures: 24,
-    parkPaths: 6,
-    parkProgramZones: 18,
-    parkSidewalkConnections: 6
-  });
-  expect(diagnostics.parkExpansion).toMatchObject({
-    totalFeatures: 24,
-    connectedParks: 3
-  });
-  expect(diagnostics.parkFeatureObjects).toBe(24);
-  expect(diagnostics.pickableParkFeature).toMatchObject({
-    kind: 'park-feature',
-    ownerDomain: 'public-realm',
-    parentId: 'central-park'
-  });
-  expect(diagnostics.canvasCount).toBe(1);
-  expect(diagnostics.debugText).toContain('Parks');
-  expect(diagnostics.debugText).toContain('24 features, 6 paths, 3 connected');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

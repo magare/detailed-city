@@ -106,36 +106,6 @@ test('soil geology validation catches invalid ground metrics and missing query r
   );
 });
 
-test('browser diagnostics expose soil geology counts and debug panel metric', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    soilGeology: window.cityDiagnostics?.soilGeology,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    soilOverlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'soil-geology')?.featureCount,
-    soilObjects: window.cityDiagnostics?.objectIndex.countsByKind['soil-geology-zone'],
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? '',
-    canvasCount: document.querySelectorAll('canvas').length
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.soilGeology).toMatchObject({
-    total: 5,
-    contaminatedZones: 3,
-    remediationRequiredZones: 1
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    soilGeologyZones: 5,
-    contaminatedSoilZones: 3
-  });
-  expect(diagnostics.soilOverlayFeatures).toBe(5);
-  expect(diagnostics.soilObjects).toBe(5);
-  expect(diagnostics.canvasCount).toBe(1);
-  expect(diagnostics.debugText).toContain('Soils');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

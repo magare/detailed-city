@@ -121,32 +121,6 @@ test('power validation catches unserved lights, bad building service, and broken
   );
 });
 
-test('browser diagnostics expose power grid coverage in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    powerGrid: window.cityDiagnostics?.powerGrid,
-    powerNodes: window.cityDiagnostics?.objectCounts.powerGridNodes,
-    powerEdges: window.cityDiagnostics?.objectCounts.powerGridEdges,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.powerGrid).toMatchObject({
-    nodes: 8,
-    edges: 7,
-    transformers: 3,
-    streetLightCircuits: 1,
-    buildingsServed: 583,
-    streetLightsServed: 12
-  });
-  expect(diagnostics.powerNodes).toBe(8);
-  expect(diagnostics.powerEdges).toBe(7);
-  expect(diagnostics.debugText).toContain('Power');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

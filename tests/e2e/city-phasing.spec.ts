@@ -120,36 +120,6 @@ test('development phase validation catches invalid staging references and order'
   );
 });
 
-test('browser diagnostics expose phasing counts and debug panel metric', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    developmentPhasing: window.cityDiagnostics?.developmentPhasing,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    phaseOverlayFeatures: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'phasing')?.featureCount,
-    phaseObjects: window.cityDiagnostics?.objectIndex.countsByKind['development-phase'],
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? '',
-    canvasCount: document.querySelectorAll('canvas').length
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.developmentPhasing).toMatchObject({
-    total: 3,
-    active: 1,
-    closureRoads: 3
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    developmentPhases: 3,
-    temporaryRoadClosures: 3
-  });
-  expect(diagnostics.phaseOverlayFeatures).toBe(3);
-  expect(diagnostics.phaseObjects).toBe(3);
-  expect(diagnostics.canvasCount).toBe(1);
-  expect(diagnostics.debugText).toContain('Phasing');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

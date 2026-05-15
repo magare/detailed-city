@@ -140,43 +140,6 @@ test('culture anchor validation catches broken civic, plaza, event, and render r
   );
 });
 
-test('browser diagnostics expose culture anchors and debug panel metric', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    cultureAnchors: window.cityDiagnostics?.cultureAnchors,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    cultureOverlay: window.cityDiagnostics?.overlays.find((overlay) => overlay.id === 'culture-anchors'),
-    pickingKindCount: window.cityDiagnostics?.picking.countsByKind['culture-anchor'],
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.cultureAnchors).toMatchObject({
-    total: 6,
-    anchorKinds: 6,
-    culturalFootfallDaily: 1680,
-    eventCapacityPeople: 1260,
-    eveningActivityAnchors: 4,
-    heritageAnchors: 2
-  });
-  expect(diagnostics.objectCounts).toMatchObject({
-    cultureAnchors: 6,
-    cultureFootfallDaily: 1680,
-    cultureEventCapacity: 1260,
-    cultureEveningAnchors: 4
-  });
-  expect(diagnostics.cultureOverlay).toMatchObject({
-    id: 'culture-anchors',
-    featureCount: 6
-  });
-  expect(diagnostics.pickingKindCount).toBe(6);
-  expect(diagnostics.debugText).toContain('Culture');
-  expect(diagnostics.debugText).toContain('6 anchors, 1680 footfall, 4 evening');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,

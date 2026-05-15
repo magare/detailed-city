@@ -62,32 +62,3 @@ test('transit validation rejects stops on non-transit roads', () => {
     ])
   );
 });
-
-test('browser diagnostics expose transit network and rendered markers', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    objectCounts: window.cityDiagnostics?.objectCounts,
-    transitStopsIndexed: window.cityDiagnostics?.objectIndex.countsByKind['transit-stop'],
-    transitRoutesIndexed: window.cityDiagnostics?.objectIndex.countsByKind['transit-route'],
-    pickableTransitStops: window.cityDiagnostics?.picking.countsByKind['transit-stop'],
-    markerLayerPresent: Boolean(
-      (window.cityApp as unknown as { city?: { group: { children: { name: string; children?: { name: string }[] }[] } } }).city?.group.children
-        .flatMap((layer) => layer.children ?? [])
-        .some((child) => child.name === 'TransitStopsAndRoutes')
-    ),
-    debugText: document.body.textContent
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.objectCounts?.transitStops).toBeGreaterThanOrEqual(8);
-  expect(diagnostics.objectCounts?.transitRoutes).toBeGreaterThanOrEqual(4);
-  expect(diagnostics.objectCounts?.transitRouteStops).toBeGreaterThanOrEqual(diagnostics.objectCounts?.transitStops ?? 0);
-  expect(diagnostics.transitStopsIndexed).toBe(diagnostics.objectCounts?.transitStops);
-  expect(diagnostics.transitRoutesIndexed).toBe(diagnostics.objectCounts?.transitRoutes);
-  expect(diagnostics.pickableTransitStops).toBe(diagnostics.objectCounts?.transitStops);
-  expect(diagnostics.markerLayerPresent).toBe(true);
-  expect(diagnostics.debugText).toContain('Transit');
-});

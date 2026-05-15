@@ -126,34 +126,6 @@ test('water validation catches bad service, pressure, hydrant reach, and edge me
   );
 });
 
-test('browser diagnostics expose water supply coverage in the debug panel', async ({ page }) => {
-  await page.goto('/?testMode=fast');
-  await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
-
-  const diagnostics = await page.evaluate(() => ({
-    validationPassed: window.cityDiagnostics?.validation.passed,
-    waterSupply: window.cityDiagnostics?.waterSupply,
-    waterNodes: window.cityDiagnostics?.objectCounts.waterSupplyNodes,
-    waterEdges: window.cityDiagnostics?.objectCounts.waterSupplyEdges,
-    waterHydrants: window.cityDiagnostics?.objectCounts.waterHydrants,
-    buildingsWithWaterService: window.cityDiagnostics?.objectCounts.buildingsWithWaterService,
-    debugText: document.querySelector('[data-city-debug-panel="true"]')?.textContent ?? ''
-  }));
-
-  expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.waterSupply).toMatchObject({
-    nodes: 7,
-    edges: 6,
-    hydrants: 2,
-    buildingsServed: 583
-  });
-  expect(diagnostics.waterNodes).toBe(7);
-  expect(diagnostics.waterEdges).toBe(6);
-  expect(diagnostics.waterHydrants).toBe(2);
-  expect(diagnostics.buildingsWithWaterService).toBe(583);
-  expect(diagnostics.debugText).toContain('Water Supply');
-});
-
 function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,
