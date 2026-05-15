@@ -12,7 +12,7 @@ Generation must produce contract-valid city data first. Rendering consumes that 
 6. Keep generated parks, waterways, roads, parcels, buildings, and constraints in the object index for validation and diagnostics.
 7. Generate vertical slice contracts that tag the active corridor and related frontage objects.
 8. Generate active frontage facades from detailed-street building, parcel, road, sidewalk, and entrance contracts.
-9. Generate public realm: trees, lighting, furniture, signs, plazas, waterfront edges.
+9. Generate public realm: trees, lighting, furniture, signs, green stormwater features, plazas, waterfront edges.
 10. Generate utilities and service access skeletons.
 11. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
 12. Stamp generated objects with deterministic source metadata.
@@ -73,7 +73,7 @@ Generated districts must copy their blueprint character rules into the district 
 
 - Parks and plazas are public-realm objects with boundaries and program zones.
 - Trees are generated as `tree-planting` objects with parent park/street references before rendering.
-- Street furniture, lamps, signs, and hydrants must bind to placement zones rather than arbitrary coordinates.
+- Street furniture, lamps, signs, hydrants, and green stormwater features must bind to placement zones and generated utility/road references rather than arbitrary coordinates.
 - Detailed-street and citywide furniture/signs are generated from active curb zones or road-profile furnishing zones, with object centers, offsets, clearance envelopes, asset binding IDs, readable LOD, and route/district/frontage sign bindings stored in domain data.
 
 ## Building And Facade Rules

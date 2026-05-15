@@ -57,6 +57,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     streetFurniture: city.streetFurniture.map((streetFurniture) =>
       withProceduralMetadata(streetFurniture, 'public-realm-street-furniture')
     ),
+    greenStormwaterFeatures: city.greenStormwaterFeatures.map((feature) =>
+      withProceduralMetadata(feature, 'public-realm-green-stormwater')
+    ),
     transitStops: city.transitStops.map((stop) => withProceduralMetadata(stop, 'mobility-transit-stops')),
     transitRoutes: city.transitRoutes.map((route) => withProceduralMetadata(route, 'mobility-transit-routes')),
     bikeSegments: city.bikeSegments.map((segment) => withProceduralMetadata(segment, 'mobility-cycling-segments')),

@@ -38,6 +38,7 @@ type GeneratedCityObjectSource = Pick<
   | 'freightLoadingDocks'
   | 'freightRoutes'
   | 'gazetteerEntries'
+  | 'greenStormwaterFeatures'
   | 'hazardZones'
   | 'intersections'
   | 'navigationGraphEdges'
@@ -113,6 +114,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.addressPoints,
     ...city.namedPlaces,
     ...city.gazetteerEntries,
+    ...city.greenStormwaterFeatures,
     ...city.weatherPresets,
     ...city.solarShadingSamples,
     ...city.urbanHeatZones,

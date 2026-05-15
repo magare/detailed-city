@@ -34,6 +34,7 @@ import type {
   GazetteerEntryContract,
   GeospatialFrame,
   GreenCorridorRole,
+  GreenStormwaterFeatureContract,
   HazardZoneContract,
   IntersectionContract,
   LandUse,
@@ -272,6 +273,8 @@ export interface ParkFeature extends ParkFeatureContract {}
 
 export interface PlazaZone extends PlazaZoneContract {}
 
+export interface GreenStormwaterFeature extends GreenStormwaterFeatureContract {}
+
 export interface Waterway extends WaterwayContract {}
 
 export interface WaterfrontEdge extends WaterfrontEdgeContract {}
@@ -400,6 +403,7 @@ export type GeneratedCityObject =
   | ParkPatch
   | ParkFeature
   | PlazaZone
+  | GreenStormwaterFeature
   | Waterway
   | WaterfrontEdge
   | WaterfrontOpenSpace
@@ -474,6 +478,7 @@ export interface GeneratedCity {
   parks: ParkPatch[];
   parkFeatures: ParkFeature[];
   plazaZones: PlazaZone[];
+  greenStormwaterFeatures: GreenStormwaterFeature[];
   waterways: Waterway[];
   waterfrontEdges: WaterfrontEdge[];
   waterfrontOpenSpaces: WaterfrontOpenSpace[];

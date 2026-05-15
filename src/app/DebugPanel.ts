@@ -191,6 +191,10 @@ export class DebugPanel {
         `${diagnostics.stormwater.nodes} nodes, ${diagnostics.stormwater.inlets} inlets, ${diagnostics.stormwater.roadsDrained} roads`
       ),
       createMetric(
+        'Green Stormwater',
+        `${diagnostics.greenStormwater.totalFeatures} features, ${diagnostics.greenStormwater.runoffRoutedFeatures} routed, ${diagnostics.greenStormwater.treeLinkedFeatures} tree-linked`
+      ),
+      createMetric(
         'Telecom',
         `${diagnostics.telecom.nodes} nodes, ${diagnostics.telecom.antennas} antennas, ${diagnostics.telecom.buildingsServed} buildings`
       ),

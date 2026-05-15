@@ -24,6 +24,7 @@ Validation is a first-class city system. It protects the project from procedural
 | Street trees | Street trees bind to sidewalks/roads/curbs and fit inside the furnishing zone. |
 | Street lights | Street lights bind to sidewalks/roads/curbs and carry coverage plus utility placeholders. |
 | Street furniture/signs | Furniture and signs bind to sidewalks/roads/curbs, use explicit placement zones, stay out of pedestrian clear paths, and avoid crossing clearances. |
+| Green stormwater public realm | Rain gardens, bioswales, planters, pervious strips, permeable paving, curb cuts, and tree trenches bind to roads, sidewalks, stormwater utility nodes, runoff edges, tree references where needed, asset bindings, and accessible clear paths. |
 | Parcels | Parcels inside blocks, respect setbacks, have frontage, do not overlap water/roads. |
 | Buildings | Fit parcels, respect height/coverage, expose frontage sides and public entrances, and do not block required access. |
 | Active frontages | Retail, hospitality, and mixed-use detailed-street frontages reference valid buildings, parcels, roads, sidewalks, public entrances, and facade render bindings. |
@@ -66,6 +67,7 @@ Validation is a first-class city system. It protects the project from procedural
 - Street light sidewalk/road/curb references, dimensions, color temperature, and missing power circuit warnings.
 - Public lighting coverage validates citywide/detailed placement context, fixture/night-safety/glare metadata, served power circuits, and critical sidewalk lighting gaps on arterial, collector, promenade, and transit-eligible routes.
 - Street furniture/sign sidewalk/road/curb references, dimensions, asset bindings, furnishing-zone fit, crossing-clearance avoidance, bus-shelter-to-bus-stop compatibility, LOD4-readable sign-face metadata, and sign route/district/frontage destinations.
+- Green stormwater feature validation checks road parentage, sidewalk clear path, stormwater node/runoff-edge references, tree-trench tree links, positive capacity/geometry metrics, maintenance access, and render binding coverage.
 - Parcel parent block, district/block references, positive dimensions, max height, bounded coverage ratio, frontage roads, and allowed uses.
 - Building references to parcels, positive footprint/height/floor count, parcel fit, coverage, height, allowed uses, primary frontage fields, and public entrance IDs.
 - Active frontage facade slice/building/parcel/road/sidewalk references, active-use membership, public entrance IDs, storefront metadata, slice tags, and facade asset bindings.

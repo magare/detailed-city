@@ -80,6 +80,7 @@ type GeneratedCityForValidation = Pick<
   | 'addressPoints'
   | 'namedPlaces'
   | 'gazetteerEntries'
+  | 'greenStormwaterFeatures'
   | 'cadastreRecords'
   | 'civicAnchors'
   | 'communityAnchors'
@@ -152,6 +153,7 @@ type ValidationUrbanHeatZone = GeneratedCityForValidation['urbanHeatZones'][numb
 type ValidationUtilityNode = GeneratedCityForValidation['utilityNodes'][number];
 type ValidationUtilityEdge = GeneratedCityForValidation['utilityEdges'][number];
 type ValidationServiceAccessCorridor = GeneratedCityForValidation['serviceAccessCorridors'][number];
+type ValidationGreenStormwaterFeature = GeneratedCityForValidation['greenStormwaterFeatures'][number];
 type ValidationPark = GeneratedCityForValidation['parks'][number];
 type ValidationParkFeature = GeneratedCityForValidation['parkFeatures'][number];
 type ValidationPlazaZone = GeneratedCityForValidation['plazaZones'][number];
@@ -182,6 +184,7 @@ const REQUIRED_RENDER_BINDING_IDS = [
   'binding:park-feature:seating',
   'binding:park-feature:water-feature',
   'binding:park-feature:shade',
+  'binding:green-stormwater:feature',
   'binding:plaza:zone',
   'binding:building:massing',
   'binding:building:roof-detail',
@@ -2678,8 +2681,10 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
     }
   }
 
-
-
+  validateGreenStormwaterFeatures(city, issues, {
+    roadsById,
+    assetBindingsById
+  });
 
   validateTransitNetwork(city, issues, roadsById, assetBindingsById);
   const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
@@ -3521,6 +3526,109 @@ function validateParcelModel(
   }
 }
 
+function validateGreenStormwaterFeatures(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  context: {
+    readonly roadsById: ReadonlyMap<string, ValidationRoad>;
+    readonly assetBindingsById: ReadonlyMap<string, RenderBinding>;
+  }
+): void {
+  const utilityNodesById = new Map(city.utilityNodes.map((node) => [node.id, node]));
+  const utilityEdgesById = new Map(city.utilityEdges.map((edge) => [edge.id, edge]));
+  const treesById = new Map(city.trees.map((tree) => [tree.id, tree]));
+
+  if (city.roads.some((road) => road.stormwaterDrainage) && city.greenStormwaterFeatures.length === 0) {
+    issues.push({
+      id: 'missing-green-stormwater-features',
+      severity: 'error',
+      category: 'graph',
+      message: 'Roads with stormwater drainage must expose visible green stormwater public-realm features.'
+    });
+  }
+
+  for (const feature of city.greenStormwaterFeatures) {
+    const road = context.roadsById.get(feature.roadId);
+    const sidewalk = city.objectIndex.objectsById[feature.sidewalkId];
+    const binding = context.assetBindingsById.get(feature.assetBindingId);
+
+    if (!road || feature.parentId !== feature.roadId) {
+      issues.push(createGreenStormwaterIssue(feature, 'missing-road-parent', `Green stormwater feature ${feature.id} must attach to generated road ${feature.roadId}.`, 'identifier'));
+    }
+
+    if (!sidewalk || sidewalk.kind !== 'sidewalk') {
+      issues.push(createGreenStormwaterIssue(feature, 'missing-sidewalk', `Green stormwater feature ${feature.id} must reference a generated sidewalk.`, 'identifier'));
+    } else if (road && sidewalk.roadSegmentId !== road.id) {
+      issues.push(createGreenStormwaterIssue(feature, 'sidewalk-road-mismatch', `Green stormwater feature ${feature.id} sidewalk must belong to road ${road.id}.`, 'graph'));
+    } else if (sidewalk.accessibleClearPathMeters < 1.8 || feature.clearPathMeters < 1.8) {
+      issues.push(createGreenStormwaterIssue(feature, 'blocked-clear-path', `Green stormwater feature ${feature.id} must preserve at least 1.8m accessible clear path.`, 'geometry'));
+    }
+
+    if (!binding || binding.objectKind !== 'green-stormwater-feature') {
+      issues.push(createGreenStormwaterIssue(feature, 'invalid-asset-binding', `Green stormwater feature ${feature.id} must reference a green stormwater render binding.`, 'asset'));
+    }
+
+    if (
+      feature.size.x <= 0 ||
+      feature.size.z <= 0 ||
+      feature.boundary.length < 4 ||
+      feature.storageVolumeCubicMeters <= 0 ||
+      feature.treatmentVolumeCubicMeters <= 0 ||
+      feature.designStormMmPerHour <= 0 ||
+      feature.maintenanceAccessMeters < 1.8 ||
+      feature.runoffCapturePercent < 0 ||
+      feature.runoffCapturePercent > 100
+    ) {
+      issues.push(createGreenStormwaterIssue(feature, 'invalid-hydraulic-geometry', `Green stormwater feature ${feature.id} must expose positive geometry, treatment, and maintenance metrics.`, 'geometry'));
+    }
+
+    if (feature.utilityNodeIds.length === 0) {
+      issues.push(createGreenStormwaterIssue(feature, 'missing-utility-nodes', `Green stormwater feature ${feature.id} must route to stormwater utility nodes.`, 'graph'));
+    }
+    for (const utilityNodeId of feature.utilityNodeIds) {
+      const node = utilityNodesById.get(utilityNodeId);
+      if (!node || node.utilityType !== 'stormwater') {
+        issues.push(createGreenStormwaterIssue(feature, `invalid-utility-node-${toIssueIdToken(utilityNodeId)}`, `Green stormwater feature ${feature.id} references missing stormwater node ${utilityNodeId}.`, 'graph'));
+      }
+    }
+
+    if (feature.runoffPathEdgeIds.length === 0) {
+      issues.push(createGreenStormwaterIssue(feature, 'missing-runoff-edges', `Green stormwater feature ${feature.id} must reference a stormwater runoff path edge.`, 'graph'));
+    }
+    for (const edgeId of feature.runoffPathEdgeIds) {
+      const edge = utilityEdgesById.get(edgeId);
+      if (!edge || edge.utilityType !== 'stormwater' || edge.edgeRole !== 'runoff-path') {
+        issues.push(createGreenStormwaterIssue(feature, `invalid-runoff-edge-${toIssueIdToken(edgeId)}`, `Green stormwater feature ${feature.id} references missing stormwater runoff edge ${edgeId}.`, 'graph'));
+      }
+    }
+
+    if (feature.featureKind === 'tree-trench' && feature.treeIds.length === 0) {
+      issues.push(createGreenStormwaterIssue(feature, 'missing-tree-trench-trees', `Tree trench ${feature.id} must link to street trees on the same road.`, 'graph'));
+    }
+    for (const treeId of feature.treeIds) {
+      const tree = treesById.get(treeId);
+      if (!tree || tree.roadId !== feature.roadId) {
+        issues.push(createGreenStormwaterIssue(feature, `invalid-tree-reference-${toIssueIdToken(treeId)}`, `Green stormwater feature ${feature.id} references missing or unrelated tree ${treeId}.`, 'graph'));
+      }
+    }
+  }
+}
+
+function createGreenStormwaterIssue(
+  feature: ValidationGreenStormwaterFeature,
+  suffix: string,
+  message: string,
+  category: ValidationIssue['category']
+): ValidationIssue {
+  return {
+    id: `green-stormwater-${suffix}-${feature.id}`,
+    severity: 'error',
+    category,
+    objectId: feature.id,
+    ...createIssueFocus(feature.center, 'Regenerate green stormwater placement from road drainage, sidewalk clear paths, and stormwater utility references.'),
+    message
+  };
+}
 
 function validateTransitNetwork(
   city: GeneratedCityForValidation,

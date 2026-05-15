@@ -4,6 +4,7 @@ import { ActiveFrontageMeshBuilder } from '../../city/rendering-handoff/mesh-bui
 import { BuildingFacadeMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingFacadeMeshBuilder';
 import { BuildingMassMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingMassMeshBuilder';
 import { BuildingRoofMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingRoofMeshBuilder';
+import { GreenStormwaterMeshBuilder } from '../../city/rendering-handoff/mesh-builders/GreenStormwaterMeshBuilder';
 import { ParkFeatureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkFeatureMeshBuilder';
 import { ParkSurfaceMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkSurfaceMeshBuilder';
 import { PlazaZoneMeshBuilder } from '../../city/rendering-handoff/mesh-builders/PlazaZoneMeshBuilder';
@@ -107,6 +108,7 @@ export class City implements Updatable {
     this.addWaterfrontEdges(generated);
     this.addWaterfrontOpenSpaces(generated);
     this.addTreePlantings(generated);
+    this.addGreenStormwaterFeatures(generated);
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
     this.addTrafficCalmingDevices(generated.trafficCalmingDevices);
@@ -217,6 +219,12 @@ export class City implements Updatable {
   private addTreePlantings(generated: GeneratedCity): void {
     this.layerGroups['public-realm'].add(
       new TreePlantingMeshBuilder(this.materials, this.pickingCatalog.metadataByObjectId).build(generated.trees)
+    );
+  }
+
+  private addGreenStormwaterFeatures(generated: GeneratedCity): void {
+    this.layerGroups['public-realm'].add(
+      new GreenStormwaterMeshBuilder(this.materials, this.pickingCatalog.metadataByObjectId).build(generated.greenStormwaterFeatures)
     );
   }
 

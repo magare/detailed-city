@@ -69,6 +69,7 @@ const SERVICE_ACCESS_CORRIDOR_KIND = String.raw`(?:maintenance-path|restricted-c
 const NAMED_PLACE_KIND = String.raw`(?:civic-anchor|district|neighborhood|park|street|ward|waterfront)`;
 const GAZETTEER_ENTRY_KIND = String.raw`(?:address|anchor|place|street)`;
 const ACCESS_CONTROL_KIND = String.raw`(?:bollard-line|checkpoint|fence|gate|guardrail|turnstile|wall)`;
+const GREEN_STORMWATER_KIND = String.raw`(?:bioswale|curb-cut|flow-through-planter|permeable-pavement|pervious-strip|rain-garden|tree-trench)`;
 
 export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
   entry(
@@ -161,6 +162,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     ['gazetteer-entry-<address|anchor|place|street>-<source-id>'],
     [exact(String.raw`gazetteer-entry-${GAZETTEER_ENTRY_KIND}-${NAMED_ID}(?:-${NAMED_ID})*`)],
     required(['address-point', 'civic-anchor', 'community-anchor', 'culture-anchor', 'government-anchor', 'named-place', 'road-segment'])
+  ),
+  entry(
+    'green-stormwater-feature',
+    ['green-stormwater-<feature-kind>-<road-id>-<index>'],
+    [exact(String.raw`green-stormwater-${GREEN_STORMWATER_KIND}-${ROAD_ID}-\d+`)],
+    required(['road-segment'])
   ),
   entry(
     'freight-loading-dock',

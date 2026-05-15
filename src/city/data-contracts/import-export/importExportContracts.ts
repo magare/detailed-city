@@ -274,6 +274,7 @@ export interface ProceduralSeedDomainSections {
   readonly serviceAlleys: GeneratedCity['serviceAlleys'];
   readonly streetLights: GeneratedCity['streetLights'];
   readonly streetFurniture: GeneratedCity['streetFurniture'];
+  readonly greenStormwaterFeatures: GeneratedCity['greenStormwaterFeatures'];
   readonly sidewalkGraph: GeneratedCity['sidewalkGraph'];
   readonly parcels: GeneratedCity['parcels'];
   readonly cadastreRecords: GeneratedCity['cadastreRecords'];
@@ -339,6 +340,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly serviceAlleys: number;
   readonly streetLights: number;
   readonly streetFurniture: number;
+  readonly greenStormwaterFeatures: number;
   readonly sidewalkGraphNodes: number;
   readonly sidewalkGraphEdges: number;
   readonly parcels: number;
@@ -478,6 +480,7 @@ export function createProceduralSeedJsonExport(
       serviceAlleys: city.serviceAlleys,
       streetLights: city.streetLights,
       streetFurniture: city.streetFurniture,
+      greenStormwaterFeatures: city.greenStormwaterFeatures,
       sidewalkGraph: city.sidewalkGraph,
       parcels: city.parcels,
       cadastreRecords: city.cadastreRecords,
@@ -685,6 +688,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'sidewalkGraph'
     | 'streetFurniture'
     | 'streetLights'
+    | 'greenStormwaterFeatures'
     | 'trees'
     | 'verticalSlices'
     | 'waterways'
@@ -739,6 +743,7 @@ export function createProceduralSeedDomainSectionCounts(
     serviceAlleys: city.serviceAlleys.length,
     streetLights: city.streetLights.length,
     streetFurniture: city.streetFurniture.length,
+    greenStormwaterFeatures: city.greenStormwaterFeatures.length,
     sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
     sidewalkGraphEdges: city.sidewalkGraph.edges.length,
     parcels: city.parcels.length,
@@ -814,6 +819,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'serviceAlleys') +
     getArrayLength(city, 'streetLights') +
     getArrayLength(city, 'streetFurniture') +
+    getArrayLength(city, 'greenStormwaterFeatures') +
     getNestedArrayLength(city, 'sidewalkGraph', 'nodes') +
     getNestedArrayLength(city, 'sidewalkGraph', 'edges') +
     getArrayLength(city, 'parcels') +

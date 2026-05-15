@@ -19,6 +19,7 @@ import type {
   CommunityAnchorKind,
   CultureAnchorKind,
   GovernmentAnchorKind,
+  GreenStormwaterFeatureKind,
   ServiceAccessCorridorKind,
   SignPanelKind,
   SourceType,
@@ -81,6 +82,7 @@ export interface CityDiagnostics {
   readonly accessControls: AccessControlDiagnostics;
   readonly publicLighting: PublicLightingDiagnostics;
   readonly signageWayfinding: SignageWayfindingDiagnostics;
+  readonly greenStormwater: GreenStormwaterDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
@@ -232,6 +234,12 @@ export interface CityDiagnostics {
     readonly stormwaterBioswales: number;
     readonly stormwaterCulverts: number;
     readonly roadsWithStormwaterDrainage: number;
+    readonly greenStormwaterFeatures: number;
+    readonly greenStormwaterRainGardens: number;
+    readonly greenStormwaterBioswales: number;
+    readonly greenStormwaterTreeTrenches: number;
+    readonly greenStormwaterRunoffEdges: number;
+    readonly greenStormwaterTreeLinkedFeatures: number;
     readonly telecomNodes: number;
     readonly telecomEdges: number;
     readonly telecomCellSites: number;
@@ -650,6 +658,19 @@ export interface StormwaterDiagnostics {
   readonly catchmentIds: readonly string[];
   readonly receivingWaterwayIds: readonly string[];
   readonly outageDomainIds: readonly string[];
+}
+
+export interface GreenStormwaterDiagnostics {
+  readonly totalFeatures: number;
+  readonly byKind: Readonly<Record<GreenStormwaterFeatureKind, number>>;
+  readonly roadBoundFeatures: number;
+  readonly utilityBoundFeatures: number;
+  readonly runoffRoutedFeatures: number;
+  readonly treeLinkedFeatures: number;
+  readonly totalStorageVolumeCubicMeters: number;
+  readonly totalTreatmentVolumeCubicMeters: number;
+  readonly averageRunoffCapturePercent: number;
+  readonly maintenanceOwners: readonly string[];
 }
 
 export interface TelecomDiagnostics {
@@ -1177,6 +1198,7 @@ export function createCityDiagnostics(
   const accessControls = createAccessControlDiagnostics(city);
   const publicLighting = createPublicLightingDiagnostics(city);
   const signageWayfinding = createSignageWayfindingDiagnostics(city);
+  const greenStormwater = createGreenStormwaterDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
@@ -1245,6 +1267,7 @@ export function createCityDiagnostics(
     accessControls,
     publicLighting,
     signageWayfinding,
+    greenStormwater,
     zoningModel,
     buildingTypologies,
     buildingFootprints,
@@ -1387,6 +1410,12 @@ export function createCityDiagnostics(
       stormwaterBioswales: stormwater.bioswales,
       stormwaterCulverts: stormwater.culverts,
       roadsWithStormwaterDrainage: stormwater.roadsDrained,
+      greenStormwaterFeatures: greenStormwater.totalFeatures,
+      greenStormwaterRainGardens: greenStormwater.byKind['rain-garden'],
+      greenStormwaterBioswales: greenStormwater.byKind.bioswale,
+      greenStormwaterTreeTrenches: greenStormwater.byKind['tree-trench'],
+      greenStormwaterRunoffEdges: city.greenStormwaterFeatures.reduce((sum, feature) => sum + feature.runoffPathEdgeIds.length, 0),
+      greenStormwaterTreeLinkedFeatures: greenStormwater.treeLinkedFeatures,
       telecomNodes: telecom.nodes,
       telecomEdges: telecom.edges,
       telecomCellSites: telecom.cellSites,
@@ -2180,6 +2209,49 @@ function createStormwaterDiagnostics(city: GeneratedCity): StormwaterDiagnostics
     receivingWaterwayIds: [...receivingWaterwayIds].sort(),
     outageDomainIds: [...outageDomainIds].sort()
   };
+}
+
+function createGreenStormwaterDiagnostics(city: GeneratedCity): GreenStormwaterDiagnostics {
+  const byKind: Record<GreenStormwaterFeatureKind, number> = {
+    bioswale: 0,
+    'curb-cut': 0,
+    'flow-through-planter': 0,
+    'permeable-pavement': 0,
+    'pervious-strip': 0,
+    'rain-garden': 0,
+    'tree-trench': 0
+  };
+  const maintenanceOwners = new Set<string>();
+
+  for (const feature of city.greenStormwaterFeatures) {
+    byKind[feature.featureKind] += 1;
+    maintenanceOwners.add(feature.maintenanceOwnerEntityId);
+  }
+
+  const totalRunoffCapture = city.greenStormwaterFeatures.reduce((sum, feature) => sum + feature.runoffCapturePercent, 0);
+
+  return {
+    totalFeatures: city.greenStormwaterFeatures.length,
+    byKind,
+    roadBoundFeatures: city.greenStormwaterFeatures.filter((feature) => city.roads.some((road) => road.id === feature.roadId)).length,
+    utilityBoundFeatures: city.greenStormwaterFeatures.filter((feature) => feature.utilityNodeIds.length > 0).length,
+    runoffRoutedFeatures: city.greenStormwaterFeatures.filter((feature) => feature.runoffPathEdgeIds.length > 0).length,
+    treeLinkedFeatures: city.greenStormwaterFeatures.filter((feature) => feature.treeIds.length > 0).length,
+    totalStorageVolumeCubicMeters: roundToTenths(
+      city.greenStormwaterFeatures.reduce((sum, feature) => sum + feature.storageVolumeCubicMeters, 0)
+    ),
+    totalTreatmentVolumeCubicMeters: roundToTenths(
+      city.greenStormwaterFeatures.reduce((sum, feature) => sum + feature.treatmentVolumeCubicMeters, 0)
+    ),
+    averageRunoffCapturePercent: city.greenStormwaterFeatures.length === 0
+      ? 0
+      : roundToTenths(totalRunoffCapture / city.greenStormwaterFeatures.length),
+    maintenanceOwners: [...maintenanceOwners].sort()
+  };
+}
+
+function roundToTenths(value: number): number {
+  return Math.round(value * 10) / 10;
 }
 
 function createTelecomDiagnostics(city: GeneratedCity): TelecomDiagnostics {

@@ -42,6 +42,7 @@ Asset selection should be driven by domain semantics:
 - `semanticTag` narrows selection, such as `street-profile=main-street`.
 - `materialZone` maps surfaces to atlases: asphalt, concrete, glass, brick, metal, water, sign, foliage.
 - `fallbackMaterial` and `fallbackGeometry` must exist for every major object kind.
+- Green stormwater render bindings use the procedural `green-stormwater` asset and registered material zones so rain gardens, bioswales, pervious strips, permeable paving, curb cuts, and tree trenches remain visible without external assets.
 - Procedural fallback assets are valid catalog entries when no binary asset exists yet.
 
 The validator checks catalog IDs, category, format, meter scale, tags, binary URL presence and extension, top-level attribution/license, LOD variant references, registered object-kind binding targets, semantic tags, material zones, asset IDs, fallback material, and fallback geometry. Missing required fallback coverage is reported as a warning; malformed asset definitions or invalid binding object kinds are errors.

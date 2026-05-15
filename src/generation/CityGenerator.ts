@@ -36,6 +36,7 @@ import { FreightLogisticsGenerator } from './mobility/FreightLogisticsGenerator'
 import { NavigationGraphGenerator } from './mobility/NavigationGraphGenerator';
 import { TransitGenerator } from './mobility/TransitGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
+import { GreenStormwaterGenerator } from './public-realm/GreenStormwaterGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
 import { attachSignageWayfindingBindings, StreetFurnitureGenerator } from './public-realm/StreetFurnitureGenerator';
 import { StreetLightGenerator } from './public-realm/StreetLightGenerator';
@@ -273,6 +274,12 @@ export class CityGenerator {
       waterways,
       hazardZones
     });
+    const greenStormwaterFeatures = new GreenStormwaterGenerator().create({
+      roads: stormwater.roads,
+      utilityNodes: stormwater.utilityNodes,
+      utilityEdges: stormwater.utilityEdges,
+      trees
+    });
     const telecom = new TelecomGenerator().create({
       utilityNodes: stormwater.utilityNodes,
       utilityEdges: stormwater.utilityEdges,
@@ -421,6 +428,7 @@ export class CityGenerator {
       serviceAlleys: freightLogistics.serviceAlleys,
       streetLights: powerGrid.streetLights,
       streetFurniture,
+      greenStormwaterFeatures,
       sidewalkGraph: sliceTagged.sidewalkGraph,
       parcels: sliceTagged.parcels,
       buildings: entranceAddress.buildings,

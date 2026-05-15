@@ -25,6 +25,7 @@ export type CityObjectKind =
   | 'economy-anchor'
   | 'facade'
   | 'gazetteer-entry'
+  | 'green-stormwater-feature'
   | 'bike-conflict-zone'
   | 'bike-graph-edge'
   | 'bike-graph-node'
@@ -193,6 +194,20 @@ export type PlazaZoneKind = 'active-edge' | 'event' | 'hardscape' | 'paving' | '
 export type PlazaPavingTier = 'primary' | 'secondary' | 'accent';
 export type PlazaGatheringBehavior = 'circulation' | 'linger' | 'programmed-event' | 'threshold';
 export type PlazaZoneSurface = 'stone-paver' | 'permeable-paver' | 'timber' | 'shade-canopy';
+export type GreenStormwaterFeatureKind =
+  | 'bioswale'
+  | 'curb-cut'
+  | 'flow-through-planter'
+  | 'permeable-pavement'
+  | 'pervious-strip'
+  | 'rain-garden'
+  | 'tree-trench';
+export type GreenStormwaterSurface =
+  | 'curb-cut-concrete'
+  | 'engineered-soil'
+  | 'permeable-paver'
+  | 'planting-bed'
+  | 'stone-check-dam';
 export type TreeSpecies = 'plane' | 'rain-tree' | 'palm' | 'jacaranda';
 export type TreePlantingForm = 'street-tree' | 'park-grove' | 'raised-planter';
 export type TreeCanopyClass = 'narrow' | 'medium' | 'broad' | 'palm';
@@ -217,6 +232,31 @@ export interface PlazaZoneContract extends CityObjectBase<'plaza-zone'> {
   readonly capacityPeople: number;
   readonly eventCapacityPeople: number;
   readonly shadeCoveragePercent: number;
+  readonly assetBindingId: CityId;
+}
+
+export interface GreenStormwaterFeatureContract extends CityObjectBase<'green-stormwater-feature'> {
+  readonly featureKind: GreenStormwaterFeatureKind;
+  readonly roadId: CityId;
+  readonly sidewalkId: CityId;
+  readonly utilityNodeIds: readonly CityId[];
+  readonly runoffPathEdgeIds: readonly CityId[];
+  readonly treeIds: readonly CityId[];
+  readonly maintenanceOwnerEntityId: CityId;
+  readonly center: Point2D;
+  readonly size: {
+    readonly x: number;
+    readonly z: number;
+  };
+  readonly boundary: Polygon2D;
+  readonly surface: GreenStormwaterSurface;
+  readonly storageVolumeCubicMeters: number;
+  readonly treatmentVolumeCubicMeters: number;
+  readonly designStormMmPerHour: number;
+  readonly clearPathMeters: number;
+  readonly curbCutCount: number;
+  readonly runoffCapturePercent: number;
+  readonly maintenanceAccessMeters: number;
   readonly assetBindingId: CityId;
 }
 
@@ -688,6 +728,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2'],
       description: 'Parks render as terrain patches with optional close planting detail.'
+    },
+    {
+      objectKind: 'green-stormwater-feature',
+      scope: 'public-realm-prop',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Green stormwater public-realm features show rain gardens, bioswales, planters, pervious strips, permeable paving, curb cuts, and tree trenches tied to drainage infrastructure.'
     },
     {
       objectKind: 'park-feature',

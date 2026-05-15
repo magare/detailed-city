@@ -13,6 +13,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:nature:park-seating:primitive', 'nature', 'Park Seating Primitive', 'park-seating', 8, 'lod3'),
   createProceduralAsset('asset:nature:park-water-feature:primitive', 'nature', 'Park Water Feature Primitive', 'park-water-feature', 12, 'lod2'),
   createProceduralAsset('asset:nature:park-shade:primitive', 'nature', 'Park Shade Primitive', 'park-shade', 7, 'lod3'),
+  createProceduralAsset('asset:nature:green-stormwater:primitive', 'nature', 'Green Stormwater Primitive', 'green-stormwater', 8.8, 'lod3'),
   createProceduralAsset('asset:street-prop:plaza-zone:primitive', 'street-prop', 'Plaza Zone Primitive', 'plaza-zone', 22, 'lod2'),
   createProceduralAsset('asset:building:massing:primitive', 'building', 'Building Massing Primitive', 'building', 36, 'lod1'),
   createProceduralAsset('asset:building:roof-detail:primitive', 'building', 'Roof Detail Primitive', 'roof', 10, 'lod2'),
@@ -96,6 +97,15 @@ export const DEFAULT_RENDER_BINDINGS = [
   createParkFeatureBinding('seating', 'park-seating', 'park-seating-deck'),
   createParkFeatureBinding('water-feature', 'park-water-feature', 'park-water-feature-basin'),
   createParkFeatureBinding('shade', 'park-shade', 'park-shade-canopy'),
+  {
+    id: 'binding:green-stormwater:feature',
+    objectKind: 'green-stormwater-feature',
+    semanticTag: 'green-stormwater-feature',
+    assetId: 'asset:nature:green-stormwater:primitive',
+    materialZone: 'green-stormwater',
+    fallbackMaterial: 'green-stormwater',
+    fallbackGeometry: 'green-stormwater-box'
+  },
   {
     id: 'binding:plaza:zone',
     objectKind: 'plaza-zone',

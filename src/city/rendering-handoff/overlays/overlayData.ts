@@ -38,6 +38,7 @@ export type CityOverlayId =
   | 'access-controls'
   | 'public-lighting'
   | 'signage-wayfinding'
+  | 'green-stormwater'
   | 'constraints'
   | 'resilience-goals'
   | 'service-access'
@@ -112,6 +113,7 @@ export function createCityOverlayDatasets(
     createDataset('access-controls', 'Access Controls', 'domain-data', createAccessControlFeatures(city)),
     createDataset('public-lighting', 'Public Lighting', 'domain-data', createPublicLightingFeatures(city)),
     createDataset('signage-wayfinding', 'Signage And Wayfinding', 'domain-data', createSignageWayfindingFeatures(city)),
+    createDataset('green-stormwater', 'Green Stormwater', 'domain-data', createGreenStormwaterFeatures(city)),
     createDataset('constraints', 'Constraints', 'domain-data', createConstraintFeatures(city)),
     createDataset('resilience-goals', 'Resilience Goals', 'domain-data', createResilienceGoalFeatures(city)),
     createDataset('service-access', 'Service Access', 'domain-data', createServiceAccessFeatures(city)),
@@ -809,6 +811,30 @@ function createSignageWayfindingFeatures(city: GeneratedCity): CityOverlayFeatur
         destinations: sign.signFace?.destinationObjectIds.length ?? 0
       }
     }));
+}
+
+function createGreenStormwaterFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.greenStormwaterFeatures.map((feature) => ({
+    id: `overlay:green-stormwater:${feature.id}`,
+    overlayId: 'green-stormwater' as const,
+    objectId: feature.id,
+    objectKind: feature.kind,
+    ownerDomain: feature.ownerDomain,
+    label: `${feature.featureKind} ${feature.roadId}`,
+    geometry: { type: 'polygon' as const, points: feature.boundary },
+    metadata: {
+      featureKind: feature.featureKind,
+      roadId: feature.roadId,
+      sidewalkId: feature.sidewalkId,
+      utilityNodes: feature.utilityNodeIds.length,
+      runoffEdges: feature.runoffPathEdgeIds.length,
+      trees: feature.treeIds.length,
+      storageM3: feature.storageVolumeCubicMeters,
+      treatmentM3: feature.treatmentVolumeCubicMeters,
+      clearPathMeters: feature.clearPathMeters,
+      runoffCapturePercent: feature.runoffCapturePercent
+    }
+  }));
 }
 
 function createConstraintFeatures(city: GeneratedCity): CityOverlayFeature[] {
