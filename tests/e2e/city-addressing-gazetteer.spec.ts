@@ -37,6 +37,7 @@ test('addressing gazetteer is deterministic, indexed, diagnosed, and import mapp
   expect(firstCity.communityAnchors.every((anchor) => (anchor.addressPointIds ?? []).length > 0)).toBe(true);
   expect(firstCity.cultureAnchors.every((anchor) => (anchor.addressPointIds ?? []).length > 0)).toBe(true);
   expect(firstCity.governmentAnchors.every((anchor) => (anchor.addressPointIds ?? []).length > 0)).toBe(true);
+  expect(firstCity.educationAnchors.every((anchor) => (anchor.addressPointIds ?? []).length > 0)).toBe(true);
   expect(firstCity.healthcareAnchors.every((anchor) => (anchor.addressPointIds ?? []).length > 0)).toBe(true);
   expect(countPlacesByKind(firstCity.namedPlaces)).toMatchObject({
     neighborhood: firstCity.administrativeBoundaries.filter((boundary) => boundary.boundaryKind === 'neighborhood').length,
@@ -51,6 +52,7 @@ test('addressing gazetteer is deterministic, indexed, diagnosed, and import mapp
       firstCity.communityAnchors.length +
       firstCity.cultureAnchors.length +
       firstCity.governmentAnchors.length +
+      firstCity.educationAnchors.length +
       firstCity.healthcareAnchors.length
   });
   expect(diagnostics.addressingGazetteer).toMatchObject({
@@ -62,6 +64,7 @@ test('addressing gazetteer is deterministic, indexed, diagnosed, and import mapp
     reverseLookupEntries: firstCity.gazetteerEntries.length,
     importMappableAddresses: firstCity.addressPoints.length,
     civicAnchorsWithAddresses: firstCity.civicAnchors.length,
+    educationAnchorsWithAddresses: firstCity.educationAnchors.length,
     healthcareAnchorsWithAddresses: firstCity.healthcareAnchors.length
   });
   expect(overlays.find((overlay) => overlay.id === 'addressing-gazetteer')?.featureCount).toBe(

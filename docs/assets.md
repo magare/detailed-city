@@ -34,6 +34,7 @@ src/assets/
 - Public-realm curb activations use procedural platform/barrier fallbacks and existing plaza, park seating, bench, awning, railing, and wood material zones until external parklet and outdoor dining kits are introduced.
 - Public amenities use procedural comfort-fixture fallbacks and existing street-furniture, water, park-shade, kiosk, and bike-rack material zones until external public toilet, fountain, shade, cooling, charging, kiosk, clock, and repair-stand kits are introduced.
 - Healthcare anchors use procedural civic-building marker fallbacks and a registered healthcare material zone until dedicated hospital, clinic, pharmacy, urgent-care, and ambulance-bay assets are introduced.
+- Education anchors use procedural civic-building marker fallbacks and a registered education-anchor material zone until dedicated school, library, university, childcare, and learning-campus assets are introduced.
 - Emergency service anchors use procedural civic-building marker fallbacks and a registered emergency-service material zone until dedicated fire, police, ambulance, shelter, command, and staging assets are introduced.
 - Water transport access uses procedural transit marker/platform fallbacks until dedicated ferry pier, dock, port-edge, and helipad assets are introduced.
 - Operations asset inventory can bind utility nodes and utility edges to procedural utility fallback assets while richer network equipment models are pending.

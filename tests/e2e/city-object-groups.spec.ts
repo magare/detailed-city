@@ -96,6 +96,7 @@ test('city object groups provide deterministic query paths for domains, slices, 
       first.city.communityAnchors.length +
       first.city.cultureAnchors.length +
       first.city.governmentAnchors.length +
+      first.city.educationAnchors.length +
       first.city.healthcareAnchors.length +
       first.city.emergencyServiceAnchors.length +
       first.city.activeFrontages.length

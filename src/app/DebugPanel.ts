@@ -377,6 +377,10 @@ export class DebugPanel {
         `${diagnostics.governmentAnchors.total} anchors, ${diagnostics.governmentAnchors.serviceCounters} counters, ${diagnostics.governmentAnchors.plazaLinkedAnchors} plaza links`
       ),
       createMetric(
+        'Education',
+        `${diagnostics.educationAnchors.total} anchors, ${diagnostics.educationAnchors.dailyLearners} learners, ${diagnostics.educationAnchors.dropOffCurbZones} drop-off`
+      ),
+      createMetric(
         'Healthcare',
         `${diagnostics.healthcareAnchors.total} anchors, ${diagnostics.healthcareAnchors.dailyPatients} patients, ${diagnostics.healthcareAnchors.ambulanceBays} ambulance bays`
       ),

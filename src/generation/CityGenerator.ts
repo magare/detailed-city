@@ -17,6 +17,7 @@ import { CivicAnchorGenerator } from './civic/CivicAnchorGenerator';
 import { CommunityAnchorGenerator } from './civic/CommunityAnchorGenerator';
 import { CultureAnchorGenerator } from './civic/CultureAnchorGenerator';
 import { EmergencyServiceAnchorGenerator } from './civic/EmergencyServiceAnchorGenerator';
+import { EducationAnchorGenerator } from './civic/EducationAnchorGenerator';
 import { GovernmentAnchorGenerator } from './civic/GovernmentAnchorGenerator';
 import { HealthcareAnchorGenerator } from './civic/HealthcareAnchorGenerator';
 import { applyConstraintFilters } from './constraints/applyConstraintFilters';
@@ -384,6 +385,16 @@ export class CityGenerator {
       roads: stormwater.roads,
       transitStops: transit.stops
     });
+    const educationAnchors = new EducationAnchorGenerator().create({
+      civicAnchors,
+      buildings: entranceAddress.buildings,
+      navigationGraphNodes: navigationGraphs.navigationGraphNodes,
+      navigationGraphEdges: accessControl.navigationGraphEdges,
+      curbZones,
+      transitStops: transit.stops,
+      bikeParking: cycling.bikeParking,
+      parkFeatures
+    });
     const governmentAnchors = new GovernmentAnchorGenerator().create({
       civicAnchors,
       buildings: entranceAddress.buildings,
@@ -412,6 +423,7 @@ export class CityGenerator {
       communityAnchors,
       cultureAnchors,
       governmentAnchors,
+      educationAnchors,
       healthcareAnchors
     });
     const cityMetrics = new CityMetricGenerator(this.config).create({
@@ -431,6 +443,7 @@ export class CityGenerator {
       communityAnchors: addressingGazetteer.communityAnchors,
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
+      educationAnchors: addressingGazetteer.educationAnchors,
       healthcareAnchors: addressingGazetteer.healthcareAnchors,
       emergencyServiceAnchors,
       waterTransportAccess,
@@ -524,6 +537,7 @@ export class CityGenerator {
       communityAnchors: addressingGazetteer.communityAnchors,
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
+      educationAnchors: addressingGazetteer.educationAnchors,
       healthcareAnchors: addressingGazetteer.healthcareAnchors,
       emergencyServiceAnchors,
       waterTransportAccess,

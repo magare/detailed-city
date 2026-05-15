@@ -79,6 +79,7 @@ type PickableObjectSource = Pick<
   | 'civicAnchors'
   | 'communityAnchors'
   | 'cultureAnchors'
+  | 'educationAnchors'
   | 'curbActivations'
   | 'emergencyServiceAnchors'
   | 'governmentAnchors'
@@ -118,6 +119,7 @@ export function createCityPickingMetadataCatalog(
     ...city.civicAnchors,
     ...city.communityAnchors,
     ...city.cultureAnchors,
+    ...city.educationAnchors,
     ...city.governmentAnchors,
     ...city.healthcareAnchors,
     ...city.emergencyServiceAnchors,
@@ -270,6 +272,24 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
   } else if (object.kind === 'government-anchor') {
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
+  } else if (object.kind === 'education-anchor') {
+    references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
+    references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
+    const access = record.access as
+      | {
+          dropOffCurbZoneIds?: readonly unknown[];
+          transitStopIds?: readonly unknown[];
+          accessibleNavigationNodeIds?: readonly unknown[];
+        }
+      | undefined;
+    references.curbZoneId =
+      typeof access?.dropOffCurbZoneIds?.[0] === 'string' ? access.dropOffCurbZoneIds[0] : references.curbZoneId;
+    references.transitStopId =
+      typeof access?.transitStopIds?.[0] === 'string' ? access.transitStopIds[0] : references.transitStopId;
+    references.navigationNodeId =
+      typeof access?.accessibleNavigationNodeIds?.[0] === 'string'
+        ? access.accessibleNavigationNodeIds[0]
+        : references.navigationNodeId;
   } else if (object.kind === 'healthcare-anchor') {
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
     references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;

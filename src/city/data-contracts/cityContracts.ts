@@ -25,6 +25,7 @@ export type CityObjectKind =
   | 'culture-anchor'
   | 'development-phase'
   | 'district'
+  | 'education-anchor'
   | 'economy-anchor'
   | 'emergency-service-anchor'
   | 'facade'
@@ -690,6 +691,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod2',
       allowedTiers: ['lod2', 'lod3'],
       description: 'Government anchors expose city hall, administrative, court, service counter, and civic plaza public-administration nodes.'
+    },
+    {
+      objectKind: 'education-anchor',
+      scope: 'building',
+      defaultTier: 'lod3',
+      allowedTiers: ['lod2', 'lod3'],
+      description: 'Education anchors expose schools, libraries, universities, childcare, learning campuses, drop-off rules, and education access coverage.'
     },
     {
       objectKind: 'healthcare-anchor',
@@ -2933,6 +2941,57 @@ export interface HealthcareAnchorContract extends CityObjectBase<'healthcare-anc
   };
   readonly acceptsAmbulance: boolean;
   readonly emergencyDepartment: boolean;
+  readonly addressPointIds?: readonly CityId[];
+  readonly scheduleProfileId: CityId;
+  readonly renderBindingId: CityId;
+}
+
+export type EducationAnchorKind =
+  | 'childcare'
+  | 'learning-campus'
+  | 'library'
+  | 'school'
+  | 'university';
+
+export interface EducationAnchorContract extends CityObjectBase<'education-anchor'> {
+  readonly anchorKind: EducationAnchorKind;
+  readonly civicAnchorId: CityId;
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly districtId: CityId;
+  readonly roadId: CityId;
+  readonly serviceAreaBoundaryId: CityId;
+  readonly center: Point2D;
+  readonly capacity: {
+    readonly studentCapacity: number;
+    readonly classroomCount: number;
+    readonly librarySeats: number;
+    readonly childcareSlots: number;
+    readonly lectureHallSeats: number;
+    readonly staffCapacity: number;
+  };
+  readonly access: {
+    readonly dailyLearners: number;
+    readonly dropOffTrips: number;
+    readonly publicEntranceIds: readonly CityId[];
+    readonly serviceEntranceIds: readonly CityId[];
+    readonly dropOffCurbZoneIds: readonly CityId[];
+    readonly transitStopIds: readonly CityId[];
+    readonly bikeParkingIds: readonly CityId[];
+    readonly playgroundFeatureIds: readonly CityId[];
+    readonly accessibleNavigationNodeIds: readonly CityId[];
+    readonly accessibleNavigationEdgeIds: readonly CityId[];
+  };
+  readonly coverage: {
+    readonly radiusMeters: number;
+    readonly targetDistrictIds: readonly CityId[];
+    readonly coveredNavigationNodeIds: readonly CityId[];
+    readonly coveredNavigationEdgeIds: readonly CityId[];
+    readonly educationAccessScore: number;
+    readonly estimatedDropOffWalkMeters: number;
+  };
+  readonly acceptsDropOff: boolean;
+  readonly publicLearningAccess: boolean;
   readonly addressPointIds?: readonly CityId[];
   readonly scheduleProfileId: CityId;
   readonly renderBindingId: CityId;

@@ -39,6 +39,7 @@ export type CityOverlayId =
   | 'community-anchors'
   | 'culture-anchors'
   | 'government-anchors'
+  | 'education-anchors'
   | 'healthcare-anchors'
   | 'emergency-service-anchors'
   | 'building-access'
@@ -123,6 +124,7 @@ export function createCityOverlayDatasets(
     createDataset('community-anchors', 'Community Anchors', 'domain-data', createCommunityAnchorFeatures(city)),
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
+    createDataset('education-anchors', 'Education Anchors', 'domain-data', createEducationAnchorFeatures(city)),
     createDataset('healthcare-anchors', 'Healthcare Anchors', 'domain-data', createHealthcareAnchorFeatures(city)),
     createDataset('emergency-service-anchors', 'Emergency Service Anchors', 'domain-data', createEmergencyServiceAnchorFeatures(city)),
     createDataset('building-access', 'Building Access', 'domain-data', createBuildingAccessFeatures(city)),
@@ -708,6 +710,33 @@ function createHealthcareAnchorFeatures(city: GeneratedCity): CityOverlayFeature
       ambulanceResponseSeconds: anchor.coverage.estimatedAmbulanceResponseSeconds,
       coveredNavigationNodes: anchor.coverage.coveredNavigationNodeIds.length,
       ambulanceRouteEdges: anchor.arrivals.ambulanceNavigationEdgeIds.length
+    }
+  }));
+}
+
+function createEducationAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.educationAnchors.map((anchor) => ({
+    id: `overlay:education-anchors:${anchor.id}`,
+    overlayId: 'education-anchors',
+    objectId: anchor.id,
+    objectKind: anchor.kind,
+    ownerDomain: anchor.ownerDomain,
+    label: anchor.name ?? anchor.id,
+    geometry: { type: 'point', point: anchor.center },
+    metadata: {
+      anchorKind: anchor.anchorKind,
+      civicAnchorId: anchor.civicAnchorId,
+      buildingId: anchor.buildingId,
+      roadId: anchor.roadId,
+      studentCapacity: anchor.capacity.studentCapacity,
+      dailyLearners: anchor.access.dailyLearners,
+      dropOffTrips: anchor.access.dropOffTrips,
+      dropOffZones: anchor.access.dropOffCurbZoneIds.length,
+      transitStops: anchor.access.transitStopIds.length,
+      bikeParking: anchor.access.bikeParkingIds.length,
+      playgrounds: anchor.access.playgroundFeatureIds.length,
+      educationAccessScore: anchor.coverage.educationAccessScore,
+      estimatedDropOffWalkMeters: anchor.coverage.estimatedDropOffWalkMeters
     }
   }));
 }

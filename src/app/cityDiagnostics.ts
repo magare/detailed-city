@@ -25,6 +25,7 @@ import type {
   CultureAnchorKind,
   CurbActivationKind,
   CurbActivationStatus,
+  EducationAnchorKind,
   EmergencyResponseMode,
   EmergencyServiceAnchorKind,
   GovernmentAnchorKind,
@@ -119,6 +120,7 @@ export interface CityDiagnostics {
   readonly communityAnchors: CommunityAnchorDiagnostics;
   readonly cultureAnchors: CultureAnchorDiagnostics;
   readonly governmentAnchors: GovernmentAnchorDiagnostics;
+  readonly educationAnchors: EducationAnchorDiagnostics;
   readonly healthcareAnchors: HealthcareAnchorDiagnostics;
   readonly emergencyServiceAnchors: EmergencyServiceAnchorDiagnostics;
   readonly waterTransportAccess: WaterTransportAccessDiagnostics;
@@ -484,6 +486,14 @@ export interface CityDiagnostics {
     readonly governmentDailyVisitors: number;
     readonly governmentStaffCapacity: number;
     readonly governmentPlazaLinks: number;
+    readonly educationAnchors: number;
+    readonly educationAnchorKinds: number;
+    readonly educationStudentCapacity: number;
+    readonly educationDailyLearners: number;
+    readonly educationDropOffTrips: number;
+    readonly educationDropOffZones: number;
+    readonly educationPlaygroundLinks: number;
+    readonly educationAccessScore: number;
     readonly healthcareAnchors: number;
     readonly healthcareAnchorKinds: number;
     readonly healthcareDailyPatients: number;
@@ -1017,6 +1027,7 @@ export interface AddressingGazetteerDiagnostics {
   readonly communityAnchorsWithAddresses: number;
   readonly cultureAnchorsWithAddresses: number;
   readonly governmentAnchorsWithAddresses: number;
+  readonly educationAnchorsWithAddresses: number;
   readonly healthcareAnchorsWithAddresses: number;
 }
 
@@ -1086,6 +1097,32 @@ export interface HealthcareAnchorDiagnostics {
   readonly ambulanceRouteEdges: number;
   readonly averageAmbulanceResponseSeconds: number;
   readonly averageCoverageScore: number;
+}
+
+export interface EducationAnchorDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Partial<Record<EducationAnchorKind, number>>>;
+  readonly anchorKinds: number;
+  readonly studentCapacity: number;
+  readonly classroomCount: number;
+  readonly librarySeats: number;
+  readonly childcareSlots: number;
+  readonly lectureHallSeats: number;
+  readonly staffCapacity: number;
+  readonly dailyLearners: number;
+  readonly dropOffTrips: number;
+  readonly dropOffReadyAnchors: number;
+  readonly publicLearningAnchors: number;
+  readonly transitLinkedAnchors: number;
+  readonly bikeLinkedAnchors: number;
+  readonly playgroundLinkedAnchors: number;
+  readonly dropOffCurbZones: number;
+  readonly educationCoverageNodes: number;
+  readonly educationCoverageEdges: number;
+  readonly accessibleNavigationNodes: number;
+  readonly accessibleNavigationEdges: number;
+  readonly averageDropOffWalkMeters: number;
+  readonly averageEducationAccessScore: number;
 }
 
 export interface CultureAnchorDiagnostics {
@@ -1480,6 +1517,7 @@ export function createCityDiagnostics(
   const communityAnchors = createCommunityAnchorDiagnostics(city);
   const cultureAnchors = createCultureAnchorDiagnostics(city);
   const governmentAnchors = createGovernmentAnchorDiagnostics(city);
+  const educationAnchors = createEducationAnchorDiagnostics(city);
   const healthcareAnchors = createHealthcareAnchorDiagnostics(city);
   const emergencyServiceAnchors = createEmergencyServiceAnchorDiagnostics(city);
   const waterTransportAccess = createWaterTransportAccessDiagnostics(city);
@@ -1558,6 +1596,7 @@ export function createCityDiagnostics(
     communityAnchors,
     cultureAnchors,
     governmentAnchors,
+    educationAnchors,
     healthcareAnchors,
     emergencyServiceAnchors,
     waterTransportAccess,
@@ -1914,6 +1953,14 @@ export function createCityDiagnostics(
       governmentDailyVisitors: governmentAnchors.dailyVisitors,
       governmentStaffCapacity: governmentAnchors.staffCapacity,
       governmentPlazaLinks: governmentAnchors.plazaLinkedAnchors,
+      educationAnchors: educationAnchors.total,
+      educationAnchorKinds: educationAnchors.anchorKinds,
+      educationStudentCapacity: educationAnchors.studentCapacity,
+      educationDailyLearners: educationAnchors.dailyLearners,
+      educationDropOffTrips: educationAnchors.dropOffTrips,
+      educationDropOffZones: educationAnchors.dropOffCurbZones,
+      educationPlaygroundLinks: educationAnchors.playgroundLinkedAnchors,
+      educationAccessScore: educationAnchors.averageEducationAccessScore,
       healthcareAnchors: healthcareAnchors.total,
       healthcareAnchorKinds: healthcareAnchors.anchorKinds,
       healthcareDailyPatients: healthcareAnchors.dailyPatients,
@@ -3216,6 +3263,102 @@ function createHealthcareAnchorDiagnostics(city: GeneratedCity): HealthcareAncho
   };
 }
 
+function createEducationAnchorDiagnostics(city: GeneratedCity): EducationAnchorDiagnostics {
+  const byKind: Partial<Record<EducationAnchorKind, number>> = {};
+  const dropOffZoneIds = new Set<string>();
+  const coverageNodeIds = new Set<string>();
+  const coverageEdgeIds = new Set<string>();
+  const accessibleNodeIds = new Set<string>();
+  const accessibleEdgeIds = new Set<string>();
+  let studentCapacity = 0;
+  let classroomCount = 0;
+  let librarySeats = 0;
+  let childcareSlots = 0;
+  let lectureHallSeats = 0;
+  let staffCapacity = 0;
+  let dailyLearners = 0;
+  let dropOffTrips = 0;
+  let dropOffReadyAnchors = 0;
+  let publicLearningAnchors = 0;
+  let transitLinkedAnchors = 0;
+  let bikeLinkedAnchors = 0;
+  let playgroundLinkedAnchors = 0;
+  let dropOffWalkMeters = 0;
+  let accessScore = 0;
+
+  for (const anchor of city.educationAnchors) {
+    byKind[anchor.anchorKind] = (byKind[anchor.anchorKind] ?? 0) + 1;
+    studentCapacity += anchor.capacity.studentCapacity;
+    classroomCount += anchor.capacity.classroomCount;
+    librarySeats += anchor.capacity.librarySeats;
+    childcareSlots += anchor.capacity.childcareSlots;
+    lectureHallSeats += anchor.capacity.lectureHallSeats;
+    staffCapacity += anchor.capacity.staffCapacity;
+    dailyLearners += anchor.access.dailyLearners;
+    dropOffTrips += anchor.access.dropOffTrips;
+    dropOffWalkMeters += anchor.coverage.estimatedDropOffWalkMeters;
+    accessScore += anchor.coverage.educationAccessScore;
+
+    if (anchor.acceptsDropOff) {
+      dropOffReadyAnchors += 1;
+    }
+    if (anchor.publicLearningAccess) {
+      publicLearningAnchors += 1;
+    }
+    if (anchor.access.transitStopIds.length > 0) {
+      transitLinkedAnchors += 1;
+    }
+    if (anchor.access.bikeParkingIds.length > 0) {
+      bikeLinkedAnchors += 1;
+    }
+    if (anchor.access.playgroundFeatureIds.length > 0) {
+      playgroundLinkedAnchors += 1;
+    }
+
+    for (const curbZoneId of anchor.access.dropOffCurbZoneIds) {
+      dropOffZoneIds.add(curbZoneId);
+    }
+    for (const nodeId of anchor.coverage.coveredNavigationNodeIds) {
+      coverageNodeIds.add(nodeId);
+    }
+    for (const edgeId of anchor.coverage.coveredNavigationEdgeIds) {
+      coverageEdgeIds.add(edgeId);
+    }
+    for (const nodeId of anchor.access.accessibleNavigationNodeIds) {
+      accessibleNodeIds.add(nodeId);
+    }
+    for (const edgeId of anchor.access.accessibleNavigationEdgeIds) {
+      accessibleEdgeIds.add(edgeId);
+    }
+  }
+
+  return {
+    total: city.educationAnchors.length,
+    byKind,
+    anchorKinds: Object.keys(byKind).length,
+    studentCapacity,
+    classroomCount,
+    librarySeats,
+    childcareSlots,
+    lectureHallSeats,
+    staffCapacity,
+    dailyLearners,
+    dropOffTrips,
+    dropOffReadyAnchors,
+    publicLearningAnchors,
+    transitLinkedAnchors,
+    bikeLinkedAnchors,
+    playgroundLinkedAnchors,
+    dropOffCurbZones: dropOffZoneIds.size,
+    educationCoverageNodes: coverageNodeIds.size,
+    educationCoverageEdges: coverageEdgeIds.size,
+    accessibleNavigationNodes: accessibleNodeIds.size,
+    accessibleNavigationEdges: accessibleEdgeIds.size,
+    averageDropOffWalkMeters: Number((dropOffWalkMeters / Math.max(1, city.educationAnchors.length)).toFixed(2)),
+    averageEducationAccessScore: Number((accessScore / Math.max(1, city.educationAnchors.length)).toFixed(2))
+  };
+}
+
 function createEmergencyServiceAnchorDiagnostics(city: GeneratedCity): EmergencyServiceAnchorDiagnostics {
   const byKind: Partial<Record<EmergencyServiceAnchorKind, number>> = {};
   const byResponseMode: Partial<Record<EmergencyResponseMode, number>> = {};
@@ -3686,6 +3829,7 @@ function createAddressingGazetteerDiagnostics(city: GeneratedCity): AddressingGa
     communityAnchorsWithAddresses: city.communityAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
     cultureAnchorsWithAddresses: city.cultureAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
     governmentAnchorsWithAddresses: city.governmentAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
+    educationAnchorsWithAddresses: city.educationAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length,
     healthcareAnchorsWithAddresses: city.healthcareAnchors.filter((anchor) => (anchor.addressPointIds ?? []).length > 0).length
   };
 }

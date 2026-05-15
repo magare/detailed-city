@@ -52,6 +52,7 @@ const CURB_ACTIVATION_KIND = String.raw`(?:parklet|outdoor-dining|temporary-seat
 const PUBLIC_AMENITY_KIND = String.raw`(?:public-toilet|drinking-fountain|shade-structure|misting-cooling-point|charging-point|clock|information-kiosk|repair-stand)`;
 const COMMUNITY_ANCHOR_KIND = String.raw`(?:cemetery|community-hall|food-bank|processional-space|recreation-center|shelter|social-service|worship-place)`;
 const CULTURE_ANCHOR_KIND = String.raw`(?:event-space|gallery|heritage-site|museum|theater|venue)`;
+const EDUCATION_ANCHOR_KIND = String.raw`(?:childcare|learning-campus|library|school|university)`;
 const ADMIN_BOUNDARY_KIND = String.raw`(?:city-limit|ward|neighborhood|service|ownership|jurisdiction)`;
 const HAZARD_ZONE_KIND = String.raw`(?:contamination|flood-plain|heat-exposure|landslide-risk|restricted-area)`;
 const WATERFRONT_EDGE_KIND = String.raw`(?:ecological-edge|flood-wall|pier|promenade|public-access|quay)`;
@@ -75,7 +76,7 @@ const NAMED_PLACE_KIND = String.raw`(?:civic-anchor|district|neighborhood|park|s
 const GAZETTEER_ENTRY_KIND = String.raw`(?:address|anchor|place|street)`;
 const ACCESS_CONTROL_KIND = String.raw`(?:bollard-line|checkpoint|fence|gate|guardrail|turnstile|wall)`;
 const GREEN_STORMWATER_KIND = String.raw`(?:bioswale|curb-cut|flow-through-planter|permeable-pavement|pervious-strip|rain-garden|tree-trench)`;
-const ASSET_INVENTORY_TARGET_KIND = String.raw`(?:civic-anchor|community-anchor|culture-anchor|emergency-service-anchor|government-anchor|healthcare-anchor|green-stormwater-feature|park-feature|plaza-zone|street-furniture|street-light|utility-edge|utility-node|water-transport-access|waterfront-open-space)`;
+const ASSET_INVENTORY_TARGET_KIND = String.raw`(?:civic-anchor|community-anchor|culture-anchor|education-anchor|emergency-service-anchor|government-anchor|healthcare-anchor|green-stormwater-feature|park-feature|plaza-zone|street-furniture|street-light|utility-edge|utility-node|water-transport-access|waterfront-open-space)`;
 const MAINTENANCE_OPERATION_KIND = String.raw`(?:inspection|repair|replacement|street-work|temporary-closure)`;
 const PERMIT_INSPECTION_KIND = String.raw`(?:development-permit|temporary-closure-permit|code-check|approval|inspection|compliance-review)`;
 
@@ -101,6 +102,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
       'civic-anchor',
       'community-anchor',
       'culture-anchor',
+      'education-anchor',
       'emergency-service-anchor',
       'government-anchor',
       'healthcare-anchor',
@@ -203,6 +205,12 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     none()
   ),
   entry('district', ['district-<district-slug>'], [exact(String.raw`district-${NAMED_ID}`)], none()),
+  entry(
+    'education-anchor',
+    ['education-anchor-<education-anchor-kind>'],
+    [exact(String.raw`education-anchor-${EDUCATION_ANCHOR_KIND}`)],
+    required(['civic-anchor'])
+  ),
   entry('economy-anchor', ['economy-anchor-<slug>'], [exact(String.raw`economy-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
   entry('facade', ['facade-active-frontage-<building-id>-<road-id>'], [exact(String.raw`facade-active-frontage-${BUILDING_ID}-${ROAD_ID}`)], required(['building'])),
   entry(
@@ -214,6 +222,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
       'civic-anchor',
       'community-anchor',
       'culture-anchor',
+      'education-anchor',
       'government-anchor',
       'healthcare-anchor',
       'named-place',

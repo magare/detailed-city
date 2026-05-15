@@ -9,6 +9,7 @@ import type {
   CivicAnchor,
   CommunityAnchor,
   CultureAnchor,
+  EducationAnchor,
   EmergencyServiceAnchor,
   GeneratedCity,
   GovernmentAnchor,
@@ -30,6 +31,7 @@ export interface AssetInventoryGeneratorInput {
   readonly communityAnchors: readonly CommunityAnchor[];
   readonly cultureAnchors: readonly CultureAnchor[];
   readonly governmentAnchors: readonly GovernmentAnchor[];
+  readonly educationAnchors: readonly EducationAnchor[];
   readonly healthcareAnchors: readonly HealthcareAnchor[];
   readonly emergencyServiceAnchors: readonly EmergencyServiceAnchor[];
   readonly waterTransportAccess: readonly WaterTransportAccess[];
@@ -48,6 +50,7 @@ type InventoryTarget = Extract<
   | CivicAnchor
   | CommunityAnchor
   | CultureAnchor
+  | EducationAnchor
   | EmergencyServiceAnchor
   | GovernmentAnchor
   | HealthcareAnchor
@@ -85,6 +88,7 @@ export class AssetInventoryGenerator {
       ...input.communityAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.cultureAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.governmentAnchors.map((object) => civicTarget(object, object.renderBindingId)),
+      ...input.educationAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.healthcareAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.emergencyServiceAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.waterTransportAccess.map((object) =>
@@ -112,7 +116,7 @@ export class AssetInventoryGenerator {
   }
 }
 
-function civicTarget<T extends CivicAnchor | CommunityAnchor | CultureAnchor | GovernmentAnchor | HealthcareAnchor | EmergencyServiceAnchor>(
+function civicTarget<T extends CivicAnchor | CommunityAnchor | CultureAnchor | GovernmentAnchor | EducationAnchor | HealthcareAnchor | EmergencyServiceAnchor>(
   object: T,
   renderBindingId: CityId
 ): TargetDescriptor<T> {
@@ -230,6 +234,7 @@ function getExpectedServiceLifeYears(object: InventoryTarget): number {
     case 'civic-anchor':
     case 'community-anchor':
     case 'culture-anchor':
+    case 'education-anchor':
     case 'emergency-service-anchor':
     case 'government-anchor':
     case 'healthcare-anchor':
@@ -262,6 +267,7 @@ function getReplacementCost(object: InventoryTarget): number {
     case 'civic-anchor':
     case 'community-anchor':
     case 'culture-anchor':
+    case 'education-anchor':
     case 'emergency-service-anchor':
     case 'government-anchor':
     case 'healthcare-anchor':
@@ -302,6 +308,9 @@ function getCriticality(object: InventoryTarget): AssetCriticality {
   }
   if (object.kind === 'healthcare-anchor') {
     return object.acceptsAmbulance || object.emergencyDepartment ? 'high' : 'medium';
+  }
+  if (object.kind === 'education-anchor') {
+    return object.anchorKind === 'childcare' || object.acceptsDropOff ? 'medium' : 'low';
   }
   if (object.kind === 'street-light' && object.nightSafety.emergencyRouteSupport) {
     return 'high';

@@ -288,6 +288,7 @@ export interface ProceduralSeedDomainSections {
   readonly civicAnchors: GeneratedCity['civicAnchors'];
   readonly communityAnchors: GeneratedCity['communityAnchors'];
   readonly cultureAnchors: GeneratedCity['cultureAnchors'];
+  readonly educationAnchors: GeneratedCity['educationAnchors'];
   readonly governmentAnchors: GeneratedCity['governmentAnchors'];
   readonly healthcareAnchors: GeneratedCity['healthcareAnchors'];
   readonly emergencyServiceAnchors: GeneratedCity['emergencyServiceAnchors'];
@@ -364,6 +365,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly civicAnchors: number;
   readonly communityAnchors: number;
   readonly cultureAnchors: number;
+  readonly educationAnchors: number;
   readonly governmentAnchors: number;
   readonly healthcareAnchors: number;
   readonly emergencyServiceAnchors: number;
@@ -512,6 +514,7 @@ export function createProceduralSeedJsonExport(
       civicAnchors: city.civicAnchors,
       communityAnchors: city.communityAnchors,
       cultureAnchors: city.cultureAnchors,
+      educationAnchors: city.educationAnchors,
       governmentAnchors: city.governmentAnchors,
       healthcareAnchors: city.healthcareAnchors,
       emergencyServiceAnchors: city.emergencyServiceAnchors,
@@ -669,6 +672,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'civicAnchors'
     | 'communityAnchors'
     | 'cultureAnchors'
+    | 'educationAnchors'
     | 'governmentAnchors'
     | 'healthcareAnchors'
     | 'emergencyServiceAnchors'
@@ -794,6 +798,7 @@ export function createProceduralSeedDomainSectionCounts(
     civicAnchors: city.civicAnchors.length,
     communityAnchors: city.communityAnchors.length,
     cultureAnchors: city.cultureAnchors.length,
+    educationAnchors: city.educationAnchors.length,
     governmentAnchors: city.governmentAnchors.length,
     healthcareAnchors: city.healthcareAnchors.length,
     emergencyServiceAnchors: city.emergencyServiceAnchors.length,
@@ -879,6 +884,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'civicAnchors') +
     getArrayLength(city, 'communityAnchors') +
     getArrayLength(city, 'cultureAnchors') +
+    getArrayLength(city, 'educationAnchors') +
     getArrayLength(city, 'governmentAnchors') +
     getArrayLength(city, 'healthcareAnchors') +
     getArrayLength(city, 'emergencyServiceAnchors') +

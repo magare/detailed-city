@@ -7,6 +7,7 @@ import type {
   CommunityAnchor,
   CultureAnchor,
   DistrictPlan,
+  EducationAnchor,
   GazetteerEntry,
   GovernmentAnchor,
   HealthcareAnchor,
@@ -30,6 +31,7 @@ export interface AddressingGazetteerInput {
   readonly communityAnchors: readonly CommunityAnchor[];
   readonly cultureAnchors: readonly CultureAnchor[];
   readonly governmentAnchors: readonly GovernmentAnchor[];
+  readonly educationAnchors: readonly EducationAnchor[];
   readonly healthcareAnchors: readonly HealthcareAnchor[];
 }
 
@@ -41,6 +43,7 @@ export interface AddressingGazetteerOutput {
   readonly communityAnchors: CommunityAnchor[];
   readonly cultureAnchors: CultureAnchor[];
   readonly governmentAnchors: GovernmentAnchor[];
+  readonly educationAnchors: EducationAnchor[];
   readonly healthcareAnchors: HealthcareAnchor[];
 }
 
@@ -87,6 +90,7 @@ export class AddressingGazetteerGenerator {
     const communityAnchors = attachAnchorAddresses(input.communityAnchors, enrichedAddressByBuildingId);
     const cultureAnchors = attachAnchorAddresses(input.cultureAnchors, enrichedAddressByBuildingId);
     const governmentAnchors = attachAnchorAddresses(input.governmentAnchors, enrichedAddressByBuildingId);
+    const educationAnchors = attachAnchorAddresses(input.educationAnchors, enrichedAddressByBuildingId);
     const healthcareAnchors = attachAnchorAddresses(input.healthcareAnchors, enrichedAddressByBuildingId);
 
     return {
@@ -96,7 +100,7 @@ export class AddressingGazetteerGenerator {
         ...enrichedAddressPoints.map((addressPoint) => createAddressGazetteerEntry(addressPoint)),
         ...this.attachAddressMembership(namedPlaces, enrichedAddressPoints).map((place) => createPlaceGazetteerEntry(place)),
         ...createAnchorGazetteerEntries(
-          [...civicAnchors, ...communityAnchors, ...cultureAnchors, ...governmentAnchors, ...healthcareAnchors],
+          [...civicAnchors, ...communityAnchors, ...cultureAnchors, ...governmentAnchors, ...educationAnchors, ...healthcareAnchors],
           enrichedAddressByBuildingId
         )
       ],
@@ -104,6 +108,7 @@ export class AddressingGazetteerGenerator {
       communityAnchors,
       cultureAnchors,
       governmentAnchors,
+      educationAnchors,
       healthcareAnchors
     };
   }
@@ -304,7 +309,7 @@ function createPlaceGazetteerEntry(place: NamedPlace): GazetteerEntry {
 }
 
 function createAnchorGazetteerEntries(
-  anchors: readonly (CivicAnchor | CommunityAnchor | CultureAnchor | GovernmentAnchor | HealthcareAnchor)[],
+  anchors: readonly (CivicAnchor | CommunityAnchor | CultureAnchor | GovernmentAnchor | EducationAnchor | HealthcareAnchor)[],
   addressByBuildingId: ReadonlyMap<CityId, AddressPoint>
 ): GazetteerEntry[] {
   return anchors.map((anchor) => {
@@ -336,7 +341,7 @@ function createAnchorGazetteerEntries(
   });
 }
 
-function attachAnchorAddresses<Anchor extends CivicAnchor | CommunityAnchor | CultureAnchor | GovernmentAnchor | HealthcareAnchor>(
+function attachAnchorAddresses<Anchor extends CivicAnchor | CommunityAnchor | CultureAnchor | GovernmentAnchor | EducationAnchor | HealthcareAnchor>(
   anchors: readonly Anchor[],
   addressByBuildingId: ReadonlyMap<CityId, AddressPoint>
 ): Anchor[] {

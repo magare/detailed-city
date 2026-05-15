@@ -21,6 +21,7 @@ import type {
   CommunityAnchorKind,
   ConstraintKind,
   CultureAnchorKind,
+  EducationAnchorKind,
   EmergencyResponseMode,
   EmergencyServiceAnchorKind,
   GeospatialFrame,
@@ -92,6 +93,7 @@ type GeneratedCityForValidation = Pick<
   | 'civicAnchors'
   | 'communityAnchors'
   | 'cultureAnchors'
+  | 'educationAnchors'
   | 'governmentAnchors'
   | 'healthcareAnchors'
   | 'emergencyServiceAnchors'
@@ -160,6 +162,7 @@ type ValidationPermitInspectionRecord = GeneratedCityForValidation['permitInspec
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
+type ValidationEducationAnchor = GeneratedCityForValidation['educationAnchors'][number];
 type ValidationGovernmentAnchor = GeneratedCityForValidation['governmentAnchors'][number];
 type ValidationHealthcareAnchor = GeneratedCityForValidation['healthcareAnchors'][number];
 type ValidationEmergencyServiceAnchor = GeneratedCityForValidation['emergencyServiceAnchors'][number];
@@ -197,6 +200,7 @@ const ASSET_INVENTORY_TARGET_KINDS = [
   'civic-anchor',
   'community-anchor',
   'culture-anchor',
+  'education-anchor',
   'emergency-service-anchor',
   'government-anchor',
   'healthcare-anchor',
@@ -345,6 +349,13 @@ const GOVERNMENT_ANCHOR_KINDS = [
   'court',
   'service-counter'
 ] as const satisfies readonly GovernmentAnchorKind[];
+const EDUCATION_ANCHOR_KINDS = [
+  'childcare',
+  'learning-campus',
+  'library',
+  'school',
+  'university'
+] as const satisfies readonly EducationAnchorKind[];
 const EMERGENCY_SERVICE_ANCHOR_KINDS = [
   'ambulance-post',
   'command-post',
@@ -3068,6 +3079,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateCommunityAnchors(city, issues, assetBindingsById);
   validateCultureAnchors(city, issues, assetBindingsById);
   validateGovernmentAnchors(city, issues, assetBindingsById);
+  validateEducationAnchors(city, issues, assetBindingsById);
   validateHealthcareAnchors(city, issues, assetBindingsById);
   validateEmergencyServiceAnchors(city, issues, assetBindingsById);
   validateWaterTransportAccess(city, issues, assetBindingsById);
@@ -5855,6 +5867,7 @@ function validateAddressingGazetteer(city: GeneratedCityForValidation, issues: V
     ...city.communityAnchors,
     ...city.cultureAnchors,
     ...city.governmentAnchors,
+    ...city.educationAnchors,
     ...city.healthcareAnchors
   ]) {
     if (!anchor.addressPointIds || anchor.addressPointIds.length === 0) {
@@ -10487,6 +10500,223 @@ function createGovernmentAnchorIssue(
     category: 'zoning',
     objectId: anchor.id,
     ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from the government civic anchor and civic plaza zones.`),
+    message
+  };
+}
+
+function validateEducationAnchors(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const anchorsByKind = new Map<EducationAnchorKind, ValidationEducationAnchor[]>();
+  const educationBaseAnchor = city.civicAnchors.find((anchor) => anchor.serviceType === 'education');
+  const roadsById = new Map(city.roads.map((road) => [road.id, road]));
+  const districtsById = new Map(city.districts.map((district) => [district.id, district]));
+  const navigationNodesById = new Map(city.navigationGraphNodes.map((node) => [node.id, node]));
+  const navigationEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
+  const curbZonesById = new Map(city.curbZones.map((zone) => [zone.id, zone]));
+  const transitStopsById = new Map(city.transitStops.map((stop) => [stop.id, stop]));
+  const bikeParkingById = new Map(city.bikeParking.map((parking) => [parking.id, parking]));
+  const parkFeaturesById = new Map(city.parkFeatures.map((feature) => [feature.id, feature]));
+
+  for (const anchor of city.educationAnchors) {
+    const civicAnchor = city.civicAnchors.find((candidate) => candidate.id === anchor.civicAnchorId);
+    const building = city.buildings.find((candidate) => candidate.id === anchor.buildingId);
+    const parcel = city.parcels.find((candidate) => candidate.id === anchor.parcelId);
+    const serviceArea = city.administrativeBoundaries.find((candidate) => candidate.id === anchor.serviceAreaBoundaryId);
+    const binding = assetBindingsById.get(anchor.renderBindingId);
+
+    if (EDUCATION_ANCHOR_KINDS.includes(anchor.anchorKind)) {
+      anchorsByKind.set(anchor.anchorKind, [...(anchorsByKind.get(anchor.anchorKind) ?? []), anchor]);
+    } else {
+      issues.push(createEducationAnchorIssue(anchor, 'invalid-kind', `Education anchor ${anchor.id} must declare a supported education anchor kind.`));
+    }
+
+    if (!civicAnchor || civicAnchor.serviceType !== 'education' || anchor.parentId !== anchor.civicAnchorId) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-education-civic-anchor', `Education anchor ${anchor.id} must be parented to the education civic anchor.`));
+    }
+
+    if (!building || building.kind !== 'building' || building.parcelId !== anchor.parcelId) {
+      issues.push(createEducationAnchorIssue(anchor, 'building-parcel-mismatch', `Education anchor ${anchor.id} must reference an existing building and its parcel.`));
+    }
+
+    if (!parcel || parcel.id !== anchor.parcelId) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-parcel', `Education anchor ${anchor.id} must reference an existing parcel.`));
+    }
+
+    if (!districtsById.has(anchor.districtId) || (civicAnchor && civicAnchor.districtId !== anchor.districtId)) {
+      issues.push(createEducationAnchorIssue(anchor, 'district-mismatch', `Education anchor ${anchor.id} must stay in the education civic anchor district.`));
+    }
+
+    if (!roadsById.has(anchor.roadId)) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-road', `Education anchor ${anchor.id} must reference an existing drop-off/frontage road.`));
+    }
+
+    if (!serviceArea || serviceArea.boundaryKind !== 'service-area' || !serviceArea.serviceTypes.includes('public-works')) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-education-service-area', `Education anchor ${anchor.id} must reference an education service-area boundary.`));
+    }
+
+    if (
+      anchor.capacity.studentCapacity <= 0 ||
+      anchor.capacity.classroomCount < 0 ||
+      anchor.capacity.librarySeats < 0 ||
+      anchor.capacity.childcareSlots < 0 ||
+      anchor.capacity.lectureHallSeats < 0 ||
+      anchor.capacity.staffCapacity <= 0 ||
+      anchor.access.dailyLearners <= 0 ||
+      anchor.access.dropOffTrips < 0 ||
+      anchor.scheduleProfileId.length === 0
+    ) {
+      issues.push(createEducationAnchorIssue(anchor, 'invalid-capacity', `Education anchor ${anchor.id} must expose positive learner, staffing, and schedule metrics.`));
+    }
+
+    if (
+      anchor.coverage.radiusMeters <= 0 ||
+      anchor.coverage.targetDistrictIds.length === 0 ||
+      anchor.coverage.coveredNavigationNodeIds.length === 0 ||
+      anchor.coverage.coveredNavigationEdgeIds.length === 0 ||
+      anchor.coverage.educationAccessScore <= 0 ||
+      anchor.coverage.estimatedDropOffWalkMeters <= 0
+    ) {
+      issues.push(createEducationAnchorIssue(anchor, 'invalid-education-coverage', `Education anchor ${anchor.id} must expose coverage, access score, and drop-off walk metrics.`));
+    }
+
+    for (const districtId of anchor.coverage.targetDistrictIds) {
+      if (!districtsById.has(districtId)) {
+        issues.push(createEducationAnchorIssue(anchor, `missing-target-district-${toIssueIdToken(districtId)}`, `Education anchor ${anchor.id} references missing target district ${districtId}.`));
+      }
+    }
+
+    for (const nodeId of anchor.coverage.coveredNavigationNodeIds) {
+      if (!navigationNodesById.has(nodeId)) {
+        issues.push(createEducationAnchorIssue(anchor, `missing-navigation-node-${toIssueIdToken(nodeId)}`, `Education anchor ${anchor.id} references missing navigation node ${nodeId}.`));
+      }
+    }
+
+    for (const edgeId of anchor.coverage.coveredNavigationEdgeIds) {
+      if (!navigationEdgesById.has(edgeId)) {
+        issues.push(createEducationAnchorIssue(anchor, `missing-navigation-edge-${toIssueIdToken(edgeId)}`, `Education anchor ${anchor.id} references missing navigation edge ${edgeId}.`));
+      }
+    }
+
+    for (const entranceId of anchor.access.publicEntranceIds) {
+      if (!building?.publicEntranceIds.includes(entranceId)) {
+        issues.push(createEducationAnchorIssue(anchor, `missing-public-entrance-${toIssueIdToken(entranceId)}`, `Education anchor ${anchor.id} references missing public entrance ${entranceId}.`));
+      }
+    }
+
+    for (const entranceId of anchor.access.serviceEntranceIds) {
+      if (!(building?.serviceEntranceIds ?? []).includes(entranceId)) {
+        issues.push(createEducationAnchorIssue(anchor, `missing-service-entrance-${toIssueIdToken(entranceId)}`, `Education anchor ${anchor.id} references missing service entrance ${entranceId}.`));
+      }
+    }
+
+    for (const curbZoneId of anchor.access.dropOffCurbZoneIds) {
+      const curbZone = curbZonesById.get(curbZoneId);
+      if (!curbZone || (curbZone.curbUse !== 'ride-hail' && curbZone.curbUse !== 'loading' && curbZone.curbUse !== 'parking')) {
+        issues.push(createEducationAnchorIssue(anchor, `missing-drop-off-zone-${toIssueIdToken(curbZoneId)}`, `Education anchor ${anchor.id} references missing or unsuitable drop-off curb zone ${curbZoneId}.`));
+      }
+    }
+
+    for (const transitStopId of anchor.access.transitStopIds) {
+      if (!transitStopsById.has(transitStopId)) {
+        issues.push(createEducationAnchorIssue(anchor, `missing-transit-stop-${toIssueIdToken(transitStopId)}`, `Education anchor ${anchor.id} references missing transit stop ${transitStopId}.`));
+      }
+    }
+
+    for (const bikeParkingId of anchor.access.bikeParkingIds) {
+      if (!bikeParkingById.has(bikeParkingId)) {
+        issues.push(createEducationAnchorIssue(anchor, `missing-bike-parking-${toIssueIdToken(bikeParkingId)}`, `Education anchor ${anchor.id} references missing bike parking ${bikeParkingId}.`));
+      }
+    }
+
+    for (const playgroundFeatureId of anchor.access.playgroundFeatureIds) {
+      const parkFeature = parkFeaturesById.get(playgroundFeatureId);
+      if (!parkFeature || (parkFeature.programKind !== 'active-recreation' && parkFeature.surface !== 'play-surface')) {
+        issues.push(createEducationAnchorIssue(anchor, `missing-playground-feature-${toIssueIdToken(playgroundFeatureId)}`, `Education anchor ${anchor.id} references missing playground or active recreation feature ${playgroundFeatureId}.`));
+      }
+    }
+
+    for (const nodeId of anchor.access.accessibleNavigationNodeIds) {
+      const node = navigationNodesById.get(nodeId);
+      if (!node || node.mode !== 'pedestrian') {
+        issues.push(createEducationAnchorIssue(anchor, `missing-accessible-navigation-node-${toIssueIdToken(nodeId)}`, `Education anchor ${anchor.id} must link to pedestrian navigation nodes.`));
+      }
+    }
+
+    for (const edgeId of anchor.access.accessibleNavigationEdgeIds) {
+      const edge = navigationEdgesById.get(edgeId);
+      if (!edge || edge.mode !== 'pedestrian') {
+        issues.push(createEducationAnchorIssue(anchor, `missing-accessible-navigation-edge-${toIssueIdToken(edgeId)}`, `Education anchor ${anchor.id} must link to pedestrian navigation edges.`));
+      }
+    }
+
+    if (anchor.acceptsDropOff && (anchor.access.dropOffTrips <= 0 || anchor.access.dropOffCurbZoneIds.length === 0)) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-drop-off-access', `Drop-off accepting education anchor ${anchor.id} must expose curb zones and drop-off demand.`));
+    }
+
+    if (anchor.anchorKind === 'school' && (anchor.capacity.classroomCount <= 0 || anchor.access.playgroundFeatureIds.length === 0)) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-school-learning-access', `School anchor ${anchor.id} must expose classroom and playground access.`));
+    }
+
+    if (anchor.anchorKind === 'library' && (anchor.capacity.librarySeats <= 0 || !anchor.publicLearningAccess)) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-library-public-access', `Library anchor ${anchor.id} must expose public learning seats.`));
+    }
+
+    if (anchor.anchorKind === 'university' && anchor.capacity.lectureHallSeats <= 0) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-university-lecture-capacity', `University anchor ${anchor.id} must expose lecture hall capacity.`));
+    }
+
+    if (anchor.anchorKind === 'childcare' && anchor.capacity.childcareSlots <= 0) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-childcare-slots', `Childcare anchor ${anchor.id} must expose childcare slots.`));
+    }
+
+    if (anchor.anchorKind === 'learning-campus' && (anchor.capacity.classroomCount <= 0 || anchor.capacity.lectureHallSeats <= 0)) {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-learning-campus-capacity', `Learning campus anchor ${anchor.id} must expose classroom and lecture capacity.`));
+    }
+
+    if (!binding || binding.objectKind !== 'education-anchor') {
+      issues.push(createEducationAnchorIssue(anchor, 'missing-render-binding', `Education anchor ${anchor.id} must reference an education-anchor render binding.`));
+    }
+  }
+
+  if (educationBaseAnchor && city.educationAnchors.length === 0) {
+    issues.push({
+      id: 'missing-education-anchors',
+      severity: 'error',
+      category: 'zoning',
+      objectId: educationBaseAnchor.id,
+      ...createIssueFocus(educationBaseAnchor.center, 'Generate education anchors from the education civic anchor, curbs, parks, and navigation graph.'),
+      message: 'Education civic anchors must expose school, library, university, childcare, and learning campus access hooks.'
+    });
+  }
+
+  for (const anchorKind of EDUCATION_ANCHOR_KINDS) {
+    if (!anchorsByKind.has(anchorKind)) {
+      issues.push({
+        id: `missing-education-anchor-${anchorKind}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: educationBaseAnchor?.id,
+        ...createIssueFocus(educationBaseAnchor?.center, `Create the ${anchorKind} education anchor from the education civic anchor.`),
+        message: `Education anchors must include ${anchorKind}.`
+      });
+    }
+  }
+}
+
+function createEducationAnchorIssue(
+  anchor: ValidationEducationAnchor,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `education-anchor-${issueIdSuffix}-${toIssueIdToken(anchor.id)}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: anchor.id,
+    ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from education civic, curb, park, and navigation data.`),
     message
   };
 }
