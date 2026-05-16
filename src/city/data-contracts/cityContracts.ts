@@ -2788,6 +2788,83 @@ export type BuildingEntranceStrategy = 'public-lobby' | 'storefront' | 'campus-e
 
 export type BuildingServiceAccessProfile = 'curb-loading' | 'internal-service' | 'yard-loading' | 'public-service' | 'utility-only';
 
+export type EconomyAnchorUse =
+  | 'civic-service'
+  | 'hospitality'
+  | 'industrial'
+  | 'mixed-use'
+  | 'office'
+  | 'retail'
+  | 'utility-service'
+  | 'warehouse';
+
+export type EconomyShiftProfile = 'day' | 'evening' | 'round-the-clock' | 'split';
+
+export type EconomyOpeningDayType = 'weekday' | 'saturday' | 'sunday';
+
+export interface EconomyOpeningWindowContract {
+  readonly dayType: EconomyOpeningDayType;
+  readonly openHour: number;
+  readonly closeHour: number;
+}
+
+export interface EconomyAnchorContract extends CityObjectBase<'economy-anchor'> {
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly districtId: CityId;
+  readonly roadId: CityId;
+  readonly center: Point2D;
+  readonly economicUse: EconomyAnchorUse;
+  readonly primaryLandUse: LandUse;
+  readonly scheduleProfileId: CityId;
+  readonly activeFrontageIds: readonly CityId[];
+  readonly addressPointIds: readonly CityId[];
+  readonly jobs: {
+    readonly estimatedJobs: number;
+    readonly peakOnsiteWorkers: number;
+    readonly shiftProfile: EconomyShiftProfile;
+    readonly workerArrivalPeakHour: number;
+    readonly workerDeparturePeakHour: number;
+  };
+  readonly customerDemand: {
+    readonly dailyCustomers: number;
+    readonly peakHourCustomers: number;
+    readonly visitorArrivalPeakHour: number;
+    readonly dwellTimeMinutes: number;
+    readonly publicAccessRequired: boolean;
+  };
+  readonly deliveryDemand: {
+    readonly dailyDeliveries: number;
+    readonly weeklyFreightTrips: number;
+    readonly loadingBaysRequired: number;
+    readonly preferredVehicleClasses: readonly FreightVehicleClass[];
+    readonly freightRouteRequired: boolean;
+  };
+  readonly openingHours: readonly EconomyOpeningWindowContract[];
+  readonly frontageNeeds: {
+    readonly publicFrontageRequired: boolean;
+    readonly activeFrontagePreferred: boolean;
+    readonly minimumFrontageMeters: number;
+    readonly displayWindowMeters: number;
+    readonly publicEntranceIds: readonly CityId[];
+  };
+  readonly loadingNeeds: {
+    readonly loadingRequired: boolean;
+    readonly loadingDockIds: readonly CityId[];
+    readonly freightRouteIds: readonly CityId[];
+    readonly serviceEntranceIds: readonly CityId[];
+    readonly curbZoneIds: readonly CityId[];
+    readonly bayDemand: number;
+  };
+  readonly districtFit: {
+    readonly score: number;
+    readonly compatible: boolean;
+    readonly allowedByZoning: boolean;
+    readonly preferredDistrictIds: readonly CityId[];
+    readonly notes: readonly string[];
+  };
+}
+
 export type CivicAnchorServiceType =
   | 'community'
   | 'culture'

@@ -80,6 +80,7 @@ type PickableObjectSource = Pick<
   | 'communityAnchors'
   | 'cultureAnchors'
   | 'educationAnchors'
+  | 'economyAnchors'
   | 'emergencyEquipment'
   | 'curbActivations'
   | 'emergencyServiceAnchors'
@@ -121,6 +122,7 @@ export function createCityPickingMetadataCatalog(
     ...city.communityAnchors,
     ...city.cultureAnchors,
     ...city.educationAnchors,
+    ...city.economyAnchors,
     ...city.emergencyEquipment,
     ...city.governmentAnchors,
     ...city.healthcareAnchors,
@@ -292,6 +294,11 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
       typeof access?.accessibleNavigationNodeIds?.[0] === 'string'
         ? access.accessibleNavigationNodeIds[0]
         : references.navigationNodeId;
+  } else if (object.kind === 'economy-anchor') {
+    references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
+    references.parcelId = typeof record.parcelId === 'string' ? record.parcelId : undefined;
+    references.districtId = typeof record.districtId === 'string' ? record.districtId : undefined;
+    references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
   } else if (object.kind === 'emergency-equipment') {
     references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
     references.parkId = typeof record.parkId === 'string' ? record.parkId : undefined;

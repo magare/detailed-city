@@ -26,6 +26,7 @@ import type {
   CurbActivationKind,
   CurbActivationStatus,
   EducationAnchorKind,
+  EconomyAnchorUse,
   EmergencyEquipmentKind,
   EmergencyResponseMode,
   EmergencyServiceAnchorKind,
@@ -112,6 +113,7 @@ export interface CityDiagnostics {
   readonly greenStormwater: GreenStormwaterDiagnostics;
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
+  readonly economyAnchors: EconomyAnchorDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
   readonly buildingStructureShells: BuildingStructureShellDiagnostics;
   readonly buildingFacades: BuildingFacadeDiagnostics;
@@ -522,6 +524,15 @@ export interface CityDiagnostics {
     readonly emergencyServiceCommandReadyAnchors: number;
     readonly buildingTypologyKinds: number;
     readonly buildingsWithTypology: number;
+    readonly economyAnchors: number;
+    readonly economyUseKinds: number;
+    readonly economyEstimatedJobs: number;
+    readonly economyPeakWorkers: number;
+    readonly economyDailyCustomers: number;
+    readonly economyDailyDeliveries: number;
+    readonly economyFrontageRequired: number;
+    readonly economyLoadingRequired: number;
+    readonly economyDistrictFitCompatible: number;
     readonly buildingFootprintGrammarKinds: number;
     readonly buildingsWithFootprintGrammar: number;
     readonly offsetBuildingFootprints: number;
@@ -942,6 +953,23 @@ export interface BuildingTypologyDiagnostics {
   readonly storefrontEntrances: number;
   readonly yardLoadingBuildings: number;
   readonly scheduleProfiles: readonly string[];
+}
+
+export interface EconomyAnchorDiagnostics {
+  readonly total: number;
+  readonly useKinds: number;
+  readonly byUse: Readonly<Partial<Record<EconomyAnchorUse, number>>>;
+  readonly estimatedJobs: number;
+  readonly peakOnsiteWorkers: number;
+  readonly dailyCustomers: number;
+  readonly dailyDeliveries: number;
+  readonly activeFrontagePreferred: number;
+  readonly loadingRequired: number;
+  readonly freightRouteRequired: number;
+  readonly compatibleDistrictFit: number;
+  readonly averageDistrictFitScore: number;
+  readonly shiftProfiles: readonly string[];
+  readonly openingProfiles: readonly string[];
 }
 
 export interface BuildingFootprintDiagnostics {
@@ -1567,6 +1595,7 @@ export function createCityDiagnostics(
   const greenStormwater = createGreenStormwaterDiagnostics(city);
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
+  const economyAnchors = createEconomyAnchorDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
   const buildingStructureShells = createBuildingStructureShellDiagnostics(city);
   const buildingFacades = createBuildingFacadeDiagnostics(city);
@@ -1648,6 +1677,7 @@ export function createCityDiagnostics(
     greenStormwater,
     zoningModel,
     buildingTypologies,
+    economyAnchors,
     buildingFootprints,
     buildingStructureShells,
     buildingFacades,
@@ -2049,6 +2079,15 @@ export function createCityDiagnostics(
       emergencyServiceCommandReadyAnchors: emergencyServiceAnchors.commandReadyAnchors,
       buildingTypologyKinds: buildingTypologies.typologyKinds,
       buildingsWithTypology: buildingTypologies.buildingsWithTypology,
+      economyAnchors: economyAnchors.total,
+      economyUseKinds: economyAnchors.useKinds,
+      economyEstimatedJobs: economyAnchors.estimatedJobs,
+      economyPeakWorkers: economyAnchors.peakOnsiteWorkers,
+      economyDailyCustomers: economyAnchors.dailyCustomers,
+      economyDailyDeliveries: economyAnchors.dailyDeliveries,
+      economyFrontageRequired: economyAnchors.activeFrontagePreferred,
+      economyLoadingRequired: economyAnchors.loadingRequired,
+      economyDistrictFitCompatible: economyAnchors.compatibleDistrictFit,
       buildingFootprintGrammarKinds: buildingFootprints.grammarKinds,
       buildingsWithFootprintGrammar: buildingFootprints.buildingsWithGrammar,
       offsetBuildingFootprints: buildingFootprints.offsetFootprints,
@@ -3031,6 +3070,10 @@ function roundToTenths(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+function roundToHundredths(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 function createTelecomDiagnostics(city: GeneratedCity): TelecomDiagnostics {
   const telecomNodes = city.utilityNodes.filter((node) => node.utilityType === 'telecom');
   const telecomEdges = city.utilityEdges.filter((edge) => edge.utilityType === 'telecom');
@@ -3176,6 +3219,53 @@ function createBuildingTypologyDiagnostics(city: GeneratedCity): BuildingTypolog
     storefrontEntrances,
     yardLoadingBuildings,
     scheduleProfiles: [...scheduleProfiles].sort()
+  };
+}
+
+function createEconomyAnchorDiagnostics(city: GeneratedCity): EconomyAnchorDiagnostics {
+  const byUse: Partial<Record<EconomyAnchorUse, number>> = {};
+  const shiftProfiles = new Set<string>();
+  const openingProfiles = new Set<string>();
+  let estimatedJobs = 0;
+  let peakOnsiteWorkers = 0;
+  let dailyCustomers = 0;
+  let dailyDeliveries = 0;
+  let activeFrontagePreferred = 0;
+  let loadingRequired = 0;
+  let freightRouteRequired = 0;
+  let compatibleDistrictFit = 0;
+  let districtFitScoreTotal = 0;
+
+  for (const anchor of city.economyAnchors) {
+    byUse[anchor.economicUse] = (byUse[anchor.economicUse] ?? 0) + 1;
+    shiftProfiles.add(anchor.jobs.shiftProfile);
+    openingProfiles.add(anchor.scheduleProfileId);
+    estimatedJobs += anchor.jobs.estimatedJobs;
+    peakOnsiteWorkers += anchor.jobs.peakOnsiteWorkers;
+    dailyCustomers += anchor.customerDemand.dailyCustomers;
+    dailyDeliveries += anchor.deliveryDemand.dailyDeliveries;
+    activeFrontagePreferred += anchor.frontageNeeds.activeFrontagePreferred ? 1 : 0;
+    loadingRequired += anchor.loadingNeeds.loadingRequired ? 1 : 0;
+    freightRouteRequired += anchor.deliveryDemand.freightRouteRequired ? 1 : 0;
+    compatibleDistrictFit += anchor.districtFit.compatible ? 1 : 0;
+    districtFitScoreTotal += anchor.districtFit.score;
+  }
+
+  return {
+    total: city.economyAnchors.length,
+    useKinds: Object.keys(byUse).length,
+    byUse,
+    estimatedJobs,
+    peakOnsiteWorkers,
+    dailyCustomers,
+    dailyDeliveries,
+    activeFrontagePreferred,
+    loadingRequired,
+    freightRouteRequired,
+    compatibleDistrictFit,
+    averageDistrictFitScore: roundToHundredths(city.economyAnchors.length > 0 ? districtFitScoreTotal / city.economyAnchors.length : 0),
+    shiftProfiles: [...shiftProfiles].sort(),
+    openingProfiles: [...openingProfiles].sort()
   };
 }
 

@@ -20,10 +20,11 @@ Generation must produce contract-valid city data first. Rendering consumes that 
 14. Generate permit and inspection records from cadastre records plus maintenance operations that create temporary closures.
 15. Generate permitted curb activations from active curb zones and approved/compliant permit records.
 16. Generate water transport access from waterfront, waterway, freight, emergency anchor, and navigation graph contracts.
-17. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
-18. Stamp generated objects with deterministic source metadata.
-19. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, operations records, slice tags, and budgets.
-19. Hand validated objects to mesh builders and scene-layer adapters.
+17. Generate economy anchors from building typologies, parcels, frontages, entrances, and freight logistics.
+18. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
+19. Stamp generated objects with deterministic source metadata.
+20. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, operations records, slice tags, and budgets.
+21. Hand validated objects to mesh builders and scene-layer adapters.
 
 ## City Intent
 
@@ -89,6 +90,12 @@ Generated districts must copy their blueprint character rules into the district 
 - Buildings expose a primary frontage road, frontage side, and public entrance IDs before facade detail is generated.
 - Detailed-street active frontages are `facade` objects generated for retail, hospitality, and mixed-use buildings facing the slice corridor.
 - Storefront glass, signs, awnings, entrance doors, and night-window metadata are generated as facade data and rendered by handoff mesh builders.
+
+## Economy Rules
+
+- Economy anchors are generated as domain destinations from building typology, parcel zoning, public entrances, active frontages, and freight loading data.
+- Each anchor must expose stable building/parcel/district/road references, economic use, jobs, customer demand, delivery demand, opening hours, frontage needs, loading needs, and district fit before simulation consumes it.
+- Economy schedules and demand must be deterministic for the same seed/config and must not depend on renderer object names.
 
 ## Simulation Seeds
 

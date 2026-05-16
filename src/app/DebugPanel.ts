@@ -365,6 +365,10 @@ export class DebugPanel {
         `${diagnostics.buildingTypologies.typologyKinds} kinds, ${diagnostics.buildingTypologies.storefrontEntrances} storefront, ${diagnostics.buildingTypologies.yardLoadingBuildings} yard`
       ),
       createMetric(
+        'Economy',
+        `${diagnostics.economyAnchors.total} anchors, ${diagnostics.economyAnchors.estimatedJobs} jobs, ${diagnostics.economyAnchors.dailyDeliveries} deliveries`
+      ),
+      createMetric(
         'Civic',
         `${diagnostics.civicAnchors.total} anchors, ${diagnostics.civicAnchors.serviceTypes} services, ${diagnostics.civicAnchors.emergencyAccessAnchors} emergency`
       ),

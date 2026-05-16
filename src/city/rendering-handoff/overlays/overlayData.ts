@@ -26,6 +26,7 @@ export type CityOverlayId =
   | 'solar-shading'
   | 'urban-heat'
   | 'wind-comfort'
+  | 'economy-anchors'
   | 'city-metrics'
   | 'cycling-network'
   | 'navigation-graphs'
@@ -113,6 +114,7 @@ export function createCityOverlayDatasets(
     createDataset('solar-shading', 'Solar Shading', 'domain-data', createSolarShadingFeatures(city)),
     createDataset('urban-heat', 'Urban Heat', 'domain-data', createUrbanHeatFeatures(city)),
     createDataset('wind-comfort', 'Wind Comfort', 'domain-data', createWindComfortFeatures(city)),
+    createDataset('economy-anchors', 'Economy Anchors', 'domain-data', createEconomyAnchorFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('cycling-network', 'Cycling Network', 'domain-data', createCyclingNetworkFeatures(city)),
     createDataset('navigation-graphs', 'Navigation Graphs', 'domain-data', createNavigationGraphFeatures(city)),
@@ -644,6 +646,39 @@ function createWindComfortFeatures(city: GeneratedCity): CityOverlayFeature[] {
       referencedRoads: zone.references.roadIds?.length ?? 0,
       referencedTrees: zone.references.treeIds?.length ?? 0,
       referencedSolarSamples: zone.references.solarShadingSampleIds?.length ?? 0
+    }
+  }));
+}
+
+function createEconomyAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.economyAnchors.map((anchor) => ({
+    id: `overlay:economy-anchors:${anchor.id}`,
+    overlayId: 'economy-anchors',
+    objectId: anchor.id,
+    objectKind: anchor.kind,
+    ownerDomain: anchor.ownerDomain,
+    label: anchor.name ?? anchor.id,
+    geometry: { type: 'point', point: anchor.center },
+    metadata: {
+      economicUse: anchor.economicUse,
+      buildingId: anchor.buildingId,
+      parcelId: anchor.parcelId,
+      districtId: anchor.districtId,
+      roadId: anchor.roadId,
+      estimatedJobs: anchor.jobs.estimatedJobs,
+      peakOnsiteWorkers: anchor.jobs.peakOnsiteWorkers,
+      dailyCustomers: anchor.customerDemand.dailyCustomers,
+      peakHourCustomers: anchor.customerDemand.peakHourCustomers,
+      dailyDeliveries: anchor.deliveryDemand.dailyDeliveries,
+      weeklyFreightTrips: anchor.deliveryDemand.weeklyFreightTrips,
+      openingProfiles: anchor.openingHours.length,
+      frontageMeters: anchor.frontageNeeds.minimumFrontageMeters,
+      displayWindowMeters: anchor.frontageNeeds.displayWindowMeters,
+      loadingRequired: anchor.loadingNeeds.loadingRequired,
+      loadingDocks: anchor.loadingNeeds.loadingDockIds.length,
+      freightRoutes: anchor.loadingNeeds.freightRouteIds.length,
+      districtFitScore: anchor.districtFit.score,
+      districtFitCompatible: anchor.districtFit.compatible
     }
   }));
 }

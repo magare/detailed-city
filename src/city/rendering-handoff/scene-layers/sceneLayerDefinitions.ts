@@ -104,6 +104,7 @@ export function createCitySceneLayerDiagnostics(
       city.civicAnchors.length +
       city.communityAnchors.length +
       city.cultureAnchors.length +
+      city.economyAnchors.length +
       city.governmentAnchors.length +
       roofDetailCount +
       city.activeFrontages.length,
@@ -123,6 +124,7 @@ export function createCitySceneLayerDiagnostics(
       city.administrativeBoundaries.length +
       city.verticalSlices.length +
       city.cityMetrics.length +
+      city.economyAnchors.length +
       city.weatherPresets.length +
       city.solarShadingSamples.length +
       city.urbanHeatZones.length +

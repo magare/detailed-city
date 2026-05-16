@@ -22,6 +22,9 @@ import type {
   ConstraintKind,
   CultureAnchorKind,
   EducationAnchorKind,
+  EconomyAnchorUse,
+  EconomyOpeningDayType,
+  EconomyShiftProfile,
   EmergencyEquipmentKind,
   EmergencyResponseMode,
   EmergencyServiceAnchorKind,
@@ -116,6 +119,7 @@ type GeneratedCityForValidation = Pick<
   | 'curbActivations'
   | 'curbZones'
   | 'districts'
+  | 'economyAnchors'
   | 'freightLoadingDocks'
   | 'freightRoutes'
   | 'geospatial'
@@ -177,6 +181,7 @@ type ValidationParcel = GeneratedCityForValidation['parcels'][number];
 type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrativeBoundaries'][number];
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'][number];
+type ValidationEconomyAnchor = GeneratedCityForValidation['economyAnchors'][number];
 type ValidationWeatherPreset = GeneratedCityForValidation['weatherPresets'][number];
 type ValidationSolarShadingSample = GeneratedCityForValidation['solarShadingSamples'][number];
 type ValidationUrbanHeatZone = GeneratedCityForValidation['urbanHeatZones'][number];
@@ -459,6 +464,18 @@ const WIND_COMFORT_ZONE_KINDS = [
   'wind-corridor'
 ] as const satisfies readonly WindComfortZoneKind[];
 const WIND_COMFORT_RISK_LEVELS = ['calm', 'comfortable', 'windy', 'hazardous'] as const satisfies readonly WindComfortRiskLevel[];
+const ECONOMY_ANCHOR_USES = [
+  'civic-service',
+  'hospitality',
+  'industrial',
+  'mixed-use',
+  'office',
+  'retail',
+  'utility-service',
+  'warehouse'
+] as const satisfies readonly EconomyAnchorUse[];
+const ECONOMY_SHIFT_PROFILES = ['day', 'evening', 'round-the-clock', 'split'] as const satisfies readonly EconomyShiftProfile[];
+const ECONOMY_OPENING_DAY_TYPES = ['weekday', 'saturday', 'sunday'] as const satisfies readonly EconomyOpeningDayType[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -653,6 +670,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateAccessControls(city, issues);
   validateBuildingEntrancesAndAddresses(city, issues);
   validateBuildingFireSafetyProfiles(city, issues);
+  validateEconomyAnchors(city, issues);
   validateAddressingGazetteer(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
@@ -9619,6 +9637,222 @@ function createWindComfortIssue(
     ...createIssueFocus(zone.center, `Review wind comfort zone ${zone.id}.`),
     message
   };
+}
+
+function validateEconomyAnchors(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const buildingsById = new Map(city.buildings.map((building) => [building.id, building]));
+  const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
+  const districtsById = new Map(city.districts.map((district) => [district.id, district]));
+  const roadsById = new Map(city.roads.map((road) => [road.id, road]));
+  const activeFrontagesById = new Map(city.activeFrontages.map((frontage) => [frontage.id, frontage]));
+  const entrancesById = new Map(city.buildingEntrances.map((entrance) => [entrance.id, entrance]));
+  const loadingDocksById = new Map(city.freightLoadingDocks.map((dock) => [dock.id, dock]));
+  const freightRoutesById = new Map(city.freightRoutes.map((route) => [route.id, route]));
+  const curbZonesById = new Map(city.curbZones.map((zone) => [zone.id, zone]));
+
+  if (city.economyAnchors.length === 0) {
+    issues.push({
+      id: 'missing-economy-anchors',
+      severity: 'error',
+      category: 'simulation',
+      message: 'Economy anchor generation must expose destinations, schedules, jobs, customer demand, and delivery demand.'
+    });
+  }
+
+  for (const anchor of city.economyAnchors) {
+    const building = buildingsById.get(anchor.buildingId);
+    const parcel = parcelsById.get(anchor.parcelId);
+    const district = districtsById.get(anchor.districtId);
+    const road = roadsById.get(anchor.roadId);
+
+    if (!ECONOMY_ANCHOR_USES.includes(anchor.economicUse)) {
+      issues.push(createEconomyAnchorIssue(anchor, 'invalid-use', `Economy anchor ${anchor.id} uses unsupported economic use ${anchor.economicUse}.`));
+    }
+
+    if (!building || anchor.parentId !== anchor.buildingId) {
+      issues.push(createEconomyAnchorIssue(anchor, 'missing-building', `Economy anchor ${anchor.id} must be parented to existing building ${anchor.buildingId}.`));
+    }
+
+    if (!parcel || building?.parcelId !== anchor.parcelId || parcel.districtId !== anchor.districtId) {
+      issues.push(createEconomyAnchorIssue(anchor, 'missing-parcel', `Economy anchor ${anchor.id} must reference its building parcel and district.`));
+    }
+
+    if (!district) {
+      issues.push(createEconomyAnchorIssue(anchor, 'missing-district', `Economy anchor ${anchor.id} references missing district ${anchor.districtId}.`));
+    }
+
+    if (!road || building?.primaryFrontageRoadId !== anchor.roadId) {
+      issues.push(createEconomyAnchorIssue(anchor, 'missing-road', `Economy anchor ${anchor.id} must reference the building primary frontage road.`));
+    }
+
+    if (
+      !building?.uses.includes(anchor.primaryLandUse) &&
+      !parcel?.allowedUses.includes(anchor.primaryLandUse)
+    ) {
+      issues.push(createEconomyAnchorIssue(anchor, 'land-use-mismatch', `Economy anchor ${anchor.id} primary land use ${anchor.primaryLandUse} must match building or zoning use data.`));
+    }
+
+    validateEconomyAnchorDemand(anchor, issues);
+    validateEconomyAnchorOpeningHours(anchor, issues);
+    validateEconomyAnchorFrontage(anchor, activeFrontagesById, entrancesById, issues);
+    validateEconomyAnchorLoading(anchor, loadingDocksById, freightRoutesById, curbZonesById, issues);
+    validateEconomyAnchorDistrictFit(anchor, issues);
+  }
+}
+
+function validateEconomyAnchorDemand(anchor: ValidationEconomyAnchor, issues: ValidationIssue[]): void {
+  if (
+    anchor.jobs.estimatedJobs <= 0 ||
+    anchor.jobs.peakOnsiteWorkers <= 0 ||
+    anchor.jobs.peakOnsiteWorkers > anchor.jobs.estimatedJobs ||
+    !ECONOMY_SHIFT_PROFILES.includes(anchor.jobs.shiftProfile) ||
+    !isHour(anchor.jobs.workerArrivalPeakHour, false) ||
+    !isHour(anchor.jobs.workerDeparturePeakHour, false)
+  ) {
+    issues.push(createEconomyAnchorIssue(anchor, 'invalid-jobs', `Economy anchor ${anchor.id} must expose positive jobs, peak workers, shift profile, and worker peak hours.`));
+  }
+
+  if (
+    anchor.customerDemand.dailyCustomers < 0 ||
+    anchor.customerDemand.peakHourCustomers < 0 ||
+    anchor.customerDemand.peakHourCustomers > Math.max(anchor.customerDemand.dailyCustomers, 1) ||
+    !isHour(anchor.customerDemand.visitorArrivalPeakHour, false) ||
+    anchor.customerDemand.dwellTimeMinutes <= 0
+  ) {
+    issues.push(createEconomyAnchorIssue(anchor, 'invalid-customer-demand', `Economy anchor ${anchor.id} must expose valid customer demand and dwell time.`));
+  }
+
+  if (
+    anchor.deliveryDemand.dailyDeliveries < 0 ||
+    anchor.deliveryDemand.weeklyFreightTrips < anchor.deliveryDemand.dailyDeliveries ||
+    anchor.deliveryDemand.loadingBaysRequired < 0 ||
+    anchor.deliveryDemand.preferredVehicleClasses.length === 0
+  ) {
+    issues.push(createEconomyAnchorIssue(anchor, 'invalid-delivery-demand', `Economy anchor ${anchor.id} must expose valid delivery demand, freight trips, loading bays, and vehicle classes.`));
+  }
+}
+
+function validateEconomyAnchorOpeningHours(anchor: ValidationEconomyAnchor, issues: ValidationIssue[]): void {
+  const dayTypes = new Set<EconomyOpeningDayType>();
+
+  if (anchor.openingHours.length === 0) {
+    issues.push(createEconomyAnchorIssue(anchor, 'missing-opening-hours', `Economy anchor ${anchor.id} must expose opening hours.`));
+  }
+
+  for (const window of anchor.openingHours) {
+    if (
+      !ECONOMY_OPENING_DAY_TYPES.includes(window.dayType) ||
+      !isHour(window.openHour, false) ||
+      !isHour(window.closeHour, true) ||
+      window.closeHour <= window.openHour ||
+      dayTypes.has(window.dayType)
+    ) {
+      issues.push(createEconomyAnchorIssue(anchor, 'invalid-opening-hours', `Economy anchor ${anchor.id} has invalid or duplicate ${window.dayType} opening hours.`));
+    }
+    dayTypes.add(window.dayType);
+  }
+}
+
+function validateEconomyAnchorFrontage(
+  anchor: ValidationEconomyAnchor,
+  activeFrontagesById: ReadonlyMap<CityId, GeneratedCityForValidation['activeFrontages'][number]>,
+  entrancesById: ReadonlyMap<CityId, GeneratedCityForValidation['buildingEntrances'][number]>,
+  issues: ValidationIssue[]
+): void {
+  if (
+    anchor.frontageNeeds.minimumFrontageMeters < 0 ||
+    anchor.frontageNeeds.displayWindowMeters < 0 ||
+    (anchor.frontageNeeds.publicFrontageRequired && anchor.frontageNeeds.publicEntranceIds.length === 0)
+  ) {
+    issues.push(createEconomyAnchorIssue(anchor, 'invalid-frontage-needs', `Economy anchor ${anchor.id} must expose non-negative frontage needs and public entrances when public access is required.`));
+  }
+
+  for (const frontageId of anchor.activeFrontageIds) {
+    const frontage = activeFrontagesById.get(frontageId);
+
+    if (!frontage || frontage.buildingId !== anchor.buildingId) {
+      issues.push(createEconomyAnchorIssue(anchor, 'missing-active-frontage', `Economy anchor ${anchor.id} references missing or mismatched active frontage ${frontageId}.`));
+    }
+  }
+
+  for (const entranceId of anchor.frontageNeeds.publicEntranceIds) {
+    const entrance = entrancesById.get(entranceId);
+
+    if (!entrance || entrance.buildingId !== anchor.buildingId || entrance.accessLevel !== 'public') {
+      issues.push(createEconomyAnchorIssue(anchor, 'missing-public-entrance', `Economy anchor ${anchor.id} references missing public entrance ${entranceId}.`));
+    }
+  }
+}
+
+function validateEconomyAnchorLoading(
+  anchor: ValidationEconomyAnchor,
+  loadingDocksById: ReadonlyMap<CityId, GeneratedCityForValidation['freightLoadingDocks'][number]>,
+  freightRoutesById: ReadonlyMap<CityId, GeneratedCityForValidation['freightRoutes'][number]>,
+  curbZonesById: ReadonlyMap<CityId, GeneratedCityForValidation['curbZones'][number]>,
+  issues: ValidationIssue[]
+): void {
+  if (
+    anchor.loadingNeeds.bayDemand < anchor.deliveryDemand.loadingBaysRequired ||
+    (anchor.loadingNeeds.loadingRequired && anchor.loadingNeeds.serviceEntranceIds.length === 0) ||
+    (anchor.deliveryDemand.freightRouteRequired && anchor.loadingNeeds.freightRouteIds.length === 0)
+  ) {
+    issues.push(createEconomyAnchorIssue(anchor, 'invalid-loading-needs', `Economy anchor ${anchor.id} must expose service entrances, bay demand, and freight routes when required.`));
+  }
+
+  for (const dockId of anchor.loadingNeeds.loadingDockIds) {
+    const dock = loadingDocksById.get(dockId);
+
+    if (!dock || dock.buildingId !== anchor.buildingId) {
+      issues.push(createEconomyAnchorIssue(anchor, 'missing-loading-dock', `Economy anchor ${anchor.id} references missing loading dock ${dockId}.`));
+    }
+  }
+
+  for (const routeId of anchor.loadingNeeds.freightRouteIds) {
+    const route = freightRoutesById.get(routeId);
+
+    if (!route || !anchor.loadingNeeds.loadingDockIds.some((dockId) => route.loadingDockIds.includes(dockId))) {
+      issues.push(createEconomyAnchorIssue(anchor, 'missing-freight-route', `Economy anchor ${anchor.id} references missing or unlinked freight route ${routeId}.`));
+    }
+  }
+
+  for (const curbZoneId of anchor.loadingNeeds.curbZoneIds) {
+    const curbZone = curbZonesById.get(curbZoneId);
+
+    if (!curbZone || curbZone.curbUse !== 'loading') {
+      issues.push(createEconomyAnchorIssue(anchor, 'missing-loading-curb', `Economy anchor ${anchor.id} references missing loading curb zone ${curbZoneId}.`));
+    }
+  }
+}
+
+function validateEconomyAnchorDistrictFit(anchor: ValidationEconomyAnchor, issues: ValidationIssue[]): void {
+  if (
+    !isUnitInterval(anchor.districtFit.score) ||
+    anchor.districtFit.preferredDistrictIds.length === 0 ||
+    anchor.districtFit.notes.length === 0 ||
+    (anchor.districtFit.allowedByZoning && anchor.districtFit.score < 0.4)
+  ) {
+    issues.push(createEconomyAnchorIssue(anchor, 'invalid-district-fit', `Economy anchor ${anchor.id} must expose a valid district-fit score, zoning flag, preferred districts, and notes.`));
+  }
+}
+
+function createEconomyAnchorIssue(
+  anchor: ValidationEconomyAnchor,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `economy-anchor-${issueIdSuffix}-${toIssueIdToken(anchor.id)}`,
+    severity: 'error',
+    category: 'simulation',
+    objectId: anchor.id,
+    suggestedFix: `Regenerate ${anchor.id} from building typology, frontage, and freight economy rules.`,
+    ...createIssueFocus(anchor.center, `Review economy anchor ${anchor.id}.`),
+    message
+  };
+}
+
+function isHour(value: number, allowEndOfDay: boolean): boolean {
+  return Number.isInteger(value) && value >= 0 && value <= (allowEndOfDay ? 24 : 23);
 }
 
 function validateWaterways(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {

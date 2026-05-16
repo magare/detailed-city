@@ -36,6 +36,7 @@ import type {
   CrossingContract,
   DetailedStreetSliceContract,
   DistrictContract,
+  EconomyAnchorContract,
   FreightLoadingDockContract,
   FreightRouteContract,
   GazetteerEntryContract,
@@ -290,6 +291,8 @@ export interface SoilGeologyZonePlan extends SoilGeologyZoneContract {}
 
 export interface DevelopmentPhasePlan extends DevelopmentPhaseContract {}
 
+export interface EconomyAnchor extends EconomyAnchorContract {}
+
 export interface ParkPatch extends CityObjectBase<'park'> {
   center: Point2D;
   size: { x: number; z: number };
@@ -383,6 +386,7 @@ export type GeneratedCityObject =
   | DetailedStreetSlice
   | CityMetricPlan
   | DevelopmentPhasePlan
+  | EconomyAnchor
   | ConstraintPlan
   | HazardZonePlan
   | TopographyZonePlan
@@ -475,6 +479,7 @@ export interface GeneratedCity {
   resilienceGoals: ResilienceGoalPlan[];
   cityMetrics: CityMetricPlan[];
   developmentPhases: DevelopmentPhasePlan[];
+  economyAnchors: EconomyAnchor[];
   topographyZones: TopographyZonePlan[];
   soilGeologyZones: SoilGeologyZonePlan[];
   blocks: BlockPlan[];

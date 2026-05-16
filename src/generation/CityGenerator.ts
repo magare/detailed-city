@@ -47,6 +47,7 @@ import { MaintenanceOperationGenerator } from './operations/MaintenanceOperation
 import { PermitInspectionGenerator } from './operations/PermitInspectionGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { CurbActivationGenerator } from './public-realm/CurbActivationGenerator';
+import { EconomyAnchorGenerator } from './economy/EconomyAnchorGenerator';
 import { GreenStormwaterGenerator } from './public-realm/GreenStormwaterGenerator';
 import { PlazaGenerator } from './public-realm/PlazaGenerator';
 import { PublicAmenityGenerator } from './public-realm/PublicAmenityGenerator';
@@ -337,6 +338,14 @@ export class CityGenerator {
       serviceAccessCorridors: serviceAccess.serviceAccessCorridors,
       freightLoadingDocks: freightLogistics.loadingDocks
     });
+    const economyAnchors = new EconomyAnchorGenerator().create({
+      buildings: entranceAddress.buildings,
+      parcels: soilGeology.parcels,
+      roads: stormwater.roads,
+      activeFrontages: entranceAddress.activeFrontages,
+      freightLoadingDocks: freightLogistics.loadingDocks,
+      freightRoutes: freightLogistics.routes
+    });
     const buildingFireSafetyProfiles = new BuildingFireSafetyGenerator().create({
       buildings: entranceAddress.buildings,
       buildingEntrances: entranceAddress.buildingEntrances,
@@ -506,6 +515,7 @@ export class CityGenerator {
       zoningDistricts: landAndBuildingsWithTopography.zoningDistricts,
       cityMetrics,
       developmentPhases,
+      economyAnchors,
       weatherPresets,
       solarShadingSamples,
       urbanHeatZones,

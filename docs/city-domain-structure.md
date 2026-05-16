@@ -169,5 +169,6 @@ That migration has started with:
 - Shared contract primitives in `src/city/data-contracts/cityContracts.ts`.
 - City intent moved into `src/city/blueprint/cityBlueprint.ts`.
 - Generated parks, waterways, roads, parcels, trees, and traffic plans carrying ownership and LOD metadata.
+- Generated economy anchors carrying jobs, customer demand, delivery demand, opening hours, frontage needs, loading needs, and district fit as simulation-readable domain data.
 - Traffic mesh construction moved to `src/city/rendering-handoff/mesh-builders`.
 - Planning specs in `docs/data-contracts.md`, `docs/generation-rules.md`, `docs/validation-spec.md`, and related documents.

@@ -41,6 +41,7 @@ type GeneratedCityObjectSource = Pick<
   | 'curbActivations'
   | 'curbZones'
   | 'districts'
+  | 'economyAnchors'
   | 'emergencyServiceAnchors'
   | 'freightLoadingDocks'
   | 'freightRoutes'
@@ -90,6 +91,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
   return [
     ...city.administrativeBoundaries,
     ...city.districts,
+    ...city.economyAnchors,
     ...city.zoningDistricts,
     ...city.cityMetrics,
     ...city.developmentPhases,

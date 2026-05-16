@@ -31,10 +31,11 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const publicAmenity = city.publicAmenities[0];
   const trafficCalmingDevice = city.trafficCalmingDevices[0];
   const waterTransportAccess = city.waterTransportAccess[0];
+  const economyAnchor = city.economyAnchors[0];
   const zebraCrossing = traffic.markings.find((marking) => marking.markingType === 'zebra-crossing-stripe');
 
   expect(catalog.pickableObjectIds).toHaveLength(
-      city.roads.length +
+    city.roads.length +
       city.buildings.length +
       city.civicAnchors.length +
       city.communityAnchors.length +
@@ -43,6 +44,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.educationAnchors.length +
       city.healthcareAnchors.length +
       city.emergencyServiceAnchors.length +
+      city.economyAnchors.length +
       city.buildingEntrances.length +
       city.addressPoints.length +
       city.accessControls.length +
@@ -82,6 +84,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind['education-anchor']).toBe(city.educationAnchors.length);
   expect(catalog.countsByKind['healthcare-anchor']).toBe(city.healthcareAnchors.length);
   expect(catalog.countsByKind['emergency-service-anchor']).toBe(city.emergencyServiceAnchors.length);
+  expect(catalog.countsByKind['economy-anchor']).toBe(city.economyAnchors.length);
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
   expect(catalog.countsByKind['street-furniture']).toBe(city.streetFurniture.length);
@@ -281,6 +284,19 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       waterfrontEdgeId: waterTransportAccess.waterfrontEdgeId,
       roadId: waterTransportAccess.roadId,
       navigationNodeId: waterTransportAccess.routing.navigationNodeIds[0]
+    }
+  });
+  expect(catalog.metadataByObjectId[economyAnchor.id]).toMatchObject({
+    objectId: economyAnchor.id,
+    kind: 'economy-anchor',
+    ownerDomain: 'economy',
+    parentId: economyAnchor.buildingId,
+    lod: economyAnchor.lod,
+    references: {
+      buildingId: economyAnchor.buildingId,
+      parcelId: economyAnchor.parcelId,
+      districtId: economyAnchor.districtId,
+      roadId: economyAnchor.roadId
     }
   });
   expect(catalog.metadataByObjectId[city.civicAnchors[0].id]).toMatchObject({
