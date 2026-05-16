@@ -25,27 +25,30 @@ test('asset inventory is deterministic and covers renderable civic public-realm 
     secondCity.assetInventoryRecords.map(getInventorySignature)
   );
   expect(firstCity.validation.passed).toBe(true);
-  expect(firstCity.assetInventoryRecords).toHaveLength(1083);
+  expect(firstCity.assetInventoryRecords).toHaveLength(1097);
   expect(diagnostics.assetInventory).toMatchObject({
-    totalRecords: 1083,
-    coveredAssetObjects: 1083,
-    lookupKeys: 1083,
+    totalRecords: 1097,
+    coveredAssetObjects: 1097,
+    lookupKeys: 1097,
     byScope: {
       civic: 41,
-      'public-realm': 959,
+      'public-realm': 973,
       utility: 83
     },
-    recordsWithRenderAssets: 1083,
-    recordsWithInspectionAccess: 1083
+    recordsWithRenderAssets: 1097,
+    recordsWithInspectionAccess: 1097
   });
   expect(
     firstCity.assetInventoryRecords.filter((record) => record.assetObjectKind === 'water-transport-access')
   ).toHaveLength(6);
+  expect(
+    firstCity.assetInventoryRecords.filter((record) => record.assetObjectKind === 'emergency-equipment')
+  ).toHaveLength(14);
   expect([...targetIds].every((id) => inventoryTargetIds.has(id))).toBe(true);
   expect(lookupKeys.size).toBe(firstCity.assetInventoryRecords.length);
   expect(firstCity.assetInventoryRecords.every((record) => bindingIds.has(record.renderBindingId))).toBe(true);
   expect(firstCity.assetInventoryRecords.every((record) => assetIds.has(record.renderAssetId))).toBe(true);
-  expect(overlays.find((overlay) => overlay.id === 'asset-inventory')?.featureCount).toBe(1083);
+  expect(overlays.find((overlay) => overlay.id === 'asset-inventory')?.featureCount).toBe(1097);
 });
 
 test('asset inventory validation catches missing targets and invalid lifecycle data', () => {
@@ -112,11 +115,11 @@ test('asset inventory diagnostics and overlays are inspectable in browser debug 
   }));
 
   expect(diagnostics.validationPassed).toBe(true);
-  expect(diagnostics.totalRecords).toBe(1083);
+  expect(diagnostics.totalRecords).toBe(1097);
   expect(diagnostics.civicAssets).toBe(41);
-  expect(diagnostics.publicRealmAssets).toBe(959);
+  expect(diagnostics.publicRealmAssets).toBe(973);
   expect(diagnostics.utilityAssets).toBe(83);
-  expect(diagnostics.overlayFeatures).toBe(1083);
+  expect(diagnostics.overlayFeatures).toBe(1097);
   expect(diagnostics.panelText).toContain('Asset Inventory');
 });
 
@@ -140,6 +143,7 @@ function getInventoryTargetIds(city: GeneratedCity): ReadonlySet<string> {
     ...city.utilityEdges.map((object) => object.id),
     ...city.streetLights.map((object) => object.id),
     ...city.streetFurniture.map((object) => object.id),
+    ...city.emergencyEquipment.map((object) => object.id),
     ...city.parkFeatures.map((object) => object.id),
     ...city.plazaZones.map((object) => object.id),
     ...city.greenStormwaterFeatures.map((object) => object.id),

@@ -27,6 +27,7 @@ export type CityObjectKind =
   | 'district'
   | 'education-anchor'
   | 'economy-anchor'
+  | 'emergency-equipment'
   | 'emergency-service-anchor'
   | 'facade'
   | 'gazetteer-entry'
@@ -712,6 +713,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod3',
       allowedTiers: ['lod2', 'lod3', 'lod4'],
       description: 'Emergency service anchors expose fire, police, ambulance, shelter, command, and staging bases with dispatch coverage and access references.'
+    },
+    {
+      objectKind: 'emergency-equipment',
+      scope: 'public-realm-prop',
+      defaultTier: 'lod4',
+      allowedTiers: ['lod3', 'lod4'],
+      description: 'Emergency equipment exposes AEDs, emergency phones, sirens, alarms, fire alarm boxes, assembly areas, lifeguard stations, and shelter signage for public-space emergency coverage.'
     },
     {
       objectKind: 'cadastre-record',
@@ -2893,6 +2901,51 @@ export interface EmergencyServiceAnchorContract extends CityObjectBase<'emergenc
     readonly hydrantNodeIds: readonly CityId[];
   };
   readonly scheduleProfileId: CityId;
+  readonly renderBindingId: CityId;
+}
+
+export type EmergencyEquipmentKind =
+  | 'aed'
+  | 'alarm'
+  | 'assembly-area'
+  | 'emergency-phone'
+  | 'fire-alarm-box'
+  | 'lifeguard-station'
+  | 'shelter-signage'
+  | 'siren';
+
+export interface EmergencyEquipmentContract extends CityObjectBase<'emergency-equipment'> {
+  readonly equipmentKind: EmergencyEquipmentKind;
+  readonly emergencyServiceAnchorId: CityId;
+  readonly roadId?: CityId;
+  readonly sidewalkId?: CityId;
+  readonly parkId?: CityId;
+  readonly plazaZoneId?: CityId;
+  readonly waterfrontOpenSpaceId?: CityId;
+  readonly shelterAnchorId?: CityId;
+  readonly signObjectId?: CityId;
+  readonly center: Point2D;
+  readonly coverage: {
+    readonly radiusMeters: number;
+    readonly coveredPublicSpaceIds: readonly CityId[];
+    readonly nearestShelterAnchorId: CityId;
+    readonly nearestAssemblyPointId: CityId;
+    readonly estimatedWalkMeters: number;
+    readonly coverageScore: number;
+  };
+  readonly capacity: {
+    readonly deviceCount: number;
+    readonly assemblyCapacityPeople: number;
+    readonly audibleRadiusMeters: number;
+    readonly batteryBackupHours: number;
+  };
+  readonly access: {
+    readonly navigationNodeIds: readonly CityId[];
+    readonly navigationEdgeIds: readonly CityId[];
+    readonly fireLaneCurbZoneIds: readonly CityId[];
+    readonly signageObjectIds: readonly CityId[];
+    readonly visibleFromPublicSpaceIds: readonly CityId[];
+  };
   readonly renderBindingId: CityId;
 }
 

@@ -22,6 +22,7 @@ import type {
   ConstraintKind,
   CultureAnchorKind,
   EducationAnchorKind,
+  EmergencyEquipmentKind,
   EmergencyResponseMode,
   EmergencyServiceAnchorKind,
   GeospatialFrame,
@@ -94,6 +95,7 @@ type GeneratedCityForValidation = Pick<
   | 'communityAnchors'
   | 'cultureAnchors'
   | 'educationAnchors'
+  | 'emergencyEquipment'
   | 'governmentAnchors'
   | 'healthcareAnchors'
   | 'emergencyServiceAnchors'
@@ -163,6 +165,7 @@ type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
 type ValidationEducationAnchor = GeneratedCityForValidation['educationAnchors'][number];
+type ValidationEmergencyEquipment = GeneratedCityForValidation['emergencyEquipment'][number];
 type ValidationGovernmentAnchor = GeneratedCityForValidation['governmentAnchors'][number];
 type ValidationHealthcareAnchor = GeneratedCityForValidation['healthcareAnchors'][number];
 type ValidationEmergencyServiceAnchor = GeneratedCityForValidation['emergencyServiceAnchors'][number];
@@ -201,6 +204,7 @@ const ASSET_INVENTORY_TARGET_KINDS = [
   'community-anchor',
   'culture-anchor',
   'education-anchor',
+  'emergency-equipment',
   'emergency-service-anchor',
   'government-anchor',
   'healthcare-anchor',
@@ -364,6 +368,16 @@ const EMERGENCY_SERVICE_ANCHOR_KINDS = [
   'public-shelter',
   'staging-area'
 ] as const satisfies readonly EmergencyServiceAnchorKind[];
+const EMERGENCY_EQUIPMENT_KINDS = [
+  'aed',
+  'alarm',
+  'assembly-area',
+  'emergency-phone',
+  'fire-alarm-box',
+  'lifeguard-station',
+  'shelter-signage',
+  'siren'
+] as const satisfies readonly EmergencyEquipmentKind[];
 const EMERGENCY_RESPONSE_MODES = [
   'command',
   'fire',
@@ -3082,6 +3096,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateEducationAnchors(city, issues, assetBindingsById);
   validateHealthcareAnchors(city, issues, assetBindingsById);
   validateEmergencyServiceAnchors(city, issues, assetBindingsById);
+  validateEmergencyEquipment(city, issues, assetBindingsById);
   validateWaterTransportAccess(city, issues, assetBindingsById);
 
   for (const tree of city.trees) {
@@ -11114,6 +11129,200 @@ function createEmergencyServiceAnchorIssue(
     category: 'zoning',
     objectId: anchor.id,
     ...createIssueFocus(anchor.center, `Regenerate ${anchor.id} from emergency civic, fire-safety, and navigation graph data.`),
+    message
+  };
+}
+
+function validateEmergencyEquipment(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[],
+  assetBindingsById: ReadonlyMap<string, RenderBinding>
+): void {
+  const equipmentByKind = new Map<EmergencyEquipmentKind, ValidationEmergencyEquipment[]>();
+  const emergencyAnchorsById = new Map(city.emergencyServiceAnchors.map((anchor) => [anchor.id, anchor]));
+  const publicShelterAnchorIds = new Set(
+    city.emergencyServiceAnchors
+      .filter((anchor) => anchor.anchorKind === 'public-shelter' || anchor.staging.shelterCapacityPeople > 0)
+      .map((anchor) => anchor.id)
+  );
+  const roadsById = new Set(city.roads.map((road) => road.id));
+  const parksById = new Set(city.parks.map((park) => park.id));
+  const plazaZonesById = new Set(city.plazaZones.map((zone) => zone.id));
+  const waterfrontOpenSpacesById = new Set(city.waterfrontOpenSpaces.map((space) => space.id));
+  const publicSpaceIds = new Set([...parksById, ...plazaZonesById, ...waterfrontOpenSpacesById]);
+  const navigationNodesById = new Map(city.navigationGraphNodes.map((node) => [node.id, node]));
+  const navigationEdgesById = new Map(city.navigationGraphEdges.map((edge) => [edge.id, edge]));
+  const fireLaneCurbZoneIds = new Set(
+    city.curbZones.filter((curbZone) => curbZone.management.fireLaneClearance).map((curbZone) => curbZone.id)
+  );
+  const signObjectsById = new Set(city.streetFurniture.filter((item) => item.signFace).map((item) => item.id));
+  const assemblyIds = new Set(
+    city.emergencyEquipment.filter((equipment) => equipment.equipmentKind === 'assembly-area').map((equipment) => equipment.id)
+  );
+  const coveredPublicSpaceIds = new Set<CityId>();
+  const assemblyCoveredPublicSpaceIds = new Set<CityId>();
+
+  for (const equipment of city.emergencyEquipment) {
+    const anchor = emergencyAnchorsById.get(equipment.emergencyServiceAnchorId);
+    const binding = assetBindingsById.get(equipment.renderBindingId);
+
+    if (EMERGENCY_EQUIPMENT_KINDS.includes(equipment.equipmentKind)) {
+      equipmentByKind.set(equipment.equipmentKind, [...(equipmentByKind.get(equipment.equipmentKind) ?? []), equipment]);
+    } else {
+      issues.push(createEmergencyEquipmentIssue(equipment, 'invalid-kind', `Emergency equipment ${equipment.id} must declare a supported equipment kind.`));
+    }
+
+    if (!anchor || equipment.parentId !== equipment.emergencyServiceAnchorId) {
+      issues.push(createEmergencyEquipmentIssue(equipment, 'missing-emergency-service-anchor', `Emergency equipment ${equipment.id} must be parented to an emergency service anchor.`));
+    }
+
+    if (equipment.roadId && !roadsById.has(equipment.roadId)) {
+      issues.push(createEmergencyEquipmentIssue(equipment, `missing-road-${toIssueIdToken(equipment.roadId)}`, `Emergency equipment ${equipment.id} references missing road ${equipment.roadId}.`));
+    }
+
+    if (equipment.parkId && !parksById.has(equipment.parkId)) {
+      issues.push(createEmergencyEquipmentIssue(equipment, `missing-park-${toIssueIdToken(equipment.parkId)}`, `Emergency equipment ${equipment.id} references missing park ${equipment.parkId}.`));
+    }
+
+    if (equipment.plazaZoneId && !plazaZonesById.has(equipment.plazaZoneId)) {
+      issues.push(createEmergencyEquipmentIssue(equipment, `missing-plaza-zone-${toIssueIdToken(equipment.plazaZoneId)}`, `Emergency equipment ${equipment.id} references missing plaza zone ${equipment.plazaZoneId}.`));
+    }
+
+    if (equipment.waterfrontOpenSpaceId && !waterfrontOpenSpacesById.has(equipment.waterfrontOpenSpaceId)) {
+      issues.push(createEmergencyEquipmentIssue(equipment, `missing-waterfront-open-space-${toIssueIdToken(equipment.waterfrontOpenSpaceId)}`, `Emergency equipment ${equipment.id} references missing waterfront open space ${equipment.waterfrontOpenSpaceId}.`));
+    }
+
+    if (
+      equipment.coverage.radiusMeters <= 0 ||
+      equipment.coverage.coveredPublicSpaceIds.length === 0 ||
+      equipment.coverage.estimatedWalkMeters < 0 ||
+      equipment.coverage.coverageScore <= 0
+    ) {
+      issues.push(createEmergencyEquipmentIssue(equipment, 'invalid-coverage', `Emergency equipment ${equipment.id} must expose positive public-space coverage and walk metrics.`));
+    }
+
+    if (!publicShelterAnchorIds.has(equipment.coverage.nearestShelterAnchorId)) {
+      issues.push(createEmergencyEquipmentIssue(equipment, `missing-nearest-shelter-${toIssueIdToken(equipment.coverage.nearestShelterAnchorId)}`, `Emergency equipment ${equipment.id} must reference a shelter-capable emergency anchor.`));
+    }
+
+    if (!assemblyIds.has(equipment.coverage.nearestAssemblyPointId)) {
+      issues.push(createEmergencyEquipmentIssue(equipment, `missing-nearest-assembly-${toIssueIdToken(equipment.coverage.nearestAssemblyPointId)}`, `Emergency equipment ${equipment.id} must reference a generated assembly area.`));
+    }
+
+    for (const publicSpaceId of equipment.coverage.coveredPublicSpaceIds) {
+      if (!publicSpaceIds.has(publicSpaceId)) {
+        issues.push(createEmergencyEquipmentIssue(equipment, `missing-public-space-${toIssueIdToken(publicSpaceId)}`, `Emergency equipment ${equipment.id} covers missing public space ${publicSpaceId}.`));
+      } else {
+        coveredPublicSpaceIds.add(publicSpaceId);
+        if (equipment.equipmentKind === 'assembly-area') {
+          assemblyCoveredPublicSpaceIds.add(publicSpaceId);
+        }
+      }
+    }
+
+    for (const nodeId of equipment.access.navigationNodeIds) {
+      const node = navigationNodesById.get(nodeId);
+      if (!node || (node.mode !== 'emergency' && node.mode !== 'pedestrian')) {
+        issues.push(createEmergencyEquipmentIssue(equipment, `missing-navigation-node-${toIssueIdToken(nodeId)}`, `Emergency equipment ${equipment.id} references missing public or emergency navigation node ${nodeId}.`));
+      }
+    }
+
+    for (const edgeId of equipment.access.navigationEdgeIds) {
+      const edge = navigationEdgesById.get(edgeId);
+      if (!edge || (edge.mode !== 'emergency' && edge.mode !== 'pedestrian')) {
+        issues.push(createEmergencyEquipmentIssue(equipment, `missing-navigation-edge-${toIssueIdToken(edgeId)}`, `Emergency equipment ${equipment.id} references missing public or emergency navigation edge ${edgeId}.`));
+      }
+    }
+
+    for (const curbZoneId of equipment.access.fireLaneCurbZoneIds) {
+      if (!fireLaneCurbZoneIds.has(curbZoneId)) {
+        issues.push(createEmergencyEquipmentIssue(equipment, `missing-fire-lane-${toIssueIdToken(curbZoneId)}`, `Emergency equipment ${equipment.id} references missing fire-lane curb zone ${curbZoneId}.`));
+      }
+    }
+
+    for (const signId of equipment.access.signageObjectIds) {
+      if (!signObjectsById.has(signId)) {
+        issues.push(createEmergencyEquipmentIssue(equipment, `missing-signage-${toIssueIdToken(signId)}`, `Emergency equipment ${equipment.id} references missing readable signage ${signId}.`));
+      }
+    }
+
+    if (equipment.signObjectId && !signObjectsById.has(equipment.signObjectId)) {
+      issues.push(createEmergencyEquipmentIssue(equipment, `missing-sign-object-${toIssueIdToken(equipment.signObjectId)}`, `Emergency equipment ${equipment.id} references missing sign object ${equipment.signObjectId}.`));
+    }
+
+    if ((equipment.equipmentKind === 'aed' || equipment.equipmentKind === 'emergency-phone' || equipment.equipmentKind === 'fire-alarm-box') && equipment.capacity.deviceCount <= 0) {
+      issues.push(createEmergencyEquipmentIssue(equipment, 'missing-device-count', `Emergency equipment ${equipment.id} must expose device count.`));
+    }
+
+    if (equipment.equipmentKind === 'assembly-area' && equipment.capacity.assemblyCapacityPeople <= 0) {
+      issues.push(createEmergencyEquipmentIssue(equipment, 'missing-assembly-capacity', `Assembly area ${equipment.id} must expose assembly capacity.`));
+    }
+
+    if ((equipment.equipmentKind === 'siren' || equipment.equipmentKind === 'alarm') && equipment.capacity.audibleRadiusMeters <= 0) {
+      issues.push(createEmergencyEquipmentIssue(equipment, 'missing-audible-radius', `Audible emergency equipment ${equipment.id} must expose audible radius.`));
+    }
+
+    if (equipment.equipmentKind === 'lifeguard-station' && !equipment.waterfrontOpenSpaceId) {
+      issues.push(createEmergencyEquipmentIssue(equipment, 'missing-waterfront-lifeguard-context', `Lifeguard station ${equipment.id} must attach to a waterfront open space.`));
+    }
+
+    if (equipment.equipmentKind === 'shelter-signage' && (!equipment.shelterAnchorId || !equipment.signObjectId)) {
+      issues.push(createEmergencyEquipmentIssue(equipment, 'missing-shelter-signage-links', `Shelter signage ${equipment.id} must reference a shelter anchor and readable sign object.`));
+    }
+
+    if (!binding || binding.objectKind !== 'emergency-equipment') {
+      issues.push(createEmergencyEquipmentIssue(equipment, 'missing-render-binding', `Emergency equipment ${equipment.id} must reference an emergency-equipment render binding.`));
+    }
+  }
+
+  for (const equipmentKind of EMERGENCY_EQUIPMENT_KINDS) {
+    if (!equipmentByKind.has(equipmentKind)) {
+      issues.push({
+        id: `missing-emergency-equipment-${equipmentKind}`,
+        severity: 'error',
+        category: 'zoning',
+        ...createIssueFocus(city.emergencyServiceAnchors[0]?.center, `Generate ${equipmentKind} emergency equipment from emergency anchors and public-space coverage.`),
+        message: `Emergency equipment must include ${equipmentKind}.`
+      });
+    }
+  }
+
+  for (const publicSpaceId of publicSpaceIds) {
+    if (!coveredPublicSpaceIds.has(publicSpaceId)) {
+      issues.push({
+        id: `missing-emergency-equipment-public-space-coverage-${toIssueIdToken(publicSpaceId)}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: publicSpaceId,
+        ...createIssueFocus(undefined, `Assign nearest emergency equipment coverage to public space ${publicSpaceId}.`),
+        message: `Public space ${publicSpaceId} must have nearest emergency equipment.`
+      });
+    }
+
+    if (!assemblyCoveredPublicSpaceIds.has(publicSpaceId)) {
+      issues.push({
+        id: `missing-emergency-assembly-public-space-coverage-${toIssueIdToken(publicSpaceId)}`,
+        severity: 'error',
+        category: 'zoning',
+        objectId: publicSpaceId,
+        ...createIssueFocus(undefined, `Assign nearest emergency assembly area coverage to public space ${publicSpaceId}.`),
+        message: `Public space ${publicSpaceId} must have nearest assembly-area coverage.`
+      });
+    }
+  }
+}
+
+function createEmergencyEquipmentIssue(
+  equipment: ValidationEmergencyEquipment,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `emergency-equipment-${issueIdSuffix}-${toIssueIdToken(equipment.id)}`,
+    severity: 'error',
+    category: 'zoning',
+    objectId: equipment.id,
+    ...createIssueFocus(equipment.center, `Regenerate ${equipment.id} from emergency anchors, signage, and public spaces.`),
     message
   };
 }

@@ -80,6 +80,7 @@ type PickableObjectSource = Pick<
   | 'communityAnchors'
   | 'cultureAnchors'
   | 'educationAnchors'
+  | 'emergencyEquipment'
   | 'curbActivations'
   | 'emergencyServiceAnchors'
   | 'governmentAnchors'
@@ -120,6 +121,7 @@ export function createCityPickingMetadataCatalog(
     ...city.communityAnchors,
     ...city.cultureAnchors,
     ...city.educationAnchors,
+    ...city.emergencyEquipment,
     ...city.governmentAnchors,
     ...city.healthcareAnchors,
     ...city.emergencyServiceAnchors,
@@ -290,6 +292,23 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
       typeof access?.accessibleNavigationNodeIds?.[0] === 'string'
         ? access.accessibleNavigationNodeIds[0]
         : references.navigationNodeId;
+  } else if (object.kind === 'emergency-equipment') {
+    references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
+    references.parkId = typeof record.parkId === 'string' ? record.parkId : undefined;
+    references.plazaZoneId = typeof record.plazaZoneId === 'string' ? record.plazaZoneId : undefined;
+    references.waterfrontOpenSpaceId =
+      typeof record.waterfrontOpenSpaceId === 'string' ? record.waterfrontOpenSpaceId : undefined;
+    const access = record.access as
+      | {
+          navigationNodeIds?: readonly unknown[];
+          fireLaneCurbZoneIds?: readonly unknown[];
+          signageObjectIds?: readonly unknown[];
+        }
+      | undefined;
+    references.navigationNodeId =
+      typeof access?.navigationNodeIds?.[0] === 'string' ? access.navigationNodeIds[0] : references.navigationNodeId;
+    references.curbZoneId =
+      typeof access?.fireLaneCurbZoneIds?.[0] === 'string' ? access.fireLaneCurbZoneIds[0] : references.curbZoneId;
   } else if (object.kind === 'healthcare-anchor') {
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
     references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;

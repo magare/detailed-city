@@ -16,6 +16,7 @@ import { EntranceAddressGenerator } from './buildings/EntranceAddressGenerator';
 import { CivicAnchorGenerator } from './civic/CivicAnchorGenerator';
 import { CommunityAnchorGenerator } from './civic/CommunityAnchorGenerator';
 import { CultureAnchorGenerator } from './civic/CultureAnchorGenerator';
+import { EmergencyEquipmentGenerator } from './civic/EmergencyEquipmentGenerator';
 import { EmergencyServiceAnchorGenerator } from './civic/EmergencyServiceAnchorGenerator';
 import { EducationAnchorGenerator } from './civic/EducationAnchorGenerator';
 import { GovernmentAnchorGenerator } from './civic/GovernmentAnchorGenerator';
@@ -395,6 +396,15 @@ export class CityGenerator {
       bikeParking: cycling.bikeParking,
       parkFeatures
     });
+    const emergencyEquipment = new EmergencyEquipmentGenerator().create({
+      emergencyServiceAnchors,
+      navigationGraphNodes: navigationGraphs.navigationGraphNodes,
+      navigationGraphEdges: accessControl.navigationGraphEdges,
+      parks: parksWithFeatures,
+      plazaZones,
+      waterfrontOpenSpaces,
+      streetFurniture
+    });
     const governmentAnchors = new GovernmentAnchorGenerator().create({
       civicAnchors,
       buildings: entranceAddress.buildings,
@@ -444,6 +454,7 @@ export class CityGenerator {
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
       educationAnchors: addressingGazetteer.educationAnchors,
+      emergencyEquipment,
       healthcareAnchors: addressingGazetteer.healthcareAnchors,
       emergencyServiceAnchors,
       waterTransportAccess,
@@ -538,6 +549,7 @@ export class CityGenerator {
       cultureAnchors: addressingGazetteer.cultureAnchors,
       governmentAnchors: addressingGazetteer.governmentAnchors,
       educationAnchors: addressingGazetteer.educationAnchors,
+      emergencyEquipment,
       healthcareAnchors: addressingGazetteer.healthcareAnchors,
       emergencyServiceAnchors,
       waterTransportAccess,

@@ -27,6 +27,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const activeFrontage = city.activeFrontages[0];
   const streetLight = city.streetLights[0];
   const streetFurniture = city.streetFurniture[0];
+  const emergencyEquipment = city.emergencyEquipment[0];
   const publicAmenity = city.publicAmenities[0];
   const trafficCalmingDevice = city.trafficCalmingDevices[0];
   const waterTransportAccess = city.waterTransportAccess[0];
@@ -59,6 +60,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.trees.length +
       city.streetLights.length +
       city.streetFurniture.length +
+      city.emergencyEquipment.length +
       city.transitStops.length +
       city.transitRoutes.length +
       city.trafficCalmingDevices.length +
@@ -83,6 +85,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
   expect(catalog.countsByKind['street-furniture']).toBe(city.streetFurniture.length);
+  expect(catalog.countsByKind['emergency-equipment']).toBe(city.emergencyEquipment.length);
   expect(catalog.countsByKind['public-amenity']).toBe(city.publicAmenities.length);
   expect(catalog.countsByKind['transit-stop']).toBe(city.transitStops.length);
   expect(catalog.countsByKind['transit-route']).toBe(city.transitRoutes.length);
@@ -213,6 +216,17 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       sliceId: streetFurniture.sliceId,
       curbZoneId: streetFurniture.curbZoneId
     }
+  });
+  expect(catalog.metadataByObjectId[emergencyEquipment.id]).toMatchObject({
+    objectId: emergencyEquipment.id,
+    kind: 'emergency-equipment',
+    ownerDomain: 'civic',
+    parentId: emergencyEquipment.emergencyServiceAnchorId,
+    lod: emergencyEquipment.lod,
+    references: expect.objectContaining({
+      roadId: emergencyEquipment.roadId,
+      navigationNodeId: emergencyEquipment.access.navigationNodeIds[0]
+    })
   });
   expect(catalog.metadataByObjectId[publicAmenity.id]).toMatchObject({
     objectId: publicAmenity.id,

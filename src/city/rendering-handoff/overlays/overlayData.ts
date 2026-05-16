@@ -40,6 +40,7 @@ export type CityOverlayId =
   | 'culture-anchors'
   | 'government-anchors'
   | 'education-anchors'
+  | 'emergency-equipment'
   | 'healthcare-anchors'
   | 'emergency-service-anchors'
   | 'building-access'
@@ -125,6 +126,7 @@ export function createCityOverlayDatasets(
     createDataset('culture-anchors', 'Culture Anchors', 'domain-data', createCultureAnchorFeatures(city)),
     createDataset('government-anchors', 'Government Anchors', 'domain-data', createGovernmentAnchorFeatures(city)),
     createDataset('education-anchors', 'Education Anchors', 'domain-data', createEducationAnchorFeatures(city)),
+    createDataset('emergency-equipment', 'Emergency Equipment', 'domain-data', createEmergencyEquipmentFeatures(city)),
     createDataset('healthcare-anchors', 'Healthcare Anchors', 'domain-data', createHealthcareAnchorFeatures(city)),
     createDataset('emergency-service-anchors', 'Emergency Service Anchors', 'domain-data', createEmergencyServiceAnchorFeatures(city)),
     createDataset('building-access', 'Building Access', 'domain-data', createBuildingAccessFeatures(city)),
@@ -768,6 +770,38 @@ function createEmergencyServiceAnchorFeatures(city: GeneratedCity): CityOverlayF
       commandPostReady: anchor.staging.commandPostReady,
       navigationNodes: anchor.access.navigationNodeIds.length,
       fireLanes: anchor.access.fireLaneCurbZoneIds.length
+    }
+  }));
+}
+
+function createEmergencyEquipmentFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.emergencyEquipment.map((equipment) => ({
+    id: `overlay:emergency-equipment:${equipment.id}`,
+    overlayId: 'emergency-equipment',
+    objectId: equipment.id,
+    objectKind: equipment.kind,
+    ownerDomain: equipment.ownerDomain,
+    label: equipment.name ?? equipment.id,
+    geometry: { type: 'point', point: equipment.center },
+    metadata: {
+      equipmentKind: equipment.equipmentKind,
+      emergencyServiceAnchorId: equipment.emergencyServiceAnchorId,
+      ...(equipment.roadId ? { roadId: equipment.roadId } : {}),
+      ...(equipment.parkId ? { parkId: equipment.parkId } : {}),
+      ...(equipment.plazaZoneId ? { plazaZoneId: equipment.plazaZoneId } : {}),
+      ...(equipment.waterfrontOpenSpaceId ? { waterfrontOpenSpaceId: equipment.waterfrontOpenSpaceId } : {}),
+      ...(equipment.shelterAnchorId ? { shelterAnchorId: equipment.shelterAnchorId } : {}),
+      ...(equipment.signObjectId ? { signObjectId: equipment.signObjectId } : {}),
+      coveredPublicSpaces: equipment.coverage.coveredPublicSpaceIds.length,
+      nearestAssemblyPointId: equipment.coverage.nearestAssemblyPointId,
+      estimatedWalkMeters: equipment.coverage.estimatedWalkMeters,
+      coverageScore: equipment.coverage.coverageScore,
+      deviceCount: equipment.capacity.deviceCount,
+      assemblyCapacityPeople: equipment.capacity.assemblyCapacityPeople,
+      audibleRadiusMeters: equipment.capacity.audibleRadiusMeters,
+      batteryBackupHours: equipment.capacity.batteryBackupHours,
+      navigationNodes: equipment.access.navigationNodeIds.length,
+      signageObjects: equipment.access.signageObjectIds.length
     }
   }));
 }

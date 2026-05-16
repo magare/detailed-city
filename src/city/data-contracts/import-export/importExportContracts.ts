@@ -289,6 +289,7 @@ export interface ProceduralSeedDomainSections {
   readonly communityAnchors: GeneratedCity['communityAnchors'];
   readonly cultureAnchors: GeneratedCity['cultureAnchors'];
   readonly educationAnchors: GeneratedCity['educationAnchors'];
+  readonly emergencyEquipment: GeneratedCity['emergencyEquipment'];
   readonly governmentAnchors: GeneratedCity['governmentAnchors'];
   readonly healthcareAnchors: GeneratedCity['healthcareAnchors'];
   readonly emergencyServiceAnchors: GeneratedCity['emergencyServiceAnchors'];
@@ -366,6 +367,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly communityAnchors: number;
   readonly cultureAnchors: number;
   readonly educationAnchors: number;
+  readonly emergencyEquipment: number;
   readonly governmentAnchors: number;
   readonly healthcareAnchors: number;
   readonly emergencyServiceAnchors: number;
@@ -515,6 +517,7 @@ export function createProceduralSeedJsonExport(
       communityAnchors: city.communityAnchors,
       cultureAnchors: city.cultureAnchors,
       educationAnchors: city.educationAnchors,
+      emergencyEquipment: city.emergencyEquipment,
       governmentAnchors: city.governmentAnchors,
       healthcareAnchors: city.healthcareAnchors,
       emergencyServiceAnchors: city.emergencyServiceAnchors,
@@ -728,6 +731,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'sidewalkGraph'
     | 'streetFurniture'
     | 'streetLights'
+    | 'emergencyEquipment'
     | 'greenStormwaterFeatures'
     | 'trees'
     | 'verticalSlices'
@@ -788,6 +792,7 @@ export function createProceduralSeedDomainSectionCounts(
     serviceAlleys: city.serviceAlleys.length,
     streetLights: city.streetLights.length,
     streetFurniture: city.streetFurniture.length,
+    emergencyEquipment: city.emergencyEquipment.length,
     greenStormwaterFeatures: city.greenStormwaterFeatures.length,
     sidewalkGraphNodes: city.sidewalkGraph.nodes.length,
     sidewalkGraphEdges: city.sidewalkGraph.edges.length,
@@ -888,6 +893,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'governmentAnchors') +
     getArrayLength(city, 'healthcareAnchors') +
     getArrayLength(city, 'emergencyServiceAnchors') +
+    getArrayLength(city, 'emergencyEquipment') +
     getArrayLength(city, 'waterTransportAccess') +
     getArrayLength(city, 'activeFrontages') +
     getArrayLength(city, 'parks') +

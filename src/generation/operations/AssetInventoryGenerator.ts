@@ -10,6 +10,7 @@ import type {
   CommunityAnchor,
   CultureAnchor,
   EducationAnchor,
+  EmergencyEquipment,
   EmergencyServiceAnchor,
   GeneratedCity,
   GovernmentAnchor,
@@ -32,6 +33,7 @@ export interface AssetInventoryGeneratorInput {
   readonly cultureAnchors: readonly CultureAnchor[];
   readonly governmentAnchors: readonly GovernmentAnchor[];
   readonly educationAnchors: readonly EducationAnchor[];
+  readonly emergencyEquipment: readonly EmergencyEquipment[];
   readonly healthcareAnchors: readonly HealthcareAnchor[];
   readonly emergencyServiceAnchors: readonly EmergencyServiceAnchor[];
   readonly waterTransportAccess: readonly WaterTransportAccess[];
@@ -51,6 +53,7 @@ type InventoryTarget = Extract<
   | CommunityAnchor
   | CultureAnchor
   | EducationAnchor
+  | EmergencyEquipment
   | EmergencyServiceAnchor
   | GovernmentAnchor
   | HealthcareAnchor
@@ -89,6 +92,16 @@ export class AssetInventoryGenerator {
       ...input.cultureAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.governmentAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.educationAnchors.map((object) => civicTarget(object, object.renderBindingId)),
+      ...input.emergencyEquipment.map((object) =>
+        publicRealmTarget(object, object.renderBindingId, [
+          object.emergencyServiceAnchorId,
+          ...(object.roadId ? [object.roadId] : []),
+          ...(object.parkId ? [object.parkId] : []),
+          ...(object.plazaZoneId ? [object.plazaZoneId] : []),
+          ...(object.waterfrontOpenSpaceId ? [object.waterfrontOpenSpaceId] : []),
+          ...(object.signObjectId ? [object.signObjectId] : [])
+        ])
+      ),
       ...input.healthcareAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.emergencyServiceAnchors.map((object) => civicTarget(object, object.renderBindingId)),
       ...input.waterTransportAccess.map((object) =>
@@ -145,7 +158,7 @@ function utilityTarget<T extends UtilityNode | UtilityEdge>(
   };
 }
 
-function publicRealmTarget<T extends StreetLight | StreetFurniture | ParkFeature | PlazaZone | GreenStormwaterFeature | WaterTransportAccess | WaterfrontOpenSpace>(
+function publicRealmTarget<T extends StreetLight | StreetFurniture | ParkFeature | PlazaZone | EmergencyEquipment | GreenStormwaterFeature | WaterTransportAccess | WaterfrontOpenSpace>(
   object: T,
   renderBindingId: CityId,
   accessObjectIds: readonly CityId[]
@@ -242,6 +255,7 @@ function getExpectedServiceLifeYears(object: InventoryTarget): number {
     case 'street-light':
       return 18;
     case 'street-furniture':
+    case 'emergency-equipment':
       return 12;
     case 'green-stormwater-feature':
       return 16;
@@ -276,6 +290,8 @@ function getReplacementCost(object: InventoryTarget): number {
       return 7200;
     case 'street-furniture':
       return Math.round((object.dimensions.widthMeters + object.dimensions.lengthMeters + object.dimensions.heightMeters) * 900);
+    case 'emergency-equipment':
+      return Math.round(18000 + object.capacity.deviceCount * 9500 + object.capacity.assemblyCapacityPeople * 85 + object.capacity.audibleRadiusMeters * 22);
     case 'green-stormwater-feature':
       return Math.round(object.storageVolumeCubicMeters * 4200 + object.size.x * object.size.z * 650);
     case 'water-transport-access':
@@ -314,6 +330,9 @@ function getCriticality(object: InventoryTarget): AssetCriticality {
   }
   if (object.kind === 'street-light' && object.nightSafety.emergencyRouteSupport) {
     return 'high';
+  }
+  if (object.kind === 'emergency-equipment') {
+    return object.equipmentKind === 'assembly-area' || object.equipmentKind === 'shelter-signage' ? 'medium' : 'high';
   }
   if (object.kind === 'water-transport-access') {
     return object.constraints.emergencyPriority ? 'high' : object.capacity.cargoTonnesPerDay > 0 ? 'medium' : 'low';

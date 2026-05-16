@@ -5,6 +5,7 @@ import { BuildingFacadeMeshBuilder } from '../../city/rendering-handoff/mesh-bui
 import { BuildingMassMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingMassMeshBuilder';
 import { BuildingRoofMeshBuilder } from '../../city/rendering-handoff/mesh-builders/BuildingRoofMeshBuilder';
 import { CurbActivationMeshBuilder } from '../../city/rendering-handoff/mesh-builders/CurbActivationMeshBuilder';
+import { EmergencyEquipmentMeshBuilder } from '../../city/rendering-handoff/mesh-builders/EmergencyEquipmentMeshBuilder';
 import { GreenStormwaterMeshBuilder } from '../../city/rendering-handoff/mesh-builders/GreenStormwaterMeshBuilder';
 import { ParkFeatureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkFeatureMeshBuilder';
 import { ParkSurfaceMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkSurfaceMeshBuilder';
@@ -36,6 +37,7 @@ import {
 import { MaterialLibrary } from '../../rendering/materials/MaterialLibrary';
 import type {
   ActiveFrontage,
+  EmergencyEquipment,
   GeneratedCity,
   PublicAmenity,
   StreetFurniture,
@@ -118,6 +120,7 @@ export class City implements Updatable {
     this.addStreetLights(generated.streetLights);
     this.addStreetFurniture(generated.streetFurniture);
     this.addPublicAmenities(generated.publicAmenities);
+    this.addEmergencyEquipment(generated.emergencyEquipment);
     this.addWaterTransportAccess(generated.waterTransportAccess);
     this.addTrafficCalmingDevices(generated.trafficCalmingDevices);
     this.addAccessControls(generated);
@@ -270,6 +273,15 @@ export class City implements Updatable {
     ).build(publicAmenities);
 
     this.layerGroups['public-realm'].add(publicAmenityGroup);
+  }
+
+  private addEmergencyEquipment(emergencyEquipment: readonly EmergencyEquipment[]): void {
+    const group = new EmergencyEquipmentMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(emergencyEquipment);
+
+    this.layerGroups['public-realm'].add(group);
   }
 
   private addWaterTransportAccess(waterTransportAccess: readonly WaterTransportAccess[]): void {

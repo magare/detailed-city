@@ -26,6 +26,7 @@ import type {
   CurbActivationKind,
   CurbActivationStatus,
   EducationAnchorKind,
+  EmergencyEquipmentKind,
   EmergencyResponseMode,
   EmergencyServiceAnchorKind,
   GovernmentAnchorKind,
@@ -121,6 +122,7 @@ export interface CityDiagnostics {
   readonly cultureAnchors: CultureAnchorDiagnostics;
   readonly governmentAnchors: GovernmentAnchorDiagnostics;
   readonly educationAnchors: EducationAnchorDiagnostics;
+  readonly emergencyEquipment: EmergencyEquipmentDiagnostics;
   readonly healthcareAnchors: HealthcareAnchorDiagnostics;
   readonly emergencyServiceAnchors: EmergencyServiceAnchorDiagnostics;
   readonly waterTransportAccess: WaterTransportAccessDiagnostics;
@@ -563,6 +565,16 @@ export interface CityDiagnostics {
     readonly signageRouteBindings: number;
     readonly signageDistrictBindings: number;
     readonly signageFrontageBindings: number;
+    readonly emergencyEquipment: number;
+    readonly emergencyEquipmentKinds: number;
+    readonly emergencyAeds: number;
+    readonly emergencyPhones: number;
+    readonly emergencySirens: number;
+    readonly emergencyAssemblyAreas: number;
+    readonly emergencyAssemblyCapacity: number;
+    readonly emergencyCoveredPublicSpaces: number;
+    readonly emergencyAssemblyCoveredPublicSpaces: number;
+    readonly emergencyShelterSigns: number;
     readonly transitStops: number;
     readonly transitRoutes: number;
     readonly transitRouteStops: number;
@@ -1077,6 +1089,28 @@ export interface EmergencyServiceAnchorDiagnostics {
   readonly averageCoverageScore: number;
 }
 
+export interface EmergencyEquipmentDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Partial<Record<EmergencyEquipmentKind, number>>>;
+  readonly equipmentKinds: number;
+  readonly aeds: number;
+  readonly emergencyPhones: number;
+  readonly sirens: number;
+  readonly alarms: number;
+  readonly fireAlarmBoxes: number;
+  readonly assemblyAreas: number;
+  readonly lifeguardStations: number;
+  readonly shelterSignage: number;
+  readonly deviceCount: number;
+  readonly assemblyCapacityPeople: number;
+  readonly audibleDevices: number;
+  readonly coveredPublicSpaces: number;
+  readonly assemblyCoveredPublicSpaces: number;
+  readonly signageLinkedEquipment: number;
+  readonly averageWalkMeters: number;
+  readonly averageCoverageScore: number;
+}
+
 export interface HealthcareAnchorDiagnostics {
   readonly total: number;
   readonly byKind: Readonly<Partial<Record<HealthcareAnchorKind, number>>>;
@@ -1518,6 +1552,7 @@ export function createCityDiagnostics(
   const cultureAnchors = createCultureAnchorDiagnostics(city);
   const governmentAnchors = createGovernmentAnchorDiagnostics(city);
   const educationAnchors = createEducationAnchorDiagnostics(city);
+  const emergencyEquipment = createEmergencyEquipmentDiagnostics(city);
   const healthcareAnchors = createHealthcareAnchorDiagnostics(city);
   const emergencyServiceAnchors = createEmergencyServiceAnchorDiagnostics(city);
   const waterTransportAccess = createWaterTransportAccessDiagnostics(city);
@@ -1597,6 +1632,7 @@ export function createCityDiagnostics(
     cultureAnchors,
     governmentAnchors,
     educationAnchors,
+    emergencyEquipment,
     healthcareAnchors,
     emergencyServiceAnchors,
     waterTransportAccess,
@@ -2030,6 +2066,16 @@ export function createCityDiagnostics(
       signageRouteBindings: signageWayfinding.routeBoundSigns,
       signageDistrictBindings: signageWayfinding.districtBoundSigns,
       signageFrontageBindings: signageWayfinding.frontageBoundSigns,
+      emergencyEquipment: emergencyEquipment.total,
+      emergencyEquipmentKinds: emergencyEquipment.equipmentKinds,
+      emergencyAeds: emergencyEquipment.aeds,
+      emergencyPhones: emergencyEquipment.emergencyPhones,
+      emergencySirens: emergencyEquipment.sirens,
+      emergencyAssemblyAreas: emergencyEquipment.assemblyAreas,
+      emergencyAssemblyCapacity: emergencyEquipment.assemblyCapacityPeople,
+      emergencyCoveredPublicSpaces: emergencyEquipment.coveredPublicSpaces,
+      emergencyAssemblyCoveredPublicSpaces: emergencyEquipment.assemblyCoveredPublicSpaces,
+      emergencyShelterSigns: emergencyEquipment.shelterSignage,
       transitStops: city.transitStops.length,
       transitRoutes: city.transitRoutes.length,
       transitRouteStops: city.transitRoutes.reduce((sum, route) => sum + route.stopIds.length, 0),
@@ -3425,6 +3471,63 @@ function createEmergencyServiceAnchorDiagnostics(city: GeneratedCity): Emergency
     fireLaneLinks: fireLaneIds.size,
     averageResponseSeconds: Number((responseSeconds / Math.max(1, city.emergencyServiceAnchors.length)).toFixed(2)),
     averageCoverageScore: Number((coverageScore / Math.max(1, city.emergencyServiceAnchors.length)).toFixed(2))
+  };
+}
+
+function createEmergencyEquipmentDiagnostics(city: GeneratedCity): EmergencyEquipmentDiagnostics {
+  const byKind: Partial<Record<EmergencyEquipmentKind, number>> = {};
+  const coveredPublicSpaceIds = new Set<string>();
+  const assemblyCoveredPublicSpaceIds = new Set<string>();
+  let deviceCount = 0;
+  let assemblyCapacityPeople = 0;
+  let audibleDevices = 0;
+  let signageLinkedEquipment = 0;
+  let walkMeters = 0;
+  let coverageScore = 0;
+
+  for (const equipment of city.emergencyEquipment) {
+    byKind[equipment.equipmentKind] = (byKind[equipment.equipmentKind] ?? 0) + 1;
+    deviceCount += equipment.capacity.deviceCount;
+    assemblyCapacityPeople += equipment.capacity.assemblyCapacityPeople;
+    walkMeters += equipment.coverage.estimatedWalkMeters;
+    coverageScore += equipment.coverage.coverageScore;
+
+    if (equipment.capacity.audibleRadiusMeters > 0) {
+      audibleDevices += 1;
+    }
+
+    if (equipment.signObjectId || equipment.access.signageObjectIds.length > 0) {
+      signageLinkedEquipment += 1;
+    }
+
+    for (const publicSpaceId of equipment.coverage.coveredPublicSpaceIds) {
+      coveredPublicSpaceIds.add(publicSpaceId);
+      if (equipment.equipmentKind === 'assembly-area') {
+        assemblyCoveredPublicSpaceIds.add(publicSpaceId);
+      }
+    }
+  }
+
+  return {
+    total: city.emergencyEquipment.length,
+    byKind,
+    equipmentKinds: Object.keys(byKind).length,
+    aeds: byKind.aed ?? 0,
+    emergencyPhones: byKind['emergency-phone'] ?? 0,
+    sirens: byKind.siren ?? 0,
+    alarms: byKind.alarm ?? 0,
+    fireAlarmBoxes: byKind['fire-alarm-box'] ?? 0,
+    assemblyAreas: byKind['assembly-area'] ?? 0,
+    lifeguardStations: byKind['lifeguard-station'] ?? 0,
+    shelterSignage: byKind['shelter-signage'] ?? 0,
+    deviceCount,
+    assemblyCapacityPeople,
+    audibleDevices,
+    coveredPublicSpaces: coveredPublicSpaceIds.size,
+    assemblyCoveredPublicSpaces: assemblyCoveredPublicSpaceIds.size,
+    signageLinkedEquipment,
+    averageWalkMeters: Number((walkMeters / Math.max(1, city.emergencyEquipment.length)).toFixed(2)),
+    averageCoverageScore: Number((coverageScore / Math.max(1, city.emergencyEquipment.length)).toFixed(2))
   };
 }
 

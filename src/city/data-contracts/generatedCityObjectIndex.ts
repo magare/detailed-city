@@ -31,6 +31,7 @@ type GeneratedCityObjectSource = Pick<
   | 'communityAnchors'
   | 'cultureAnchors'
   | 'educationAnchors'
+  | 'emergencyEquipment'
   | 'governmentAnchors'
   | 'healthcareAnchors'
   | 'cityMetrics'
@@ -147,6 +148,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.communityAnchors,
     ...city.cultureAnchors,
     ...city.educationAnchors,
+    ...city.emergencyEquipment,
     ...city.governmentAnchors,
     ...city.healthcareAnchors,
     ...city.emergencyServiceAnchors,

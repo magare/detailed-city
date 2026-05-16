@@ -36,6 +36,7 @@ src/assets/
 - Healthcare anchors use procedural civic-building marker fallbacks and a registered healthcare material zone until dedicated hospital, clinic, pharmacy, urgent-care, and ambulance-bay assets are introduced.
 - Education anchors use procedural civic-building marker fallbacks and a registered education-anchor material zone until dedicated school, library, university, childcare, and learning-campus assets are introduced.
 - Emergency service anchors use procedural civic-building marker fallbacks and a registered emergency-service material zone until dedicated fire, police, ambulance, shelter, command, and staging assets are introduced.
+- Emergency equipment uses procedural street-prop marker fallbacks and a registered emergency-equipment material zone until dedicated AED, phone, siren, alarm, fire alarm box, assembly-area, lifeguard, and shelter-sign assets are introduced.
 - Water transport access uses procedural transit marker/platform fallbacks until dedicated ferry pier, dock, port-edge, and helipad assets are introduced.
 - Operations asset inventory can bind utility nodes and utility edges to procedural utility fallback assets while richer network equipment models are pending.
 - Bind assets through semantic city data and rendering-handoff rules; do not scatter raw asset paths in scene builders.

@@ -389,6 +389,10 @@ export class DebugPanel {
         `${diagnostics.emergencyServiceAnchors.total} anchors, ${diagnostics.emergencyServiceAnchors.vehicles} vehicles, ${diagnostics.emergencyServiceAnchors.fireSafetyProfilesCovered} covered`
       ),
       createMetric(
+        'Equipment',
+        `${diagnostics.emergencyEquipment.total} emergency, ${diagnostics.emergencyEquipment.assemblyAreas} assembly, ${diagnostics.emergencyEquipment.coveredPublicSpaces} spaces`
+      ),
+      createMetric(
         'Footprints',
         `${diagnostics.buildingFootprints.grammarKinds} kinds, ${diagnostics.buildingFootprints.offsetFootprints} offset, ${diagnostics.buildingFootprints.towers} towers`
       ),

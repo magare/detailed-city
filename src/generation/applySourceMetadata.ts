@@ -110,6 +110,9 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     cultureAnchors: city.cultureAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-culture-anchors')),
     governmentAnchors: city.governmentAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-government-anchors')),
     educationAnchors: city.educationAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-education-anchors')),
+    emergencyEquipment: city.emergencyEquipment.map((equipment) =>
+      withProceduralMetadata(equipment, 'civic-emergency-equipment')
+    ),
     healthcareAnchors: city.healthcareAnchors.map((anchor) => withProceduralMetadata(anchor, 'civic-healthcare-anchors')),
     emergencyServiceAnchors: city.emergencyServiceAnchors.map((anchor) =>
       withProceduralMetadata(anchor, 'civic-emergency-service-anchors')

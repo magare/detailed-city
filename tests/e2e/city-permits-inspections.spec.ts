@@ -39,7 +39,7 @@ test('permit and inspection records are deterministic and cover development and 
     complianceReviews: 10,
     approvedRecords: 32,
     activeRecords: 12,
-    closureRoads: 7
+    closureRoads: 6
   });
   expect(diagnostics.permitsInspections.openComplianceIssues).toBe(22);
   expect([...closureOperationIds].every((id) => closurePermitOperationIds.has(id))).toBe(true);

@@ -61,6 +61,7 @@ export const MATERIAL_ZONE_DEFINITIONS = [
   defineZone('education-anchor', 'Education Anchor Marker', 'facade-panel', 'building', 'civic-marker'),
   defineZone('healthcare-anchor', 'Healthcare Anchor Marker', 'facade-panel', 'building', 'civic-marker'),
   defineZone('emergency-service-anchor', 'Emergency Service Anchor Marker', 'facade-panel', 'building', 'civic-marker'),
+  defineZone('emergency-equipment', 'Emergency Equipment Marker', 'sign', 'storefrontSign', 'emergency-marker'),
   defineZone('utility-node', 'Utility Node Marker', 'utility', 'utility', 'utility'),
   defineZone('utility-edge', 'Utility Edge Line', 'utility', 'utility', 'utility'),
   defineZone('roof', 'Roof Surface', 'roof', 'rooftop', 'roof'),

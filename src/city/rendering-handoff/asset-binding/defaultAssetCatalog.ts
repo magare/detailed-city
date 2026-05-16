@@ -60,6 +60,7 @@ export const DEFAULT_RENDER_ASSET_CATALOG = [
   createProceduralAsset('asset:building:education-anchor:primitive', 'building', 'Education Anchor Primitive', 'education-anchor', 10, 'lod3'),
   createProceduralAsset('asset:building:healthcare-anchor:primitive', 'building', 'Healthcare Anchor Primitive', 'healthcare-anchor', 10.5, 'lod3'),
   createProceduralAsset('asset:building:emergency-service-anchor:primitive', 'building', 'Emergency Service Anchor Primitive', 'emergency-service-anchor', 11, 'lod3'),
+  createProceduralAsset('asset:street-prop:emergency-equipment:primitive', 'street-prop', 'Emergency Equipment Primitive', 'emergency-equipment', 3.4, 'lod4'),
   createProceduralAsset('asset:utility:inventory-node:primitive', 'utility', 'Utility Inventory Node Primitive', 'utility-node', 3.6, 'lod2'),
   createProceduralAsset('asset:utility:inventory-edge:primitive', 'utility', 'Utility Inventory Edge Primitive', 'utility-edge', 12, 'lod2'),
   createProceduralAsset('asset:street-prop:waterfront-edge:primitive', 'street-prop', 'Waterfront Edge Primitive', 'waterfront-edge', 18, 'lod2'),
@@ -461,6 +462,15 @@ export const DEFAULT_RENDER_BINDINGS = [
     materialZone: 'civic',
     fallbackMaterial: 'building',
     fallbackGeometry: 'emergency-service-anchor-marker'
+  },
+  {
+    id: 'binding:civic:emergency-equipment',
+    objectKind: 'emergency-equipment',
+    semanticTag: 'emergency-equipment',
+    assetId: 'asset:street-prop:emergency-equipment:primitive',
+    materialZone: 'emergency-equipment',
+    fallbackMaterial: 'storefrontSign',
+    fallbackGeometry: 'emergency-equipment-marker'
   },
   {
     id: 'binding:utility:inventory-node',
