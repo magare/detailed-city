@@ -18,14 +18,15 @@ Generation must produce contract-valid city data first. Rendering consumes that 
 12. Generate operations asset inventory records for renderable civic, public-realm, and utility assets.
 13. Generate maintenance operations from inventory condition, service access, roads, and operation-capable navigation routes.
 14. Generate permit and inspection records from cadastre records plus maintenance operations that create temporary closures.
-15. Generate permitted curb activations from active curb zones and approved/compliant permit records.
-16. Generate water transport access from waterfront, waterway, freight, emergency anchor, and navigation graph contracts.
-17. Generate economy anchors from building typologies, parcels, frontages, entrances, and freight logistics.
-18. Generate office workplaces from economy anchors, buildings, lobbies, addresses, transit stops, and bike parking.
-19. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
-20. Stamp generated objects with deterministic source metadata.
-21. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, operations records, slice tags, and budgets.
-22. Hand validated objects to mesh builders and scene-layer adapters.
+15. Generate operations sensors and IoT telemetry from telecom, inventory, public-realm, utility, and industrial anchors.
+16. Generate permitted curb activations from active curb zones and approved/compliant permit records.
+17. Generate water transport access from waterfront, waterway, freight, emergency anchor, and navigation graph contracts.
+18. Generate economy anchors from building typologies, parcels, frontages, entrances, and freight logistics.
+19. Generate office workplaces from economy anchors, buildings, lobbies, addresses, transit stops, and bike parking.
+20. Generate simulation seeds: vehicles, pedestrians, schedules, demand, events.
+21. Stamp generated objects with deterministic source metadata.
+22. Validate identifiers, metadata, geometry, graph continuity, zoning, constraints, assets, LOD, operations records, slice tags, and budgets.
+23. Hand validated objects to mesh builders and scene-layer adapters.
 
 ## City Intent
 
@@ -114,3 +115,4 @@ Generated districts must copy their blueprint character rules into the district 
 - Maintenance IDs, repair queue items, condition updates, replacement estimates, service access references, and temporary closure restrictions must derive deterministically from inventory condition/criticality and existing road/navigation graph data.
 - Permit and inspection records are operations-owned children of cadastre records or maintenance operations and must be generated after cadastre plus maintenance operation data exists.
 - Permit/inspection IDs, approval windows, inspection schedules, compliance status, closure-road references, and responsible departments must derive deterministically from the source cadastre or maintenance object.
+- Sensors and IoT devices are operations-owned objects generated after telecom and asset inventory exist. Sensor IDs, mounted object references, telemetry streams, coverage targets, utility/environment links, privacy tags, and operational status must derive deterministically from telecom, public-realm, utility, inventory, maintenance, and industrial source data.

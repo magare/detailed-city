@@ -43,6 +43,12 @@ import type {
   Point3D,
   Polygon2D,
   RenderBinding,
+  SensorDataVisibility,
+  SensorKind,
+  SensorMountKind,
+  SensorOperationalStatus,
+  SensorPrivacyRisk,
+  SensorTelemetryMetric,
   SolarGlareRisk,
   SolarShadingSampleKind,
   SoilGeologyKind,
@@ -137,6 +143,7 @@ type GeneratedCityForValidation = Pick<
   | 'navigationRoutes'
   | 'maintenanceOperations'
   | 'permitInspectionRecords'
+  | 'sensors'
   | 'publicAmenities'
   | 'lodPolicy'
   | 'objectIndex'
@@ -175,6 +182,7 @@ type ValidationCadastreRecord = GeneratedCityForValidation['cadastreRecords'][nu
 type ValidationAssetInventoryRecord = GeneratedCityForValidation['assetInventoryRecords'][number];
 type ValidationMaintenanceOperation = GeneratedCityForValidation['maintenanceOperations'][number];
 type ValidationPermitInspectionRecord = GeneratedCityForValidation['permitInspectionRecords'][number];
+type ValidationSensor = GeneratedCityForValidation['sensors'][number];
 type ValidationCivicAnchor = GeneratedCityForValidation['civicAnchors'][number];
 type ValidationCommunityAnchor = GeneratedCityForValidation['communityAnchors'][number];
 type ValidationCultureAnchor = GeneratedCityForValidation['cultureAnchors'][number];
@@ -240,6 +248,38 @@ const ASSET_INVENTORY_TARGET_KINDS = [
 const STREET_LIGHT_RENDER_BINDING_ID = 'binding:street-light:pole-fixture';
 const UTILITY_NODE_INVENTORY_RENDER_BINDING_ID = 'binding:utility:inventory-node';
 const UTILITY_EDGE_INVENTORY_RENDER_BINDING_ID = 'binding:utility:inventory-edge';
+const SENSOR_KINDS = [
+  'air-quality-sensor',
+  'camera',
+  'pedestrian-counter',
+  'traffic-counter',
+  'utility-meter',
+  'weather-station'
+] as const satisfies readonly SensorKind[];
+const SENSOR_MOUNT_KINDS = [
+  'building-mounted',
+  'roadside-pole',
+  'street-light',
+  'utility-cabinet'
+] as const satisfies readonly SensorMountKind[];
+const SENSOR_TELEMETRY_METRICS = [
+  'air-no2',
+  'air-pm25',
+  'humidity',
+  'people-count',
+  'rainfall',
+  'temperature',
+  'utility-load',
+  'vehicle-count',
+  'video-analytics'
+] as const satisfies readonly SensorTelemetryMetric[];
+const SENSOR_DATA_VISIBILITY = [
+  'operations-restricted',
+  'public-aggregate',
+  'safety-restricted'
+] as const satisfies readonly SensorDataVisibility[];
+const SENSOR_PRIVACY_RISKS = ['low', 'medium', 'high'] as const satisfies readonly SensorPrivacyRisk[];
+const SENSOR_OPERATIONAL_STATUSES = ['degraded', 'offline', 'online'] as const satisfies readonly SensorOperationalStatus[];
 
 const REQUIRED_RENDER_BINDING_IDS = [
   'binding:terrain:ground',
@@ -1132,6 +1172,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateAssetInventoryRecords(city, issues, assetBindingsById);
   validateMaintenanceOperations(city, issues);
   validatePermitInspectionRecords(city, issues);
+  validateSensors(city, issues);
   validateCurbActivations(city, issues, { roadsById, curbZonesById, assetBindingsById });
   validatePublicAmenities(city, issues, { roadsById, assetBindingsById });
   const transitRoutesById = new Map(city.transitRoutes.map((route) => [route.id, route]));
@@ -4054,6 +4095,218 @@ function createPermitInspectionIssue(
     severity: 'error',
     category: 'operations',
     objectId: record.id,
+    message
+  };
+}
+
+function validateSensors(
+  city: GeneratedCityForValidation,
+  issues: ValidationIssue[]
+): void {
+  const assetRecordsById = new Map(city.assetInventoryRecords.map((record) => [record.id, record]));
+  const maintenanceOperationsById = new Map(city.maintenanceOperations.map((operation) => [operation.id, operation]));
+  const telecomNodesById = new Map(
+    city.utilityNodes.filter((node) => node.utilityType === 'telecom').map((node) => [node.id, node])
+  );
+  const streamIds = new Set<CityId>();
+
+  if (city.sensors.length > 0 && !city.sensors.some((sensor) => sensor.sensorKind === 'air-quality-sensor')) {
+    issues.push({
+      id: 'missing-air-quality-sensor',
+      severity: 'error',
+      category: 'operations',
+      message: 'Sensor network must include at least one air-quality sensor for environment diagnostics.'
+    });
+  }
+
+  if (city.sensors.length > 0 && !city.sensors.some((sensor) => sensor.sensorKind === 'weather-station')) {
+    issues.push({
+      id: 'missing-weather-station-sensor',
+      severity: 'error',
+      category: 'operations',
+      message: 'Sensor network must include at least one weather station for environment diagnostics.'
+    });
+  }
+
+  for (const sensor of city.sensors) {
+    if (!SENSOR_KINDS.includes(sensor.sensorKind)) {
+      issues.push(createSensorIssue(sensor, 'invalid-kind', `Sensor ${sensor.id} declares unsupported kind ${sensor.sensorKind}.`));
+    }
+
+    if (!SENSOR_MOUNT_KINDS.includes(sensor.mountKind)) {
+      issues.push(createSensorIssue(sensor, 'invalid-mount', `Sensor ${sensor.id} declares unsupported mount kind ${sensor.mountKind}.`));
+    }
+
+    if (!hasObjectId(city, sensor.mountedObjectId) || (sensor.parentId && !hasObjectId(city, sensor.parentId))) {
+      issues.push(createSensorIssue(sensor, 'missing-mounted-object', `Sensor ${sensor.id} must reference existing mounted and parent objects.`));
+    }
+
+    if (!getFinitePoint(sensor.position)) {
+      issues.push(createSensorIssue(sensor, 'invalid-position', `Sensor ${sensor.id} must expose a finite position.`));
+    }
+
+    if (sensor.assetInventoryRecordId) {
+      const assetRecord = assetRecordsById.get(sensor.assetInventoryRecordId);
+      if (!assetRecord || assetRecord.assetObjectId !== sensor.mountedObjectId) {
+        issues.push(createSensorIssue(sensor, 'missing-asset-inventory', `Sensor ${sensor.id} asset inventory reference must point at its mounted object.`));
+      }
+    }
+
+    const telecomNode = telecomNodesById.get(sensor.telecomNodeId);
+    if (!telecomNode || telecomNode.telecom?.networkZoneId !== sensor.telecomNetworkZoneId) {
+      issues.push(createSensorIssue(sensor, 'missing-telecom-node', `Sensor ${sensor.id} must reference generated telecom backhaul and network zone metadata.`));
+    }
+
+    if (sensor.utilityNodeId && !city.utilityNodes.some((node) => node.id === sensor.utilityNodeId)) {
+      issues.push(createSensorIssue(sensor, 'missing-utility-node', `Sensor ${sensor.id} references missing utility node ${sensor.utilityNodeId}.`));
+    }
+
+    validateSensorCoverage(city, sensor, issues);
+    validateSensorTelemetry(sensor, streamIds, issues);
+    validateSensorPrivacy(sensor, issues);
+    validateSensorOperations(sensor, maintenanceOperationsById, issues);
+    validateSensorEnvironmentFeed(sensor, issues);
+  }
+}
+
+function validateSensorCoverage(
+  city: GeneratedCityForValidation,
+  sensor: ValidationSensor,
+  issues: ValidationIssue[]
+): void {
+  if (
+    !getFinitePoint(sensor.coverage.center) ||
+    sensor.coverage.radiusMeters <= 0 ||
+    sensor.coverage.coveredObjectIds.length === 0
+  ) {
+    issues.push(createSensorIssue(sensor, 'invalid-coverage', `Sensor ${sensor.id} must expose finite non-empty coverage.`));
+  }
+
+  for (const objectId of sensor.coverage.coveredObjectIds) {
+    if (!hasObjectId(city, objectId)) {
+      issues.push(createSensorIssue(sensor, `missing-coverage-object-${toIssueIdToken(objectId)}`, `Sensor ${sensor.id} coverage references missing object ${objectId}.`));
+    }
+  }
+
+  for (const roadId of sensor.coverage.roadIds) {
+    if (!city.roads.some((road) => road.id === roadId)) {
+      issues.push(createSensorIssue(sensor, `missing-road-${toIssueIdToken(roadId)}`, `Sensor ${sensor.id} coverage references missing road ${roadId}.`));
+    }
+  }
+
+  for (const buildingId of sensor.coverage.buildingIds) {
+    if (!city.buildings.some((building) => building.id === buildingId)) {
+      issues.push(createSensorIssue(sensor, `missing-building-${toIssueIdToken(buildingId)}`, `Sensor ${sensor.id} coverage references missing building ${buildingId}.`));
+    }
+  }
+
+  for (const publicSpaceId of sensor.coverage.publicSpaceIds) {
+    if (!hasObjectId(city, publicSpaceId)) {
+      issues.push(createSensorIssue(sensor, `missing-public-space-${toIssueIdToken(publicSpaceId)}`, `Sensor ${sensor.id} coverage references missing public space ${publicSpaceId}.`));
+    }
+  }
+
+  for (const zoneId of sensor.coverage.environmentalZoneIds) {
+    if (!hasObjectId(city, zoneId)) {
+      issues.push(createSensorIssue(sensor, `missing-environment-zone-${toIssueIdToken(zoneId)}`, `Sensor ${sensor.id} references missing environmental feed zone ${zoneId}.`));
+    }
+  }
+}
+
+function validateSensorTelemetry(
+  sensor: ValidationSensor,
+  streamIds: Set<CityId>,
+  issues: ValidationIssue[]
+): void {
+  if (sensor.telemetryStreams.length === 0) {
+    issues.push(createSensorIssue(sensor, 'invalid-telemetry', `Sensor ${sensor.id} must expose at least one telemetry stream.`));
+    return;
+  }
+
+  for (const stream of sensor.telemetryStreams) {
+    if (streamIds.has(stream.streamId)) {
+      issues.push(createSensorIssue(sensor, `duplicate-telemetry-stream-${toIssueIdToken(stream.streamId)}`, `Telemetry stream ${stream.streamId} must be globally unique.`));
+    }
+    streamIds.add(stream.streamId);
+
+    if (
+      !SENSOR_TELEMETRY_METRICS.includes(stream.metric) ||
+      stream.unit.length === 0 ||
+      stream.cadenceSeconds <= 0 ||
+      stream.retentionDays <= 0 ||
+      stream.destinationTopic.length === 0 ||
+      !isUnitInterval(stream.sampleQuality.confidence) ||
+      stream.sampleQuality.missingDataPct < 0 ||
+      stream.sampleQuality.missingDataPct > 1
+    ) {
+      issues.push(createSensorIssue(sensor, `invalid-telemetry-${toIssueIdToken(stream.streamId)}`, `Sensor ${sensor.id} telemetry stream ${stream.streamId} has invalid metric, cadence, retention, or quality metadata.`));
+    }
+  }
+}
+
+function validateSensorPrivacy(
+  sensor: ValidationSensor,
+  issues: ValidationIssue[]
+): void {
+  if (
+    !SENSOR_DATA_VISIBILITY.includes(sensor.privacy.visibility) ||
+    !SENSOR_PRIVACY_RISKS.includes(sensor.privacy.privacyRisk) ||
+    sensor.privacy.retentionDays <= 0 ||
+    (sensor.privacy.capturesPersonalData && (!sensor.privacy.redactionRequired || sensor.privacy.visibility === 'public-aggregate')) ||
+    (!sensor.privacy.capturesPersonalData && sensor.privacy.aggregation === 'raw')
+  ) {
+    issues.push(createSensorIssue(sensor, 'invalid-privacy', `Sensor ${sensor.id} must expose coherent privacy, retention, visibility, and redaction tags.`));
+  }
+}
+
+function validateSensorOperations(
+  sensor: ValidationSensor,
+  maintenanceOperationsById: ReadonlyMap<CityId, ValidationMaintenanceOperation>,
+  issues: ValidationIssue[]
+): void {
+  if (
+    sensor.operations.ownerEntityId.length === 0 ||
+    sensor.operations.responsibleDepartmentId.length === 0 ||
+    !SENSOR_OPERATIONAL_STATUSES.includes(sensor.operations.status) ||
+    sensor.operations.batteryBackupHours < 0 ||
+    sensor.operations.lastCalibrationDay < 0 ||
+    sensor.operations.nextCalibrationDay <= sensor.operations.lastCalibrationDay
+  ) {
+    issues.push(createSensorIssue(sensor, 'invalid-operations', `Sensor ${sensor.id} must expose coherent owner, status, backup, and calibration metadata.`));
+  }
+
+  for (const operationId of sensor.operations.maintenanceOperationIds) {
+    if (!maintenanceOperationsById.has(operationId)) {
+      issues.push(createSensorIssue(sensor, `missing-maintenance-operation-${toIssueIdToken(operationId)}`, `Sensor ${sensor.id} references missing maintenance operation ${operationId}.`));
+    }
+  }
+}
+
+function validateSensorEnvironmentFeed(
+  sensor: ValidationSensor,
+  issues: ValidationIssue[]
+): void {
+  if (
+    !isUnitInterval(sensor.environmentFeed.confidence) ||
+    !sensor.environmentFeed.feedsOperations ||
+    (sensor.sensorKind === 'air-quality-sensor' && !sensor.environmentFeed.feedsAirQuality) ||
+    (sensor.sensorKind === 'weather-station' && !sensor.environmentFeed.feedsWeather)
+  ) {
+    issues.push(createSensorIssue(sensor, 'invalid-feed', `Sensor ${sensor.id} must expose operations and environment feed flags with confidence.`));
+  }
+}
+
+function createSensorIssue(
+  sensor: ValidationSensor,
+  suffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `sensor-${suffix}-${sensor.id}`,
+    severity: 'error',
+    category: 'operations',
+    objectId: sensor.id,
+    ...createIssueFocus(getObjectAffectedPoint(sensor), `Regenerate sensor ${sensor.id} with valid coverage, telemetry, and references.`),
     message
   };
 }

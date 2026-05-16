@@ -42,6 +42,7 @@ The panel currently exposes:
 - Asset inventory record count, maintenance-watch count, and owner count.
 - Maintenance operation count, repair queue count, and temporary closure count.
 - Permit and inspection record count, development permit count, and temporary closure permit count.
+- Sensor count, telemetry stream count, and privacy-sensitive sensor count.
 - Curb activation count, parklet count, and seating capacity.
 - Public amenity count, public-toilet count, and expected daily comfort users.
 - Import/export format count and procedural seed export object count.
@@ -67,7 +68,7 @@ Clicking or hovering a city object should eventually show:
 
 ## Overlays
 
-The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results. Current executable datasets include administrative boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil/geology, weather presets, solar shading, urban heat, wind comfort, economy anchors, office workplaces, city metrics, building access, building fire safety, healthcare anchors, education anchors, emergency equipment, emergency service anchors, addressing/gazetteer, access controls, public lighting, signage/wayfinding, green stormwater, freight logistics, water transport access, asset inventory, maintenance operations, permits/inspections, curb activations, public amenities, constraints, resilience goals, service access, thermal service and outage maps, parcels, roads, validation issues, and owner domains.
+The first executable overlay data is produced by `src/city/rendering-handoff/overlays/overlayData.ts`. These datasets are queryable diagnostics, not visible controls yet, and are derived from domain objects plus validation results. Current executable datasets include administrative boundaries, districts, zoning, waterways, waterfront, hazards, topography, soil/geology, weather presets, solar shading, urban heat, wind comfort, economy anchors, office workplaces, city metrics, building access, building fire safety, healthcare anchors, education anchors, emergency equipment, emergency service anchors, addressing/gazetteer, access controls, public lighting, signage/wayfinding, green stormwater, freight logistics, water transport access, asset inventory, maintenance operations, permits/inspections, sensors and IoT coverage, curb activations, public amenities, constraints, resilience goals, service access, thermal service and outage maps, parcels, roads, validation issues, and owner domains.
 
 Validation issue overlay features now carry focus targets. When a validation issue provides an affected point, affected boundary, or suggested fix, the overlay feature uses that precise geometry and remediation text; otherwise it falls back to the referenced city object geometry.
 

@@ -90,6 +90,7 @@ const RENDER_LAYER_KIND_GROUPS = [
       'constraint',
       'hazard-zone',
       'resilience-goal',
+      'sensor',
       'solar-shading-sample',
       'urban-heat-zone',
       'vertical-slice',

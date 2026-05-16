@@ -34,6 +34,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const economyAnchor = city.economyAnchors[0];
   const industrialFacility = city.industrialFacilities[0];
   const officeWorkplace = city.officeWorkplaces[0];
+  const sensor = city.sensors.find((candidate) => candidate.sensorKind === 'utility-meter') ?? city.sensors[0];
   const zebraCrossing = traffic.markings.find((marking) => marking.markingType === 'zebra-crossing-stripe');
 
   expect(catalog.pickableObjectIds).toHaveLength(
@@ -71,6 +72,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.transitRoutes.length +
       city.trafficCalmingDevices.length +
       city.waterTransportAccess.length +
+      city.sensors.length +
       traffic.markings.length +
       traffic.vehicles.length
   );
@@ -103,6 +105,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind['curb-activation']).toBe(city.curbActivations.length);
   expect(catalog.countsByKind['traffic-calming-device']).toBe(city.trafficCalmingDevices.length);
   expect(catalog.countsByKind['water-transport-access']).toBe(city.waterTransportAccess.length);
+  expect(catalog.countsByKind.sensor).toBe(city.sensors.length);
   expect(catalog.countsByKind['waterfront-edge']).toBe(city.waterfrontEdges.length);
   expect(catalog.countsByKind['waterfront-open-space']).toBe(city.waterfrontOpenSpaces.length);
   expect(catalog.countsByKind['lane-marking']).toBe(traffic.markings.length);
@@ -335,6 +338,18 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       districtId: officeWorkplace.districtId,
       roadId: officeWorkplace.roadId
     }
+  });
+  expect(catalog.metadataByObjectId[sensor.id]).toMatchObject({
+    objectId: sensor.id,
+    kind: 'sensor',
+    ownerDomain: 'operations',
+    parentId: sensor.parentId,
+    lod: sensor.lod,
+    references: expect.objectContaining({
+      mountedObjectId: sensor.mountedObjectId,
+      utilityNodeId: sensor.utilityNodeId,
+      assetInventoryRecordId: sensor.assetInventoryRecordId
+    })
   });
   expect(catalog.metadataByObjectId[city.civicAnchors[0].id]).toMatchObject({
     objectId: city.civicAnchors[0].id,

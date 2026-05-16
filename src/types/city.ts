@@ -65,6 +65,7 @@ import type {
   RenderBinding,
   ResilienceGoalContract,
   RoadSegmentContract,
+  SensorContract,
   ServiceAccessCorridorContract,
   ServiceAlleyContract,
   SidewalkGraphEdgeContract,
@@ -370,6 +371,7 @@ export interface NavigationGraphEdge extends NavigationGraphEdgeContract {}
 export interface NavigationRoute extends NavigationRouteContract {}
 export interface MaintenanceOperation extends MaintenanceOperationContract {}
 export interface PermitInspectionRecord extends PermitInspectionRecordContract {}
+export interface Sensor extends SensorContract {}
 export interface FreightLoadingDock extends FreightLoadingDockContract {}
 export interface FreightRoute extends FreightRouteContract {}
 export interface ServiceAlley extends ServiceAlleyContract {}
@@ -424,6 +426,7 @@ export type GeneratedCityObject =
   | NavigationRoute
   | MaintenanceOperation
   | PermitInspectionRecord
+  | Sensor
   | NamedPlace
   | FreightLoadingDock
   | FreightRoute
@@ -515,6 +518,7 @@ export interface GeneratedCity {
   navigationRoutes: NavigationRoute[];
   maintenanceOperations: MaintenanceOperation[];
   permitInspectionRecords: PermitInspectionRecord[];
+  sensors: Sensor[];
   freightLoadingDocks: FreightLoadingDock[];
   freightRoutes: FreightRoute[];
   serviceAlleys: ServiceAlley[];

@@ -41,6 +41,8 @@ import type {
   PermitInspectionRecordKind,
   PermitInspectionStatus,
   PublicAmenityKind,
+  SensorKind,
+  SensorOperationalStatus,
   ServiceAccessCorridorKind,
   SignPanelKind,
   SourceType,
@@ -107,6 +109,7 @@ export interface CityDiagnostics {
   readonly assetInventory: AssetInventoryDiagnostics;
   readonly maintenanceOperations: MaintenanceOperationDiagnostics;
   readonly permitsInspections: PermitInspectionDiagnostics;
+  readonly sensorsIot: SensorIotDiagnostics;
   readonly curbActivations: CurbActivationDiagnostics;
   readonly publicAmenities: PublicAmenityDiagnostics;
   readonly accessControls: AccessControlDiagnostics;
@@ -244,6 +247,15 @@ export interface CityDiagnostics {
     readonly permitInspections: number;
     readonly complianceReviews: number;
     readonly permitComplianceOpenIssues: number;
+    readonly sensors: number;
+    readonly sensorKinds: number;
+    readonly sensorTelemetryStreams: number;
+    readonly sensorCoverageRoads: number;
+    readonly sensorCoverageBuildings: number;
+    readonly airQualitySensors: number;
+    readonly weatherStationSensors: number;
+    readonly privacySensitiveSensors: number;
+    readonly sensorsWithTelecomBackhaul: number;
     readonly curbActivations: number;
     readonly parklets: number;
     readonly outdoorDiningActivations: number;
@@ -760,6 +772,35 @@ export interface PermitInspectionDiagnostics {
   readonly openComplianceIssues: number;
   readonly closureRoads: number;
   readonly relatedObjects: number;
+}
+
+export interface SensorIotDiagnostics {
+  readonly total: number;
+  readonly byKind: Readonly<Record<SensorKind, number>>;
+  readonly byStatus: Readonly<Record<SensorOperationalStatus, number>>;
+  readonly cameras: number;
+  readonly pedestrianCounters: number;
+  readonly trafficCounters: number;
+  readonly utilityMeters: number;
+  readonly weatherStations: number;
+  readonly airQualitySensors: number;
+  readonly telemetryStreams: number;
+  readonly telecomBackhaulNodes: number;
+  readonly sensorsWithInventoryLink: number;
+  readonly sensorsWithMaintenanceLink: number;
+  readonly coverageRoads: number;
+  readonly coverageBuildings: number;
+  readonly coveragePublicSpaces: number;
+  readonly environmentalZoneRefs: number;
+  readonly privacySensitiveSensors: number;
+  readonly redactionRequiredSensors: number;
+  readonly publicAggregateSensors: number;
+  readonly operationsRestrictedSensors: number;
+  readonly airQualityFeeds: number;
+  readonly weatherFeeds: number;
+  readonly operationsFeeds: number;
+  readonly averageCoverageRadiusMeters: number;
+  readonly averageFeedConfidence: number;
 }
 
 export interface CurbActivationDiagnostics {
@@ -1653,6 +1694,7 @@ export function createCityDiagnostics(
   const assetInventory = createAssetInventoryDiagnostics(city);
   const maintenanceOperations = createMaintenanceOperationDiagnostics(city);
   const permitsInspections = createPermitInspectionDiagnostics(city);
+  const sensorsIot = createSensorIotDiagnostics(city);
   const curbActivations = createCurbActivationDiagnostics(city);
   const publicAmenities = createPublicAmenityDiagnostics(city);
   const accessControls = createAccessControlDiagnostics(city);
@@ -1737,6 +1779,7 @@ export function createCityDiagnostics(
     assetInventory,
     maintenanceOperations,
     permitsInspections,
+    sensorsIot,
     curbActivations,
     publicAmenities,
     accessControls,
@@ -1865,6 +1908,15 @@ export function createCityDiagnostics(
       permitInspections: permitsInspections.inspections,
       complianceReviews: permitsInspections.complianceReviews,
       permitComplianceOpenIssues: permitsInspections.openComplianceIssues,
+      sensors: sensorsIot.total,
+      sensorKinds: Object.values(sensorsIot.byKind).filter((count) => count > 0).length,
+      sensorTelemetryStreams: sensorsIot.telemetryStreams,
+      sensorCoverageRoads: sensorsIot.coverageRoads,
+      sensorCoverageBuildings: sensorsIot.coverageBuildings,
+      airQualitySensors: sensorsIot.airQualitySensors,
+      weatherStationSensors: sensorsIot.weatherStations,
+      privacySensitiveSensors: sensorsIot.privacySensitiveSensors,
+      sensorsWithTelecomBackhaul: sensorsIot.telecomBackhaulNodes,
       curbActivations: curbActivations.total,
       parklets: curbActivations.parklets,
       outdoorDiningActivations: curbActivations.outdoorDining,
@@ -2643,6 +2695,117 @@ function createPermitInspectionDiagnostics(city: GeneratedCity): PermitInspectio
     openComplianceIssues,
     closureRoads: closureRoads.size,
     relatedObjects: relatedObjects.size
+  };
+}
+
+function createSensorIotDiagnostics(city: GeneratedCity): SensorIotDiagnostics {
+  const byKind = {
+    'air-quality-sensor': 0,
+    camera: 0,
+    'pedestrian-counter': 0,
+    'traffic-counter': 0,
+    'utility-meter': 0,
+    'weather-station': 0
+  } satisfies Record<SensorKind, number>;
+  const byStatus = {
+    degraded: 0,
+    offline: 0,
+    online: 0
+  } satisfies Record<SensorOperationalStatus, number>;
+  const telecomBackhaulNodes = new Set<string>();
+  const sensorsWithMaintenanceLink = new Set<string>();
+  const coverageRoads = new Set<string>();
+  const coverageBuildings = new Set<string>();
+  const coveragePublicSpaces = new Set<string>();
+  const environmentalZoneRefs = new Set<string>();
+  let telemetryStreams = 0;
+  let sensorsWithInventoryLink = 0;
+  let privacySensitiveSensors = 0;
+  let redactionRequiredSensors = 0;
+  let publicAggregateSensors = 0;
+  let operationsRestrictedSensors = 0;
+  let airQualityFeeds = 0;
+  let weatherFeeds = 0;
+  let operationsFeeds = 0;
+  let coverageRadiusMeters = 0;
+  let feedConfidence = 0;
+
+  for (const sensor of city.sensors) {
+    byKind[sensor.sensorKind] += 1;
+    byStatus[sensor.operations.status] += 1;
+    telecomBackhaulNodes.add(sensor.telecomNodeId);
+    telemetryStreams += sensor.telemetryStreams.length;
+    coverageRadiusMeters += sensor.coverage.radiusMeters;
+    feedConfidence += sensor.environmentFeed.confidence;
+
+    if (sensor.assetInventoryRecordId) {
+      sensorsWithInventoryLink += 1;
+    }
+    if (sensor.operations.maintenanceOperationIds.length > 0) {
+      sensorsWithMaintenanceLink.add(sensor.id);
+    }
+    if (sensor.privacy.capturesPersonalData) {
+      privacySensitiveSensors += 1;
+    }
+    if (sensor.privacy.redactionRequired) {
+      redactionRequiredSensors += 1;
+    }
+    if (sensor.privacy.visibility === 'public-aggregate') {
+      publicAggregateSensors += 1;
+    }
+    if (sensor.privacy.visibility === 'operations-restricted') {
+      operationsRestrictedSensors += 1;
+    }
+    if (sensor.environmentFeed.feedsAirQuality) {
+      airQualityFeeds += 1;
+    }
+    if (sensor.environmentFeed.feedsWeather) {
+      weatherFeeds += 1;
+    }
+    if (sensor.environmentFeed.feedsOperations) {
+      operationsFeeds += 1;
+    }
+    for (const roadId of sensor.coverage.roadIds) {
+      coverageRoads.add(roadId);
+    }
+    for (const buildingId of sensor.coverage.buildingIds) {
+      coverageBuildings.add(buildingId);
+    }
+    for (const publicSpaceId of sensor.coverage.publicSpaceIds) {
+      coveragePublicSpaces.add(publicSpaceId);
+    }
+    for (const zoneId of sensor.coverage.environmentalZoneIds) {
+      environmentalZoneRefs.add(zoneId);
+    }
+  }
+
+  return {
+    total: city.sensors.length,
+    byKind,
+    byStatus,
+    cameras: byKind.camera,
+    pedestrianCounters: byKind['pedestrian-counter'],
+    trafficCounters: byKind['traffic-counter'],
+    utilityMeters: byKind['utility-meter'],
+    weatherStations: byKind['weather-station'],
+    airQualitySensors: byKind['air-quality-sensor'],
+    telemetryStreams,
+    telecomBackhaulNodes: telecomBackhaulNodes.size,
+    sensorsWithInventoryLink,
+    sensorsWithMaintenanceLink: sensorsWithMaintenanceLink.size,
+    coverageRoads: coverageRoads.size,
+    coverageBuildings: coverageBuildings.size,
+    coveragePublicSpaces: coveragePublicSpaces.size,
+    environmentalZoneRefs: environmentalZoneRefs.size,
+    privacySensitiveSensors,
+    redactionRequiredSensors,
+    publicAggregateSensors,
+    operationsRestrictedSensors,
+    airQualityFeeds,
+    weatherFeeds,
+    operationsFeeds,
+    averageCoverageRadiusMeters: roundDiagnosticRatio(coverageRadiusMeters / Math.max(1, city.sensors.length)),
+    averageFeedConfidence: roundDiagnosticRatio(feedConfidence / Math.max(1, city.sensors.length))
   };
 }
 

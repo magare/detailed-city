@@ -278,6 +278,7 @@ export interface ProceduralSeedDomainSections {
   readonly navigationRoutes: GeneratedCity['navigationRoutes'];
   readonly maintenanceOperations: GeneratedCity['maintenanceOperations'];
   readonly permitInspectionRecords: GeneratedCity['permitInspectionRecords'];
+  readonly sensors: GeneratedCity['sensors'];
   readonly freightLoadingDocks: GeneratedCity['freightLoadingDocks'];
   readonly freightRoutes: GeneratedCity['freightRoutes'];
   readonly serviceAlleys: GeneratedCity['serviceAlleys'];
@@ -359,6 +360,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly navigationRoutes: number;
   readonly maintenanceOperations: number;
   readonly permitInspectionRecords: number;
+  readonly sensors: number;
   readonly freightLoadingDocks: number;
   readonly freightRoutes: number;
   readonly serviceAlleys: number;
@@ -514,6 +516,7 @@ export function createProceduralSeedJsonExport(
       navigationRoutes: city.navigationRoutes,
       maintenanceOperations: city.maintenanceOperations,
       permitInspectionRecords: city.permitInspectionRecords,
+      sensors: city.sensors,
       freightLoadingDocks: city.freightLoadingDocks,
       freightRoutes: city.freightRoutes,
       serviceAlleys: city.serviceAlleys,
@@ -733,6 +736,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'navigationRoutes'
     | 'maintenanceOperations'
     | 'permitInspectionRecords'
+    | 'sensors'
     | 'freightLoadingDocks'
     | 'freightRoutes'
     | 'serviceAlleys'
@@ -807,6 +811,7 @@ export function createProceduralSeedDomainSectionCounts(
     navigationRoutes: city.navigationRoutes.length,
     maintenanceOperations: city.maintenanceOperations.length,
     permitInspectionRecords: city.permitInspectionRecords.length,
+    sensors: city.sensors.length,
     freightLoadingDocks: city.freightLoadingDocks.length,
     freightRoutes: city.freightRoutes.length,
     serviceAlleys: city.serviceAlleys.length,
@@ -898,6 +903,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'navigationRoutes') +
     getArrayLength(city, 'maintenanceOperations') +
     getArrayLength(city, 'permitInspectionRecords') +
+    getArrayLength(city, 'sensors') +
     getArrayLength(city, 'freightLoadingDocks') +
     getArrayLength(city, 'freightRoutes') +
     getArrayLength(city, 'serviceAlleys') +

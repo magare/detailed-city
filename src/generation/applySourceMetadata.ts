@@ -98,6 +98,7 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
     permitInspectionRecords: city.permitInspectionRecords.map((record) =>
       withProceduralMetadata(record, 'operations-permits-inspections')
     ),
+    sensors: city.sensors.map((sensor) => withProceduralMetadata(sensor, 'operations-sensors-iot')),
     freightLoadingDocks: city.freightLoadingDocks.map((dock) =>
       withProceduralMetadata(dock, 'mobility-freight-loading-docks')
     ),

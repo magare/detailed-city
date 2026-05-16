@@ -130,6 +130,7 @@ export function createCitySceneLayerDiagnostics(
       city.industrialFacilities.length +
       city.officeWorkplaces.length +
       city.weatherPresets.length +
+      city.sensors.length +
       city.solarShadingSamples.length +
       city.urbanHeatZones.length +
       city.constraints.length +

@@ -37,6 +37,7 @@ export type CityOverlayId =
   | 'asset-inventory'
   | 'maintenance-operations'
   | 'permits-inspections'
+  | 'sensors-iot'
   | 'curb-activations'
   | 'public-amenities'
   | 'civic-anchors'
@@ -127,6 +128,7 @@ export function createCityOverlayDatasets(
     createDataset('asset-inventory', 'Asset Inventory', 'domain-data', createAssetInventoryFeatures(city)),
     createDataset('maintenance-operations', 'Maintenance Operations', 'domain-data', createMaintenanceOperationFeatures(city)),
     createDataset('permits-inspections', 'Permits And Inspections', 'domain-data', createPermitInspectionFeatures(city)),
+    createDataset('sensors-iot', 'Sensors And IoT', 'domain-data', createSensorFeatures(city)),
     createDataset('curb-activations', 'Curb Activations', 'domain-data', createCurbActivationFeatures(city)),
     createDataset('public-amenities', 'Public Amenities', 'domain-data', createPublicAmenityFeatures(city)),
     createDataset('civic-anchors', 'Civic Anchors', 'domain-data', createCivicAnchorFeatures(city)),
@@ -1488,6 +1490,48 @@ function createPermitInspectionFeatures(city: GeneratedCity): CityOverlayFeature
   });
 }
 
+function createSensorFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.sensors.map((sensor) => ({
+    id: `overlay:sensors-iot:${sensor.id}`,
+    overlayId: 'sensors-iot',
+    objectId: sensor.id,
+    objectKind: sensor.kind,
+    ownerDomain: sensor.ownerDomain,
+    label: `${sensor.sensorKind}:${sensor.operations.status}`,
+    geometry: { type: 'polygon', points: createCoveragePolygon(sensor.coverage.center, sensor.coverage.radiusMeters) },
+    focus: {
+      objectId: sensor.id,
+      point: sensor.position,
+      boundary: createCoveragePolygon(sensor.coverage.center, sensor.coverage.radiusMeters),
+      suggestedFix: `Inspect sensor ${sensor.id} telemetry, privacy, and coverage metadata.`
+    },
+    metadata: {
+      sensorKind: sensor.sensorKind,
+      mountKind: sensor.mountKind,
+      mountedObjectId: sensor.mountedObjectId,
+      telecomNodeId: sensor.telecomNodeId,
+      telecomNetworkZoneId: sensor.telecomNetworkZoneId,
+      utilityNodeId: sensor.utilityNodeId ?? '',
+      assetInventoryRecordId: sensor.assetInventoryRecordId ?? '',
+      status: sensor.operations.status,
+      coverageRadiusMeters: sensor.coverage.radiusMeters,
+      coveredObjects: sensor.coverage.coveredObjectIds.length,
+      coveredRoads: sensor.coverage.roadIds.length,
+      coveredBuildings: sensor.coverage.buildingIds.length,
+      coveredPublicSpaces: sensor.coverage.publicSpaceIds.length,
+      environmentalZones: sensor.coverage.environmentalZoneIds.length,
+      telemetryStreams: sensor.telemetryStreams.length,
+      capturesPersonalData: sensor.privacy.capturesPersonalData,
+      visibility: sensor.privacy.visibility,
+      retentionDays: sensor.privacy.retentionDays,
+      redactionRequired: sensor.privacy.redactionRequired,
+      feedsAirQuality: sensor.environmentFeed.feedsAirQuality,
+      feedsWeather: sensor.environmentFeed.feedsWeather,
+      feedConfidence: sensor.environmentFeed.confidence
+    }
+  }));
+}
+
 function createCurbActivationFeatures(city: GeneratedCity): CityOverlayFeature[] {
   return city.curbActivations.map((activation) => ({
     id: `overlay:curb-activations:${activation.id}`,
@@ -1876,6 +1920,18 @@ function createPaddedBoundsPolygon(points: readonly Point2D[], paddingMeters: nu
     { x: bounds.maxX + paddingMeters, z: bounds.maxZ + paddingMeters },
     { x: bounds.minX - paddingMeters, z: bounds.maxZ + paddingMeters }
   ];
+}
+
+function createCoveragePolygon(center: Point2D, radiusMeters: number): Polygon2D {
+  const steps = 12;
+  return Array.from({ length: steps }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / steps;
+
+    return {
+      x: center.x + Math.cos(angle) * radiusMeters,
+      z: center.z + Math.sin(angle) * radiusMeters
+    };
+  });
 }
 
 function isPoint(value: unknown): value is Point2D {

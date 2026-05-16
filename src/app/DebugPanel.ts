@@ -179,6 +179,10 @@ export class DebugPanel {
         `${diagnostics.permitsInspections.total} records, ${diagnostics.permitsInspections.developmentPermits} development, ${diagnostics.permitsInspections.temporaryClosurePermits} closures`
       ),
       createMetric(
+        'Sensors',
+        `${diagnostics.sensorsIot.total} sensors, ${diagnostics.sensorsIot.telemetryStreams} streams, ${diagnostics.sensorsIot.privacySensitiveSensors} sensitive`
+      ),
+      createMetric(
         'Curb Activation',
         `${diagnostics.curbActivations.total} active, ${diagnostics.curbActivations.parklets} parklets, ${diagnostics.curbActivations.totalSeats} seats`
       ),

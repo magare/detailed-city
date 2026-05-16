@@ -45,6 +45,7 @@ import { WaterTransportAccessGenerator } from './mobility/WaterTransportAccessGe
 import { AssetInventoryGenerator } from './operations/AssetInventoryGenerator';
 import { MaintenanceOperationGenerator } from './operations/MaintenanceOperationGenerator';
 import { PermitInspectionGenerator } from './operations/PermitInspectionGenerator';
+import { SensorIotGenerator } from './operations/SensorIotGenerator';
 import { PhasingGenerator } from './phasing/PhasingGenerator';
 import { CurbActivationGenerator } from './public-realm/CurbActivationGenerator';
 import { EconomyAnchorGenerator } from './economy/EconomyAnchorGenerator';
@@ -516,6 +517,21 @@ export class CityGenerator {
       cadastreRecords,
       maintenanceOperations
     });
+    const sensors = new SensorIotGenerator().create({
+      assetInventoryRecords,
+      activeFrontages: entranceAddress.activeFrontages,
+      buildings: entranceAddress.buildings,
+      industrialFacilities,
+      maintenanceOperations,
+      parks: parksWithFeatures,
+      plazaZones,
+      publicAmenities,
+      roads: stormwater.roads,
+      streetLights: powerGrid.streetLights,
+      urbanHeatZones,
+      utilityNodes: serviceAccess.utilityNodes,
+      waterfrontOpenSpaces
+    });
     const curbActivations = new CurbActivationGenerator().create({
       curbZones,
       roads: stormwater.roads,
@@ -577,6 +593,7 @@ export class CityGenerator {
       navigationRoutes: navigationGraphs.navigationRoutes,
       maintenanceOperations,
       permitInspectionRecords,
+      sensors,
       freightLoadingDocks: freightLogistics.loadingDocks,
       freightRoutes: freightLogistics.routes,
       serviceAlleys: freightLogistics.serviceAlleys,

@@ -58,6 +58,7 @@ type GeneratedCityObjectSource = Pick<
   | 'officeWorkplaces'
   | 'parcels'
   | 'permitInspectionRecords'
+  | 'sensors'
   | 'parks'
   | 'parkFeatures'
   | 'plazaZones'
@@ -128,6 +129,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.navigationRoutes,
     ...city.maintenanceOperations,
     ...city.permitInspectionRecords,
+    ...city.sensors,
     ...city.freightLoadingDocks,
     ...city.freightRoutes,
     ...city.serviceAlleys,

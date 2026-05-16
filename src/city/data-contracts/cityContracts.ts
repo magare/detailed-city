@@ -231,6 +231,89 @@ export interface MaintenanceOperationContract extends CityObjectBase<'maintenanc
   readonly createsTemporaryClosure: boolean;
 }
 
+export type SensorKind =
+  | 'air-quality-sensor'
+  | 'camera'
+  | 'pedestrian-counter'
+  | 'traffic-counter'
+  | 'utility-meter'
+  | 'weather-station';
+export type SensorMountKind = 'building-mounted' | 'roadside-pole' | 'street-light' | 'utility-cabinet';
+export type SensorTelemetryMetric =
+  | 'air-no2'
+  | 'air-pm25'
+  | 'humidity'
+  | 'people-count'
+  | 'rainfall'
+  | 'temperature'
+  | 'utility-load'
+  | 'vehicle-count'
+  | 'video-analytics';
+export type SensorDataVisibility = 'operations-restricted' | 'public-aggregate' | 'safety-restricted';
+export type SensorPrivacyRisk = 'low' | 'medium' | 'high';
+export type SensorOperationalStatus = 'degraded' | 'offline' | 'online';
+
+export interface SensorTelemetryStreamContract {
+  readonly streamId: CityId;
+  readonly metric: SensorTelemetryMetric;
+  readonly unit: string;
+  readonly cadenceSeconds: number;
+  readonly retentionDays: number;
+  readonly destinationTopic: CityId;
+  readonly sampleQuality: {
+    readonly confidence: number;
+    readonly missingDataPct: number;
+  };
+}
+
+export interface SensorCoverageContract {
+  readonly center: Point2D;
+  readonly radiusMeters: number;
+  readonly coveredObjectIds: readonly CityId[];
+  readonly roadIds: readonly CityId[];
+  readonly buildingIds: readonly CityId[];
+  readonly publicSpaceIds: readonly CityId[];
+  readonly environmentalZoneIds: readonly CityId[];
+}
+
+export interface SensorPrivacyContract {
+  readonly capturesPersonalData: boolean;
+  readonly aggregation: 'anonymized' | 'count-only' | 'raw';
+  readonly visibility: SensorDataVisibility;
+  readonly retentionDays: number;
+  readonly redactionRequired: boolean;
+  readonly privacyRisk: SensorPrivacyRisk;
+}
+
+export interface SensorContract extends CityObjectBase<'sensor'> {
+  readonly sensorKind: SensorKind;
+  readonly mountKind: SensorMountKind;
+  readonly position: Point2D;
+  readonly mountedObjectId: CityId;
+  readonly assetInventoryRecordId?: CityId;
+  readonly telecomNodeId: CityId;
+  readonly telecomNetworkZoneId: CityId;
+  readonly utilityNodeId?: CityId;
+  readonly coverage: SensorCoverageContract;
+  readonly telemetryStreams: readonly SensorTelemetryStreamContract[];
+  readonly operations: {
+    readonly ownerEntityId: CityId;
+    readonly responsibleDepartmentId: CityId;
+    readonly status: SensorOperationalStatus;
+    readonly batteryBackupHours: number;
+    readonly lastCalibrationDay: number;
+    readonly nextCalibrationDay: number;
+    readonly maintenanceOperationIds: readonly CityId[];
+  };
+  readonly privacy: SensorPrivacyContract;
+  readonly environmentFeed: {
+    readonly feedsAirQuality: boolean;
+    readonly feedsWeather: boolean;
+    readonly feedsOperations: boolean;
+    readonly confidence: number;
+  };
+}
+
 export type PermitInspectionRecordKind =
   | 'development-permit'
   | 'temporary-closure-permit'

@@ -41,6 +41,9 @@ export interface CityPickingReferences {
   readonly transitRouteId?: CityId;
   readonly navigationNodeId?: CityId;
   readonly serviceAlleyId?: CityId;
+  readonly mountedObjectId?: CityId;
+  readonly assetInventoryRecordId?: CityId;
+  readonly utilityNodeId?: CityId;
 }
 
 export interface CityPickingMetadata {
@@ -99,6 +102,7 @@ type PickableObjectSource = Pick<
   | 'plazaZones'
   | 'publicAmenities'
   | 'roads'
+  | 'sensors'
   | 'streetFurniture'
   | 'streetLights'
   | 'trafficCalmingDevices'
@@ -151,6 +155,7 @@ export function createCityPickingMetadataCatalog(
     ...city.transitRoutes,
     ...city.trafficCalmingDevices,
     ...city.waterTransportAccess,
+    ...city.sensors,
     ...traffic.markings,
     ...traffic.vehicles
   ];
@@ -265,6 +270,9 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   copyStringReference(record, references, 'transitStopId');
   copyStringReference(record, references, 'transitRouteId');
   copyStringReference(record, references, 'serviceAlleyId');
+  copyStringReference(record, references, 'mountedObjectId');
+  copyStringReference(record, references, 'assetInventoryRecordId');
+  copyStringReference(record, references, 'utilityNodeId');
 
   if (object.kind === 'building') {
     references.buildingId = object.id;
@@ -336,6 +344,17 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.parcelId = typeof record.parcelId === 'string' ? record.parcelId : undefined;
     references.districtId = typeof record.districtId === 'string' ? record.districtId : undefined;
     references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
+  } else if (object.kind === 'sensor') {
+    const coverage = record.coverage as
+      | {
+          roadIds?: readonly unknown[];
+          buildingIds?: readonly unknown[];
+          publicSpaceIds?: readonly unknown[];
+        }
+      | undefined;
+    references.roadId = typeof coverage?.roadIds?.[0] === 'string' ? coverage.roadIds[0] : references.roadId;
+    references.buildingId = typeof coverage?.buildingIds?.[0] === 'string' ? coverage.buildingIds[0] : references.buildingId;
+    references.parkId = typeof coverage?.publicSpaceIds?.[0] === 'string' ? coverage.publicSpaceIds[0] : references.parkId;
   } else if (object.kind === 'emergency-equipment') {
     references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
     references.parkId = typeof record.parkId === 'string' ? record.parkId : undefined;
