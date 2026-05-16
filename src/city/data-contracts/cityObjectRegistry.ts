@@ -215,6 +215,7 @@ export const CITY_OBJECT_KIND_REGISTRY_ENTRIES = [
     required(['civic-anchor'])
   ),
   entry('economy-anchor', ['economy-anchor-<slug>'], [exact(String.raw`economy-anchor-${NAMED_ID}`)], optional(['district', 'block', 'parcel', 'building'])),
+  entry('office-workplace', ['office-workplace-<building-id>'], [exact(String.raw`office-workplace-${BUILDING_ID}`)], required(['economy-anchor', 'building'])),
   entry('facade', ['facade-active-frontage-<building-id>-<road-id>'], [exact(String.raw`facade-active-frontage-${BUILDING_ID}-${ROAD_ID}`)], required(['building'])),
   entry(
     'gazetteer-entry',

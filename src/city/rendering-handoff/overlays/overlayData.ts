@@ -27,6 +27,7 @@ export type CityOverlayId =
   | 'urban-heat'
   | 'wind-comfort'
   | 'economy-anchors'
+  | 'office-workplaces'
   | 'city-metrics'
   | 'cycling-network'
   | 'navigation-graphs'
@@ -115,6 +116,7 @@ export function createCityOverlayDatasets(
     createDataset('urban-heat', 'Urban Heat', 'domain-data', createUrbanHeatFeatures(city)),
     createDataset('wind-comfort', 'Wind Comfort', 'domain-data', createWindComfortFeatures(city)),
     createDataset('economy-anchors', 'Economy Anchors', 'domain-data', createEconomyAnchorFeatures(city)),
+    createDataset('office-workplaces', 'Office Workplaces', 'domain-data', createOfficeWorkplaceFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('cycling-network', 'Cycling Network', 'domain-data', createCyclingNetworkFeatures(city)),
     createDataset('navigation-graphs', 'Navigation Graphs', 'domain-data', createNavigationGraphFeatures(city)),
@@ -679,6 +681,38 @@ function createEconomyAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] 
       freightRoutes: anchor.loadingNeeds.freightRouteIds.length,
       districtFitScore: anchor.districtFit.score,
       districtFitCompatible: anchor.districtFit.compatible
+    }
+  }));
+}
+
+function createOfficeWorkplaceFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.officeWorkplaces.map((workplace) => ({
+    id: `overlay:office-workplaces:${workplace.id}`,
+    overlayId: 'office-workplaces',
+    objectId: workplace.id,
+    objectKind: workplace.kind,
+    ownerDomain: workplace.ownerDomain,
+    label: workplace.name ?? workplace.id,
+    geometry: { type: 'point', point: workplace.center },
+    metadata: {
+      workplaceKind: workplace.workplaceKind,
+      economyAnchorId: workplace.economyAnchorId,
+      buildingId: workplace.buildingId,
+      parcelId: workplace.parcelId,
+      districtId: workplace.districtId,
+      officeFloorAreaSqm: workplace.officeFloorAreaSqm,
+      officeFloorCount: workplace.officeFloorCount,
+      workers: workplace.daytimePopulation.workers,
+      peakOnsitePopulation: workplace.daytimePopulation.peakOnsitePopulation,
+      dailyCommuters: workplace.commuteDemand.dailyCommuters,
+      morningPeakArrivals: workplace.commuteDemand.morningPeakArrivals,
+      eveningPeakDepartures: workplace.commuteDemand.eveningPeakDepartures,
+      transitTrips: workplace.commuteDemand.transitTrips,
+      bikeTrips: workplace.commuteDemand.bikeTrips,
+      vehicleTrips: workplace.commuteDemand.vehicleTrips,
+      lobbyEntrances: workplace.lobby.entranceIds.length,
+      queueCapacityPersons: workplace.lobby.queueCapacityPersons,
+      skylineMarker: workplace.towerProfile.skylineMarker
     }
   }));
 }

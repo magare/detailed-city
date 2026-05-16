@@ -100,6 +100,7 @@ test('city object groups provide deterministic query paths for domains, slices, 
       first.city.healthcareAnchors.length +
       first.city.emergencyServiceAnchors.length +
       first.city.economyAnchors.length +
+      first.city.officeWorkplaces.length +
       first.city.activeFrontages.length
   );
   expect(getCityObjectsByRenderLayer(first.groupIndex, 'agents')).toHaveLength(first.traffic.vehicles.length);

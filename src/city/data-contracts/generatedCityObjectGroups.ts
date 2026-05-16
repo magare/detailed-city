@@ -54,6 +54,7 @@ const RENDER_LAYER_KIND_GROUPS = [
       'culture-anchor',
       'education-anchor',
       'economy-anchor',
+      'office-workplace',
       'government-anchor',
       'healthcare-anchor',
       'emergency-service-anchor',
@@ -199,6 +200,11 @@ function createDistrictGroups(city: GeneratedCity): CityObjectGroupDefinition[] 
   for (const anchor of city.economyAnchors) {
     objectIdsByDistrictId.get(anchor.districtId)?.push(anchor.id);
     buildingDistrictIds.set(anchor.buildingId, anchor.districtId);
+  }
+
+  for (const workplace of city.officeWorkplaces) {
+    objectIdsByDistrictId.get(workplace.districtId)?.push(workplace.id);
+    buildingDistrictIds.set(workplace.buildingId, workplace.districtId);
   }
 
   for (const anchor of city.governmentAnchors) {

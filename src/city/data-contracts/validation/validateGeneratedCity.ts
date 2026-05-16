@@ -34,6 +34,8 @@ import type {
   HazardMitigationKind,
   IntersectionControlType,
   LaneRole,
+  OfficeLobbyAccessKind,
+  OfficeWorkplaceKind,
   Point2D,
   Point3D,
   Polygon2D,
@@ -120,6 +122,7 @@ type GeneratedCityForValidation = Pick<
   | 'curbZones'
   | 'districts'
   | 'economyAnchors'
+  | 'officeWorkplaces'
   | 'freightLoadingDocks'
   | 'freightRoutes'
   | 'geospatial'
@@ -182,6 +185,7 @@ type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrati
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'][number];
 type ValidationEconomyAnchor = GeneratedCityForValidation['economyAnchors'][number];
+type ValidationOfficeWorkplace = GeneratedCityForValidation['officeWorkplaces'][number];
 type ValidationWeatherPreset = GeneratedCityForValidation['weatherPresets'][number];
 type ValidationSolarShadingSample = GeneratedCityForValidation['solarShadingSamples'][number];
 type ValidationUrbanHeatZone = GeneratedCityForValidation['urbanHeatZones'][number];
@@ -476,6 +480,18 @@ const ECONOMY_ANCHOR_USES = [
 ] as const satisfies readonly EconomyAnchorUse[];
 const ECONOMY_SHIFT_PROFILES = ['day', 'evening', 'round-the-clock', 'split'] as const satisfies readonly EconomyShiftProfile[];
 const ECONOMY_OPENING_DAY_TYPES = ['weekday', 'saturday', 'sunday'] as const satisfies readonly EconomyOpeningDayType[];
+const OFFICE_WORKPLACE_KINDS = [
+  'office-tower',
+  'coworking',
+  'institutional-workplace',
+  'industrial-administration'
+] as const satisfies readonly OfficeWorkplaceKind[];
+const OFFICE_LOBBY_ACCESS_KINDS = [
+  'tenant-lobby',
+  'shared-coworking',
+  'secure-institutional',
+  'back-office'
+] as const satisfies readonly OfficeLobbyAccessKind[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -671,6 +687,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateBuildingEntrancesAndAddresses(city, issues);
   validateBuildingFireSafetyProfiles(city, issues);
   validateEconomyAnchors(city, issues);
+  validateOfficeWorkplaces(city, issues);
   validateAddressingGazetteer(city, issues);
   validateDevelopmentPhases(city, issues);
   const streetProfilesById: ReadonlyMap<string, StreetProfile> = new Map(
@@ -9847,6 +9864,179 @@ function createEconomyAnchorIssue(
     objectId: anchor.id,
     suggestedFix: `Regenerate ${anchor.id} from building typology, frontage, and freight economy rules.`,
     ...createIssueFocus(anchor.center, `Review economy anchor ${anchor.id}.`),
+    message
+  };
+}
+
+function validateOfficeWorkplaces(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const economyAnchorsById = new Map(city.economyAnchors.map((anchor) => [anchor.id, anchor]));
+  const buildingsById = new Map(city.buildings.map((building) => [building.id, building]));
+  const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
+  const districtsById = new Map(city.districts.map((district) => [district.id, district]));
+  const roadsById = new Map(city.roads.map((road) => [road.id, road]));
+  const entrancesById = new Map(city.buildingEntrances.map((entrance) => [entrance.id, entrance]));
+  const addressPointsById = new Map(city.addressPoints.map((address) => [address.id, address]));
+  const transitStopsById = new Map(city.transitStops.map((stop) => [stop.id, stop]));
+  const bikeParkingById = new Map(city.bikeParking.map((parking) => [parking.id, parking]));
+
+  if (city.officeWorkplaces.length === 0) {
+    issues.push({
+      id: 'missing-office-workplaces',
+      severity: 'error',
+      category: 'simulation',
+      message: 'Office workplace generation must expose downtown workplaces, lobbies, commute demand, and daytime population.'
+    });
+  }
+
+  for (const workplace of city.officeWorkplaces) {
+    const anchor = economyAnchorsById.get(workplace.economyAnchorId);
+    const building = buildingsById.get(workplace.buildingId);
+    const parcel = parcelsById.get(workplace.parcelId);
+    const district = districtsById.get(workplace.districtId);
+    const road = roadsById.get(workplace.roadId);
+
+    if (!OFFICE_WORKPLACE_KINDS.includes(workplace.workplaceKind)) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'invalid-kind', `Office workplace ${workplace.id} uses unsupported workplace kind ${workplace.workplaceKind}.`));
+    }
+
+    if (!anchor || workplace.parentId !== workplace.economyAnchorId) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'missing-economy-anchor', `Office workplace ${workplace.id} must be parented to existing economy anchor ${workplace.economyAnchorId}.`));
+    }
+
+    if (!building || anchor?.buildingId !== workplace.buildingId) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'missing-building', `Office workplace ${workplace.id} must reference the same building as its economy anchor.`));
+    }
+
+    if (!parcel || building?.parcelId !== workplace.parcelId || parcel.districtId !== workplace.districtId) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'missing-parcel', `Office workplace ${workplace.id} must reference its building parcel and district.`));
+    }
+
+    if (!district) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'missing-district', `Office workplace ${workplace.id} references missing district ${workplace.districtId}.`));
+    }
+
+    if (!road || workplace.commuteDemand.primaryRoadId !== workplace.roadId || building?.primaryFrontageRoadId !== workplace.roadId) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'missing-road', `Office workplace ${workplace.id} must reference the building frontage road for commute hooks.`));
+    }
+
+    validateOfficeWorkplaceLobby(workplace, entrancesById, addressPointsById, issues);
+    validateOfficeWorkplaceCapacity(workplace, building, issues);
+    validateOfficeWorkplaceCommute(workplace, transitStopsById, bikeParkingById, issues);
+  }
+}
+
+function validateOfficeWorkplaceLobby(
+  workplace: ValidationOfficeWorkplace,
+  entrancesById: ReadonlyMap<CityId, ValidationBuildingEntrance>,
+  addressPointsById: ReadonlyMap<CityId, ValidationAddressPoint>,
+  issues: ValidationIssue[]
+): void {
+  if (
+    !OFFICE_LOBBY_ACCESS_KINDS.includes(workplace.lobby.accessKind) ||
+    workplace.lobby.entranceIds.length === 0 ||
+    workplace.lobby.addressPointIds.length === 0 ||
+    workplace.lobby.areaSqm <= 0 ||
+    workplace.lobby.frontageMeters < 0 ||
+    workplace.lobby.queueCapacityPersons <= 0
+  ) {
+    issues.push(createOfficeWorkplaceIssue(workplace, 'invalid-lobby', `Office workplace ${workplace.id} must expose valid lobby access, entrances, address points, area, and queue capacity.`));
+  }
+
+  for (const entranceId of workplace.lobby.entranceIds) {
+    const entrance = entrancesById.get(entranceId);
+
+    if (!entrance || entrance.buildingId !== workplace.buildingId || !['lobby', 'public-door'].includes(entrance.entranceKind)) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'missing-lobby-entrance', `Office workplace ${workplace.id} references missing or incompatible lobby entrance ${entranceId}.`));
+    }
+  }
+
+  for (const addressPointId of workplace.lobby.addressPointIds) {
+    const addressPoint = addressPointsById.get(addressPointId);
+
+    if (!addressPoint || addressPoint.buildingId !== workplace.buildingId) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'missing-address-point', `Office workplace ${workplace.id} references missing address point ${addressPointId}.`));
+    }
+  }
+}
+
+function validateOfficeWorkplaceCapacity(
+  workplace: ValidationOfficeWorkplace,
+  building: ValidationBuilding | undefined,
+  issues: ValidationIssue[]
+): void {
+  if (
+    workplace.officeFloorAreaSqm <= 0 ||
+    workplace.officeFloorCount <= 0 ||
+    (building && workplace.officeFloorCount > building.floorCount) ||
+    workplace.towerProfile.heightMeters <= 0 ||
+    workplace.tenancy.organizationCount <= 0 ||
+    workplace.tenancy.flexibleDeskShare < 0 ||
+    workplace.tenancy.flexibleDeskShare > 1 ||
+    workplace.daytimePopulation.workers <= 0 ||
+    workplace.daytimePopulation.visitors < 0 ||
+    workplace.daytimePopulation.serviceStaff <= 0 ||
+    workplace.daytimePopulation.peakOnsitePopulation < workplace.daytimePopulation.serviceStaff ||
+    workplace.daytimePopulation.densityPer1000Sqm <= 0
+  ) {
+    issues.push(createOfficeWorkplaceIssue(workplace, 'invalid-capacity', `Office workplace ${workplace.id} must expose valid office floors, tenancy, and daytime population.`));
+  }
+}
+
+function validateOfficeWorkplaceCommute(
+  workplace: ValidationOfficeWorkplace,
+  transitStopsById: ReadonlyMap<CityId, GeneratedCityForValidation['transitStops'][number]>,
+  bikeParkingById: ReadonlyMap<CityId, GeneratedCityForValidation['bikeParking'][number]>,
+  issues: ValidationIssue[]
+): void {
+  const modeTrips =
+    workplace.commuteDemand.transitTrips +
+    workplace.commuteDemand.walkTrips +
+    workplace.commuteDemand.bikeTrips +
+    workplace.commuteDemand.vehicleTrips;
+
+  if (
+    workplace.commuteDemand.dailyCommuters <= 0 ||
+    modeTrips !== workplace.commuteDemand.dailyCommuters ||
+    workplace.commuteDemand.morningPeakArrivals <= 0 ||
+    workplace.commuteDemand.eveningPeakDepartures <= 0 ||
+    workplace.commuteDemand.morningPeakArrivals > workplace.commuteDemand.dailyCommuters ||
+    workplace.commuteDemand.eveningPeakDepartures > workplace.commuteDemand.dailyCommuters ||
+    !isHour(workplace.commuteDemand.peakArrivalHour, false) ||
+    !isHour(workplace.commuteDemand.peakDepartureHour, false) ||
+    workplace.commuteDemand.serviceTrips < 0
+  ) {
+    issues.push(createOfficeWorkplaceIssue(workplace, 'invalid-commute-demand', `Office workplace ${workplace.id} must expose valid commute demand and peak hooks.`));
+  }
+
+  for (const transitStopId of workplace.commuteDemand.transitStopIds) {
+    const transitStop = transitStopsById.get(transitStopId);
+
+    if (!transitStop) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'missing-transit-stop', `Office workplace ${workplace.id} references missing transit stop ${transitStopId}.`));
+    }
+  }
+
+  for (const bikeParkingId of workplace.commuteDemand.bikeParkingIds) {
+    const bikeParking = bikeParkingById.get(bikeParkingId);
+
+    if (!bikeParking) {
+      issues.push(createOfficeWorkplaceIssue(workplace, 'missing-bike-parking', `Office workplace ${workplace.id} references missing bike parking ${bikeParkingId}.`));
+    }
+  }
+}
+
+function createOfficeWorkplaceIssue(
+  workplace: ValidationOfficeWorkplace,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `office-workplace-${issueIdSuffix}-${toIssueIdToken(workplace.id)}`,
+    severity: 'error',
+    category: 'simulation',
+    objectId: workplace.id,
+    suggestedFix: `Regenerate ${workplace.id} from office economy workplace rules.`,
+    ...createIssueFocus(workplace.center, `Review office workplace ${workplace.id}.`),
     message
   };
 }

@@ -36,6 +36,7 @@ import type {
   MaintenanceOperationKind,
   MaintenanceOperationStatus,
   MaintenancePriority,
+  OfficeWorkplaceKind,
   PermitInspectionRecordKind,
   PermitInspectionStatus,
   PublicAmenityKind,
@@ -114,6 +115,7 @@ export interface CityDiagnostics {
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly economyAnchors: EconomyAnchorDiagnostics;
+  readonly officeWorkplaces: OfficeWorkplaceDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
   readonly buildingStructureShells: BuildingStructureShellDiagnostics;
   readonly buildingFacades: BuildingFacadeDiagnostics;
@@ -533,6 +535,15 @@ export interface CityDiagnostics {
     readonly economyFrontageRequired: number;
     readonly economyLoadingRequired: number;
     readonly economyDistrictFitCompatible: number;
+    readonly officeWorkplaces: number;
+    readonly officeWorkplaceKinds: number;
+    readonly officeWorkers: number;
+    readonly officePeakPopulation: number;
+    readonly officeDailyCommuters: number;
+    readonly officeMorningPeakArrivals: number;
+    readonly officeTransitTrips: number;
+    readonly officeVehicleTrips: number;
+    readonly officeLobbyEntrances: number;
     readonly buildingFootprintGrammarKinds: number;
     readonly buildingsWithFootprintGrammar: number;
     readonly offsetBuildingFootprints: number;
@@ -970,6 +981,30 @@ export interface EconomyAnchorDiagnostics {
   readonly averageDistrictFitScore: number;
   readonly shiftProfiles: readonly string[];
   readonly openingProfiles: readonly string[];
+}
+
+export interface OfficeWorkplaceDiagnostics {
+  readonly total: number;
+  readonly workplaceKinds: number;
+  readonly byKind: Readonly<Partial<Record<OfficeWorkplaceKind, number>>>;
+  readonly downtownWorkplaces: number;
+  readonly officeTowers: number;
+  readonly coworkingSpaces: number;
+  readonly institutionalWorkplaces: number;
+  readonly industrialAdministration: number;
+  readonly officeFloorAreaSqm: number;
+  readonly officeFloors: number;
+  readonly workers: number;
+  readonly peakOnsitePopulation: number;
+  readonly dailyCommuters: number;
+  readonly morningPeakArrivals: number;
+  readonly eveningPeakDepartures: number;
+  readonly transitTrips: number;
+  readonly vehicleTrips: number;
+  readonly lobbyEntrances: number;
+  readonly publicReceptionLobbies: number;
+  readonly skylineMarkers: number;
+  readonly averageDaytimeDensityPer1000Sqm: number;
 }
 
 export interface BuildingFootprintDiagnostics {
@@ -1596,6 +1631,7 @@ export function createCityDiagnostics(
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const economyAnchors = createEconomyAnchorDiagnostics(city);
+  const officeWorkplaces = createOfficeWorkplaceDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
   const buildingStructureShells = createBuildingStructureShellDiagnostics(city);
   const buildingFacades = createBuildingFacadeDiagnostics(city);
@@ -1678,6 +1714,7 @@ export function createCityDiagnostics(
     zoningModel,
     buildingTypologies,
     economyAnchors,
+    officeWorkplaces,
     buildingFootprints,
     buildingStructureShells,
     buildingFacades,
@@ -2088,6 +2125,15 @@ export function createCityDiagnostics(
       economyFrontageRequired: economyAnchors.activeFrontagePreferred,
       economyLoadingRequired: economyAnchors.loadingRequired,
       economyDistrictFitCompatible: economyAnchors.compatibleDistrictFit,
+      officeWorkplaces: officeWorkplaces.total,
+      officeWorkplaceKinds: officeWorkplaces.workplaceKinds,
+      officeWorkers: officeWorkplaces.workers,
+      officePeakPopulation: officeWorkplaces.peakOnsitePopulation,
+      officeDailyCommuters: officeWorkplaces.dailyCommuters,
+      officeMorningPeakArrivals: officeWorkplaces.morningPeakArrivals,
+      officeTransitTrips: officeWorkplaces.transitTrips,
+      officeVehicleTrips: officeWorkplaces.vehicleTrips,
+      officeLobbyEntrances: officeWorkplaces.lobbyEntrances,
       buildingFootprintGrammarKinds: buildingFootprints.grammarKinds,
       buildingsWithFootprintGrammar: buildingFootprints.buildingsWithGrammar,
       offsetBuildingFootprints: buildingFootprints.offsetFootprints,
@@ -3266,6 +3312,66 @@ function createEconomyAnchorDiagnostics(city: GeneratedCity): EconomyAnchorDiagn
     averageDistrictFitScore: roundToHundredths(city.economyAnchors.length > 0 ? districtFitScoreTotal / city.economyAnchors.length : 0),
     shiftProfiles: [...shiftProfiles].sort(),
     openingProfiles: [...openingProfiles].sort()
+  };
+}
+
+function createOfficeWorkplaceDiagnostics(city: GeneratedCity): OfficeWorkplaceDiagnostics {
+  const byKind: Partial<Record<OfficeWorkplaceKind, number>> = {};
+  let officeFloorAreaSqm = 0;
+  let officeFloors = 0;
+  let workers = 0;
+  let peakOnsitePopulation = 0;
+  let dailyCommuters = 0;
+  let morningPeakArrivals = 0;
+  let eveningPeakDepartures = 0;
+  let transitTrips = 0;
+  let vehicleTrips = 0;
+  let lobbyEntrances = 0;
+  let publicReceptionLobbies = 0;
+  let skylineMarkers = 0;
+  let densityTotal = 0;
+
+  for (const workplace of city.officeWorkplaces) {
+    byKind[workplace.workplaceKind] = (byKind[workplace.workplaceKind] ?? 0) + 1;
+    officeFloorAreaSqm += workplace.officeFloorAreaSqm;
+    officeFloors += workplace.officeFloorCount;
+    workers += workplace.daytimePopulation.workers;
+    peakOnsitePopulation += workplace.daytimePopulation.peakOnsitePopulation;
+    dailyCommuters += workplace.commuteDemand.dailyCommuters;
+    morningPeakArrivals += workplace.commuteDemand.morningPeakArrivals;
+    eveningPeakDepartures += workplace.commuteDemand.eveningPeakDepartures;
+    transitTrips += workplace.commuteDemand.transitTrips;
+    vehicleTrips += workplace.commuteDemand.vehicleTrips;
+    lobbyEntrances += workplace.lobby.entranceIds.length;
+    publicReceptionLobbies += workplace.lobby.publicReception ? 1 : 0;
+    skylineMarkers += workplace.towerProfile.skylineMarker ? 1 : 0;
+    densityTotal += workplace.daytimePopulation.densityPer1000Sqm;
+  }
+
+  return {
+    total: city.officeWorkplaces.length,
+    workplaceKinds: Object.keys(byKind).length,
+    byKind,
+    downtownWorkplaces: city.officeWorkplaces.filter((workplace) => workplace.districtId === 'district-downtown').length,
+    officeTowers: byKind['office-tower'] ?? 0,
+    coworkingSpaces: byKind.coworking ?? 0,
+    institutionalWorkplaces: byKind['institutional-workplace'] ?? 0,
+    industrialAdministration: byKind['industrial-administration'] ?? 0,
+    officeFloorAreaSqm,
+    officeFloors,
+    workers,
+    peakOnsitePopulation,
+    dailyCommuters,
+    morningPeakArrivals,
+    eveningPeakDepartures,
+    transitTrips,
+    vehicleTrips,
+    lobbyEntrances,
+    publicReceptionLobbies,
+    skylineMarkers,
+    averageDaytimeDensityPer1000Sqm: roundToHundredths(
+      city.officeWorkplaces.length > 0 ? densityTotal / city.officeWorkplaces.length : 0
+    )
   };
 }
 

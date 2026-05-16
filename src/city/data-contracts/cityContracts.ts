@@ -51,6 +51,7 @@ export type CityObjectKind =
   | 'navigation-graph-node'
   | 'navigation-route'
   | 'named-place'
+  | 'office-workplace'
   | 'parcel'
   | 'permit-inspection-record'
   | 'park'
@@ -805,6 +806,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2', 'lod3'],
       description: 'Economy anchors render as named buildings or destinations.'
+    },
+    {
+      objectKind: 'office-workplace',
+      scope: 'building',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod1', 'lod2', 'lod3'],
+      description: 'Office workplaces expose lobbies, workplace capacity, commute demand, and daytime population hooks.'
     },
     {
       objectKind: 'facade',
@@ -2862,6 +2870,66 @@ export interface EconomyAnchorContract extends CityObjectBase<'economy-anchor'> 
     readonly allowedByZoning: boolean;
     readonly preferredDistrictIds: readonly CityId[];
     readonly notes: readonly string[];
+  };
+}
+
+export type OfficeWorkplaceKind = 'office-tower' | 'coworking' | 'institutional-workplace' | 'industrial-administration';
+export type OfficeLobbyAccessKind = 'tenant-lobby' | 'shared-coworking' | 'secure-institutional' | 'back-office';
+
+export interface OfficeWorkplaceContract extends CityObjectBase<'office-workplace'> {
+  readonly economyAnchorId: CityId;
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly districtId: CityId;
+  readonly roadId: CityId;
+  readonly center: Point2D;
+  readonly workplaceKind: OfficeWorkplaceKind;
+  readonly officeFloorAreaSqm: number;
+  readonly officeFloorCount: number;
+  readonly scheduleProfileId: CityId;
+  readonly towerProfile: {
+    readonly heightMeters: number;
+    readonly podiumLobby: boolean;
+    readonly skylineMarker: boolean;
+  };
+  readonly lobby: {
+    readonly lobbyId: CityId;
+    readonly accessKind: OfficeLobbyAccessKind;
+    readonly entranceIds: readonly CityId[];
+    readonly addressPointIds: readonly CityId[];
+    readonly areaSqm: number;
+    readonly publicReception: boolean;
+    readonly securityScreening: boolean;
+    readonly frontageMeters: number;
+    readonly queueCapacityPersons: number;
+  };
+  readonly tenancy: {
+    readonly organizationCount: number;
+    readonly coworkingDeskCapacity: number;
+    readonly institutionalStaffCapacity: number;
+    readonly flexibleDeskShare: number;
+  };
+  readonly commuteDemand: {
+    readonly dailyCommuters: number;
+    readonly morningPeakArrivals: number;
+    readonly eveningPeakDepartures: number;
+    readonly peakArrivalHour: number;
+    readonly peakDepartureHour: number;
+    readonly transitTrips: number;
+    readonly walkTrips: number;
+    readonly bikeTrips: number;
+    readonly vehicleTrips: number;
+    readonly serviceTrips: number;
+    readonly primaryRoadId: CityId;
+    readonly transitStopIds: readonly CityId[];
+    readonly bikeParkingIds: readonly CityId[];
+  };
+  readonly daytimePopulation: {
+    readonly workers: number;
+    readonly visitors: number;
+    readonly serviceStaff: number;
+    readonly peakOnsitePopulation: number;
+    readonly densityPer1000Sqm: number;
   };
 }
 

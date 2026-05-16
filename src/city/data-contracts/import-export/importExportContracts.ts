@@ -236,6 +236,7 @@ export interface ProceduralSeedDomainSections {
   readonly cityMetrics: GeneratedCity['cityMetrics'];
   readonly developmentPhases: GeneratedCity['developmentPhases'];
   readonly economyAnchors: GeneratedCity['economyAnchors'];
+  readonly officeWorkplaces: GeneratedCity['officeWorkplaces'];
   readonly weatherPresets: GeneratedCity['weatherPresets'];
   readonly solarShadingSamples: GeneratedCity['solarShadingSamples'];
   readonly urbanHeatZones: GeneratedCity['urbanHeatZones'];
@@ -313,6 +314,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly cityMetrics: number;
   readonly developmentPhases: number;
   readonly economyAnchors: number;
+  readonly officeWorkplaces: number;
   readonly weatherPresets: number;
   readonly solarShadingSamples: number;
   readonly urbanHeatZones: number;
@@ -468,6 +470,7 @@ export function createProceduralSeedJsonExport(
       cityMetrics: city.cityMetrics,
       developmentPhases: city.developmentPhases,
       economyAnchors: city.economyAnchors,
+      officeWorkplaces: city.officeWorkplaces,
       weatherPresets: city.weatherPresets,
       solarShadingSamples: city.solarShadingSamples,
       urbanHeatZones: city.urbanHeatZones,
@@ -689,6 +692,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'cityMetrics'
     | 'developmentPhases'
     | 'economyAnchors'
+    | 'officeWorkplaces'
     | 'weatherPresets'
     | 'solarShadingSamples'
     | 'urbanHeatZones'
@@ -755,6 +759,7 @@ export function createProceduralSeedDomainSectionCounts(
     cityMetrics: city.cityMetrics.length,
     developmentPhases: city.developmentPhases.length,
     economyAnchors: city.economyAnchors.length,
+    officeWorkplaces: city.officeWorkplaces.length,
     weatherPresets: city.weatherPresets.length,
     solarShadingSamples: city.solarShadingSamples.length,
     urbanHeatZones: city.urbanHeatZones.length,
@@ -844,6 +849,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'cityMetrics') +
     getArrayLength(city, 'developmentPhases') +
     getArrayLength(city, 'economyAnchors') +
+    getArrayLength(city, 'officeWorkplaces') +
     getArrayLength(city, 'weatherPresets') +
     getArrayLength(city, 'solarShadingSamples') +
     getArrayLength(city, 'urbanHeatZones') +

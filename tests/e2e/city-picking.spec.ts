@@ -32,6 +32,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const trafficCalmingDevice = city.trafficCalmingDevices[0];
   const waterTransportAccess = city.waterTransportAccess[0];
   const economyAnchor = city.economyAnchors[0];
+  const officeWorkplace = city.officeWorkplaces[0];
   const zebraCrossing = traffic.markings.find((marking) => marking.markingType === 'zebra-crossing-stripe');
 
   expect(catalog.pickableObjectIds).toHaveLength(
@@ -45,6 +46,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.healthcareAnchors.length +
       city.emergencyServiceAnchors.length +
       city.economyAnchors.length +
+      city.officeWorkplaces.length +
       city.buildingEntrances.length +
       city.addressPoints.length +
       city.accessControls.length +
@@ -85,6 +87,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind['healthcare-anchor']).toBe(city.healthcareAnchors.length);
   expect(catalog.countsByKind['emergency-service-anchor']).toBe(city.emergencyServiceAnchors.length);
   expect(catalog.countsByKind['economy-anchor']).toBe(city.economyAnchors.length);
+  expect(catalog.countsByKind['office-workplace']).toBe(city.officeWorkplaces.length);
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
   expect(catalog.countsByKind['street-furniture']).toBe(city.streetFurniture.length);
@@ -297,6 +300,20 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       parcelId: economyAnchor.parcelId,
       districtId: economyAnchor.districtId,
       roadId: economyAnchor.roadId
+    }
+  });
+  expect(catalog.metadataByObjectId[officeWorkplace.id]).toMatchObject({
+    objectId: officeWorkplace.id,
+    kind: 'office-workplace',
+    ownerDomain: 'economy',
+    parentId: officeWorkplace.economyAnchorId,
+    lod: officeWorkplace.lod,
+    references: {
+      economyAnchorId: officeWorkplace.economyAnchorId,
+      buildingId: officeWorkplace.buildingId,
+      parcelId: officeWorkplace.parcelId,
+      districtId: officeWorkplace.districtId,
+      roadId: officeWorkplace.roadId
     }
   });
   expect(catalog.metadataByObjectId[city.civicAnchors[0].id]).toMatchObject({

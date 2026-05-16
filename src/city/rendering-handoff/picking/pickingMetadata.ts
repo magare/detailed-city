@@ -18,6 +18,7 @@ export interface CityPickingReferences {
   readonly parcelId?: CityId;
   readonly buildingId?: CityId;
   readonly civicAnchorId?: CityId;
+  readonly economyAnchorId?: CityId;
   readonly addressPointId?: CityId;
   readonly placeId?: CityId;
   readonly roadId?: CityId;
@@ -88,6 +89,7 @@ type PickableObjectSource = Pick<
   | 'healthcareAnchors'
   | 'gazetteerEntries'
   | 'namedPlaces'
+  | 'officeWorkplaces'
   | 'parks'
   | 'parkFeatures'
   | 'plazaZones'
@@ -123,6 +125,7 @@ export function createCityPickingMetadataCatalog(
     ...city.cultureAnchors,
     ...city.educationAnchors,
     ...city.economyAnchors,
+    ...city.officeWorkplaces,
     ...city.emergencyEquipment,
     ...city.governmentAnchors,
     ...city.healthcareAnchors,
@@ -236,6 +239,7 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   copyStringReference(record, references, 'blockId');
   copyStringReference(record, references, 'buildingId');
   copyStringReference(record, references, 'civicAnchorId');
+  copyStringReference(record, references, 'economyAnchorId');
   copyStringReference(record, references, 'addressPointId');
   copyStringReference(record, references, 'placeId');
   copyStringReference(record, references, 'parcelId');
@@ -295,6 +299,12 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
         ? access.accessibleNavigationNodeIds[0]
         : references.navigationNodeId;
   } else if (object.kind === 'economy-anchor') {
+    references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
+    references.parcelId = typeof record.parcelId === 'string' ? record.parcelId : undefined;
+    references.districtId = typeof record.districtId === 'string' ? record.districtId : undefined;
+    references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
+  } else if (object.kind === 'office-workplace') {
+    references.economyAnchorId = typeof record.economyAnchorId === 'string' ? record.economyAnchorId : object.parentId;
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
     references.parcelId = typeof record.parcelId === 'string' ? record.parcelId : undefined;
     references.districtId = typeof record.districtId === 'string' ? record.districtId : undefined;

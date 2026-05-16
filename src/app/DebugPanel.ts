@@ -369,6 +369,10 @@ export class DebugPanel {
         `${diagnostics.economyAnchors.total} anchors, ${diagnostics.economyAnchors.estimatedJobs} jobs, ${diagnostics.economyAnchors.dailyDeliveries} deliveries`
       ),
       createMetric(
+        'Offices',
+        `${diagnostics.officeWorkplaces.total} workplaces, ${diagnostics.officeWorkplaces.workers} workers, ${diagnostics.officeWorkplaces.morningPeakArrivals} peak arrivals`
+      ),
+      createMetric(
         'Civic',
         `${diagnostics.civicAnchors.total} anchors, ${diagnostics.civicAnchors.serviceTypes} services, ${diagnostics.civicAnchors.emergencyAccessAnchors} emergency`
       ),

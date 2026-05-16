@@ -53,6 +53,7 @@ import type {
   NavigationGraphNodeContract,
   NavigationRouteContract,
   NamedPlaceContract,
+  OfficeWorkplaceContract,
   PermitInspectionRecordContract,
   ParkFeatureContract,
   PlazaZoneContract,
@@ -292,6 +293,7 @@ export interface SoilGeologyZonePlan extends SoilGeologyZoneContract {}
 export interface DevelopmentPhasePlan extends DevelopmentPhaseContract {}
 
 export interface EconomyAnchor extends EconomyAnchorContract {}
+export interface OfficeWorkplace extends OfficeWorkplaceContract {}
 
 export interface ParkPatch extends CityObjectBase<'park'> {
   center: Point2D;
@@ -387,6 +389,7 @@ export type GeneratedCityObject =
   | CityMetricPlan
   | DevelopmentPhasePlan
   | EconomyAnchor
+  | OfficeWorkplace
   | ConstraintPlan
   | HazardZonePlan
   | TopographyZonePlan
@@ -480,6 +483,7 @@ export interface GeneratedCity {
   cityMetrics: CityMetricPlan[];
   developmentPhases: DevelopmentPhasePlan[];
   economyAnchors: EconomyAnchor[];
+  officeWorkplaces: OfficeWorkplace[];
   topographyZones: TopographyZonePlan[];
   soilGeologyZones: SoilGeologyZonePlan[];
   blocks: BlockPlan[];
