@@ -32,6 +32,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   const trafficCalmingDevice = city.trafficCalmingDevices[0];
   const waterTransportAccess = city.waterTransportAccess[0];
   const economyAnchor = city.economyAnchors[0];
+  const industrialFacility = city.industrialFacilities[0];
   const officeWorkplace = city.officeWorkplaces[0];
   const zebraCrossing = traffic.markings.find((marking) => marking.markingType === 'zebra-crossing-stripe');
 
@@ -46,6 +47,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       city.healthcareAnchors.length +
       city.emergencyServiceAnchors.length +
       city.economyAnchors.length +
+      city.industrialFacilities.length +
       city.officeWorkplaces.length +
       city.buildingEntrances.length +
       city.addressPoints.length +
@@ -87,6 +89,7 @@ test('picking catalog exposes deterministic object metadata and inherited refere
   expect(catalog.countsByKind['healthcare-anchor']).toBe(city.healthcareAnchors.length);
   expect(catalog.countsByKind['emergency-service-anchor']).toBe(city.emergencyServiceAnchors.length);
   expect(catalog.countsByKind['economy-anchor']).toBe(city.economyAnchors.length);
+  expect(catalog.countsByKind['industrial-facility']).toBe(city.industrialFacilities.length);
   expect(catalog.countsByKind['office-workplace']).toBe(city.officeWorkplaces.length);
   expect(catalog.countsByKind.facade).toBe(city.activeFrontages.length);
   expect(catalog.countsByKind['street-light']).toBe(city.streetLights.length);
@@ -300,6 +303,23 @@ test('picking catalog exposes deterministic object metadata and inherited refere
       parcelId: economyAnchor.parcelId,
       districtId: economyAnchor.districtId,
       roadId: economyAnchor.roadId
+    }
+  });
+  expect(catalog.metadataByObjectId[industrialFacility.id]).toMatchObject({
+    objectId: industrialFacility.id,
+    kind: 'industrial-facility',
+    ownerDomain: 'economy',
+    parentId: industrialFacility.economyAnchorId,
+    lod: industrialFacility.lod,
+    references: {
+      economyAnchorId: industrialFacility.economyAnchorId,
+      buildingId: industrialFacility.buildingId,
+      parcelId: industrialFacility.parcelId,
+      districtId: industrialFacility.districtId,
+      roadId: industrialFacility.roadId,
+      freightLoadingDockId: industrialFacility.logistics.loadingDockIds[0],
+      freightRouteId: industrialFacility.logistics.freightRouteIds[0],
+      serviceAlleyId: industrialFacility.logistics.serviceAlleyId
     }
   });
   expect(catalog.metadataByObjectId[officeWorkplace.id]).toMatchObject({

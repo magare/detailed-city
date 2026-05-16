@@ -19,6 +19,8 @@ export interface CityPickingReferences {
   readonly buildingId?: CityId;
   readonly civicAnchorId?: CityId;
   readonly economyAnchorId?: CityId;
+  readonly freightLoadingDockId?: CityId;
+  readonly freightRouteId?: CityId;
   readonly addressPointId?: CityId;
   readonly placeId?: CityId;
   readonly roadId?: CityId;
@@ -38,6 +40,7 @@ export interface CityPickingReferences {
   readonly transitStopId?: CityId;
   readonly transitRouteId?: CityId;
   readonly navigationNodeId?: CityId;
+  readonly serviceAlleyId?: CityId;
 }
 
 export interface CityPickingMetadata {
@@ -88,6 +91,7 @@ type PickableObjectSource = Pick<
   | 'governmentAnchors'
   | 'healthcareAnchors'
   | 'gazetteerEntries'
+  | 'industrialFacilities'
   | 'namedPlaces'
   | 'officeWorkplaces'
   | 'parks'
@@ -125,6 +129,7 @@ export function createCityPickingMetadataCatalog(
     ...city.cultureAnchors,
     ...city.educationAnchors,
     ...city.economyAnchors,
+    ...city.industrialFacilities,
     ...city.officeWorkplaces,
     ...city.emergencyEquipment,
     ...city.governmentAnchors,
@@ -240,6 +245,8 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   copyStringReference(record, references, 'buildingId');
   copyStringReference(record, references, 'civicAnchorId');
   copyStringReference(record, references, 'economyAnchorId');
+  copyStringReference(record, references, 'freightLoadingDockId');
+  copyStringReference(record, references, 'freightRouteId');
   copyStringReference(record, references, 'addressPointId');
   copyStringReference(record, references, 'placeId');
   copyStringReference(record, references, 'parcelId');
@@ -257,6 +264,7 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
   copyStringReference(record, references, 'sidewalkId');
   copyStringReference(record, references, 'transitStopId');
   copyStringReference(record, references, 'transitRouteId');
+  copyStringReference(record, references, 'serviceAlleyId');
 
   if (object.kind === 'building') {
     references.buildingId = object.id;
@@ -303,6 +311,25 @@ function createPickingReferences(object: CityObjectBase, objectIndex?: CityObjec
     references.parcelId = typeof record.parcelId === 'string' ? record.parcelId : undefined;
     references.districtId = typeof record.districtId === 'string' ? record.districtId : undefined;
     references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
+  } else if (object.kind === 'industrial-facility') {
+    references.economyAnchorId = typeof record.economyAnchorId === 'string' ? record.economyAnchorId : object.parentId;
+    references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;
+    references.parcelId = typeof record.parcelId === 'string' ? record.parcelId : undefined;
+    references.districtId = typeof record.districtId === 'string' ? record.districtId : undefined;
+    references.roadId = typeof record.roadId === 'string' ? record.roadId : undefined;
+    const logistics = record.logistics as
+      | {
+          loadingDockIds?: readonly unknown[];
+          freightRouteIds?: readonly unknown[];
+          serviceAlleyId?: unknown;
+        }
+      | undefined;
+    references.freightLoadingDockId =
+      typeof logistics?.loadingDockIds?.[0] === 'string' ? logistics.loadingDockIds[0] : references.freightLoadingDockId;
+    references.freightRouteId =
+      typeof logistics?.freightRouteIds?.[0] === 'string' ? logistics.freightRouteIds[0] : references.freightRouteId;
+    references.serviceAlleyId =
+      typeof logistics?.serviceAlleyId === 'string' ? logistics.serviceAlleyId : references.serviceAlleyId;
   } else if (object.kind === 'office-workplace') {
     references.economyAnchorId = typeof record.economyAnchorId === 'string' ? record.economyAnchorId : object.parentId;
     references.buildingId = typeof record.buildingId === 'string' ? record.buildingId : undefined;

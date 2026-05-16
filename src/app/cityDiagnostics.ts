@@ -33,6 +33,7 @@ import type {
   GovernmentAnchorKind,
   HealthcareAnchorKind,
   GreenStormwaterFeatureKind,
+  IndustrialFacilityKind,
   MaintenanceOperationKind,
   MaintenanceOperationStatus,
   MaintenancePriority,
@@ -115,6 +116,7 @@ export interface CityDiagnostics {
   readonly zoningModel: ZoningModelDiagnostics;
   readonly buildingTypologies: BuildingTypologyDiagnostics;
   readonly economyAnchors: EconomyAnchorDiagnostics;
+  readonly industrialFacilities: IndustrialFacilityDiagnostics;
   readonly officeWorkplaces: OfficeWorkplaceDiagnostics;
   readonly buildingFootprints: BuildingFootprintDiagnostics;
   readonly buildingStructureShells: BuildingStructureShellDiagnostics;
@@ -535,6 +537,14 @@ export interface CityDiagnostics {
     readonly economyFrontageRequired: number;
     readonly economyLoadingRequired: number;
     readonly economyDistrictFitCompatible: number;
+    readonly industrialFacilities: number;
+    readonly industrialFacilityKinds: number;
+    readonly industrialWarehouseFacilities: number;
+    readonly industrialColdChainFacilities: number;
+    readonly industrialLoadingBays: number;
+    readonly industrialDailyTruckTrips: number;
+    readonly industrialYardAreaSqm: number;
+    readonly industrialStorageSlots: number;
     readonly officeWorkplaces: number;
     readonly officeWorkplaceKinds: number;
     readonly officeWorkers: number;
@@ -981,6 +991,27 @@ export interface EconomyAnchorDiagnostics {
   readonly averageDistrictFitScore: number;
   readonly shiftProfiles: readonly string[];
   readonly openingProfiles: readonly string[];
+}
+
+export interface IndustrialFacilityDiagnostics {
+  readonly total: number;
+  readonly facilityKinds: number;
+  readonly byKind: Readonly<Partial<Record<IndustrialFacilityKind, number>>>;
+  readonly warehouseFacilities: number;
+  readonly coldChainFacilities: number;
+  readonly fabricationFacilities: number;
+  readonly workshopFacilities: number;
+  readonly lightIndustryFacilities: number;
+  readonly estimatedWorkers: number;
+  readonly dailyOutputUnits: number;
+  readonly loadingBays: number;
+  readonly dailyTruckTrips: number;
+  readonly yardAreaSqm: number;
+  readonly storageSlots: number;
+  readonly outdoorWorkBays: number;
+  readonly stagingBays: number;
+  readonly queueCapacityTrucks: number;
+  readonly serviceAlleyLinkedFacilities: number;
 }
 
 export interface OfficeWorkplaceDiagnostics {
@@ -1631,6 +1662,7 @@ export function createCityDiagnostics(
   const zoningModel = createZoningModelDiagnostics(city);
   const buildingTypologies = createBuildingTypologyDiagnostics(city);
   const economyAnchors = createEconomyAnchorDiagnostics(city);
+  const industrialFacilities = createIndustrialFacilityDiagnostics(city);
   const officeWorkplaces = createOfficeWorkplaceDiagnostics(city);
   const buildingFootprints = createBuildingFootprintDiagnostics(city);
   const buildingStructureShells = createBuildingStructureShellDiagnostics(city);
@@ -1714,6 +1746,7 @@ export function createCityDiagnostics(
     zoningModel,
     buildingTypologies,
     economyAnchors,
+    industrialFacilities,
     officeWorkplaces,
     buildingFootprints,
     buildingStructureShells,
@@ -2125,6 +2158,14 @@ export function createCityDiagnostics(
       economyFrontageRequired: economyAnchors.activeFrontagePreferred,
       economyLoadingRequired: economyAnchors.loadingRequired,
       economyDistrictFitCompatible: economyAnchors.compatibleDistrictFit,
+      industrialFacilities: industrialFacilities.total,
+      industrialFacilityKinds: industrialFacilities.facilityKinds,
+      industrialWarehouseFacilities: industrialFacilities.warehouseFacilities,
+      industrialColdChainFacilities: industrialFacilities.coldChainFacilities,
+      industrialLoadingBays: industrialFacilities.loadingBays,
+      industrialDailyTruckTrips: industrialFacilities.dailyTruckTrips,
+      industrialYardAreaSqm: industrialFacilities.yardAreaSqm,
+      industrialStorageSlots: industrialFacilities.storageSlots,
       officeWorkplaces: officeWorkplaces.total,
       officeWorkplaceKinds: officeWorkplaces.workplaceKinds,
       officeWorkers: officeWorkplaces.workers,
@@ -3312,6 +3353,55 @@ function createEconomyAnchorDiagnostics(city: GeneratedCity): EconomyAnchorDiagn
     averageDistrictFitScore: roundToHundredths(city.economyAnchors.length > 0 ? districtFitScoreTotal / city.economyAnchors.length : 0),
     shiftProfiles: [...shiftProfiles].sort(),
     openingProfiles: [...openingProfiles].sort()
+  };
+}
+
+function createIndustrialFacilityDiagnostics(city: GeneratedCity): IndustrialFacilityDiagnostics {
+  const byKind: Partial<Record<IndustrialFacilityKind, number>> = {};
+  let estimatedWorkers = 0;
+  let dailyOutputUnits = 0;
+  let loadingBays = 0;
+  let dailyTruckTrips = 0;
+  let yardAreaSqm = 0;
+  let storageSlots = 0;
+  let outdoorWorkBays = 0;
+  let stagingBays = 0;
+  let queueCapacityTrucks = 0;
+  let serviceAlleyLinkedFacilities = 0;
+
+  for (const facility of city.industrialFacilities) {
+    byKind[facility.facilityKind] = (byKind[facility.facilityKind] ?? 0) + 1;
+    estimatedWorkers += facility.production.estimatedWorkers;
+    dailyOutputUnits += facility.production.dailyOutputUnits;
+    loadingBays += facility.logistics.loadingBays;
+    dailyTruckTrips += facility.logistics.dailyTruckTrips;
+    yardAreaSqm += facility.yard.areaSqm;
+    storageSlots += facility.yard.storageSlots;
+    outdoorWorkBays += facility.yard.outdoorWorkBays;
+    stagingBays += facility.truckCirculation.stagingBayCount;
+    queueCapacityTrucks += facility.truckCirculation.queueCapacityTrucks;
+    serviceAlleyLinkedFacilities += facility.logistics.serviceAlleyId ? 1 : 0;
+  }
+
+  return {
+    total: city.industrialFacilities.length,
+    facilityKinds: Object.keys(byKind).length,
+    byKind,
+    warehouseFacilities: byKind.warehouse ?? 0,
+    coldChainFacilities: byKind['cold-chain'] ?? 0,
+    fabricationFacilities: byKind.fabrication ?? 0,
+    workshopFacilities: byKind.workshop ?? 0,
+    lightIndustryFacilities: byKind['light-industry'] ?? 0,
+    estimatedWorkers,
+    dailyOutputUnits,
+    loadingBays,
+    dailyTruckTrips,
+    yardAreaSqm,
+    storageSlots,
+    outdoorWorkBays,
+    stagingBays,
+    queueCapacityTrucks,
+    serviceAlleyLinkedFacilities
   };
 }
 

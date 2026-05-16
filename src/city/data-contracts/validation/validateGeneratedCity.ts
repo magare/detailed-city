@@ -32,6 +32,9 @@ import type {
   GovernmentAnchorKind,
   HealthcareAnchorKind,
   HazardMitigationKind,
+  IndustrialFacilityKind,
+  IndustrialTemperatureBand,
+  IndustrialYardSurface,
   IntersectionControlType,
   LaneRole,
   OfficeLobbyAccessKind,
@@ -127,6 +130,7 @@ type GeneratedCityForValidation = Pick<
   | 'freightRoutes'
   | 'geospatial'
   | 'hazardZones'
+  | 'industrialFacilities'
   | 'intersections'
   | 'navigationGraphEdges'
   | 'navigationGraphNodes'
@@ -185,6 +189,7 @@ type ValidationAdministrativeBoundary = GeneratedCityForValidation['administrati
 type ValidationCityMetric = GeneratedCityForValidation['cityMetrics'][number];
 type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'][number];
 type ValidationEconomyAnchor = GeneratedCityForValidation['economyAnchors'][number];
+type ValidationIndustrialFacility = GeneratedCityForValidation['industrialFacilities'][number];
 type ValidationOfficeWorkplace = GeneratedCityForValidation['officeWorkplaces'][number];
 type ValidationWeatherPreset = GeneratedCityForValidation['weatherPresets'][number];
 type ValidationSolarShadingSample = GeneratedCityForValidation['solarShadingSamples'][number];
@@ -480,6 +485,19 @@ const ECONOMY_ANCHOR_USES = [
 ] as const satisfies readonly EconomyAnchorUse[];
 const ECONOMY_SHIFT_PROFILES = ['day', 'evening', 'round-the-clock', 'split'] as const satisfies readonly EconomyShiftProfile[];
 const ECONOMY_OPENING_DAY_TYPES = ['weekday', 'saturday', 'sunday'] as const satisfies readonly EconomyOpeningDayType[];
+const INDUSTRIAL_FACILITY_KINDS = [
+  'cold-chain',
+  'fabrication',
+  'light-industry',
+  'warehouse',
+  'workshop'
+] as const satisfies readonly IndustrialFacilityKind[];
+const INDUSTRIAL_YARD_SURFACES = [
+  'asphalt-yard',
+  'concrete-apron',
+  'gravel-service-yard'
+] as const satisfies readonly IndustrialYardSurface[];
+const INDUSTRIAL_TEMPERATURE_BANDS = ['ambient', 'chilled', 'frozen'] as const satisfies readonly IndustrialTemperatureBand[];
 const OFFICE_WORKPLACE_KINDS = [
   'office-tower',
   'coworking',
@@ -687,6 +705,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateBuildingEntrancesAndAddresses(city, issues);
   validateBuildingFireSafetyProfiles(city, issues);
   validateEconomyAnchors(city, issues);
+  validateIndustrialFacilities(city, issues);
   validateOfficeWorkplaces(city, issues);
   validateAddressingGazetteer(city, issues);
   validateDevelopmentPhases(city, issues);
@@ -9864,6 +9883,217 @@ function createEconomyAnchorIssue(
     objectId: anchor.id,
     suggestedFix: `Regenerate ${anchor.id} from building typology, frontage, and freight economy rules.`,
     ...createIssueFocus(anchor.center, `Review economy anchor ${anchor.id}.`),
+    message
+  };
+}
+
+function validateIndustrialFacilities(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const economyAnchorsById = new Map(city.economyAnchors.map((anchor) => [anchor.id, anchor]));
+  const buildingsById = new Map(city.buildings.map((building) => [building.id, building]));
+  const parcelsById = new Map(city.parcels.map((parcel) => [parcel.id, parcel]));
+  const districtsById = new Map(city.districts.map((district) => [district.id, district]));
+  const roadsById = new Map(city.roads.map((road) => [road.id, road]));
+  const loadingDocksById = new Map(city.freightLoadingDocks.map((dock) => [dock.id, dock]));
+  const freightRoutesById = new Map(city.freightRoutes.map((route) => [route.id, route]));
+  const serviceAlleysById = new Map(city.serviceAlleys.map((alley) => [alley.id, alley]));
+  const entrancesById = new Map(city.buildingEntrances.map((entrance) => [entrance.id, entrance]));
+
+  if (city.industrialFacilities.length === 0) {
+    issues.push({
+      id: 'missing-industrial-facilities',
+      severity: 'error',
+      category: 'simulation',
+      message: 'Industrial facility generation must expose yards, loading bays, cold-chain logistics, and truck circulation.'
+    });
+  }
+
+  for (const facility of city.industrialFacilities) {
+    const anchor = economyAnchorsById.get(facility.economyAnchorId);
+    const building = buildingsById.get(facility.buildingId);
+    const parcel = parcelsById.get(facility.parcelId);
+    const district = districtsById.get(facility.districtId);
+    const road = roadsById.get(facility.roadId);
+
+    if (!INDUSTRIAL_FACILITY_KINDS.includes(facility.facilityKind)) {
+      issues.push(createIndustrialFacilityIssue(facility, 'invalid-kind', `Industrial facility ${facility.id} uses unsupported facility kind ${facility.facilityKind}.`));
+    }
+
+    if (!anchor || facility.parentId !== facility.economyAnchorId || !['industrial', 'warehouse'].includes(anchor?.economicUse ?? '')) {
+      issues.push(createIndustrialFacilityIssue(facility, 'missing-economy-anchor', `Industrial facility ${facility.id} must be parented to an industrial or warehouse economy anchor.`));
+    }
+
+    if (!building || anchor?.buildingId !== facility.buildingId) {
+      issues.push(createIndustrialFacilityIssue(facility, 'missing-building', `Industrial facility ${facility.id} must reference the same building as its economy anchor.`));
+    }
+
+    if (!parcel || building?.parcelId !== facility.parcelId || parcel.districtId !== facility.districtId) {
+      issues.push(createIndustrialFacilityIssue(facility, 'missing-parcel', `Industrial facility ${facility.id} must reference its building parcel and district.`));
+    }
+
+    if (!district) {
+      issues.push(createIndustrialFacilityIssue(facility, 'missing-district', `Industrial facility ${facility.id} references missing district ${facility.districtId}.`));
+    }
+
+    if (!road || building?.primaryFrontageRoadId !== facility.roadId || facility.truckCirculation.entryRoadId !== facility.roadId) {
+      issues.push(createIndustrialFacilityIssue(facility, 'missing-road', `Industrial facility ${facility.id} must reference the building frontage road for truck circulation.`));
+    }
+
+    validateIndustrialFacilityProduction(facility, anchor, issues);
+    validateIndustrialFacilityYard(facility, issues);
+    validateIndustrialFacilityLogistics(facility, loadingDocksById, freightRoutesById, serviceAlleysById, entrancesById, issues);
+    validateIndustrialFacilityTruckCirculation(facility, issues);
+  }
+}
+
+function validateIndustrialFacilityProduction(
+  facility: ValidationIndustrialFacility,
+  anchor: ValidationEconomyAnchor | undefined,
+  issues: ValidationIssue[]
+): void {
+  if (
+    !ECONOMY_SHIFT_PROFILES.includes(facility.production.shiftProfile) ||
+    !['low', 'medium', 'high'].includes(facility.production.processIntensity) ||
+    facility.production.estimatedWorkers <= 0 ||
+    facility.production.dailyOutputUnits <= 0 ||
+    (anchor && facility.production.estimatedWorkers !== anchor.jobs.estimatedJobs)
+  ) {
+    issues.push(createIndustrialFacilityIssue(facility, 'invalid-production', `Industrial facility ${facility.id} must expose valid production intensity, shift profile, workers, and output.`));
+  }
+}
+
+function validateIndustrialFacilityYard(
+  facility: ValidationIndustrialFacility,
+  issues: ValidationIssue[]
+): void {
+  const computedArea = getPolygonArea(facility.yard.boundary);
+  const hasInvalidPoint = facility.yard.boundary.some((point) => !isFiniteNumber(point.x) || !isFiniteNumber(point.z));
+
+  if (
+    facility.yard.boundary.length < 4 ||
+    hasInvalidPoint ||
+    !isFiniteNumber(facility.yard.center.x) ||
+    !isFiniteNumber(facility.yard.center.z) ||
+    facility.yard.areaSqm <= 0 ||
+    computedArea <= 0 ||
+    Math.abs(computedArea - facility.yard.areaSqm) > Math.max(8, computedArea * 0.08) ||
+    !INDUSTRIAL_YARD_SURFACES.includes(facility.yard.surface) ||
+    facility.yard.bufferMeters < 0 ||
+    facility.yard.storageSlots < 0 ||
+    facility.yard.outdoorWorkBays < 0
+  ) {
+    issues.push(createIndustrialFacilityIssue(facility, 'invalid-yard', `Industrial facility ${facility.id} must expose a finite yard polygon, surface, buffer, storage slots, and work bays.`));
+  }
+}
+
+function validateIndustrialFacilityLogistics(
+  facility: ValidationIndustrialFacility,
+  loadingDocksById: ReadonlyMap<CityId, GeneratedCityForValidation['freightLoadingDocks'][number]>,
+  freightRoutesById: ReadonlyMap<CityId, GeneratedCityForValidation['freightRoutes'][number]>,
+  serviceAlleysById: ReadonlyMap<CityId, GeneratedCityForValidation['serviceAlleys'][number]>,
+  entrancesById: ReadonlyMap<CityId, ValidationBuildingEntrance>,
+  issues: ValidationIssue[]
+): void {
+  if (
+    facility.logistics.loadingDockIds.length === 0 ||
+    facility.logistics.freightRouteIds.length === 0 ||
+    facility.logistics.loadingEntranceIds.length === 0 ||
+    facility.logistics.loadingBays <= 0 ||
+    facility.logistics.dailyTruckTrips <= 0 ||
+    facility.logistics.allowedVehicleClasses.length === 0
+  ) {
+    issues.push(createIndustrialFacilityIssue(facility, 'invalid-logistics', `Industrial facility ${facility.id} must expose loading docks, routes, entrances, bays, truck trips, and vehicle classes.`));
+  }
+
+  for (const dockId of facility.logistics.loadingDockIds) {
+    const dock = loadingDocksById.get(dockId);
+
+    if (!dock || dock.buildingId !== facility.buildingId || dock.loadingBays <= 0) {
+      issues.push(createIndustrialFacilityIssue(facility, 'missing-loading-dock', `Industrial facility ${facility.id} references missing or mismatched loading dock ${dockId}.`));
+    }
+  }
+
+  for (const routeId of facility.logistics.freightRouteIds) {
+    const route = freightRoutesById.get(routeId);
+
+    if (
+      !route ||
+      !['industrial-haul', 'warehouse-link'].includes(route.routeKind) ||
+      !facility.logistics.loadingDockIds.some((dockId) => route.loadingDockIds.includes(dockId))
+    ) {
+      issues.push(createIndustrialFacilityIssue(facility, 'missing-freight-route', `Industrial facility ${facility.id} references missing or unlinked freight route ${routeId}.`));
+    }
+  }
+
+  if (facility.logistics.serviceAlleyId) {
+    const serviceAlley = serviceAlleysById.get(facility.logistics.serviceAlleyId);
+
+    if (
+      !serviceAlley ||
+      !serviceAlley.buildingIds.includes(facility.buildingId) ||
+      !facility.logistics.loadingDockIds.some((dockId) => serviceAlley.loadingDockIds.includes(dockId))
+    ) {
+      issues.push(createIndustrialFacilityIssue(facility, 'missing-service-alley', `Industrial facility ${facility.id} references missing or unlinked service alley ${facility.logistics.serviceAlleyId}.`));
+    }
+  }
+
+  for (const entranceId of facility.logistics.loadingEntranceIds) {
+    const entrance = entrancesById.get(entranceId);
+
+    if (!entrance || entrance.buildingId !== facility.buildingId || entrance.entranceKind !== 'loading-door') {
+      issues.push(createIndustrialFacilityIssue(facility, 'missing-loading-entrance', `Industrial facility ${facility.id} references missing loading entrance ${entranceId}.`));
+    }
+  }
+
+  validateIndustrialFacilityColdChain(facility, issues);
+}
+
+function validateIndustrialFacilityColdChain(
+  facility: ValidationIndustrialFacility,
+  issues: ValidationIssue[]
+): void {
+  const coldChain = facility.logistics.coldChain;
+
+  if (
+    !INDUSTRIAL_TEMPERATURE_BANDS.includes(coldChain.temperatureBand) ||
+    (coldChain.enabled && (coldChain.temperatureBand === 'ambient' || coldChain.backupPowerHours <= 0)) ||
+    (!coldChain.enabled && (coldChain.temperatureBand !== 'ambient' || coldChain.backupPowerHours !== 0)) ||
+    (facility.facilityKind === 'cold-chain' && !coldChain.enabled)
+  ) {
+    issues.push(createIndustrialFacilityIssue(facility, 'invalid-cold-chain', `Industrial facility ${facility.id} must expose coherent cold-chain temperature and backup power metadata.`));
+  }
+}
+
+function validateIndustrialFacilityTruckCirculation(
+  facility: ValidationIndustrialFacility,
+  issues: ValidationIssue[]
+): void {
+  const path = facility.truckCirculation.circulationPath;
+  const invalidPathPoint = path.some((point) => !isFiniteNumber(point.x) || !isFiniteNumber(point.z));
+
+  if (
+    facility.truckCirculation.entryRoadId !== facility.roadId ||
+    path.length < 4 ||
+    invalidPathPoint ||
+    facility.truckCirculation.stagingBayCount <= 0 ||
+    facility.truckCirculation.turningRadiusMeters <= 0 ||
+    facility.truckCirculation.queueCapacityTrucks <= 0
+  ) {
+    issues.push(createIndustrialFacilityIssue(facility, 'invalid-truck-circulation', `Industrial facility ${facility.id} must expose road-linked truck circulation, staging, turning radius, and queue capacity.`));
+  }
+}
+
+function createIndustrialFacilityIssue(
+  facility: ValidationIndustrialFacility,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `industrial-facility-${issueIdSuffix}-${toIssueIdToken(facility.id)}`,
+    severity: 'error',
+    category: 'simulation',
+    objectId: facility.id,
+    suggestedFix: `Regenerate ${facility.id} from industrial economy, freight, and loading-door rules.`,
+    ...createIssueFocus(facility.center, `Review industrial facility ${facility.id}.`),
     message
   };
 }

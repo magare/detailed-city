@@ -44,6 +44,7 @@ import type {
   GreenCorridorRole,
   GreenStormwaterFeatureContract,
   HazardZoneContract,
+  IndustrialFacilityContract,
   IntersectionContract,
   LandUse,
   LaneContract,
@@ -293,6 +294,7 @@ export interface SoilGeologyZonePlan extends SoilGeologyZoneContract {}
 export interface DevelopmentPhasePlan extends DevelopmentPhaseContract {}
 
 export interface EconomyAnchor extends EconomyAnchorContract {}
+export interface IndustrialFacility extends IndustrialFacilityContract {}
 export interface OfficeWorkplace extends OfficeWorkplaceContract {}
 
 export interface ParkPatch extends CityObjectBase<'park'> {
@@ -389,6 +391,7 @@ export type GeneratedCityObject =
   | CityMetricPlan
   | DevelopmentPhasePlan
   | EconomyAnchor
+  | IndustrialFacility
   | OfficeWorkplace
   | ConstraintPlan
   | HazardZonePlan
@@ -483,6 +486,7 @@ export interface GeneratedCity {
   cityMetrics: CityMetricPlan[];
   developmentPhases: DevelopmentPhasePlan[];
   economyAnchors: EconomyAnchor[];
+  industrialFacilities: IndustrialFacility[];
   officeWorkplaces: OfficeWorkplace[];
   topographyZones: TopographyZonePlan[];
   soilGeologyZones: SoilGeologyZonePlan[];

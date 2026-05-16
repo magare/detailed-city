@@ -27,6 +27,7 @@ export type CityOverlayId =
   | 'urban-heat'
   | 'wind-comfort'
   | 'economy-anchors'
+  | 'industrial-facilities'
   | 'office-workplaces'
   | 'city-metrics'
   | 'cycling-network'
@@ -116,6 +117,7 @@ export function createCityOverlayDatasets(
     createDataset('urban-heat', 'Urban Heat', 'domain-data', createUrbanHeatFeatures(city)),
     createDataset('wind-comfort', 'Wind Comfort', 'domain-data', createWindComfortFeatures(city)),
     createDataset('economy-anchors', 'Economy Anchors', 'domain-data', createEconomyAnchorFeatures(city)),
+    createDataset('industrial-facilities', 'Industrial Facilities', 'domain-data', createIndustrialFacilityFeatures(city)),
     createDataset('office-workplaces', 'Office Workplaces', 'domain-data', createOfficeWorkplaceFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('cycling-network', 'Cycling Network', 'domain-data', createCyclingNetworkFeatures(city)),
@@ -681,6 +683,41 @@ function createEconomyAnchorFeatures(city: GeneratedCity): CityOverlayFeature[] 
       freightRoutes: anchor.loadingNeeds.freightRouteIds.length,
       districtFitScore: anchor.districtFit.score,
       districtFitCompatible: anchor.districtFit.compatible
+    }
+  }));
+}
+
+function createIndustrialFacilityFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.industrialFacilities.map((facility) => ({
+    id: `overlay:industrial-facilities:${facility.id}`,
+    overlayId: 'industrial-facilities',
+    objectId: facility.id,
+    objectKind: facility.kind,
+    ownerDomain: facility.ownerDomain,
+    label: facility.name ?? facility.id,
+    geometry: { type: 'polygon', points: facility.yard.boundary },
+    metadata: {
+      facilityKind: facility.facilityKind,
+      economyAnchorId: facility.economyAnchorId,
+      buildingId: facility.buildingId,
+      parcelId: facility.parcelId,
+      districtId: facility.districtId,
+      roadId: facility.roadId,
+      processIntensity: facility.production.processIntensity,
+      estimatedWorkers: facility.production.estimatedWorkers,
+      dailyOutputUnits: facility.production.dailyOutputUnits,
+      yardAreaSqm: facility.yard.areaSqm,
+      yardSurface: facility.yard.surface,
+      bufferMeters: facility.yard.bufferMeters,
+      storageSlots: facility.yard.storageSlots,
+      loadingDocks: facility.logistics.loadingDockIds.length,
+      freightRoutes: facility.logistics.freightRouteIds.length,
+      loadingBays: facility.logistics.loadingBays,
+      dailyTruckTrips: facility.logistics.dailyTruckTrips,
+      coldChain: facility.logistics.coldChain.enabled,
+      temperatureBand: facility.logistics.coldChain.temperatureBand,
+      stagingBays: facility.truckCirculation.stagingBayCount,
+      queueCapacityTrucks: facility.truckCirculation.queueCapacityTrucks
     }
   }));
 }

@@ -29,6 +29,7 @@ test('city scene delegates core renderable systems to mesh builders', () => {
       'BuildingInstances',
       'TreePlantings',
       'TrafficCalmingDeviceInstances',
+      'IndustrialFacilities',
       'BuildingRoofDetails',
       'BuildingFacadeModules',
       'ActiveFrontages',
@@ -45,7 +46,7 @@ test('city scene delegates core renderable systems to mesh builders', () => {
     expect.arrayContaining(['RoadSegments', 'TrafficCalmingDeviceInstances', 'TransitStopsAndRoutes', 'LaneMarkings'])
   );
   expect(cityScene.layerGroups.buildings.children.map((child) => child.name)).toEqual(
-    expect.arrayContaining(['BuildingInstances', 'BuildingRoofDetails', 'BuildingFacadeModules', 'ActiveFrontages'])
+    expect.arrayContaining(['BuildingInstances', 'BuildingRoofDetails', 'IndustrialFacilities', 'BuildingFacadeModules', 'ActiveFrontages'])
   );
   expect(cityScene.layerGroups['public-realm'].children.map((child) => child.name)).toEqual(
     expect.arrayContaining(['ParkSurfaces', 'ParkFeatures', 'PlazaZones', 'WaterfrontEdges', 'WaterfrontOpenSpaces', 'TreePlantings'])
@@ -62,6 +63,7 @@ test('world city assembly no longer owns raw geometry construction', () => {
   expect(source).not.toMatch(/new THREE\\.(BoxGeometry|PlaneGeometry|CylinderGeometry|ConeGeometry|InstancedMesh|Mesh)\\b/);
   expect(source).toContain('RoadMeshBuilder');
   expect(source).toContain('BuildingMassMeshBuilder');
+  expect(source).toContain('IndustrialFacilityMeshBuilder');
   expect(source).toContain('TreePlantingMeshBuilder');
   expect(source).toContain('TrafficCalmingMeshBuilder');
 });

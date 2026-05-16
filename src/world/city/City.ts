@@ -7,6 +7,7 @@ import { BuildingRoofMeshBuilder } from '../../city/rendering-handoff/mesh-build
 import { CurbActivationMeshBuilder } from '../../city/rendering-handoff/mesh-builders/CurbActivationMeshBuilder';
 import { EmergencyEquipmentMeshBuilder } from '../../city/rendering-handoff/mesh-builders/EmergencyEquipmentMeshBuilder';
 import { GreenStormwaterMeshBuilder } from '../../city/rendering-handoff/mesh-builders/GreenStormwaterMeshBuilder';
+import { IndustrialFacilityMeshBuilder } from '../../city/rendering-handoff/mesh-builders/IndustrialFacilityMeshBuilder';
 import { ParkFeatureMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkFeatureMeshBuilder';
 import { ParkSurfaceMeshBuilder } from '../../city/rendering-handoff/mesh-builders/ParkSurfaceMeshBuilder';
 import { PlazaZoneMeshBuilder } from '../../city/rendering-handoff/mesh-builders/PlazaZoneMeshBuilder';
@@ -126,6 +127,7 @@ export class City implements Updatable {
     this.addAccessControls(generated);
     this.addTransit(generated);
     this.addBuildings(generated);
+    this.addIndustrialFacilities(generated);
     this.addBuildingFacades(generated);
     this.addActiveFrontages(generated.activeFrontages);
     this.addTraffic(trafficPlan);
@@ -215,6 +217,15 @@ export class City implements Updatable {
     ).build(generated.buildings, detailedBuildingIds);
 
     this.layerGroups.buildings.add(roofGroup);
+  }
+
+  private addIndustrialFacilities(generated: GeneratedCity): void {
+    const group = new IndustrialFacilityMeshBuilder(
+      this.materials,
+      this.pickingCatalog.metadataByObjectId
+    ).build(generated.industrialFacilities);
+
+    this.layerGroups.buildings.add(group);
   }
 
   private addBuildingFacades(generated: GeneratedCity): void {

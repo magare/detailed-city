@@ -60,6 +60,7 @@ test('hazard layer is deterministic, indexed, and connected to land context', ()
     'urban-heat',
     'wind-comfort',
     'economy-anchors',
+    'industrial-facilities',
     'office-workplaces',
     'city-metrics',
     'cycling-network',

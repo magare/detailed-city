@@ -48,6 +48,7 @@ type GeneratedCityObjectSource = Pick<
   | 'gazetteerEntries'
   | 'greenStormwaterFeatures'
   | 'hazardZones'
+  | 'industrialFacilities'
   | 'intersections'
   | 'navigationGraphEdges'
   | 'navigationGraphNodes'
@@ -93,6 +94,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.administrativeBoundaries,
     ...city.districts,
     ...city.economyAnchors,
+    ...city.industrialFacilities,
     ...city.officeWorkplaces,
     ...city.zoningDistricts,
     ...city.cityMetrics,

@@ -43,6 +43,7 @@ export type CityObjectKind =
   | 'government-anchor'
   | 'healthcare-anchor'
   | 'hazard-zone'
+  | 'industrial-facility'
   | 'intersection'
   | 'lane'
   | 'lane-marking'
@@ -806,6 +807,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod1',
       allowedTiers: ['lod1', 'lod2', 'lod3'],
       description: 'Economy anchors render as named buildings or destinations.'
+    },
+    {
+      objectKind: 'industrial-facility',
+      scope: 'building',
+      defaultTier: 'lod2',
+      allowedTiers: ['lod1', 'lod2', 'lod3'],
+      description: 'Industrial facilities expose light industry, workshops, fabrication, yard buffers, loading bays, cold-chain logistics, and truck circulation.'
     },
     {
       objectKind: 'office-workplace',
@@ -2870,6 +2878,60 @@ export interface EconomyAnchorContract extends CityObjectBase<'economy-anchor'> 
     readonly allowedByZoning: boolean;
     readonly preferredDistrictIds: readonly CityId[];
     readonly notes: readonly string[];
+  };
+}
+
+export type IndustrialFacilityKind = 'cold-chain' | 'fabrication' | 'light-industry' | 'warehouse' | 'workshop';
+export type IndustrialProcessIntensity = 'low' | 'medium' | 'high';
+export type IndustrialYardSurface = 'asphalt-yard' | 'concrete-apron' | 'gravel-service-yard';
+export type IndustrialTemperatureBand = 'ambient' | 'chilled' | 'frozen';
+
+export interface IndustrialFacilityContract extends CityObjectBase<'industrial-facility'> {
+  readonly economyAnchorId: CityId;
+  readonly buildingId: CityId;
+  readonly parcelId: CityId;
+  readonly districtId: CityId;
+  readonly roadId: CityId;
+  readonly center: Point2D;
+  readonly facilityKind: IndustrialFacilityKind;
+  readonly production: {
+    readonly lightIndustry: boolean;
+    readonly workshop: boolean;
+    readonly fabrication: boolean;
+    readonly processIntensity: IndustrialProcessIntensity;
+    readonly shiftProfile: EconomyShiftProfile;
+    readonly estimatedWorkers: number;
+    readonly dailyOutputUnits: number;
+  };
+  readonly yard: {
+    readonly boundary: Polygon2D;
+    readonly center: Point2D;
+    readonly areaSqm: number;
+    readonly surface: IndustrialYardSurface;
+    readonly bufferMeters: number;
+    readonly storageSlots: number;
+    readonly outdoorWorkBays: number;
+  };
+  readonly logistics: {
+    readonly loadingDockIds: readonly CityId[];
+    readonly freightRouteIds: readonly CityId[];
+    readonly serviceAlleyId?: CityId;
+    readonly loadingEntranceIds: readonly CityId[];
+    readonly loadingBays: number;
+    readonly dailyTruckTrips: number;
+    readonly allowedVehicleClasses: readonly FreightVehicleClass[];
+    readonly coldChain: {
+      readonly enabled: boolean;
+      readonly temperatureBand: IndustrialTemperatureBand;
+      readonly backupPowerHours: number;
+    };
+  };
+  readonly truckCirculation: {
+    readonly entryRoadId: CityId;
+    readonly circulationPath: Polyline2D;
+    readonly stagingBayCount: number;
+    readonly turningRadiusMeters: number;
+    readonly queueCapacityTrucks: number;
   };
 }
 
