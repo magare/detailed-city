@@ -91,6 +91,7 @@ const RENDER_LAYER_KIND_GROUPS = [
       'urban-heat-zone',
       'vertical-slice',
       'weather-preset',
+      'wind-comfort-zone',
       'zoning-district'
     ] as const
   }

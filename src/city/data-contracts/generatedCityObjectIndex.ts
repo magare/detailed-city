@@ -82,6 +82,7 @@ type GeneratedCityObjectSource = Pick<
   | 'waterTransportAccess'
   | 'waterways'
   | 'weatherPresets'
+  | 'windComfortZones'
   | 'zoningDistricts'
 >;
 
@@ -134,6 +135,7 @@ export function listGeneratedCityObjects(city: GeneratedCityObjectSource): Gener
     ...city.weatherPresets,
     ...city.solarShadingSamples,
     ...city.urbanHeatZones,
+    ...city.windComfortZones,
     ...city.utilityNodes,
     ...city.utilityEdges,
     ...city.streetLights,

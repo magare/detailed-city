@@ -90,6 +90,7 @@ import type {
   WaterTransportAccessContract,
   WaterfrontEdgeContract,
   WaterfrontOpenSpaceContract,
+  WindComfortZoneContract,
   WaterwayContract,
   ZoningDistrictContract
 } from '../city/data-contracts/cityContracts';
@@ -370,6 +371,7 @@ export interface ServiceAccessCorridor extends ServiceAccessCorridorContract {}
 export interface WeatherPreset extends WeatherPresetContract {}
 export interface SolarShadingSample extends SolarShadingSampleContract {}
 export interface UrbanHeatZone extends UrbanHeatZoneContract {}
+export interface WindComfortZone extends WindComfortZoneContract {}
 export interface UtilityNode extends UtilityNodeContract {}
 export interface UtilityEdge extends UtilityEdgeContract {}
 
@@ -420,6 +422,7 @@ export type GeneratedCityObject =
   | WeatherPreset
   | SolarShadingSample
   | UrbanHeatZone
+  | WindComfortZone
   | UtilityNode
   | UtilityEdge
   | SidewalkGraphNode
@@ -511,6 +514,7 @@ export interface GeneratedCity {
   weatherPresets: WeatherPreset[];
   solarShadingSamples: SolarShadingSample[];
   urbanHeatZones: UrbanHeatZone[];
+  windComfortZones: WindComfortZone[];
   utilityNodes: UtilityNode[];
   utilityEdges: UtilityEdge[];
   sidewalkGraph: SidewalkGraph;

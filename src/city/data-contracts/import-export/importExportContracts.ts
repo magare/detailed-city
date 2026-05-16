@@ -238,6 +238,7 @@ export interface ProceduralSeedDomainSections {
   readonly weatherPresets: GeneratedCity['weatherPresets'];
   readonly solarShadingSamples: GeneratedCity['solarShadingSamples'];
   readonly urbanHeatZones: GeneratedCity['urbanHeatZones'];
+  readonly windComfortZones: GeneratedCity['windComfortZones'];
   readonly utilityNodes: GeneratedCity['utilityNodes'];
   readonly utilityEdges: GeneratedCity['utilityEdges'];
   readonly serviceAccessCorridors: GeneratedCity['serviceAccessCorridors'];
@@ -313,6 +314,7 @@ export interface ProceduralSeedDomainSectionCounts {
   readonly weatherPresets: number;
   readonly solarShadingSamples: number;
   readonly urbanHeatZones: number;
+  readonly windComfortZones: number;
   readonly utilityNodes: number;
   readonly utilityEdges: number;
   readonly serviceAccessCorridors: number;
@@ -466,6 +468,7 @@ export function createProceduralSeedJsonExport(
       weatherPresets: city.weatherPresets,
       solarShadingSamples: city.solarShadingSamples,
       urbanHeatZones: city.urbanHeatZones,
+      windComfortZones: city.windComfortZones,
       utilityNodes: city.utilityNodes,
       utilityEdges: city.utilityEdges,
       serviceAccessCorridors: city.serviceAccessCorridors,
@@ -685,6 +688,7 @@ export function createProceduralSeedDomainSectionCounts(
     | 'weatherPresets'
     | 'solarShadingSamples'
     | 'urbanHeatZones'
+    | 'windComfortZones'
     | 'utilityNodes'
     | 'utilityEdges'
     | 'serviceAccessCorridors'
@@ -749,6 +753,7 @@ export function createProceduralSeedDomainSectionCounts(
     weatherPresets: city.weatherPresets.length,
     solarShadingSamples: city.solarShadingSamples.length,
     urbanHeatZones: city.urbanHeatZones.length,
+    windComfortZones: city.windComfortZones.length,
     utilityNodes: city.utilityNodes.length,
     utilityEdges: city.utilityEdges.length,
     serviceAccessCorridors: city.serviceAccessCorridors.length,
@@ -836,6 +841,7 @@ export function countProceduralSeedDomainObjects(
     getArrayLength(city, 'weatherPresets') +
     getArrayLength(city, 'solarShadingSamples') +
     getArrayLength(city, 'urbanHeatZones') +
+    getArrayLength(city, 'windComfortZones') +
     getArrayLength(city, 'utilityNodes') +
     getArrayLength(city, 'utilityEdges') +
     getArrayLength(city, 'serviceAccessCorridors') +

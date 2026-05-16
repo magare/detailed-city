@@ -27,6 +27,7 @@ import { attachCurbZoneIdsToSlices, CurbZoneGenerator } from './curbs/CurbZoneGe
 import { ClimateWeatherGenerator } from './environment/ClimateWeatherGenerator';
 import { SolarShadingGenerator } from './environment/SolarShadingGenerator';
 import { UrbanHeatGenerator } from './environment/UrbanHeatGenerator';
+import { WindComfortGenerator } from './environment/WindComfortGenerator';
 import { AdministrativeBoundaryGenerator } from './land/AdministrativeBoundaryGenerator';
 import { AddressingGazetteerGenerator } from './land/AddressingGazetteerGenerator';
 import { CadastreGenerator } from './land/CadastreGenerator';
@@ -251,6 +252,17 @@ export class CityGenerator {
       trees,
       weatherPresets,
       waterfrontOpenSpaces
+    });
+    const windComfortZones = new WindComfortGenerator().create({
+      buildings: sliceTagged.buildings,
+      roads: sliceTagged.roads,
+      parks: parksWithFeatures,
+      plazaZones,
+      waterfrontOpenSpaces,
+      waterways,
+      trees,
+      solarShadingSamples,
+      weatherPresets
     });
     const utilityBase = new UtilityBaseGenerator().create({
       administrativeBoundaries: administrativeLand.administrativeBoundaries,
@@ -497,6 +509,7 @@ export class CityGenerator {
       weatherPresets,
       solarShadingSamples,
       urbanHeatZones,
+      windComfortZones,
       utilityNodes: serviceAccess.utilityNodes,
       utilityEdges: serviceAccess.utilityEdges,
       serviceAccessCorridors: serviceAccess.serviceAccessCorridors,

@@ -112,7 +112,7 @@ src/city/
   environment/
     climate-weather/   Rain, cloud, fog, seasonal conditions, weather presets.
     solar-shading/     Sun paths, shadows, daylight, solar potential.
-    wind-comfort/      Wind corridors, downdraft risk, sheltered areas.
+    wind-comfort/      Wind corridors, downdraft risk, bridge effects, waterfront exposure, sheltered areas.
     air-quality/       Emissions sources, clean-air corridors, exposure.
     noise/             Traffic noise, industrial noise, quiet zones.
     urban-heat/        Heat islands, shade, cool roofs, tree canopy.

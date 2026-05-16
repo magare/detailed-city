@@ -25,6 +25,7 @@ export type CityOverlayId =
   | 'weather-presets'
   | 'solar-shading'
   | 'urban-heat'
+  | 'wind-comfort'
   | 'city-metrics'
   | 'cycling-network'
   | 'navigation-graphs'
@@ -111,6 +112,7 @@ export function createCityOverlayDatasets(
     createDataset('weather-presets', 'Weather Presets', 'domain-data', createWeatherPresetFeatures(city)),
     createDataset('solar-shading', 'Solar Shading', 'domain-data', createSolarShadingFeatures(city)),
     createDataset('urban-heat', 'Urban Heat', 'domain-data', createUrbanHeatFeatures(city)),
+    createDataset('wind-comfort', 'Wind Comfort', 'domain-data', createWindComfortFeatures(city)),
     createDataset('city-metrics', 'City Metrics', 'domain-data', createCityMetricFeatures(city)),
     createDataset('cycling-network', 'Cycling Network', 'domain-data', createCyclingNetworkFeatures(city)),
     createDataset('navigation-graphs', 'Navigation Graphs', 'domain-data', createNavigationGraphFeatures(city)),
@@ -611,6 +613,37 @@ function createUrbanHeatFeatures(city: GeneratedCity): CityOverlayFeature[] {
       coolRoofCoverageRatio: zone.coolRoofCoverageRatio,
       mitigationEffectScore: zone.mitigationEffectScore,
       daytimeTemperatureDeltaCelsius: zone.daytimeTemperatureDeltaCelsius
+    }
+  }));
+}
+
+function createWindComfortFeatures(city: GeneratedCity): CityOverlayFeature[] {
+  return city.windComfortZones.map((zone) => ({
+    id: `overlay:wind-comfort:${zone.id}`,
+    overlayId: 'wind-comfort',
+    objectId: zone.id,
+    objectKind: zone.kind,
+    ownerDomain: zone.ownerDomain,
+    label: zone.name ?? zone.id,
+    geometry: { type: 'polygon', points: zone.boundary },
+    metadata: {
+      zoneKind: zone.zoneKind,
+      riskLevel: zone.riskLevel,
+      parentObjectId: zone.parentObjectId,
+      weatherPresetId: zone.weatherPresetId,
+      prevailingWindDegrees: zone.prevailingWindDegrees,
+      baseWindSpeedKph: zone.baseWindSpeedKph,
+      gustWindSpeedKph: zone.gustWindSpeedKph,
+      pedestrianComfortScore: zone.pedestrianComfortScore,
+      shelterFactor: zone.shelterFactor,
+      accelerationFactor: zone.accelerationFactor,
+      downdraftRiskScore: zone.downdraftRiskScore,
+      waterfrontExposureScore: zone.waterfrontExposureScore,
+      pedestrianWarning: zone.pedestrianWarning,
+      referencedBuildings: zone.references.buildingIds?.length ?? 0,
+      referencedRoads: zone.references.roadIds?.length ?? 0,
+      referencedTrees: zone.references.treeIds?.length ?? 0,
+      referencedSolarSamples: zone.references.solarShadingSampleIds?.length ?? 0
     }
   }));
 }

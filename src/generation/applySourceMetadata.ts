@@ -19,6 +19,7 @@ export function applyGeneratedCitySourceMetadata(city: GeneratedCityWithoutValid
       withProceduralMetadata(sample, 'environment-solar-shading')
     ),
     urbanHeatZones: city.urbanHeatZones.map((zone) => withProceduralMetadata(zone, 'environment-urban-heat')),
+    windComfortZones: city.windComfortZones.map((zone) => withProceduralMetadata(zone, 'environment-wind-comfort')),
     utilityNodes: city.utilityNodes.map((node) => withProceduralMetadata(node, 'utilities-base-nodes')),
     utilityEdges: city.utilityEdges.map((edge) => withProceduralMetadata(edge, 'utilities-base-edges')),
     serviceAccessCorridors: city.serviceAccessCorridors.map((corridor) =>

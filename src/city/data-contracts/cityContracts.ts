@@ -83,6 +83,7 @@ export type CityObjectKind =
   | 'waterfront-edge'
   | 'waterfront-open-space'
   | 'waterway'
+  | 'wind-comfort-zone'
   | 'weather-preset'
   | 'zoning-district';
 
@@ -1133,6 +1134,13 @@ export const DEFAULT_CITY_LOD_POLICY: CityLodPolicy = {
       defaultTier: 'lod0',
       allowedTiers: ['lod0'],
       description: 'Urban heat zones expose heat islands, cool roofs, canopy and water cooling, albedo, and route heat risk for environmental overlays.'
+    },
+    {
+      objectKind: 'wind-comfort-zone',
+      scope: 'overlay',
+      defaultTier: 'lod0',
+      allowedTiers: ['lod0'],
+      description: 'Wind comfort zones expose corridors, shelter, downdraft risk, bridge effects, waterfront exposure, and public-space comfort warnings for environmental overlays.'
     },
     {
       objectKind: 'weather-preset',
@@ -4000,6 +4008,14 @@ export type SolarShadingSampleKind = 'roof-solar' | 'plaza-comfort' | 'park-comf
 export type SolarGlareRisk = 'low' | 'medium' | 'high';
 export type UrbanHeatZoneKind = 'heat-island' | 'cool-roof' | 'canopy-cooling' | 'water-cooling' | 'public-route-risk';
 export type UrbanHeatRiskLevel = 'low' | 'moderate' | 'high' | 'critical';
+export type WindComfortZoneKind =
+  | 'bridge-effect'
+  | 'downdraft-risk'
+  | 'public-space-comfort'
+  | 'sheltered-area'
+  | 'waterfront-exposure'
+  | 'wind-corridor';
+export type WindComfortRiskLevel = 'calm' | 'comfortable' | 'windy' | 'hazardous';
 
 export interface SolarPathSampleContract {
   readonly hour: number;
@@ -4059,6 +4075,35 @@ export interface UrbanHeatZoneContract extends CityObjectBase<'urban-heat-zone'>
     readonly solarShadingSampleIds?: readonly CityId[];
     readonly waterfrontOpenSpaceId?: CityId;
     readonly hazardZoneIds?: readonly CityId[];
+  };
+}
+
+export interface WindComfortZoneContract extends CityObjectBase<'wind-comfort-zone'> {
+  readonly zoneKind: WindComfortZoneKind;
+  readonly riskLevel: WindComfortRiskLevel;
+  readonly parentObjectId: CityId;
+  readonly center: Point2D;
+  readonly boundary: Polygon2D;
+  readonly weatherPresetId: CityId;
+  readonly prevailingWindDegrees: number;
+  readonly baseWindSpeedKph: number;
+  readonly gustWindSpeedKph: number;
+  readonly pedestrianComfortScore: number;
+  readonly shelterFactor: number;
+  readonly accelerationFactor: number;
+  readonly downdraftRiskScore: number;
+  readonly waterfrontExposureScore: number;
+  readonly pedestrianWarning: boolean;
+  readonly references: {
+    readonly buildingIds?: readonly CityId[];
+    readonly roadIds?: readonly CityId[];
+    readonly plazaZoneId?: CityId;
+    readonly parkId?: CityId;
+    readonly waterfrontOpenSpaceId?: CityId;
+    readonly waterwayId?: CityId;
+    readonly waterwayCrossingIds?: readonly CityId[];
+    readonly treeIds?: readonly CityId[];
+    readonly solarShadingSampleIds?: readonly CityId[];
   };
 }
 

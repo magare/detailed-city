@@ -48,7 +48,9 @@ import type {
   ValidationResult,
   WeatherPrecipitationKind,
   WeatherPresetKind,
-  WeatherSeason
+  WeatherSeason,
+  WindComfortRiskLevel,
+  WindComfortZoneKind
 } from '../cityContracts';
 import {
   CITY_ADMINISTRATIVE_BOUNDARY_KINDS,
@@ -105,6 +107,7 @@ type GeneratedCityForValidation = Pick<
   | 'weatherPresets'
   | 'solarShadingSamples'
   | 'urbanHeatZones'
+  | 'windComfortZones'
   | 'utilityNodes'
   | 'utilityEdges'
   | 'serviceAccessCorridors'
@@ -177,6 +180,7 @@ type ValidationDevelopmentPhase = GeneratedCityForValidation['developmentPhases'
 type ValidationWeatherPreset = GeneratedCityForValidation['weatherPresets'][number];
 type ValidationSolarShadingSample = GeneratedCityForValidation['solarShadingSamples'][number];
 type ValidationUrbanHeatZone = GeneratedCityForValidation['urbanHeatZones'][number];
+type ValidationWindComfortZone = GeneratedCityForValidation['windComfortZones'][number];
 type ValidationUtilityNode = GeneratedCityForValidation['utilityNodes'][number];
 type ValidationUtilityEdge = GeneratedCityForValidation['utilityEdges'][number];
 type ValidationServiceAccessCorridor = GeneratedCityForValidation['serviceAccessCorridors'][number];
@@ -446,6 +450,15 @@ const URBAN_HEAT_ZONE_KINDS = [
   'public-route-risk'
 ] as const satisfies readonly UrbanHeatZoneKind[];
 const URBAN_HEAT_RISK_LEVELS = ['low', 'moderate', 'high', 'critical'] as const satisfies readonly UrbanHeatRiskLevel[];
+const WIND_COMFORT_ZONE_KINDS = [
+  'bridge-effect',
+  'downdraft-risk',
+  'public-space-comfort',
+  'sheltered-area',
+  'waterfront-exposure',
+  'wind-corridor'
+] as const satisfies readonly WindComfortZoneKind[];
+const WIND_COMFORT_RISK_LEVELS = ['calm', 'comfortable', 'windy', 'hazardous'] as const satisfies readonly WindComfortRiskLevel[];
 const TRAVEL_MODES = ['vehicle', 'bus', 'bike', 'freight', 'emergency'] as const satisfies readonly TravelMode[];
 const LANE_ROLES = ['general', 'bus-only', 'turn-pocket', 'reversible', 'service'] as const satisfies readonly LaneRole[];
 const BUILDING_TYPOLOGY_KINDS = [
@@ -621,6 +634,7 @@ export function validateGeneratedCity(city: GeneratedCityForValidation): Validat
   validateWeatherPresets(city.weatherPresets, issues);
   validateSolarShadingSamples(city, issues);
   validateUrbanHeatZones(city, issues);
+  validateWindComfortZones(city, issues);
   validateZoningDistricts(city, issues);
   validateWaterways(city, issues);
   validateWaterfrontEdges(city, issues);
@@ -9427,6 +9441,182 @@ function createUrbanHeatIssue(
     objectId: zone.id,
     suggestedFix: `Regenerate ${zone.id} from urban heat layer rules.`,
     ...createIssueFocus(zone.center, `Review urban heat zone ${zone.id}.`),
+    message
+  };
+}
+
+function validateWindComfortZones(city: GeneratedCityForValidation, issues: ValidationIssue[]): void {
+  const zoneKinds = new Set<WindComfortZoneKind>();
+  const weatherPresetIds = new Set(city.weatherPresets.map((preset) => preset.id));
+
+  if (city.windComfortZones.length === 0) {
+    issues.push({
+      id: 'missing-wind-comfort-zones',
+      severity: 'error',
+      category: 'environment',
+      message: 'Wind comfort generation must expose deterministic corridor, shelter, exposure, and warning zones.'
+    });
+  }
+
+  for (const zone of city.windComfortZones) {
+    if (!WIND_COMFORT_ZONE_KINDS.includes(zone.zoneKind)) {
+      issues.push(createWindComfortIssue(zone, 'invalid-kind', `Wind comfort zone ${zone.id} uses unsupported kind ${zone.zoneKind}.`));
+    } else {
+      zoneKinds.add(zone.zoneKind);
+    }
+
+    if (!WIND_COMFORT_RISK_LEVELS.includes(zone.riskLevel)) {
+      issues.push(createWindComfortIssue(zone, 'invalid-risk-level', `Wind comfort zone ${zone.id} uses unsupported risk level ${zone.riskLevel}.`));
+    }
+
+    if (!hasObjectId(city, zone.parentObjectId)) {
+      issues.push(createWindComfortIssue(zone, 'missing-parent-object', `Wind comfort zone ${zone.id} references missing parent object ${zone.parentObjectId}.`));
+    }
+
+    if (!weatherPresetIds.has(zone.weatherPresetId)) {
+      issues.push(createWindComfortIssue(zone, 'missing-weather-preset', `Wind comfort zone ${zone.id} references missing weather preset ${zone.weatherPresetId}.`));
+    }
+
+    if (
+      zone.boundary.length < 4 ||
+      zone.prevailingWindDegrees < 0 ||
+      zone.prevailingWindDegrees > 360 ||
+      zone.baseWindSpeedKph < 0 ||
+      zone.baseWindSpeedKph > 120 ||
+      zone.gustWindSpeedKph < 0 ||
+      zone.gustWindSpeedKph > 160 ||
+      zone.accelerationFactor <= 0 ||
+      zone.accelerationFactor > 4 ||
+      !isUnitInterval(zone.pedestrianComfortScore) ||
+      !isUnitInterval(zone.shelterFactor) ||
+      !isUnitInterval(zone.downdraftRiskScore) ||
+      !isUnitInterval(zone.waterfrontExposureScore)
+    ) {
+      issues.push(createWindComfortIssue(zone, 'invalid-values', `Wind comfort zone ${zone.id} must keep wind, comfort, shelter, and risk values in supported ranges.`));
+    }
+
+    if ((zone.riskLevel === 'windy' || zone.riskLevel === 'hazardous') && !zone.pedestrianWarning) {
+      issues.push(createWindComfortIssue(zone, 'missing-pedestrian-warning', `Windy or hazardous wind comfort zone ${zone.id} must flag a pedestrian warning.`));
+    }
+
+    validateWindComfortReferences(city, zone, issues);
+  }
+
+  for (const requiredKind of WIND_COMFORT_ZONE_KINDS) {
+    if (!zoneKinds.has(requiredKind)) {
+      issues.push({
+        id: `missing-wind-comfort-zone-${requiredKind}`,
+        severity: 'error',
+        category: 'environment',
+        objectId: `wind-comfort-${requiredKind}-0`,
+        message: `Wind comfort zones must include ${requiredKind}.`
+      });
+    }
+  }
+}
+
+function validateWindComfortReferences(
+  city: GeneratedCityForValidation,
+  zone: ValidationWindComfortZone,
+  issues: ValidationIssue[]
+): void {
+  const references = zone.references;
+  const waterwayCrossingIds = new Set(city.waterways.flatMap((waterway) => waterway.crossingRefs.map((crossing) => crossing.id)));
+
+  if (zone.zoneKind === 'wind-corridor' && (references.roadIds?.length ?? 0) === 0) {
+    issues.push(createWindComfortIssue(zone, 'missing-road-reference', `Wind corridor ${zone.id} must reference at least one road.`));
+  }
+
+  if (zone.zoneKind === 'downdraft-risk' && (references.buildingIds?.length ?? 0) === 0) {
+    issues.push(createWindComfortIssue(zone, 'missing-building-reference', `Downdraft risk zone ${zone.id} must reference at least one tall building.`));
+  }
+
+  if (
+    zone.zoneKind === 'bridge-effect' &&
+    ((references.roadIds?.length ?? 0) === 0 ||
+      !references.waterwayId ||
+      !hasObjectId(city, references.waterwayId) ||
+      (references.waterwayCrossingIds?.length ?? 0) === 0)
+  ) {
+    issues.push(createWindComfortIssue(zone, 'missing-bridge-reference', `Bridge-effect zone ${zone.id} must reference a road, waterway, and waterway crossing.`));
+  }
+
+  if (
+    zone.zoneKind === 'waterfront-exposure' &&
+    (!references.waterfrontOpenSpaceId || !hasObjectId(city, references.waterfrontOpenSpaceId))
+  ) {
+    issues.push(createWindComfortIssue(zone, 'missing-waterfront-reference', `Waterfront exposure zone ${zone.id} must reference an existing waterfront open space.`));
+  }
+
+  if (
+    zone.zoneKind === 'sheltered-area' &&
+    !references.parkId &&
+    !references.plazaZoneId &&
+    (references.treeIds?.length ?? 0) === 0
+  ) {
+    issues.push(createWindComfortIssue(zone, 'missing-shelter-reference', `Sheltered wind area ${zone.id} must reference a park, plaza, or tree shelter.`));
+  }
+
+  if (
+    zone.zoneKind === 'public-space-comfort' &&
+    !references.parkId &&
+    !references.plazaZoneId &&
+    !references.waterfrontOpenSpaceId
+  ) {
+    issues.push(createWindComfortIssue(zone, 'missing-public-space-reference', `Public-space wind zone ${zone.id} must reference a park, plaza, or waterfront open space.`));
+  }
+
+  for (const buildingId of references.buildingIds ?? []) {
+    if (!hasObjectId(city, buildingId)) {
+      issues.push(createWindComfortIssue(zone, 'missing-building-reference', `Wind comfort zone ${zone.id} references missing building ${buildingId}.`));
+    }
+  }
+
+  for (const roadId of references.roadIds ?? []) {
+    if (!hasObjectId(city, roadId)) {
+      issues.push(createWindComfortIssue(zone, 'missing-road-reference', `Wind comfort zone ${zone.id} references missing road ${roadId}.`));
+    }
+  }
+
+  for (const treeId of references.treeIds ?? []) {
+    if (!hasObjectId(city, treeId)) {
+      issues.push(createWindComfortIssue(zone, 'missing-tree-reference', `Wind comfort zone ${zone.id} references missing tree ${treeId}.`));
+    }
+  }
+
+  for (const sampleId of references.solarShadingSampleIds ?? []) {
+    if (!hasObjectId(city, sampleId)) {
+      issues.push(createWindComfortIssue(zone, 'missing-solar-reference', `Wind comfort zone ${zone.id} references missing solar shading sample ${sampleId}.`));
+    }
+  }
+
+  for (const crossingId of references.waterwayCrossingIds ?? []) {
+    if (!waterwayCrossingIds.has(crossingId)) {
+      issues.push(createWindComfortIssue(zone, 'missing-waterway-crossing-reference', `Wind comfort zone ${zone.id} references missing waterway crossing ${crossingId}.`));
+    }
+  }
+
+  if (references.parkId && !hasObjectId(city, references.parkId)) {
+    issues.push(createWindComfortIssue(zone, 'missing-park-reference', `Wind comfort zone ${zone.id} references missing park ${references.parkId}.`));
+  }
+
+  if (references.plazaZoneId && !hasObjectId(city, references.plazaZoneId)) {
+    issues.push(createWindComfortIssue(zone, 'missing-plaza-reference', `Wind comfort zone ${zone.id} references missing plaza zone ${references.plazaZoneId}.`));
+  }
+}
+
+function createWindComfortIssue(
+  zone: ValidationWindComfortZone,
+  issueIdSuffix: string,
+  message: string
+): ValidationIssue {
+  return {
+    id: `wind-comfort-${issueIdSuffix}-${toIssueIdToken(zone.id)}`,
+    severity: 'error',
+    category: 'environment',
+    objectId: zone.id,
+    suggestedFix: `Regenerate ${zone.id} from wind comfort layer rules.`,
+    ...createIssueFocus(zone.center, `Review wind comfort zone ${zone.id}.`),
     message
   };
 }

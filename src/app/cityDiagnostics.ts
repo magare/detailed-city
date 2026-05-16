@@ -45,7 +45,9 @@ import type {
   WeatherPresetKind,
   WeatherSeason,
   WaterTransportAccessKind,
-  WaterTransportArrivalMode
+  WaterTransportArrivalMode,
+  WindComfortRiskLevel,
+  WindComfortZoneKind
 } from '../city/data-contracts/cityContracts';
 import { createGeneratedRuntimeObjectIndex } from '../city/data-contracts/generatedCityObjectIndex';
 import { createGeneratedCityObjectGroupIndex } from '../city/data-contracts/generatedCityObjectGroups';
@@ -143,6 +145,7 @@ export interface CityDiagnostics {
   readonly climateWeather: ClimateWeatherDiagnostics;
   readonly solarShading: SolarShadingDiagnostics;
   readonly urbanHeat: UrbanHeatDiagnostics;
+  readonly windComfort: WindComfortDiagnostics;
   readonly developmentPhasing: DevelopmentPhasingDiagnostics;
   readonly parkExpansion: ParkExpansionDiagnostics;
   readonly plazaModel: PlazaModelDiagnostics;
@@ -393,6 +396,10 @@ export interface CityDiagnostics {
     readonly urbanHeatZones: number;
     readonly urbanHeatHighRiskZones: number;
     readonly urbanHeatPublicRouteRiskZones: number;
+    readonly windComfortZones: number;
+    readonly windComfortWarnings: number;
+    readonly windComfortHazardousZones: number;
+    readonly windComfortShelteredAreas: number;
     readonly developmentPhases: number;
     readonly activeDevelopmentPhases: number;
     readonly temporaryRoadClosures: number;
@@ -1432,6 +1439,26 @@ export interface UrbanHeatDiagnostics {
   readonly weatherPresetIds: readonly string[];
 }
 
+export interface WindComfortDiagnostics {
+  readonly total: number;
+  readonly windCorridors: number;
+  readonly shelteredAreas: number;
+  readonly downdraftRiskZones: number;
+  readonly bridgeEffectZones: number;
+  readonly waterfrontExposureZones: number;
+  readonly publicSpaceComfortZones: number;
+  readonly pedestrianWarnings: number;
+  readonly windyZones: number;
+  readonly hazardousZones: number;
+  readonly averagePedestrianComfortScore: number;
+  readonly averageGustWindSpeedKph: number;
+  readonly maxGustWindSpeedKph: number;
+  readonly averageShelterFactor: number;
+  readonly weatherPresetIds: readonly string[];
+  readonly byZoneKind: Readonly<Record<WindComfortZoneKind, number>>;
+  readonly byRiskLevel: Readonly<Record<WindComfortRiskLevel, number>>;
+}
+
 export interface DevelopmentPhasingDiagnostics {
   readonly total: number;
   readonly active: number;
@@ -1573,6 +1600,7 @@ export function createCityDiagnostics(
   const climateWeather = createClimateWeatherDiagnostics(city);
   const solarShading = createSolarShadingDiagnostics(city);
   const urbanHeat = createUrbanHeatDiagnostics(city);
+  const windComfort = createWindComfortDiagnostics(city);
   const developmentPhasing = createDevelopmentPhasingDiagnostics(city);
   const parkExpansion = createParkExpansionDiagnostics(city);
   const plazaModel = createPlazaModelDiagnostics(city);
@@ -1653,6 +1681,7 @@ export function createCityDiagnostics(
     climateWeather,
     solarShading,
     urbanHeat,
+    windComfort,
     developmentPhasing,
     parkExpansion,
     plazaModel,
@@ -1894,6 +1923,10 @@ export function createCityDiagnostics(
       urbanHeatZones: urbanHeat.total,
       urbanHeatHighRiskZones: urbanHeat.highRiskZones,
       urbanHeatPublicRouteRiskZones: urbanHeat.publicRouteRiskZones,
+      windComfortZones: windComfort.total,
+      windComfortWarnings: windComfort.pedestrianWarnings,
+      windComfortHazardousZones: windComfort.hazardousZones,
+      windComfortShelteredAreas: windComfort.shelteredAreas,
       developmentPhases: developmentPhasing.total,
       activeDevelopmentPhases: developmentPhasing.active,
       temporaryRoadClosures: developmentPhasing.closureRoads,
@@ -4518,6 +4551,59 @@ function createUrbanHeatDiagnostics(city: GeneratedCity): UrbanHeatDiagnostics {
     averageWaterCoolingScore: roundDiagnosticRatio(waterCooling / Math.max(1, total)),
     maxDaytimeTemperatureDeltaCelsius: Math.round(maxDaytimeTemperatureDeltaCelsius * 10) / 10,
     weatherPresetIds: [...weatherPresetIds].sort()
+  };
+}
+
+function createWindComfortDiagnostics(city: GeneratedCity): WindComfortDiagnostics {
+  const total = city.windComfortZones.length;
+  const weatherPresetIds = new Set<string>();
+  const byZoneKind: Record<WindComfortZoneKind, number> = {
+    'bridge-effect': 0,
+    'downdraft-risk': 0,
+    'public-space-comfort': 0,
+    'sheltered-area': 0,
+    'waterfront-exposure': 0,
+    'wind-corridor': 0
+  };
+  const byRiskLevel: Record<WindComfortRiskLevel, number> = {
+    calm: 0,
+    comfortable: 0,
+    windy: 0,
+    hazardous: 0
+  };
+  let comfortScore = 0;
+  let gustWindSpeedKph = 0;
+  let maxGustWindSpeedKph = 0;
+  let shelterFactor = 0;
+
+  for (const zone of city.windComfortZones) {
+    weatherPresetIds.add(zone.weatherPresetId);
+    byZoneKind[zone.zoneKind] += 1;
+    byRiskLevel[zone.riskLevel] += 1;
+    comfortScore += zone.pedestrianComfortScore;
+    gustWindSpeedKph += zone.gustWindSpeedKph;
+    maxGustWindSpeedKph = Math.max(maxGustWindSpeedKph, zone.gustWindSpeedKph);
+    shelterFactor += zone.shelterFactor;
+  }
+
+  return {
+    total,
+    windCorridors: byZoneKind['wind-corridor'],
+    shelteredAreas: byZoneKind['sheltered-area'],
+    downdraftRiskZones: byZoneKind['downdraft-risk'],
+    bridgeEffectZones: byZoneKind['bridge-effect'],
+    waterfrontExposureZones: byZoneKind['waterfront-exposure'],
+    publicSpaceComfortZones: byZoneKind['public-space-comfort'],
+    pedestrianWarnings: city.windComfortZones.filter((zone) => zone.pedestrianWarning).length,
+    windyZones: byRiskLevel.windy,
+    hazardousZones: byRiskLevel.hazardous,
+    averagePedestrianComfortScore: roundDiagnosticRatio(comfortScore / Math.max(1, total)),
+    averageGustWindSpeedKph: Math.round((gustWindSpeedKph / Math.max(1, total)) * 10) / 10,
+    maxGustWindSpeedKph: Math.round(maxGustWindSpeedKph * 10) / 10,
+    averageShelterFactor: roundDiagnosticRatio(shelterFactor / Math.max(1, total)),
+    weatherPresetIds: [...weatherPresetIds].sort(),
+    byZoneKind,
+    byRiskLevel
   };
 }
 

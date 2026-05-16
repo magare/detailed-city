@@ -314,6 +314,10 @@ export class DebugPanel {
         'Heat',
         `${diagnostics.urbanHeat.total} zones, ${diagnostics.urbanHeat.highRiskZones} high, ${diagnostics.urbanHeat.publicRouteRiskZones} routes`
       ),
+      createMetric(
+        'Wind',
+        `${diagnostics.windComfort.total} zones, ${diagnostics.windComfort.pedestrianWarnings} warnings, ${diagnostics.windComfort.shelteredAreas} sheltered`
+      ),
       createMetric('Validation', getStatusLabel(diagnostics.validation.passed, diagnostics.validation.issues.length)),
       createMetric('Geo', `${diagnostics.geospatial.coordinateSystem}, ${coordinatePrecision}m`),
       createMetric(
