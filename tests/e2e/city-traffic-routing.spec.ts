@@ -3,6 +3,11 @@ import { validateTrafficPlan } from '../../src/city/data-contracts/validation/va
 import { cityConfig } from '../../src/config/cityConfig';
 import { CityGenerator } from '../../src/generation/CityGenerator';
 import { TrafficLaneGenerator } from '../../src/generation/traffic/TrafficLaneGenerator';
+import {
+  initializeTrafficVehicleRuntimeState,
+  initializeTrafficRuntimeState
+} from '../../src/city/data-contracts/trafficRuntimeState';
+import type { TrafficRuntimeState } from '../../src/city/data-contracts/trafficRuntimeState';
 
 test('traffic vehicles reference lanes, route nodes, stop zones, profile speeds, and vehicle taxonomy', () => {
   const firstCity = new CityGenerator(cityConfig).generate();
@@ -592,3 +597,148 @@ function validateTraffic(
     traffic
   });
 }
+
+test('traffic vehicle runtime state initializes deterministically from plan', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const [vehicle] = traffic.vehicles;
+
+  const firstRuntime = initializeTrafficVehicleRuntimeState(vehicle);
+  const secondRuntime = initializeTrafficVehicleRuntimeState(vehicle);
+
+  expect(firstRuntime).toEqual({
+    vehicleId: vehicle.id,
+    currentRouteOffsetMeters: vehicle.routeOffsetMeters,
+    currentSpeedMetersPerSecond: vehicle.speed,
+    targetSpeedMetersPerSecond: vehicle.speed,
+    behaviorState: 'cruising',
+    stopTimerSeconds: 0,
+    lastStopZoneIndex: undefined,
+    laneChangeState: {
+      kind: 'idle',
+      currentLaneId: vehicle.laneId,
+      targetLaneId: undefined,
+      progress: 0,
+      cooldownSeconds: 0,
+      lateralOffsetMeters: 0
+    },
+    signalState: {
+      kind: 'uncontrolled',
+      signalId: undefined,
+      waitTimeSeconds: 0
+    },
+    replaySeed: secondRuntime.replaySeed
+  });
+  expect(firstRuntime.replaySeed).toBe(secondRuntime.replaySeed);
+  expect(firstRuntime.replaySeed).toMatch(/^seed:[a-z0-9]{8,}$/);
+});
+
+test('traffic vehicle runtime state does not mutate generated plan', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const [vehicle] = traffic.vehicles;
+
+  const originalRouteOffset = vehicle.routeOffsetMeters;
+  const originalSpeed = vehicle.speed;
+
+  const runtime = initializeTrafficVehicleRuntimeState(vehicle);
+
+  runtime.currentRouteOffsetMeters = 999;
+  runtime.currentSpeedMetersPerSecond = 50;
+  runtime.behaviorState = 'braking';
+  runtime.stopTimerSeconds = 10;
+  runtime.lastStopZoneIndex = 0;
+  runtime.laneChangeState = {
+    kind: 'changing-left',
+    currentLaneId: vehicle.laneId,
+    targetLaneId: 'some-target-lane',
+    progress: 0.5,
+    cooldownSeconds: 1,
+    lateralOffsetMeters: 1.5
+  };
+  runtime.signalState = {
+    kind: 'stopping',
+    signalId: 'some-signal',
+    waitTimeSeconds: 5
+  };
+
+  expect(vehicle.routeOffsetMeters).toBe(originalRouteOffset);
+  expect(vehicle.speed).toBe(originalSpeed);
+});
+
+test('traffic vehicle runtime state produces stable replay seed for same plan', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+
+  const firstSeeds = traffic.vehicles.map((vehicle) => initializeTrafficVehicleRuntimeState(vehicle).replaySeed);
+  const secondSeeds = traffic.vehicles.map((vehicle) => initializeTrafficVehicleRuntimeState(vehicle).replaySeed);
+
+  expect(firstSeeds).toEqual(secondSeeds);
+  expect(new Set(firstSeeds).size).toBeGreaterThan(1);
+});
+
+test('traffic runtime state initializes from full traffic plan', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+
+  const firstRuntime = initializeTrafficRuntimeState(traffic);
+  const secondRuntime = initializeTrafficRuntimeState(traffic);
+
+  expect(firstRuntime.vehicles).toHaveLength(traffic.vehicles.length);
+  expect(firstRuntime.vehicles).toEqual(secondRuntime.vehicles);
+
+  firstRuntime.vehicles.forEach((vehicleRuntime, index) => {
+    const plan = traffic.vehicles[index];
+    expect(vehicleRuntime).toEqual({
+      vehicleId: plan.id,
+      currentRouteOffsetMeters: plan.routeOffsetMeters,
+      currentSpeedMetersPerSecond: plan.speed,
+      targetSpeedMetersPerSecond: plan.speed,
+      behaviorState: 'cruising',
+      stopTimerSeconds: 0,
+      lastStopZoneIndex: undefined,
+      laneChangeState: {
+        kind: 'idle',
+        currentLaneId: plan.laneId,
+        targetLaneId: undefined,
+        progress: 0,
+        cooldownSeconds: 0,
+        lateralOffsetMeters: 0
+      },
+      signalState: {
+        kind: 'uncontrolled',
+        signalId: undefined,
+        waitTimeSeconds: 0
+      },
+      replaySeed: secondRuntime.vehicles[index].replaySeed
+    });
+  });
+});
+
+test('traffic runtime state is JSON serializable', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const runtime = initializeTrafficRuntimeState(traffic);
+
+  const serialized = JSON.stringify(runtime);
+  const deserialized = JSON.parse(serialized) as TrafficRuntimeState;
+
+  expect(deserialized).toEqual(runtime);
+  expect(deserialized.vehicles).toHaveLength(runtime.vehicles.length);
+});
+
+test('traffic runtime state mutation does not affect original traffic plan', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const originalPlan = structuredClone(traffic);
+
+  const runtime = initializeTrafficRuntimeState(traffic);
+
+  runtime.vehicles[0].currentRouteOffsetMeters = 1234;
+  runtime.vehicles[0].currentSpeedMetersPerSecond = 99;
+  runtime.vehicles[0].lastStopZoneIndex = 5;
+  runtime.vehicles[0].laneChangeState.kind = 'changing-right';
+  runtime.vehicles[0].signalState.kind = 'stopped-red';
+
+  expect(traffic).toEqual(originalPlan);
+});

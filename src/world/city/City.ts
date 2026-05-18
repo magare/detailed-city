@@ -361,8 +361,14 @@ export class City implements Updatable {
 }
 
 function updateTrafficVehicle(vehicle: TrafficVehicle, deltaSeconds: number): void {
-  if (vehicle.stopTimerSeconds > 0) {
-    vehicle.stopTimerSeconds = Math.max(0, vehicle.stopTimerSeconds - deltaSeconds);
+  const runtime = vehicle.runtime;
+
+  if (runtime.stopTimerSeconds > 0) {
+    runtime.stopTimerSeconds = Math.max(0, runtime.stopTimerSeconds - deltaSeconds);
+    if (runtime.currentSpeedMetersPerSecond !== 0) {
+      runtime.currentSpeedMetersPerSecond = 0;
+      runtime.behaviorState = 'stopped';
+    }
     return;
   }
 
@@ -370,44 +376,51 @@ function updateTrafficVehicle(vehicle: TrafficVehicle, deltaSeconds: number): vo
 
   if (stopZoneIndex !== undefined) {
     const stopOffset = vehicle.stopZoneOffsetsMeters[stopZoneIndex];
-    vehicle.routeOffsetMeters = stopOffset - vehicle.direction * 1.8;
-    vehicle.stopTimerSeconds = vehicle.stopDurationSeconds;
-    vehicle.lastStopZoneIndex = stopZoneIndex;
+    runtime.currentRouteOffsetMeters = stopOffset - vehicle.direction * 1.8;
+    runtime.stopTimerSeconds = vehicle.stopDurationSeconds;
+    runtime.lastStopZoneIndex = stopZoneIndex;
+    runtime.currentSpeedMetersPerSecond = 0;
+    runtime.behaviorState = 'stopped';
     applyTrafficVehiclePosition(vehicle);
     return;
   }
 
   const previousStoppedOffset =
-    vehicle.lastStopZoneIndex === undefined ? undefined : vehicle.stopZoneOffsetsMeters[vehicle.lastStopZoneIndex];
+    runtime.lastStopZoneIndex === undefined ? undefined : vehicle.stopZoneOffsetsMeters[runtime.lastStopZoneIndex];
 
   if (
     previousStoppedOffset !== undefined &&
-    (previousStoppedOffset - vehicle.routeOffsetMeters) * vehicle.direction < -vehicle.stopLookAheadMeters
+    (previousStoppedOffset - runtime.currentRouteOffsetMeters) * vehicle.direction < -vehicle.stopLookAheadMeters
   ) {
-    vehicle.lastStopZoneIndex = undefined;
+    runtime.lastStopZoneIndex = undefined;
   }
 
-  vehicle.routeOffsetMeters += vehicle.direction * vehicle.speed * deltaSeconds;
-
-  if (vehicle.routeOffsetMeters > vehicle.max) {
-    vehicle.routeOffsetMeters = vehicle.min;
-    vehicle.lastStopZoneIndex = undefined;
-  } else if (vehicle.routeOffsetMeters < vehicle.min) {
-    vehicle.routeOffsetMeters = vehicle.max;
-    vehicle.lastStopZoneIndex = undefined;
+  if (runtime.currentSpeedMetersPerSecond !== runtime.targetSpeedMetersPerSecond) {
+    runtime.currentSpeedMetersPerSecond = runtime.targetSpeedMetersPerSecond;
   }
 
+  runtime.currentRouteOffsetMeters += vehicle.direction * runtime.currentSpeedMetersPerSecond * deltaSeconds;
+
+  if (runtime.currentRouteOffsetMeters > vehicle.max) {
+    runtime.currentRouteOffsetMeters = vehicle.min;
+    runtime.lastStopZoneIndex = undefined;
+  } else if (runtime.currentRouteOffsetMeters < vehicle.min) {
+    runtime.currentRouteOffsetMeters = vehicle.max;
+    runtime.lastStopZoneIndex = undefined;
+  }
+
+  runtime.behaviorState = 'cruising';
   applyTrafficVehiclePosition(vehicle);
 }
 
 function getUpcomingStopZoneIndex(vehicle: TrafficVehicle): number | undefined {
   for (let index = 0; index < vehicle.stopZoneOffsetsMeters.length; index += 1) {
-    if (vehicle.lastStopZoneIndex === index) {
+    if (vehicle.runtime.lastStopZoneIndex === index) {
       continue;
     }
 
     const stopOffset = vehicle.stopZoneOffsetsMeters[index];
-    const distanceMeters = (stopOffset - vehicle.routeOffsetMeters) * vehicle.direction;
+    const distanceMeters = (stopOffset - vehicle.runtime.currentRouteOffsetMeters) * vehicle.direction;
 
     if (distanceMeters >= 0 && distanceMeters <= vehicle.stopLookAheadMeters) {
       return index;
@@ -418,7 +431,7 @@ function getUpcomingStopZoneIndex(vehicle: TrafficVehicle): number | undefined {
 }
 
 function applyTrafficVehiclePosition(vehicle: TrafficVehicle): void {
-  const routeCoordinate = vehicle.centerCoordinate + vehicle.routeOffsetMeters;
+  const routeCoordinate = vehicle.centerCoordinate + vehicle.runtime.currentRouteOffsetMeters;
 
   if (vehicle.axis === 'x') {
     vehicle.mesh.position.x = routeCoordinate;

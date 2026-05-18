@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { MaterialLibrary } from '../../../rendering/materials/MaterialLibrary';
 import type { LaneMarkingPlan, TrafficPlan } from '../../../types/city';
+import { initializeTrafficVehicleRuntimeState, type TrafficVehicleRuntimeState } from '../../data-contracts/trafficRuntimeState';
 import {
   attachCityPickingInstanceMetadata,
   attachCityPickingMetadata,
@@ -12,18 +13,14 @@ export interface TrafficVehicle {
   mesh: THREE.Mesh;
   axis: 'x' | 'z';
   direction: 1 | -1;
-  speed: number;
   min: number;
   max: number;
   centerCoordinate: number;
   fixedCoordinate: number;
-  routeOffsetMeters: number;
   stopZoneOffsetsMeters: readonly number[];
   stopDurationSeconds: number;
   stopLookAheadMeters: number;
-  stopTimerSeconds: number;
-  lastStopZoneIndex?: number;
-  heightMeters: number;
+  runtime: TrafficVehicleRuntimeState;
 }
 
 export interface TrafficLayer {
@@ -169,33 +166,30 @@ export class TrafficMeshBuilder {
 
     const vehicles: TrafficVehicle[] = [];
 
-    plan.vehicles.forEach((vehicle, index) => {
-      const geometry = new THREE.BoxGeometry(vehicle.size.x, vehicle.dimensions.heightMeters, vehicle.size.z);
+    plan.vehicles.forEach((vehiclePlan, index) => {
+      const geometry = new THREE.BoxGeometry(vehiclePlan.size.x, vehiclePlan.dimensions.heightMeters, vehiclePlan.size.z);
       const material = this.materials.vehicleBody[index % this.materials.vehicleBody.length];
       const mesh = new THREE.Mesh(geometry, material);
 
-      mesh.name = vehicle.id;
+      mesh.name = vehiclePlan.id;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      mesh.position.set(vehicle.position.x, vehicle.dimensions.heightMeters / 2, vehicle.position.z);
-      attachCityPickingMetadata(mesh, metadataByObjectId[vehicle.id] ?? createCityPickingMetadata(vehicle));
+      mesh.position.set(vehiclePlan.position.x, vehiclePlan.dimensions.heightMeters / 2, vehiclePlan.position.z);
+      attachCityPickingMetadata(mesh, metadataByObjectId[vehiclePlan.id] ?? createCityPickingMetadata(vehiclePlan));
 
       group.add(mesh);
       vehicles.push({
         mesh,
-        axis: vehicle.axis,
-        direction: vehicle.direction,
-        speed: vehicle.speed,
-        min: vehicle.min,
-        max: vehicle.max,
-        centerCoordinate: vehicle.axis === 'x' ? vehicle.position.x - vehicle.routeOffsetMeters : vehicle.position.z - vehicle.routeOffsetMeters,
-        fixedCoordinate: vehicle.axis === 'x' ? vehicle.position.z : vehicle.position.x,
-        routeOffsetMeters: vehicle.routeOffsetMeters,
-        stopZoneOffsetsMeters: vehicle.stopBehavior.stopZoneOffsetsMeters,
-        stopDurationSeconds: vehicle.stopBehavior.stopDurationSeconds,
-        stopLookAheadMeters: vehicle.stopBehavior.stopLookAheadMeters,
-        stopTimerSeconds: 0,
-        heightMeters: vehicle.dimensions.heightMeters
+        axis: vehiclePlan.axis,
+        direction: vehiclePlan.direction,
+        min: vehiclePlan.min,
+        max: vehiclePlan.max,
+        centerCoordinate: vehiclePlan.axis === 'x' ? vehiclePlan.position.x - vehiclePlan.routeOffsetMeters : vehiclePlan.position.z - vehiclePlan.routeOffsetMeters,
+        fixedCoordinate: vehiclePlan.axis === 'x' ? vehiclePlan.position.z : vehiclePlan.position.x,
+        stopZoneOffsetsMeters: vehiclePlan.stopBehavior.stopZoneOffsetsMeters,
+        stopDurationSeconds: vehiclePlan.stopBehavior.stopDurationSeconds,
+        stopLookAheadMeters: vehiclePlan.stopBehavior.stopLookAheadMeters,
+        runtime: initializeTrafficVehicleRuntimeState(vehiclePlan)
       });
     });
 
