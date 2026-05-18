@@ -17,7 +17,8 @@ import { StreetFurnitureMeshBuilder } from '../../city/rendering-handoff/mesh-bu
 import { StreetLightMeshBuilder } from '../../city/rendering-handoff/mesh-builders/StreetLightMeshBuilder';
 import { TerrainMeshBuilder } from '../../city/rendering-handoff/mesh-builders/TerrainMeshBuilder';
 import { TrafficCalmingMeshBuilder } from '../../city/rendering-handoff/mesh-builders/TrafficCalmingMeshBuilder';
-import { TrafficMeshBuilder, type TrafficVehicle } from '../../city/rendering-handoff/mesh-builders/TrafficMeshBuilder';
+import { TrafficMeshBuilder } from '../../city/rendering-handoff/mesh-builders/TrafficMeshBuilder';
+import { TrafficSimulationSystem } from '../../systems/traffic/TrafficSimulationSystem';
 import { TransitMeshBuilder } from '../../city/rendering-handoff/mesh-builders/TransitMeshBuilder';
 import { TreePlantingMeshBuilder } from '../../city/rendering-handoff/mesh-builders/TreePlantingMeshBuilder';
 import { WaterwayMeshBuilder } from '../../city/rendering-handoff/mesh-builders/WaterwayMeshBuilder';
@@ -54,7 +55,7 @@ export class City implements Updatable {
   readonly group = new THREE.Group();
   readonly layerGroups: Readonly<Record<CitySceneLayerId, THREE.Group>>;
   readonly pickingCatalog: CityPickingCatalog;
-  private readonly vehicles: TrafficVehicle[] = [];
+  private readonly trafficSimulation: TrafficSimulationSystem = new TrafficSimulationSystem();
 
   constructor(
     generated: GeneratedCity,
@@ -68,9 +69,7 @@ export class City implements Updatable {
   }
 
   update(deltaSeconds: number): void {
-    for (const vehicle of this.vehicles) {
-      updateTrafficVehicle(vehicle, deltaSeconds);
-    }
+    this.trafficSimulation.update(deltaSeconds);
   }
 
   dispose(): void {
@@ -335,7 +334,7 @@ export class City implements Updatable {
 
   private addTraffic(trafficPlan: TrafficPlan): void {
     const traffic = new TrafficMeshBuilder(this.materials).build(trafficPlan, this.pickingCatalog.metadataByObjectId);
-    this.vehicles.push(...traffic.vehicles);
+    this.trafficSimulation.addVehicles(traffic.vehicles);
     this.layerGroups.networks.add(traffic.markings);
     this.layerGroups.agents.add(traffic.vehicleGroup);
   }
@@ -357,87 +356,5 @@ export class City implements Updatable {
     }
 
     return layerGroups;
-  }
-}
-
-function updateTrafficVehicle(vehicle: TrafficVehicle, deltaSeconds: number): void {
-  const runtime = vehicle.runtime;
-
-  if (runtime.stopTimerSeconds > 0) {
-    runtime.stopTimerSeconds = Math.max(0, runtime.stopTimerSeconds - deltaSeconds);
-    if (runtime.currentSpeedMetersPerSecond !== 0) {
-      runtime.currentSpeedMetersPerSecond = 0;
-      runtime.behaviorState = 'stopped';
-    }
-    return;
-  }
-
-  const stopZoneIndex = getUpcomingStopZoneIndex(vehicle);
-
-  if (stopZoneIndex !== undefined) {
-    const stopOffset = vehicle.stopZoneOffsetsMeters[stopZoneIndex];
-    runtime.currentRouteOffsetMeters = stopOffset - vehicle.direction * 1.8;
-    runtime.stopTimerSeconds = vehicle.stopDurationSeconds;
-    runtime.lastStopZoneIndex = stopZoneIndex;
-    runtime.currentSpeedMetersPerSecond = 0;
-    runtime.behaviorState = 'stopped';
-    applyTrafficVehiclePosition(vehicle);
-    return;
-  }
-
-  const previousStoppedOffset =
-    runtime.lastStopZoneIndex === undefined ? undefined : vehicle.stopZoneOffsetsMeters[runtime.lastStopZoneIndex];
-
-  if (
-    previousStoppedOffset !== undefined &&
-    (previousStoppedOffset - runtime.currentRouteOffsetMeters) * vehicle.direction < -vehicle.stopLookAheadMeters
-  ) {
-    runtime.lastStopZoneIndex = undefined;
-  }
-
-  if (runtime.currentSpeedMetersPerSecond !== runtime.targetSpeedMetersPerSecond) {
-    runtime.currentSpeedMetersPerSecond = runtime.targetSpeedMetersPerSecond;
-  }
-
-  runtime.currentRouteOffsetMeters += vehicle.direction * runtime.currentSpeedMetersPerSecond * deltaSeconds;
-
-  if (runtime.currentRouteOffsetMeters > vehicle.max) {
-    runtime.currentRouteOffsetMeters = vehicle.min;
-    runtime.lastStopZoneIndex = undefined;
-  } else if (runtime.currentRouteOffsetMeters < vehicle.min) {
-    runtime.currentRouteOffsetMeters = vehicle.max;
-    runtime.lastStopZoneIndex = undefined;
-  }
-
-  runtime.behaviorState = 'cruising';
-  applyTrafficVehiclePosition(vehicle);
-}
-
-function getUpcomingStopZoneIndex(vehicle: TrafficVehicle): number | undefined {
-  for (let index = 0; index < vehicle.stopZoneOffsetsMeters.length; index += 1) {
-    if (vehicle.runtime.lastStopZoneIndex === index) {
-      continue;
-    }
-
-    const stopOffset = vehicle.stopZoneOffsetsMeters[index];
-    const distanceMeters = (stopOffset - vehicle.runtime.currentRouteOffsetMeters) * vehicle.direction;
-
-    if (distanceMeters >= 0 && distanceMeters <= vehicle.stopLookAheadMeters) {
-      return index;
-    }
-  }
-
-  return undefined;
-}
-
-function applyTrafficVehiclePosition(vehicle: TrafficVehicle): void {
-  const routeCoordinate = vehicle.centerCoordinate + vehicle.runtime.currentRouteOffsetMeters;
-
-  if (vehicle.axis === 'x') {
-    vehicle.mesh.position.x = routeCoordinate;
-    vehicle.mesh.position.z = vehicle.fixedCoordinate;
-  } else {
-    vehicle.mesh.position.x = vehicle.fixedCoordinate;
-    vehicle.mesh.position.z = routeCoordinate;
   }
 }
