@@ -4193,6 +4193,244 @@ export interface TrafficVehicleStopBehavior {
   readonly stopLookAheadMeters: number;
 }
 
+export type VehicleClass =
+  | 'car'
+  | 'taxi'
+  | 'van'
+  | 'bus'
+  | 'delivery-truck'
+  | 'heavy-truck'
+  | 'service-vehicle'
+  | 'emergency-vehicle'
+  | 'parked-vehicle';
+
+export const VEHICLE_CLASS_VALUES: readonly VehicleClass[] = [
+  'car',
+  'taxi',
+  'van',
+  'bus',
+  'delivery-truck',
+  'heavy-truck',
+  'service-vehicle',
+  'emergency-vehicle',
+  'parked-vehicle'
+] as const;
+
+export type VehicleAllowedMode = 'vehicle' | 'bus' | 'freight' | 'service' | 'emergency' | 'parked';
+
+export interface VehiclePhysicalDimensions {
+  readonly lengthMeters: number;
+  readonly widthMeters: number;
+  readonly heightMeters: number;
+  readonly wheelbaseMeters: number;
+}
+
+export interface VehicleBehaviorProfile {
+  readonly maxSpeedKph: number;
+  readonly preferredSpeedFraction: number;
+  readonly accelerationMetersPerSecondSq: number;
+  readonly brakingMetersPerSecondSq: number;
+  readonly comfortableDecelerationMetersPerSecondSq: number;
+  readonly minFollowingDistanceMeters: number;
+  readonly reactionTimeSeconds: number;
+  readonly turnSpeedReduction: number;
+  readonly stopToleranceMeters: number;
+}
+
+export interface VehicleProfile {
+  readonly vehicleClass: VehicleClass;
+  readonly allowedModes: readonly VehicleAllowedMode[];
+  readonly dimensions: VehiclePhysicalDimensions;
+  readonly passengerCapacity: number;
+  readonly cargoCapacityKg: number;
+  readonly visualVariantTags: readonly string[];
+  readonly defaultAssetBindingId: CityId;
+  readonly behavior: VehicleBehaviorProfile;
+}
+
+export const DEFAULT_VEHICLE_PROFILES: readonly VehicleProfile[] = [
+  {
+    vehicleClass: 'car',
+    allowedModes: ['vehicle'],
+    dimensions: { lengthMeters: 4.8, widthMeters: 2.05, heightMeters: 1.45, wheelbaseMeters: 2.8 },
+    passengerCapacity: 5,
+    cargoCapacityKg: 500,
+    visualVariantTags: ['sedan', 'hatchback', 'coupe'],
+    defaultAssetBindingId: 'binding:vehicle:traffic-car',
+    behavior: {
+      maxSpeedKph: 180,
+      preferredSpeedFraction: 0.85,
+      accelerationMetersPerSecondSq: 2.5,
+      brakingMetersPerSecondSq: 4.5,
+      comfortableDecelerationMetersPerSecondSq: 2.0,
+      minFollowingDistanceMeters: 2.0,
+      reactionTimeSeconds: 0.75,
+      turnSpeedReduction: 0.6,
+      stopToleranceMeters: 0.5
+    }
+  },
+  {
+    vehicleClass: 'taxi',
+    allowedModes: ['vehicle'],
+    dimensions: { lengthMeters: 4.8, widthMeters: 2.05, heightMeters: 1.45, wheelbaseMeters: 2.8 },
+    passengerCapacity: 4,
+    cargoCapacityKg: 400,
+    visualVariantTags: ['taxi-livery', 'sedan'],
+    defaultAssetBindingId: 'binding:vehicle:traffic-car',
+    behavior: {
+      maxSpeedKph: 160,
+      preferredSpeedFraction: 0.75,
+      accelerationMetersPerSecondSq: 2.8,
+      brakingMetersPerSecondSq: 5.0,
+      comfortableDecelerationMetersPerSecondSq: 2.5,
+      minFollowingDistanceMeters: 1.8,
+      reactionTimeSeconds: 0.6,
+      turnSpeedReduction: 0.65,
+      stopToleranceMeters: 0.3
+    }
+  },
+  {
+    vehicleClass: 'van',
+    allowedModes: ['vehicle'],
+    dimensions: { lengthMeters: 5.2, widthMeters: 2.2, heightMeters: 1.9, wheelbaseMeters: 3.0 },
+    passengerCapacity: 7,
+    cargoCapacityKg: 800,
+    visualVariantTags: ['passenger-van', 'cargo-van'],
+    defaultAssetBindingId: 'binding:vehicle:traffic-car',
+    behavior: {
+      maxSpeedKph: 140,
+      preferredSpeedFraction: 0.8,
+      accelerationMetersPerSecondSq: 1.8,
+      brakingMetersPerSecondSq: 4.0,
+      comfortableDecelerationMetersPerSecondSq: 1.8,
+      minFollowingDistanceMeters: 2.5,
+      reactionTimeSeconds: 0.8,
+      turnSpeedReduction: 0.55,
+      stopToleranceMeters: 0.6
+    }
+  },
+  {
+    vehicleClass: 'bus',
+    allowedModes: ['vehicle', 'bus'],
+    dimensions: { lengthMeters: 12.0, widthMeters: 2.6, heightMeters: 3.2, wheelbaseMeters: 6.5 },
+    passengerCapacity: 80,
+    cargoCapacityKg: 1000,
+    visualVariantTags: ['transit-bus', 'articulated-bus'],
+    defaultAssetBindingId: 'binding:vehicle:traffic-car',
+    behavior: {
+      maxSpeedKph: 100,
+      preferredSpeedFraction: 0.65,
+      accelerationMetersPerSecondSq: 1.0,
+      brakingMetersPerSecondSq: 3.0,
+      comfortableDecelerationMetersPerSecondSq: 1.2,
+      minFollowingDistanceMeters: 5.0,
+      reactionTimeSeconds: 1.0,
+      turnSpeedReduction: 0.4,
+      stopToleranceMeters: 1.0
+    }
+  },
+  {
+    vehicleClass: 'delivery-truck',
+    allowedModes: ['vehicle', 'freight'],
+    dimensions: { lengthMeters: 7.5, widthMeters: 2.4, heightMeters: 2.8, wheelbaseMeters: 4.2 },
+    passengerCapacity: 3,
+    cargoCapacityKg: 3000,
+    visualVariantTags: ['box-truck', 'delivery-van'],
+    defaultAssetBindingId: 'binding:vehicle:traffic-car',
+    behavior: {
+      maxSpeedKph: 100,
+      preferredSpeedFraction: 0.7,
+      accelerationMetersPerSecondSq: 1.2,
+      brakingMetersPerSecondSq: 3.5,
+      comfortableDecelerationMetersPerSecondSq: 1.5,
+      minFollowingDistanceMeters: 4.0,
+      reactionTimeSeconds: 0.9,
+      turnSpeedReduction: 0.45,
+      stopToleranceMeters: 0.8
+    }
+  },
+  {
+    vehicleClass: 'heavy-truck',
+    allowedModes: ['vehicle', 'freight'],
+    dimensions: { lengthMeters: 16.5, widthMeters: 2.6, heightMeters: 4.0, wheelbaseMeters: 9.0 },
+    passengerCapacity: 2,
+    cargoCapacityKg: 25000,
+    visualVariantTags: ['semi-truck', 'tractor-trailer'],
+    defaultAssetBindingId: 'binding:vehicle:traffic-car',
+    behavior: {
+      maxSpeedKph: 90,
+      preferredSpeedFraction: 0.6,
+      accelerationMetersPerSecondSq: 0.5,
+      brakingMetersPerSecondSq: 2.5,
+      comfortableDecelerationMetersPerSecondSq: 1.0,
+      minFollowingDistanceMeters: 8.0,
+      reactionTimeSeconds: 1.2,
+      turnSpeedReduction: 0.35,
+      stopToleranceMeters: 1.5
+    }
+  },
+  {
+    vehicleClass: 'service-vehicle',
+    allowedModes: ['vehicle', 'service'],
+    dimensions: { lengthMeters: 6.0, widthMeters: 2.3, heightMeters: 2.5, wheelbaseMeters: 3.5 },
+    passengerCapacity: 4,
+    cargoCapacityKg: 1500,
+    visualVariantTags: ['utility-truck', 'maintenance-vehicle'],
+    defaultAssetBindingId: 'binding:vehicle:traffic-car',
+    behavior: {
+      maxSpeedKph: 90,
+      preferredSpeedFraction: 0.7,
+      accelerationMetersPerSecondSq: 1.5,
+      brakingMetersPerSecondSq: 3.5,
+      comfortableDecelerationMetersPerSecondSq: 1.5,
+      minFollowingDistanceMeters: 3.5,
+      reactionTimeSeconds: 0.8,
+      turnSpeedReduction: 0.5,
+      stopToleranceMeters: 0.7
+    }
+  },
+  {
+    vehicleClass: 'emergency-vehicle',
+    allowedModes: ['vehicle', 'emergency'],
+    dimensions: { lengthMeters: 5.8, widthMeters: 2.3, heightMeters: 2.8, wheelbaseMeters: 3.4 },
+    passengerCapacity: 6,
+    cargoCapacityKg: 800,
+    visualVariantTags: ['police-car', 'ambulance', 'fire-truck'],
+    defaultAssetBindingId: 'binding:vehicle:traffic-car',
+    behavior: {
+      maxSpeedKph: 200,
+      preferredSpeedFraction: 0.95,
+      accelerationMetersPerSecondSq: 3.5,
+      brakingMetersPerSecondSq: 6.0,
+      comfortableDecelerationMetersPerSecondSq: 3.0,
+      minFollowingDistanceMeters: 1.5,
+      reactionTimeSeconds: 0.5,
+      turnSpeedReduction: 0.75,
+      stopToleranceMeters: 0.2
+    }
+  },
+  {
+    vehicleClass: 'parked-vehicle',
+    allowedModes: ['vehicle'],
+    dimensions: { lengthMeters: 4.8, widthMeters: 2.05, heightMeters: 1.45, wheelbaseMeters: 2.8 },
+    passengerCapacity: 5,
+    cargoCapacityKg: 500,
+    visualVariantTags: ['sedan', 'hatchback', 'coupe'],
+    defaultAssetBindingId: 'binding:vehicle:traffic-car',
+    behavior: {
+      maxSpeedKph: 0,
+      preferredSpeedFraction: 0,
+      accelerationMetersPerSecondSq: 0,
+      brakingMetersPerSecondSq: 0,
+      comfortableDecelerationMetersPerSecondSq: 0,
+      minFollowingDistanceMeters: 0,
+      reactionTimeSeconds: 0,
+      turnSpeedReduction: 0,
+      stopToleranceMeters: 0
+    }
+  }
+] as const;
+
 export interface TrafficVehicleRoute {
   readonly nodeIds: readonly CityId[];
   readonly spawnNodeId: CityId;
@@ -4220,6 +4458,13 @@ export interface TrafficVehicleContract extends CityObjectBase<'traffic-vehicle'
   readonly route: TrafficVehicleRoute;
   readonly stopBehavior: TrafficVehicleStopBehavior;
   readonly incidentHookIds: readonly CityId[];
+  readonly vehicleClass: VehicleClass;
+  readonly dimensions: VehiclePhysicalDimensions;
+  readonly passengerCapacity: number;
+  readonly cargoCapacityKg: number;
+  readonly behaviorProfile: VehicleBehaviorProfile;
+  readonly assetBindingId: CityId;
+  readonly visualVariantTags: readonly string[];
 }
 
 export type TrafficCalmingDeviceKind =

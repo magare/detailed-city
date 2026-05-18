@@ -23,6 +23,7 @@ export interface TrafficVehicle {
   stopLookAheadMeters: number;
   stopTimerSeconds: number;
   lastStopZoneIndex?: number;
+  heightMeters: number;
 }
 
 export interface TrafficLayer {
@@ -169,14 +170,14 @@ export class TrafficMeshBuilder {
     const vehicles: TrafficVehicle[] = [];
 
     plan.vehicles.forEach((vehicle, index) => {
-      const geometry = new THREE.BoxGeometry(vehicle.size.x, 1.35, vehicle.size.z);
+      const geometry = new THREE.BoxGeometry(vehicle.size.x, vehicle.dimensions.heightMeters, vehicle.size.z);
       const material = this.materials.vehicleBody[index % this.materials.vehicleBody.length];
       const mesh = new THREE.Mesh(geometry, material);
 
       mesh.name = vehicle.id;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      mesh.position.set(vehicle.position.x, 0.82, vehicle.position.z);
+      mesh.position.set(vehicle.position.x, vehicle.dimensions.heightMeters / 2, vehicle.position.z);
       attachCityPickingMetadata(mesh, metadataByObjectId[vehicle.id] ?? createCityPickingMetadata(vehicle));
 
       group.add(mesh);
@@ -193,7 +194,8 @@ export class TrafficMeshBuilder {
         stopZoneOffsetsMeters: vehicle.stopBehavior.stopZoneOffsetsMeters,
         stopDurationSeconds: vehicle.stopBehavior.stopDurationSeconds,
         stopLookAheadMeters: vehicle.stopBehavior.stopLookAheadMeters,
-        stopTimerSeconds: 0
+        stopTimerSeconds: 0,
+        heightMeters: vehicle.dimensions.heightMeters
       });
     });
 

@@ -1,8 +1,11 @@
 import {
   DEFAULT_STREET_PROFILES,
+  DEFAULT_VEHICLE_PROFILES,
   type LaneContract,
   type LaneMarkingType,
-  type RoadMarkingOrientation
+  type RoadMarkingOrientation,
+  type VehicleClass,
+  type VehicleProfile
 } from '../../city/data-contracts/cityContracts';
 import { createProceduralSourceMetadata, createSimulatedSourceMetadata } from '../../city/data-contracts/sourceMetadata';
 import type {
@@ -25,6 +28,12 @@ export interface TrafficPlanSource {
 const DASH_SPACING_METERS = 20;
 const ZEBRA_STRIPE_COUNT = 5;
 const MAX_TRAFFIC_VEHICLES = 7;
+
+const ORDINARY_ROAD_VEHICLE_CLASSES: readonly VehicleClass[] = ['car', 'taxi', 'van', 'delivery-truck'] as const;
+
+const VEHICLE_PROFILES = DEFAULT_VEHICLE_PROFILES.filter((profile) =>
+  ORDINARY_ROAD_VEHICLE_CLASSES.includes(profile.vehicleClass as VehicleClass)
+) as readonly VehicleProfile[];
 
 export class TrafficLaneGenerator {
   create(sourceOrRoads: TrafficPlanSource | readonly RoadSegment[]): TrafficPlan {
@@ -187,7 +196,12 @@ function createVehicle(input: {
   const routeOffsetMeters = roundMeters(direction === 1 ? min + seededOffset : max - seededOffset);
   const profile = getStreetProfile(road.streetProfileId);
   const speedLimitKph = getCalmedSpeedLimitKph(road, trafficCalmingDevices, profile.designSpeedKph);
-  const speed = roundMeters((speedLimitKph / 3.6) * (0.62 + (index % 3) * 0.08));
+
+  const vehicleProfile = selectVehicleProfile(index);
+  const behavior = vehicleProfile.behavior;
+  const preferredSpeedKph = speedLimitKph * behavior.preferredSpeedFraction;
+  const speed = roundMeters(Math.min(preferredSpeedKph, behavior.maxSpeedKph) / 3.6);
+  const dimensions = vehicleProfile.dimensions;
 
   return {
     id: `traffic-vehicle-${index}`,
@@ -203,7 +217,7 @@ function createVehicle(input: {
     speedLimitKph,
     routeOffsetMeters,
     position: getVehiclePosition(road, axis, routeOffsetMeters, laneOffsetMeters),
-    size: axis === 'x' ? { x: 4.8, z: 2.05 } : { x: 2.05, z: 4.8 },
+    size: axis === 'x' ? { x: dimensions.lengthMeters, z: dimensions.widthMeters } : { x: dimensions.widthMeters, z: dimensions.lengthMeters },
     min: roundMeters(min),
     max: roundMeters(max),
     route: {
@@ -217,15 +231,23 @@ function createVehicle(input: {
     stopBehavior: {
       stopZoneOffsetsMeters: getStopZoneOffsets(road, routeNodes, crossings),
       stopDurationSeconds: road.hierarchy === 'arterial' ? 0.85 : 0.55,
-      stopLookAheadMeters: 3.2
+      stopLookAheadMeters: behavior.stopToleranceMeters + 2.5
     },
     incidentHookIds: [`incident-hook:${road.id}:route-choice`, `incident-hook:${road.id}:stop-control`],
+    vehicleClass: vehicleProfile.vehicleClass,
+    dimensions,
+    passengerCapacity: vehicleProfile.passengerCapacity,
+    cargoCapacityKg: vehicleProfile.cargoCapacityKg,
+    behaviorProfile: behavior,
+    assetBindingId: vehicleProfile.defaultAssetBindingId,
+    visualVariantTags: vehicleProfile.visualVariantTags,
     metadata: createSimulatedSourceMetadata(`traffic-simulation:${road.id}:${index}`, 'traffic-route-seed'),
     tags: {
       roadId: road.id,
       laneId: lane.id,
       route: routeNodes.map((node) => node.id).join('>'),
-      speedLimitKph
+      speedLimitKph,
+      vehicleClass: vehicleProfile.vehicleClass
     }
   };
 }
@@ -489,4 +511,9 @@ function getCrossingOrientation(road: RoadSegment): RoadMarkingOrientation {
 
 function roundMeters(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function selectVehicleProfile(vehicleIndex: number): VehicleProfile {
+  const deterministicIndex = vehicleIndex % VEHICLE_PROFILES.length;
+  return VEHICLE_PROFILES[deterministicIndex];
 }

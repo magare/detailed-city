@@ -4,7 +4,7 @@ import { cityConfig } from '../../src/config/cityConfig';
 import { CityGenerator } from '../../src/generation/CityGenerator';
 import { TrafficLaneGenerator } from '../../src/generation/traffic/TrafficLaneGenerator';
 
-test('traffic vehicles reference lanes, route nodes, stop zones, and profile speeds', () => {
+test('traffic vehicles reference lanes, route nodes, stop zones, profile speeds, and vehicle taxonomy', () => {
   const firstCity = new CityGenerator(cityConfig).generate();
   const secondCity = new CityGenerator(cityConfig).generate();
   const firstTraffic = createTraffic(firstCity);
@@ -22,7 +22,7 @@ test('traffic vehicles reference lanes, route nodes, stop zones, and profile spe
     laneId: 'road-v-0-lane-1',
     axis: 'z',
     direction: 1,
-    speed: 6.89,
+    speed: 9.44,
     speedLimitKph: 40,
     routeOffsetMeters: -253,
     route: {
@@ -32,22 +32,67 @@ test('traffic vehicles reference lanes, route nodes, stop zones, and profile spe
       endOffsetMeters: 264,
       lengthMeters: 528
     },
-    incidentHookIds: ['incident-hook:road-v-0:route-choice', 'incident-hook:road-v-0:stop-control']
+    incidentHookIds: ['incident-hook:road-v-0:route-choice', 'incident-hook:road-v-0:stop-control'],
+    vehicleClass: 'car',
+    dimensions: {
+      lengthMeters: 4.8,
+      widthMeters: 2.05,
+      heightMeters: 1.45,
+      wheelbaseMeters: 2.8
+    },
+    passengerCapacity: 5,
+    cargoCapacityKg: 500,
+    behaviorProfile: {
+      maxSpeedKph: 180,
+      preferredSpeedFraction: 0.85,
+      accelerationMetersPerSecondSq: 2.5,
+      brakingMetersPerSecondSq: 4.5,
+      comfortableDecelerationMetersPerSecondSq: 2.0,
+      minFollowingDistanceMeters: 2.0,
+      reactionTimeSeconds: 0.75,
+      turnSpeedReduction: 0.6,
+      stopToleranceMeters: 0.5
+    },
+    assetBindingId: 'binding:vehicle:traffic-car',
+    visualVariantTags: ['sedan', 'hatchback', 'coupe']
   });
   expect(firstVehicle.route.nodeIds).toHaveLength(13);
   expect(firstVehicle.stopBehavior.stopZoneOffsetsMeters).toEqual([-220, -176, -132, -88, -44, 0, 44, 88, 132, 176, 220]);
+  expect(firstVehicle.tags).toMatchObject({
+    vehicleClass: 'car'
+  });
   expect(detailedStreetVehicle).toMatchObject({
     roadId: 'road-v-6',
     laneId: 'road-v-6-lane-2',
     route: {
       spawnNodeId: 'intersection-v6-h12',
       destinationNodeId: 'intersection-v6-h0'
-    }
+    },
+    vehicleClass: expect.any(String),
+    dimensions: expect.objectContaining({
+      lengthMeters: expect.any(Number),
+      widthMeters: expect.any(Number),
+      heightMeters: expect.any(Number),
+      wheelbaseMeters: expect.any(Number)
+    }),
+    behaviorProfile: expect.any(Object),
+    assetBindingId: expect.any(String),
+    visualVariantTags: expect.any(Array)
   });
   expect(validateTraffic(firstCity, firstTraffic).issues).toEqual([]);
+
+  const generatedClasses = firstTraffic.vehicles.map((vehicle) => vehicle.vehicleClass);
+  expect(generatedClasses).toEqual(['car', 'taxi', 'van', 'delivery-truck', 'car', 'taxi', 'van']);
+  expect(generatedClasses).not.toContain('bus');
+  expect(generatedClasses).not.toContain('heavy-truck');
+  expect(generatedClasses).not.toContain('service-vehicle');
+  expect(generatedClasses).not.toContain('emergency-vehicle');
+  expect(generatedClasses).not.toContain('parked-vehicle');
+
+  expect(firstTraffic.vehicles.every((vehicle) => Array.isArray(vehicle.visualVariantTags) && vehicle.visualVariantTags.length > 0)).toBe(true);
 });
 
-test('traffic validation rejects vehicles with invalid lane, route, speed, and hooks', () => {
+test('traffic validation rejects vehicles with invalid lane, route, speed, hooks, and taxonomy fields', () => {
   const city = new CityGenerator(cityConfig).generate();
   const traffic = createTraffic(city);
   const [vehicle] = traffic.vehicles;
@@ -76,7 +121,28 @@ test('traffic validation rejects vehicles with invalid lane, route, speed, and h
               ...candidate.stopBehavior,
               stopZoneOffsetsMeters: [999]
             },
-            incidentHookIds: []
+            incidentHookIds: [],
+            vehicleClass: 'invalid-class' as any,
+            dimensions: {
+              lengthMeters: -1,
+              widthMeters: 0,
+              heightMeters: 0,
+              wheelbaseMeters: 10
+            },
+            passengerCapacity: -1,
+            cargoCapacityKg: -1,
+            behaviorProfile: {
+              maxSpeedKph: 0,
+              preferredSpeedFraction: 2,
+              accelerationMetersPerSecondSq: 0,
+              brakingMetersPerSecondSq: 0,
+              comfortableDecelerationMetersPerSecondSq: 0,
+              minFollowingDistanceMeters: -1,
+              reactionTimeSeconds: -1,
+              turnSpeedReduction: 2,
+              stopToleranceMeters: -1
+            },
+            assetBindingId: 'binding:invalid:asset'
           }
         : candidate.id === 'traffic-vehicle-1'
           ? {
@@ -116,6 +182,42 @@ test('traffic validation rejects vehicles with invalid lane, route, speed, and h
         objectId: vehicle.id
       }),
       expect.objectContaining({
+        id: `invalid-traffic-vehicle-class-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-dimensions-${vehicle.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-passenger-capacity-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-cargo-capacity-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-behavior-profile-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-asset-binding-${vehicle.id}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
         id: 'invalid-id-pattern-lane-marking-lane-marking-bad-id',
         severity: 'error',
         category: 'identifier',
@@ -126,6 +228,135 @@ test('traffic validation rejects vehicles with invalid lane, route, speed, and h
         severity: 'error',
         category: 'identifier',
         objectId: 'traffic vehicle bad id'
+      })
+    ])
+  );
+});
+
+test('traffic validation rejects known class with mismatched profile, non-finite values, and invalid visual variant tags', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const vehicle = traffic.vehicles.find((candidate) => candidate.id === 'traffic-vehicle-1')!;
+  const mismatchedTraffic = {
+    ...traffic,
+    vehicles: traffic.vehicles.map((candidate) =>
+      candidate.id === vehicle.id
+        ? {
+            ...candidate,
+            vehicleClass: 'car' as const,
+            dimensions: {
+              lengthMeters: Number.NaN,
+              widthMeters: Number.POSITIVE_INFINITY,
+              heightMeters: 10,
+              wheelbaseMeters: 5
+            },
+            passengerCapacity: Number.NEGATIVE_INFINITY,
+            cargoCapacityKg: Number.NaN,
+            behaviorProfile: {
+              maxSpeedKph: Number.POSITIVE_INFINITY,
+              preferredSpeedFraction: 0.5,
+              accelerationMetersPerSecondSq: 2.5,
+              brakingMetersPerSecondSq: 4.5,
+              comfortableDecelerationMetersPerSecondSq: 2.0,
+              minFollowingDistanceMeters: 2.0,
+              reactionTimeSeconds: 0.75,
+              turnSpeedReduction: 0.6,
+              stopToleranceMeters: 0.5
+            },
+            assetBindingId: 'binding:vehicle:traffic-car',
+            visualVariantTags: ['  ', '']
+          }
+        : candidate
+    )
+  };
+  const validation = validateTraffic(city, mismatchedTraffic);
+
+  expect(validation.passed).toBe(false);
+  expect(validation.issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: `traffic-vehicle-profile-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `traffic-vehicle-dimensions-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `traffic-vehicle-capacity-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `traffic-vehicle-visual-variant-tags-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-dimensions-${vehicle.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-passenger-capacity-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-cargo-capacity-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-behavior-profile-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-visual-variant-tags-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      })
+    ])
+  );
+});
+
+test('traffic validation rejects visual variant tags with leading or trailing whitespace', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const [vehicle] = traffic.vehicles;
+  const invalidTagsTraffic = {
+    ...traffic,
+    vehicles: traffic.vehicles.map((candidate) =>
+      candidate.id === vehicle.id
+        ? {
+            ...candidate,
+            visualVariantTags: [' sedan ', 'hatchback', '  coupe  ']
+          }
+        : candidate
+    )
+  };
+  const validation = validateTraffic(city, invalidTagsTraffic);
+
+  expect(validation.passed).toBe(false);
+  expect(validation.issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-visual-variant-tags-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
       })
     ])
   );

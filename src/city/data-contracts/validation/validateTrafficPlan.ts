@@ -1,11 +1,13 @@
 import {
   DEFAULT_STREET_PROFILES,
+  DEFAULT_VEHICLE_PROFILES,
   type CityId,
   type CityLodPolicy,
   type CityObjectKind,
   type RenderBinding,
   type ValidationIssue,
-  type ValidationResult
+  type ValidationResult,
+  VEHICLE_CLASS_VALUES
 } from '../cityContracts';
 import { validateCityObjectRegistryIdentity } from '../cityObjectRegistry';
 import { validateCityLodPolicy } from '../lodPolicy';
@@ -338,6 +340,234 @@ export function validateTrafficPlan(source: TrafficPlanValidationSource): Valida
         suggestedFix: 'Regenerate the vehicle with a finite position, positive footprint, and non-negative speed.',
         message: 'Traffic vehicle must have positive footprint and non-negative speed.'
       });
+    }
+
+    if (!VEHICLE_CLASS_VALUES.includes(vehicle.vehicleClass)) {
+      issues.push({
+        id: `invalid-traffic-vehicle-class-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} has unknown vehicle class ${vehicle.vehicleClass}.`
+      });
+    }
+
+    if (
+      vehicle.dimensions.lengthMeters <= 0 ||
+      vehicle.dimensions.widthMeters <= 0 ||
+      vehicle.dimensions.heightMeters <= 0 ||
+      vehicle.dimensions.wheelbaseMeters <= 0 ||
+      !Number.isFinite(vehicle.dimensions.lengthMeters) ||
+      !Number.isFinite(vehicle.dimensions.widthMeters) ||
+      !Number.isFinite(vehicle.dimensions.heightMeters) ||
+      !Number.isFinite(vehicle.dimensions.wheelbaseMeters)
+    ) {
+      issues.push({
+        id: `invalid-traffic-vehicle-dimensions-${vehicle.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} must have positive finite physical dimensions.`
+      });
+    }
+
+    if (vehicle.dimensions.wheelbaseMeters > vehicle.dimensions.lengthMeters) {
+      issues.push({
+        id: `invalid-traffic-vehicle-wheelbase-${vehicle.id}`,
+        severity: 'error',
+        category: 'geometry',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} wheelbase must not exceed vehicle length.`
+      });
+    }
+
+    if (vehicle.passengerCapacity < 0 || !Number.isFinite(vehicle.passengerCapacity)) {
+      issues.push({
+        id: `invalid-traffic-vehicle-passenger-capacity-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} passenger capacity must be non-negative finite.`
+      });
+    }
+
+    if (vehicle.cargoCapacityKg < 0 || !Number.isFinite(vehicle.cargoCapacityKg)) {
+      issues.push({
+        id: `invalid-traffic-vehicle-cargo-capacity-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} cargo capacity must be non-negative finite.`
+      });
+    }
+
+    const behavior = vehicle.behaviorProfile;
+    const isParkedVehicle = vehicle.vehicleClass === 'parked-vehicle';
+    const behaviorHasNonFinite =
+      !Number.isFinite(behavior.maxSpeedKph) ||
+      !Number.isFinite(behavior.preferredSpeedFraction) ||
+      !Number.isFinite(behavior.accelerationMetersPerSecondSq) ||
+      !Number.isFinite(behavior.brakingMetersPerSecondSq) ||
+      !Number.isFinite(behavior.comfortableDecelerationMetersPerSecondSq) ||
+      !Number.isFinite(behavior.minFollowingDistanceMeters) ||
+      !Number.isFinite(behavior.reactionTimeSeconds) ||
+      !Number.isFinite(behavior.turnSpeedReduction) ||
+      !Number.isFinite(behavior.stopToleranceMeters);
+
+    if (behaviorHasNonFinite) {
+      issues.push({
+        id: `invalid-traffic-vehicle-behavior-profile-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} has non-finite behavior profile values.`
+      });
+    } else if (isParkedVehicle) {
+      if (
+        behavior.maxSpeedKph !== 0 ||
+        behavior.preferredSpeedFraction !== 0 ||
+        behavior.accelerationMetersPerSecondSq !== 0 ||
+        behavior.brakingMetersPerSecondSq !== 0 ||
+        behavior.comfortableDecelerationMetersPerSecondSq !== 0 ||
+        behavior.minFollowingDistanceMeters !== 0 ||
+        behavior.reactionTimeSeconds !== 0 ||
+        behavior.turnSpeedReduction !== 0 ||
+        behavior.stopToleranceMeters !== 0
+      ) {
+        issues.push({
+          id: `invalid-traffic-vehicle-parked-behavior-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} parked class must have all zero behavior values.`
+        });
+      }
+    } else {
+      if (
+        behavior.maxSpeedKph <= 0 ||
+        behavior.preferredSpeedFraction <= 0 ||
+        behavior.preferredSpeedFraction > 1 ||
+        behavior.accelerationMetersPerSecondSq <= 0 ||
+        behavior.brakingMetersPerSecondSq <= 0 ||
+        behavior.comfortableDecelerationMetersPerSecondSq <= 0 ||
+        behavior.minFollowingDistanceMeters < 0 ||
+        behavior.reactionTimeSeconds < 0 ||
+        behavior.turnSpeedReduction <= 0 ||
+        behavior.turnSpeedReduction > 1 ||
+        behavior.stopToleranceMeters < 0
+      ) {
+        issues.push({
+          id: `invalid-traffic-vehicle-behavior-profile-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} has invalid behavior profile values.`
+        });
+      }
+    }
+
+    if (
+      !Array.isArray(vehicle.visualVariantTags) ||
+      vehicle.visualVariantTags.length === 0 ||
+      vehicle.visualVariantTags.some((tag) => typeof tag !== 'string' || tag.trim().length === 0 || tag !== tag.trim())
+    ) {
+      issues.push({
+        id: `invalid-traffic-vehicle-visual-variant-tags-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} must have a non-empty array of non-empty trimmed visual variant tags.`
+      });
+    }
+
+    const binding = assetBindingsById.get(vehicle.assetBindingId);
+
+    if (!binding || binding.objectKind !== 'traffic-vehicle') {
+      issues.push({
+        id: `invalid-traffic-vehicle-asset-binding-${vehicle.id}`,
+        severity: 'error',
+        category: 'asset',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} must reference a traffic-vehicle render binding.`
+      });
+    }
+
+    const expectedProfile = DEFAULT_VEHICLE_PROFILES.find((profile) => profile.vehicleClass === vehicle.vehicleClass);
+
+    if (expectedProfile) {
+      const expectedBehavior = expectedProfile.behavior;
+      const actualBehavior = vehicle.behaviorProfile;
+
+      if (
+        actualBehavior.maxSpeedKph !== expectedBehavior.maxSpeedKph ||
+        actualBehavior.preferredSpeedFraction !== expectedBehavior.preferredSpeedFraction ||
+        actualBehavior.accelerationMetersPerSecondSq !== expectedBehavior.accelerationMetersPerSecondSq ||
+        actualBehavior.brakingMetersPerSecondSq !== expectedBehavior.brakingMetersPerSecondSq ||
+        actualBehavior.comfortableDecelerationMetersPerSecondSq !== expectedBehavior.comfortableDecelerationMetersPerSecondSq ||
+        actualBehavior.minFollowingDistanceMeters !== expectedBehavior.minFollowingDistanceMeters ||
+        actualBehavior.reactionTimeSeconds !== expectedBehavior.reactionTimeSeconds ||
+        actualBehavior.turnSpeedReduction !== expectedBehavior.turnSpeedReduction ||
+        actualBehavior.stopToleranceMeters !== expectedBehavior.stopToleranceMeters
+      ) {
+        issues.push({
+          id: `traffic-vehicle-profile-mismatch-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} behavior profile must match the expected profile for class ${vehicle.vehicleClass}.`
+        });
+      }
+
+      if (
+        vehicle.dimensions.lengthMeters !== expectedProfile.dimensions.lengthMeters ||
+        vehicle.dimensions.widthMeters !== expectedProfile.dimensions.widthMeters ||
+        vehicle.dimensions.heightMeters !== expectedProfile.dimensions.heightMeters ||
+        vehicle.dimensions.wheelbaseMeters !== expectedProfile.dimensions.wheelbaseMeters
+      ) {
+        issues.push({
+          id: `traffic-vehicle-dimensions-mismatch-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} dimensions must match the expected profile for class ${vehicle.vehicleClass}.`
+        });
+      }
+
+      if (
+        vehicle.passengerCapacity !== expectedProfile.passengerCapacity ||
+        vehicle.cargoCapacityKg !== expectedProfile.cargoCapacityKg
+      ) {
+        issues.push({
+          id: `traffic-vehicle-capacity-mismatch-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} capacity must match the expected profile for class ${vehicle.vehicleClass}.`
+        });
+      }
+
+      if (vehicle.assetBindingId !== expectedProfile.defaultAssetBindingId) {
+        issues.push({
+          id: `traffic-vehicle-asset-binding-mismatch-${vehicle.id}`,
+          severity: 'error',
+          category: 'asset',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} asset binding must match the expected profile for class ${vehicle.vehicleClass}.`
+        });
+      }
+
+      if (
+        vehicle.visualVariantTags.length !== expectedProfile.visualVariantTags.length ||
+        vehicle.visualVariantTags.some((tag, index) => tag !== expectedProfile.visualVariantTags[index])
+      ) {
+        issues.push({
+          id: `traffic-vehicle-visual-variant-tags-mismatch-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} visual variant tags must match the expected profile for class ${vehicle.vehicleClass}.`
+        });
+      }
     }
   }
 
