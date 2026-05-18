@@ -20,6 +20,10 @@ export interface TrafficVehicle {
   stopZoneOffsetsMeters: readonly number[];
   stopDurationSeconds: number;
   stopLookAheadMeters: number;
+  accelerationMetersPerSecondSq: number;
+  brakingMetersPerSecondSq: number;
+  stopToleranceMeters: number;
+  speedLimitMetersPerSecond: number;
   runtime: TrafficVehicleRuntimeState;
 }
 
@@ -189,6 +193,10 @@ export class TrafficMeshBuilder {
         stopZoneOffsetsMeters: vehiclePlan.stopBehavior.stopZoneOffsetsMeters,
         stopDurationSeconds: vehiclePlan.stopBehavior.stopDurationSeconds,
         stopLookAheadMeters: vehiclePlan.stopBehavior.stopLookAheadMeters,
+        accelerationMetersPerSecondSq: vehiclePlan.dynamics.accelerationMetersPerSecondSq,
+        brakingMetersPerSecondSq: vehiclePlan.dynamics.brakingMetersPerSecondSq,
+        stopToleranceMeters: vehiclePlan.dynamics.stopToleranceMeters,
+        speedLimitMetersPerSecond: vehiclePlan.speedLimitKph / 3.6,
         runtime: initializeTrafficVehicleRuntimeState(vehiclePlan)
       });
     });
