@@ -53,6 +53,17 @@ test('traffic vehicles reference lanes, route nodes, stop zones, profile speeds,
       turnSpeedReduction: 0.6,
       stopToleranceMeters: 0.5
     },
+    dynamics: {
+      maxSpeedKph: 180,
+      preferredSpeedKph: 34,
+      accelerationMetersPerSecondSq: 2.5,
+      brakingMetersPerSecondSq: 4.5,
+      comfortableDecelerationMetersPerSecondSq: 2.0,
+      minFollowingDistanceMeters: 2.0,
+      reactionTimeSeconds: 0.75,
+      turnSpeedKph: 20.4,
+      stopToleranceMeters: 0.5
+    },
     assetBindingId: 'binding:vehicle:traffic-car',
     visualVariantTags: ['sedan', 'hatchback', 'coupe']
   });
@@ -362,6 +373,138 @@ test('traffic validation rejects visual variant tags with leading or trailing wh
   );
 });
 
+test('traffic validation rejects invalid dynamics values', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const [vehicle] = traffic.vehicles;
+  const invalidDynamicsTraffic = {
+    ...traffic,
+    vehicles: traffic.vehicles.map((candidate) =>
+      candidate.id === vehicle.id
+        ? {
+            ...candidate,
+            dynamics: {
+              maxSpeedKph: -1,
+              preferredSpeedKph: 50,
+              accelerationMetersPerSecondSq: 0,
+              brakingMetersPerSecondSq: 1,
+              comfortableDecelerationMetersPerSecondSq: 2,
+              minFollowingDistanceMeters: -1,
+              reactionTimeSeconds: -1,
+              turnSpeedKph: 100,
+              stopToleranceMeters: -0.1
+            }
+          }
+        : candidate
+    )
+  };
+  const validation = validateTraffic(city, invalidDynamicsTraffic);
+
+  expect(validation.passed).toBe(false);
+  expect(validation.issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-dynamics-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `traffic-vehicle-preferred-speed-exceeds-limit-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      }),
+      expect.objectContaining({
+        id: `traffic-vehicle-turn-speed-exceeds-preferred-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      })
+    ])
+  );
+});
+
+test('traffic validation rejects dynamics that do not match deterministic values from class profile', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const [vehicle] = traffic.vehicles;
+  const mismatchedDynamicsTraffic = {
+    ...traffic,
+    vehicles: traffic.vehicles.map((candidate) =>
+      candidate.id === vehicle.id
+        ? {
+            ...candidate,
+            dynamics: {
+              maxSpeedKph: 180,
+              preferredSpeedKph: 30,
+              accelerationMetersPerSecondSq: 2.5,
+              brakingMetersPerSecondSq: 4.5,
+              comfortableDecelerationMetersPerSecondSq: 2.0,
+              minFollowingDistanceMeters: 2.0,
+              reactionTimeSeconds: 0.75,
+              turnSpeedKph: 18,
+              stopToleranceMeters: 0.5
+            }
+          }
+        : candidate
+    )
+  };
+  const validation = validateTraffic(city, mismatchedDynamicsTraffic);
+
+  expect(validation.passed).toBe(false);
+  expect(validation.issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: `traffic-vehicle-dynamics-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      })
+    ])
+  );
+});
+
+test('traffic validation rejects non-finite dynamics values', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const [vehicle] = traffic.vehicles;
+  const nonFiniteDynamicsTraffic = {
+    ...traffic,
+    vehicles: traffic.vehicles.map((candidate) =>
+      candidate.id === vehicle.id
+        ? {
+            ...candidate,
+            dynamics: {
+              maxSpeedKph: Number.NaN,
+              preferredSpeedKph: Infinity,
+              accelerationMetersPerSecondSq: 2.5,
+              brakingMetersPerSecondSq: 4.5,
+              comfortableDecelerationMetersPerSecondSq: 2.0,
+              minFollowingDistanceMeters: 2.0,
+              reactionTimeSeconds: 0.75,
+              turnSpeedKph: 20.4,
+              stopToleranceMeters: 0.5
+            }
+          }
+        : candidate
+    )
+  };
+  const validation = validateTraffic(city, nonFiniteDynamicsTraffic);
+
+  expect(validation.passed).toBe(false);
+  expect(validation.issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: `invalid-traffic-vehicle-dynamics-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id
+      })
+    ])
+  );
+});
+
 test('browser traffic vehicles move along route offsets', async ({ page }) => {
   await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
@@ -431,7 +574,8 @@ function createTraffic(city: ReturnType<CityGenerator['generate']>) {
   return new TrafficLaneGenerator().create({
     roads: city.roads,
     crossings: city.crossings,
-    intersections: city.intersections
+    intersections: city.intersections,
+    trafficCalmingDevices: city.trafficCalmingDevices
   });
 }
 
@@ -443,6 +587,7 @@ function validateTraffic(
     roads: city.roads,
     crossings: city.crossings,
     intersections: city.intersections,
+    trafficCalmingDevices: city.trafficCalmingDevices,
     assetBindings: city.assetBindings,
     traffic
   });

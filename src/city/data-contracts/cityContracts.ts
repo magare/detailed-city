@@ -4237,6 +4237,18 @@ export interface VehicleBehaviorProfile {
   readonly stopToleranceMeters: number;
 }
 
+export interface VehicleDynamics {
+  readonly maxSpeedKph: number;
+  readonly preferredSpeedKph: number;
+  readonly accelerationMetersPerSecondSq: number;
+  readonly brakingMetersPerSecondSq: number;
+  readonly comfortableDecelerationMetersPerSecondSq: number;
+  readonly minFollowingDistanceMeters: number;
+  readonly reactionTimeSeconds: number;
+  readonly turnSpeedKph: number;
+  readonly stopToleranceMeters: number;
+}
+
 export interface VehicleProfile {
   readonly vehicleClass: VehicleClass;
   readonly allowedModes: readonly VehicleAllowedMode[];
@@ -4463,6 +4475,7 @@ export interface TrafficVehicleContract extends CityObjectBase<'traffic-vehicle'
   readonly passengerCapacity: number;
   readonly cargoCapacityKg: number;
   readonly behaviorProfile: VehicleBehaviorProfile;
+  readonly dynamics: VehicleDynamics;
   readonly assetBindingId: CityId;
   readonly visualVariantTags: readonly string[];
 }

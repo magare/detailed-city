@@ -47,7 +47,18 @@ test('traffic calming devices are deterministic and reduce detailed-street speed
   expect(detailedStreetVehicle).toMatchObject({
     roadId: 'road-v-6',
     speedLimitKph: 15,
-    speed: 2.92
+    speed: 2.92,
+    dynamics: {
+      maxSpeedKph: 100,
+      preferredSpeedKph: 10.5,
+      accelerationMetersPerSecondSq: 1.2,
+      brakingMetersPerSecondSq: 3.5,
+      comfortableDecelerationMetersPerSecondSq: 1.5,
+      minFollowingDistanceMeters: 4,
+      reactionTimeSeconds: 0.9,
+      turnSpeedKph: 4.73,
+      stopToleranceMeters: 0.8
+    }
   });
   expect(validateTraffic(firstCity, traffic).issues).toEqual([]);
   expect(firstCity.validation.issues.filter((issue) => issue.objectId === speedTable?.id)).toEqual([]);

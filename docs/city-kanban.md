@@ -37,7 +37,7 @@ Definition of Done for implementation cards:
 
 Contribution workflow, ADR expectations, branch/test rules, and review checklists live in `docs/contribution-workflow.md`.
 
-Realistic vehicle and transit implementation is tracked as a sub-board in `docs/realistic-traffic-kanban.md`; `docs/realistic-traffic-architecture.md` and `docs/realistic-traffic-implementation-context.md` record the owner-module boundaries and pre-read bundle for `KAN-602`, `KAN-604`, `KAN-609`, `KAN-610`, and `KAN-645`. `RTV-201` now adds the shared vehicle class taxonomy, generated vehicle metadata, validation coverage, and rendering-height consumption for those parent cards without marking them complete.
+Realistic vehicle and transit implementation is tracked as a sub-board in `docs/realistic-traffic-kanban.md`; `docs/realistic-traffic-architecture.md` and `docs/realistic-traffic-implementation-context.md` record the owner-module boundaries and pre-read bundle for `KAN-602`, `KAN-604`, `KAN-609`, `KAN-610`, and `KAN-645`. `RTV-201` now adds the shared vehicle class taxonomy, generated vehicle metadata, validation coverage, and rendering-height consumption for those parent cards without marking them complete. `RTV-202` adds deterministic vehicle dynamics, generated motion parameters, and validation coverage for impossible dynamics values as additional parent-card evidence; the parent cards remain open until their full acceptance criteria are complete.
 
 ## Done
 

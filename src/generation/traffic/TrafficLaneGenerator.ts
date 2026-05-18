@@ -199,8 +199,10 @@ function createVehicle(input: {
 
   const vehicleProfile = selectVehicleProfile(index);
   const behavior = vehicleProfile.behavior;
-  const preferredSpeedKph = speedLimitKph * behavior.preferredSpeedFraction;
-  const speed = roundMeters(Math.min(preferredSpeedKph, behavior.maxSpeedKph) / 3.6);
+  const unroundedPreferredSpeedKph = Math.min(speedLimitKph * behavior.preferredSpeedFraction, behavior.maxSpeedKph);
+  const preferredSpeedKph = roundToTwoDecimals(unroundedPreferredSpeedKph);
+  const turnSpeedKph = roundToTwoDecimals(preferredSpeedKph * behavior.turnSpeedReduction);
+  const speed = roundMeters(unroundedPreferredSpeedKph / 3.6);
   const dimensions = vehicleProfile.dimensions;
 
   return {
@@ -239,6 +241,17 @@ function createVehicle(input: {
     passengerCapacity: vehicleProfile.passengerCapacity,
     cargoCapacityKg: vehicleProfile.cargoCapacityKg,
     behaviorProfile: behavior,
+    dynamics: {
+      maxSpeedKph: behavior.maxSpeedKph,
+      preferredSpeedKph,
+      accelerationMetersPerSecondSq: behavior.accelerationMetersPerSecondSq,
+      brakingMetersPerSecondSq: behavior.brakingMetersPerSecondSq,
+      comfortableDecelerationMetersPerSecondSq: behavior.comfortableDecelerationMetersPerSecondSq,
+      minFollowingDistanceMeters: behavior.minFollowingDistanceMeters,
+      reactionTimeSeconds: behavior.reactionTimeSeconds,
+      turnSpeedKph,
+      stopToleranceMeters: behavior.stopToleranceMeters
+    },
     assetBindingId: vehicleProfile.defaultAssetBindingId,
     visualVariantTags: vehicleProfile.visualVariantTags,
     metadata: createSimulatedSourceMetadata(`traffic-simulation:${road.id}:${index}`, 'traffic-route-seed'),
@@ -510,6 +523,10 @@ function getCrossingOrientation(road: RoadSegment): RoadMarkingOrientation {
 }
 
 function roundMeters(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function roundToTwoDecimals(value: number): number {
   return Math.round(value * 100) / 100;
 }
 

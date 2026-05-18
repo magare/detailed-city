@@ -466,6 +466,131 @@ export function validateTrafficPlan(source: TrafficPlanValidationSource): Valida
       }
     }
 
+    const dynamics = vehicle.dynamics;
+
+    if (!dynamics || typeof dynamics !== 'object' || Array.isArray(dynamics)) {
+      issues.push({
+        id: `missing-traffic-vehicle-dynamics-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} must have a valid dynamics object.`
+      });
+      continue;
+    }
+
+    const dynamicsHasNonFinite =
+      !Number.isFinite(dynamics.maxSpeedKph) ||
+      !Number.isFinite(dynamics.preferredSpeedKph) ||
+      !Number.isFinite(dynamics.accelerationMetersPerSecondSq) ||
+      !Number.isFinite(dynamics.brakingMetersPerSecondSq) ||
+      !Number.isFinite(dynamics.comfortableDecelerationMetersPerSecondSq) ||
+      !Number.isFinite(dynamics.minFollowingDistanceMeters) ||
+      !Number.isFinite(dynamics.reactionTimeSeconds) ||
+      !Number.isFinite(dynamics.turnSpeedKph) ||
+      !Number.isFinite(dynamics.stopToleranceMeters);
+
+    if (dynamicsHasNonFinite) {
+      issues.push({
+        id: `invalid-traffic-vehicle-dynamics-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Traffic vehicle ${vehicle.id} has non-finite dynamics values.`
+      });
+    } else if (isParkedVehicle) {
+      if (
+        dynamics.maxSpeedKph !== 0 ||
+        dynamics.preferredSpeedKph !== 0 ||
+        dynamics.accelerationMetersPerSecondSq !== 0 ||
+        dynamics.brakingMetersPerSecondSq !== 0 ||
+        dynamics.comfortableDecelerationMetersPerSecondSq !== 0 ||
+        dynamics.minFollowingDistanceMeters !== 0 ||
+        dynamics.reactionTimeSeconds !== 0 ||
+        dynamics.turnSpeedKph !== 0 ||
+        dynamics.stopToleranceMeters !== 0
+      ) {
+        issues.push({
+          id: `invalid-traffic-vehicle-parked-dynamics-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} parked class must have all zero dynamics values.`
+        });
+      }
+    } else {
+      if (
+        dynamics.maxSpeedKph <= 0 ||
+        dynamics.preferredSpeedKph <= 0 ||
+        dynamics.accelerationMetersPerSecondSq <= 0 ||
+        dynamics.brakingMetersPerSecondSq <= 0 ||
+        dynamics.comfortableDecelerationMetersPerSecondSq <= 0 ||
+        dynamics.minFollowingDistanceMeters < 0 ||
+        dynamics.reactionTimeSeconds < 0 ||
+        dynamics.turnSpeedKph <= 0 ||
+        dynamics.stopToleranceMeters < 0
+      ) {
+        issues.push({
+          id: `invalid-traffic-vehicle-dynamics-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} has negative or zero dynamics values for a moving vehicle.`
+        });
+      }
+
+      if (dynamics.preferredSpeedKph > vehicle.speedLimitKph) {
+        issues.push({
+          id: `traffic-vehicle-preferred-speed-exceeds-limit-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} preferred speed must not exceed speed limit.`
+        });
+      }
+
+      if (dynamics.preferredSpeedKph > dynamics.maxSpeedKph) {
+        issues.push({
+          id: `traffic-vehicle-preferred-speed-exceeds-max-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} preferred speed must not exceed max speed.`
+        });
+      }
+
+      const preferredSpeedMetersPerSecond = roundToTwoDecimals(dynamics.preferredSpeedKph / 3.6);
+      if (vehicle.speed > preferredSpeedMetersPerSecond + 0.001) {
+        issues.push({
+          id: `traffic-vehicle-speed-exceeds-preferred-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} speed must not exceed preferred speed.`
+        });
+      }
+
+      if (dynamics.brakingMetersPerSecondSq < dynamics.comfortableDecelerationMetersPerSecondSq) {
+        issues.push({
+          id: `traffic-vehicle-braking-below-comfortable-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} braking must not be lower than comfortable deceleration.`
+        });
+      }
+
+      if (dynamics.turnSpeedKph > dynamics.preferredSpeedKph) {
+        issues.push({
+          id: `traffic-vehicle-turn-speed-exceeds-preferred-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} turn speed must not exceed preferred speed.`
+        });
+      }
+    }
+
     if (
       !Array.isArray(vehicle.visualVariantTags) ||
       vehicle.visualVariantTags.length === 0 ||
@@ -568,6 +693,43 @@ export function validateTrafficPlan(source: TrafficPlanValidationSource): Valida
           message: `Traffic vehicle ${vehicle.id} visual variant tags must match the expected profile for class ${vehicle.vehicleClass}.`
         });
       }
+
+      const expectedPreferredSpeedKph = roundToTwoDecimals(
+        Math.min(vehicle.speedLimitKph * expectedBehavior.preferredSpeedFraction, expectedBehavior.maxSpeedKph)
+      );
+      const expectedTurnSpeedKph = roundToTwoDecimals(expectedPreferredSpeedKph * expectedBehavior.turnSpeedReduction);
+      const expectedDynamics = {
+        maxSpeedKph: expectedBehavior.maxSpeedKph,
+        preferredSpeedKph: expectedPreferredSpeedKph,
+        accelerationMetersPerSecondSq: expectedBehavior.accelerationMetersPerSecondSq,
+        brakingMetersPerSecondSq: expectedBehavior.brakingMetersPerSecondSq,
+        comfortableDecelerationMetersPerSecondSq: expectedBehavior.comfortableDecelerationMetersPerSecondSq,
+        minFollowingDistanceMeters: expectedBehavior.minFollowingDistanceMeters,
+        reactionTimeSeconds: expectedBehavior.reactionTimeSeconds,
+        turnSpeedKph: expectedTurnSpeedKph,
+        stopToleranceMeters: expectedBehavior.stopToleranceMeters
+      };
+      const actualDynamics = vehicle.dynamics;
+
+      if (
+        actualDynamics.maxSpeedKph !== expectedDynamics.maxSpeedKph ||
+        actualDynamics.preferredSpeedKph !== expectedDynamics.preferredSpeedKph ||
+        actualDynamics.accelerationMetersPerSecondSq !== expectedDynamics.accelerationMetersPerSecondSq ||
+        actualDynamics.brakingMetersPerSecondSq !== expectedDynamics.brakingMetersPerSecondSq ||
+        actualDynamics.comfortableDecelerationMetersPerSecondSq !== expectedDynamics.comfortableDecelerationMetersPerSecondSq ||
+        actualDynamics.minFollowingDistanceMeters !== expectedDynamics.minFollowingDistanceMeters ||
+        actualDynamics.reactionTimeSeconds !== expectedDynamics.reactionTimeSeconds ||
+        actualDynamics.turnSpeedKph !== expectedDynamics.turnSpeedKph ||
+        actualDynamics.stopToleranceMeters !== expectedDynamics.stopToleranceMeters
+      ) {
+        issues.push({
+          id: `traffic-vehicle-dynamics-mismatch-${vehicle.id}`,
+          severity: 'error',
+          category: 'simulation',
+          objectId: vehicle.id,
+          message: `Traffic vehicle ${vehicle.id} dynamics must match the deterministic values derived from class ${vehicle.vehicleClass} and speed limit ${vehicle.speedLimitKph}.`
+        });
+      }
     }
   }
 
@@ -617,4 +779,8 @@ function getExpectedVehicleSpeedLimitKph(
     .map((device) => device.targetSpeedKph);
 
   return calmedSpeedLimits.length > 0 ? Math.min(profileSpeedKph, ...calmedSpeedLimits) : profileSpeedKph;
+}
+
+function roundToTwoDecimals(value: number): number {
+  return Math.round(value * 100) / 100;
 }
