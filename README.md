@@ -18,6 +18,10 @@ npm run build
 npm run test:e2e
 ```
 
+`npm run test:e2e` runs the core deterministic and validation suite. Use
+`npm run test:e2e:browser` for browser/debug/rendering checks and
+`npm run test:e2e:full` before release checkpoints.
+
 ## Structure
 
 ```text
@@ -35,7 +39,7 @@ src/
   types/               Shared domain types.
 public/assets/         Static files served directly by Vite.
 docs/                  Architecture notes and expansion roadmap.
-tests/e2e/             Browser smoke tests for WebGL rendering.
+tests/e2e/             Core city contracts plus browser smoke/rendering tests.
 ```
 
 See `docs/city-domain-structure.md` for the full city-planning tree and ownership rules. See

@@ -33,7 +33,7 @@ Definition of Done for implementation cards:
 - Validation rejects the main invalid states introduced by the card.
 - Rendering handoff or scene layers consume domain data rather than inventing planning data in `src/world`.
 - Diagnostics, debug UI, e2e smoke tests, unit tests, or benchmark checks cover the behavior.
-- `npm run build` passes; `npm run test:e2e` passes for visible rendering changes.
+- `npm run build` passes; `npm run test:e2e` passes for core checks; `npm run test:e2e:browser` passes for visible rendering changes.
 
 Contribution workflow, ADR expectations, branch/test rules, and review checklists live in `docs/contribution-workflow.md`.
 
@@ -431,7 +431,7 @@ Run these gates when cards move across lanes:
 | Checkpoint | When | Commands Or Checks |
 | --- | --- | --- |
 | Contract checkpoint | After every 2-3 contract/generation cards | `npm run build`; focused validator tests when added. |
-| Render checkpoint | After visible mesh, material, layer, or lighting changes | `npm run build`; `npm run test:e2e`; visual check in desktop and mobile viewport. |
+| Render checkpoint | After visible mesh, material, layer, or lighting changes | `npm run build`; `npm run test:e2e`; `npm run test:e2e:browser`; visual check in desktop and mobile viewport. |
 | Slice checkpoint | After each vertical slice milestone | Build, e2e, validation issue count, debug overlay inspection, object picking, and screenshot comparison. |
 | Performance checkpoint | Before increasing density/detail | Benchmark camera path, frame time, draw calls, triangle estimate, texture memory, active agents, chunk counts. |
 | Release checkpoint | Before marking a phase complete | All acceptance criteria met, no P0/P1 validation errors, docs updated, no console WebGL errors introduced. |

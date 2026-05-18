@@ -43,11 +43,13 @@ Always run:
 - `npm run test:e2e`
 - `git diff --check`
 
+`npm run test:e2e` is the core desktop contract and validation gate. It intentionally skips runtime browser/debug/visual tests so routine checks stay fast.
+
 Run additional targeted tests when the card adds or changes contracts, generation, validation, rendering handoff, runtime systems, diagnostics, assets, controls, or docs with executable examples.
 
-Browser verification is required for runtime, visual, generation, diagnostics, config, validation, asset, control, and UI cards. Reuse the dev server at `http://127.0.0.1:5173`, check desktop and mobile viewports, confirm a nonblank canvas, inspect diagnostics, and record console errors if any.
+Run `npm run test:e2e:browser` for runtime, visual, diagnostics, asset, control, and UI cards. Reuse the dev server at `http://127.0.0.1:5173` for any extra manual browser checks, check desktop and mobile viewports when relevant, confirm a nonblank canvas, inspect diagnostics, and record console errors if any.
 
-Docs-only cards still run build and e2e to prove the repository was not disturbed. A lightweight desktop/mobile browser smoke check should be run when continuing the full-board workflow.
+Docs-only cards still run build and core e2e to prove the repository was not disturbed. A lightweight desktop/mobile browser smoke check should be run when continuing the full-board workflow.
 
 ## Review Checklist
 

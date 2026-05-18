@@ -27,13 +27,6 @@ export default defineConfig({
       }
     },
     {
-      name: 'desktop-chromium-fast',
-      use: {
-        browserName: 'chromium',
-        viewport: { width: 1366, height: 768 }
-      }
-    },
-    {
       name: 'mobile-chromium',
       use: {
         browserName: 'chromium',

@@ -14,7 +14,35 @@ export default defineConfig({
     __APP_UPDATED_AT__: JSON.stringify(getAppUpdatedAt())
   },
   build: {
-    chunkSizeWarningLimit: 750
+    chunkSizeWarningLimit: 750,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'three',
+              test: /node_modules[\\/]three[\\/]/
+            },
+            {
+              name: 'city-rendering',
+              test: /src[\\/]city[\\/]rendering-handoff[\\/]/
+            },
+            {
+              name: 'city-contracts',
+              test: /src[\\/]city[\\/]data-contracts[\\/]/
+            },
+            {
+              name: 'city-blueprint',
+              test: /src[\\/]city[\\/]blueprint[\\/]/
+            },
+            {
+              name: 'city-generation',
+              test: /src[\\/]generation[\\/]/
+            }
+          ]
+        }
+      }
+    }
   },
   server: {
     host: '0.0.0.0',

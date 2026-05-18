@@ -119,17 +119,19 @@ Minimum local verification:
 
 1. Run TypeScript/build:
    - `npm run build`
-2. Run the desktop Chromium e2e smoke suite:
+2. Run the desktop Chromium core e2e suite:
    - `npm run test:e2e`
-3. Run the mobile Chromium e2e smoke suite when the card affects runtime visuals, layout, debug UI, controls, mobile behavior, or browser-facing diagnostics:
+3. Run desktop browser/debug/rendering checks when the card affects runtime visuals, layout, debug UI, controls, browser-facing diagnostics, or visible rendering:
+   - `npm run test:e2e:browser`
+4. Run the mobile Chromium e2e suite when the card affects mobile behavior or mobile-visible rendering:
    - `npm run test:e2e:mobile`
-4. Run the full e2e suite at vertical slice checkpoints or when a card changes behavior shared across desktop and mobile projects:
+5. Run the full e2e suite at vertical slice checkpoints or when a card changes behavior shared across desktop and mobile projects:
    - `npm run test:e2e:full`
-5. If unit tests exist or are added:
+6. If unit tests exist or are added:
    - Run the relevant unit test command.
-6. Run whitespace/conflict checks before committing:
+7. Run whitespace/conflict checks before committing:
    - `git diff --check`
-7. If new dependencies are added:
+8. If new dependencies are added:
    - Run `npm ls --depth=0`.
 
 Browser verification is required:
