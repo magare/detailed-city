@@ -63,6 +63,7 @@ GLM 5.1 is treated as a long-horizon coding agent and implementation assistant. 
 | RTV-002 | Baseline navigation graph | `src/generation/mobility/NavigationGraphGenerator.ts` creates mode-specific graph data used by mobility and operations systems. |
 | RTV-003 | Baseline asset catalog and fallback binding | `src/city/rendering-handoff/asset-binding/defaultAssetCatalog.ts` includes a procedural traffic-car asset and `binding:vehicle:traffic-car`. |
 | RTV-004 | Baseline traffic validation | `src/city/data-contracts/validation/validateTrafficPlan.ts` validates traffic vehicles, route bounds, lane references, speed limits, stop behavior, and source metadata. |
+| RTV-102 | Realistic traffic architecture note | `docs/realistic-traffic-architecture.md` links this Kanban to owner modules for contracts, generation, runtime simulation, rendering handoff, assets, validation, diagnostics, replay, and performance; verification: `npm run build`, `npm run test:e2e`, `npm run test:e2e:smoke`, `node scripts/run-e2e.mjs mobile tests/e2e/city-smoke.spec.ts`, `git diff --check`. |
 
 ## Blocked Decisions
 
@@ -81,7 +82,6 @@ GLM 5.1 is treated as a long-horizon coding agent and implementation assistant. 
 | ID | Priority | Size | Card | Details | Acceptance | Dependencies |
 | --- | --- | --- | --- | --- | --- | --- |
 | RTV-101 | P0 | S | GLM 5.1 card execution prompt | Create a reusable prompt template for asking GLM 5.1 to implement one Kanban card at a time in this repo. Include boundaries: domain-first, deterministic simulation, tests, no runtime AI calls, no raw asset paths, and no unrelated refactors. | A prompt document exists and can be used with any `RTV-*` card. It tells the model which files to inspect, expected output, verification commands, and failure reporting format. | RTV-D01 |
-| RTV-102 | P0 | S | Realistic traffic architecture note | Write a design note explaining the system boundaries: contracts, generation, simulation runtime, rendering handoff, assets, validation, diagnostics, and tests. | The note links to this Kanban and identifies owner modules for each system. It explicitly states that GLM 5.1 is a development agent, not a runtime controller. | None |
 | RTV-103 | P0 | S | Implementation context bundle | Create a compact checklist of files each implementation agent should read before touching traffic work. | The bundle includes traffic generation, mesh builder, `City.ts` update loop, city contracts, traffic validation, transit generator, navigation graph generator, asset catalog, material library, diagnostics, and e2e tests. | RTV-102 |
 
 ### Vehicle Domain Contracts
