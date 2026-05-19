@@ -228,11 +228,11 @@ export class City implements Updatable {
   }
 
   private addBuildingFacades(generated: GeneratedCity): void {
-    const detailedBuildingIds = new Set(generated.verticalSlices.flatMap((slice) => slice.buildingIds));
+    const texturedBuildingIds = new Set(generated.buildings.map((building) => building.id));
     const facadeGroup = new BuildingFacadeMeshBuilder(
       this.materials,
       this.pickingCatalog.metadataByObjectId
-    ).build(generated.buildings, detailedBuildingIds);
+    ).build(generated.buildings, texturedBuildingIds);
 
     this.layerGroups.buildings.add(facadeGroup);
   }

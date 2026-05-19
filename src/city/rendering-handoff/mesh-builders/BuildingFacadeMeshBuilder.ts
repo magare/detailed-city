@@ -39,7 +39,7 @@ export class BuildingFacadeMeshBuilder {
     const balconies = this.createBalconyPlacements(detailedBuildings);
 
     if (frames.length > 0) {
-      group.add(this.createInstancedBoxes('BuildingFacadeFrameInstances', frames, 'building'));
+      group.add(this.createInstancedBoxes('BuildingFacadeFrameInstances', frames, 'facade-frame', 'facadeFrame'));
     }
     if (windows.length > 0) {
       group.add(this.createInstancedBoxes('BuildingFacadeWindowInstances', windows, 'storefront-glass'));
@@ -156,11 +156,12 @@ export class BuildingFacadeMeshBuilder {
   private createInstancedBoxes(
     name: string,
     placements: readonly FacadePlacement[],
-    materialZone: string
+    materialZone: string,
+    fallbackMaterial?: string
   ): THREE.InstancedMesh {
     const mesh = new THREE.InstancedMesh(
       new THREE.BoxGeometry(1, 1, 1),
-      this.materials.getMaterialForZone(materialZone),
+      this.materials.getMaterialForZone(materialZone, fallbackMaterial),
       placements.length
     );
     const matrix = new THREE.Matrix4();

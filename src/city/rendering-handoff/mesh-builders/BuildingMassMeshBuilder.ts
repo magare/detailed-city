@@ -15,9 +15,13 @@ export class BuildingMassMeshBuilder {
     }
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
+    geometry.setAttribute(
+      'color',
+      new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 3).fill(1), 3)
+    );
     const mesh = new THREE.InstancedMesh(
       geometry,
-      this.materials.getMaterialForZone('building', 'building'),
+      this.materials.getBuildingMassMaterials(),
       buildings.length
     );
     const matrix = new THREE.Matrix4();
@@ -46,7 +50,7 @@ export class BuildingMassMeshBuilder {
         new THREE.Vector3(building.size.x, building.heightMeters, building.size.z)
       );
       mesh.setMatrixAt(index, matrix);
-      mesh.setColorAt(index, this.materials.getBuildingColor(building.district, building.heightMeters));
+      mesh.setColorAt(index, this.materials.getBuildingColor(building));
     });
 
     mesh.instanceMatrix.needsUpdate = true;

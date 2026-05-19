@@ -1,8 +1,16 @@
 import * as THREE from 'three';
 import type { MaterialZoneId } from '../../city/rendering-handoff/material-zones/materialZoneDefinitions';
-import type { DistrictKind, WeatherPreset } from '../../types/city';
+import type { BuildingPlan, WeatherPreset } from '../../types/city';
+
+const FACADE_TEXTURE_WIDTH = 256;
+const FACADE_TEXTURE_HEIGHT = 512;
+const ROOF_TEXTURE_SIZE = 256;
 
 export class MaterialLibrary {
+  private readonly buildingFacadeTexture = createFacadeTexture();
+  private readonly buildingFacadeBumpTexture = createFacadeBumpTexture();
+  private readonly roofTexture = createRoofTexture();
+
   readonly terrain = new THREE.MeshStandardMaterial({
     color: 0x4c6845,
     roughness: 0.92
@@ -95,15 +103,20 @@ export class MaterialLibrary {
 
   readonly building = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    roughness: 0.62,
-    metalness: 0.08,
+    roughness: 0.68,
+    metalness: 0.05,
+    map: this.buildingFacadeTexture,
+    bumpMap: this.buildingFacadeBumpTexture,
+    bumpScale: 0.035,
     vertexColors: true
   });
 
   readonly rooftop = new THREE.MeshStandardMaterial({
-    color: 0x6f7376,
-    roughness: 0.78,
-    metalness: 0.12
+    color: 0x8a8780,
+    roughness: 0.86,
+    metalness: 0.06,
+    map: this.roofTexture,
+    vertexColors: true
   });
 
   readonly roofSolarPanel = new THREE.MeshStandardMaterial({
@@ -391,10 +404,27 @@ export class MaterialLibrary {
     return (fallbackMaterial && this.materialByFallbackName[fallbackMaterial]) || this.overlay;
   }
 
-  getBuildingColor(district: DistrictKind, height: number): THREE.Color {
-    const color = new THREE.Color(this.baseDistrictColor(district));
-    const lift = Math.min(height / 140, 0.32);
-    color.offsetHSL(0, -0.04, lift);
+  getBuildingMassMaterials(): THREE.Material[] {
+    return [
+      this.building,
+      this.building,
+      this.rooftop,
+      this.building,
+      this.building,
+      this.building
+    ];
+  }
+
+  getBuildingColor(building: BuildingPlan): THREE.Color {
+    const hash = hashString(`${building.id}:${building.facadeGrammar.materialPaletteId}:${building.typology.kind}`);
+    const palette = getBuildingPalette(building);
+    const color = new THREE.Color(palette[hash % palette.length]);
+    const heightLift = Math.min(building.heightMeters / 180, 0.14);
+    const hueShift = normalizedHash(hash, 7) * 0.028;
+    const saturationShift = normalizedHash(hash, 13) * 0.08;
+    const lightnessShift = normalizedHash(hash, 19) * 0.1 + heightLift;
+
+    color.offsetHSL(hueShift, saturationShift, lightnessShift);
     return color;
   }
 
@@ -415,6 +445,9 @@ export class MaterialLibrary {
     this.treeTrunk.dispose();
     this.treeCanopy.dispose();
     this.water.dispose();
+    this.buildingFacadeTexture.dispose();
+    this.buildingFacadeBumpTexture.dispose();
+    this.roofTexture.dispose();
     this.building.dispose();
     this.rooftop.dispose();
     this.roofSolarPanel.dispose();
@@ -444,18 +477,189 @@ export class MaterialLibrary {
     }
   }
 
-  private baseDistrictColor(district: DistrictKind): THREE.ColorRepresentation {
-    switch (district) {
-      case 'downtown':
-        return 0xaeb8bf;
-      case 'residential':
-        return 0xc0b8a8;
-      case 'industrial':
-        return 0x8f989b;
-      case 'waterfront':
-        return 0xa6bdc4;
-      case 'civic':
-        return 0xb9b09a;
+}
+
+function createFacadeTexture(): THREE.DataTexture {
+  const texture = createDataTexture(FACADE_TEXTURE_WIDTH, FACADE_TEXTURE_HEIGHT, (x, y) => {
+    const cellWidth = 32;
+    const cellHeight = 32;
+    const column = Math.floor(x / cellWidth);
+    const row = Math.floor(y / cellHeight);
+    const inColumn = x % cellWidth;
+    const inRow = y % cellHeight;
+    const noise = signedNoise(x, y, 11) * 10;
+    const panelJoint = inColumn < 2 || inRow < 2;
+    const mullion = inColumn === 15 || inColumn === 16;
+    const window = inColumn >= 7 && inColumn <= 24 && inRow >= 8 && inRow <= 24;
+
+    if (window) {
+      const lit = hashGrid(column, row, 43) % 7 === 0;
+      const highlight = inColumn < 10 || inRow < 11 ? 14 : 0;
+
+      return lit
+        ? [204 + highlight, 172 + highlight, 112 + highlight, 255]
+        : [52 + highlight, 82 + highlight, 94 + highlight, 255];
+    }
+
+    if (mullion) {
+      return [112 + noise, 117 + noise, 116 + noise, 255];
+    }
+
+    if (panelJoint) {
+      return [154 + noise, 150 + noise, 142 + noise, 255];
+    }
+
+    return [214 + noise, 208 + noise, 194 + noise, 255];
+  });
+
+  texture.name = 'ProceduralBuildingFacadeAlbedo';
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createFacadeBumpTexture(): THREE.DataTexture {
+  const texture = createDataTexture(FACADE_TEXTURE_WIDTH, FACADE_TEXTURE_HEIGHT, (x, y) => {
+    const cellWidth = 32;
+    const cellHeight = 32;
+    const inColumn = x % cellWidth;
+    const inRow = y % cellHeight;
+    const recessedWindow = inColumn >= 7 && inColumn <= 24 && inRow >= 8 && inRow <= 24;
+    const raisedFrame = inColumn === 6 || inColumn === 25 || inRow === 7 || inRow === 25;
+    const panelJoint = inColumn < 2 || inRow < 2;
+    const value = recessedWindow ? 76 : raisedFrame ? 190 : panelJoint ? 106 : 142 + signedNoise(x, y, 97) * 8;
+
+    return [value, value, value, 255];
+  });
+
+  texture.name = 'ProceduralBuildingFacadeBump';
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createRoofTexture(): THREE.DataTexture {
+  const texture = createDataTexture(ROOF_TEXTURE_SIZE, ROOF_TEXTURE_SIZE, (x, y) => {
+    const seam = x % 42 < 2 || y % 38 < 2;
+    const hatch = (x + y) % 17 === 0;
+    const equipmentPad = isInRect(x, y, 38, 44, 44, 30) || isInRect(x, y, 152, 134, 54, 38);
+    const drain = isInRect(x, y, 109, 204, 8, 8) || isInRect(x, y, 214, 74, 8, 8);
+    const noise = signedNoise(x, y, 29) * 12;
+
+    if (equipmentPad) {
+      return [112 + noise, 118 + noise, 118 + noise, 255];
+    }
+    if (drain) {
+      return [66, 72, 72, 255];
+    }
+    if (seam) {
+      return [124 + noise, 121 + noise, 113 + noise, 255];
+    }
+    if (hatch) {
+      return [160 + noise, 157 + noise, 148 + noise, 255];
+    }
+
+    return [145 + noise, 142 + noise, 133 + noise, 255];
+  });
+
+  texture.name = 'ProceduralBuildingRoofAlbedo';
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createDataTexture(
+  width: number,
+  height: number,
+  sampler: (x: number, y: number) => readonly [number, number, number, number]
+): THREE.DataTexture {
+  const data = new Uint8Array(width * height * 4);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const [r, g, b, a] = sampler(x, y);
+
+      data[offset] = clampByte(r);
+      data[offset + 1] = clampByte(g);
+      data[offset + 2] = clampByte(b);
+      data[offset + 3] = clampByte(a);
     }
   }
+
+  return new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
+}
+
+function getBuildingPalette(building: BuildingPlan): readonly THREE.ColorRepresentation[] {
+  if (building.typology.kind === 'industrial' || building.typology.kind === 'warehouse') {
+    return [0x879397, 0x6e8186, 0x978f80, 0x7e878b, 0x75665d, 0xa79f91];
+  }
+
+  if (building.typology.kind === 'civic' || building.district === 'civic') {
+    return [0xc8bea7, 0xb1a78d, 0xd3d0c2, 0xaeb9b1, 0xc0b8a8, 0xd0c7b1];
+  }
+
+  if (building.typology.kind === 'mixed-use' || building.typology.kind === 'retail' || building.typology.kind === 'hospitality') {
+    return [0xb6785f, 0xc29b73, 0x8da1a9, 0xd0c5ae, 0x9d8f7c, 0xa65f54, 0xb7b9aa];
+  }
+
+  switch (building.district) {
+    case 'downtown':
+      return [0xaeb8bf, 0x8fa2ab, 0xc8c2b6, 0x7f929d, 0xb6a893, 0xa9b3a8, 0x8f8880];
+    case 'residential':
+      return [0xd0c2a7, 0xc49f80, 0xb9856f, 0xd4d0bf, 0xb1bdad, 0xaeb7c9, 0xe0d0b8];
+    case 'industrial':
+      return [0x879397, 0x6e8186, 0x978f80, 0x7e878b, 0x75665d, 0xa79f91];
+    case 'waterfront':
+      return [0x9db9bf, 0xb8c8c1, 0xd1c9b5, 0x88a2ad, 0xb7b7ad, 0xd7d4c4];
+  }
+}
+
+function hashString(value: string): number {
+  let hash = 2166136261;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+function hashGrid(x: number, y: number, salt: number): number {
+  let hash = Math.imul(x + 0x9e3779b9, 0x85ebca6b) ^ Math.imul(y + salt, 0xc2b2ae35);
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x27d4eb2d);
+  hash ^= hash >>> 15;
+  return hash >>> 0;
+}
+
+function signedNoise(x: number, y: number, salt: number): number {
+  return (hashGrid(x, y, salt) / 0xffffffff) * 2 - 1;
+}
+
+function normalizedHash(hash: number, shift: number): number {
+  return (((hash >>> shift) & 0xff) / 255) * 2 - 1;
+}
+
+function isInRect(x: number, y: number, originX: number, originY: number, width: number, height: number): boolean {
+  return x >= originX && x < originX + width && y >= originY && y < originY + height;
+}
+
+function clampByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
 }
