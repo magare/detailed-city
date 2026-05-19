@@ -28,6 +28,7 @@ export interface TrafficPlanSource {
 const DASH_SPACING_METERS = 20;
 const ZEBRA_STRIPE_COUNT = 5;
 const MAX_TRAFFIC_VEHICLES = 7;
+const STOP_BAR_APPROACH_CLEARANCE_METERS = 2.8;
 
 const ORDINARY_ROAD_VEHICLE_CLASSES: readonly VehicleClass[] = ['car', 'taxi', 'van', 'delivery-truck'] as const;
 
@@ -231,7 +232,7 @@ function createVehicle(input: {
       lengthMeters: roundMeters(routeLengthMeters)
     },
     stopBehavior: {
-      stopZoneOffsetsMeters: getStopZoneOffsets(road, routeNodes, crossings),
+      stopZoneOffsetsMeters: getStopZoneOffsets(road, routeNodes, crossings, direction, dimensions.lengthMeters),
       stopDurationSeconds: road.hierarchy === 'arterial' ? 0.85 : 0.55,
       stopLookAheadMeters: behavior.stopToleranceMeters + 2.5
     },
@@ -332,14 +333,24 @@ function getVehiclePosition(
 function getStopZoneOffsets(
   road: RoadSegment,
   routeNodes: readonly IntersectionPlan[],
-  crossings: readonly CrossingPlan[]
+  crossings: readonly CrossingPlan[],
+  direction: 1 | -1,
+  vehicleLengthMeters: number
 ): number[] {
   const routeOffsets = routeNodes.map((node) => getRoadOffsetMeters(road, node.center));
   const routeMin = Math.min(...routeOffsets);
   const routeMax = Math.max(...routeOffsets);
   const crossingOffsets = crossings
     .filter((crossing) => crossing.roadId === road.id)
-    .map((crossing) => getRoadOffsetMeters(road, crossing.center));
+    .filter((crossing) => {
+      const crossingOffset = getRoadOffsetMeters(road, crossing.center);
+      return crossingOffset > routeMin + 0.001 && crossingOffset < routeMax - 0.001;
+    })
+    .map(
+      (crossing) =>
+        getRoadOffsetMeters(road, crossing.center) -
+        direction * (getStopBarApproachOffset(crossing) + vehicleLengthMeters / 2)
+    );
 
   if (crossingOffsets.length > 0) {
     return uniqueRoundedNumbers(crossingOffsets).filter(
@@ -347,7 +358,9 @@ function getStopZoneOffsets(
     );
   }
 
-  return routeNodes.slice(1, -1).map((node) => roundMeters(getRoadOffsetMeters(road, node.center)));
+  return routeNodes
+    .slice(1, -1)
+    .map((node) => roundMeters(getRoadOffsetMeters(road, node.center) - direction * (vehicleLengthMeters / 2)));
 }
 
 function getCalmedSpeedLimitKph(
@@ -398,7 +411,7 @@ function createZebraCrossingStripes(crossing: CrossingPlan, road: RoadSegment): 
 }
 
 function createStopBars(crossing: CrossingPlan, road: RoadSegment): LaneMarkingPlan[] {
-  const stopBarOffset = crossing.widthMeters / 2 + 2.8;
+  const stopBarOffset = getStopBarApproachOffset(crossing);
 
   return [-stopBarOffset, stopBarOffset].map((offset, index) =>
     createMarking({
@@ -415,6 +428,10 @@ function createStopBars(crossing: CrossingPlan, road: RoadSegment): LaneMarkingP
       assetBindingId: 'binding:road:stop-bar'
     })
   );
+}
+
+function getStopBarApproachOffset(crossing: CrossingPlan): number {
+  return crossing.widthMeters / 2 + STOP_BAR_APPROACH_CLEARANCE_METERS;
 }
 
 function createTactilePaving(crossing: CrossingPlan, road: RoadSegment): LaneMarkingPlan[] {

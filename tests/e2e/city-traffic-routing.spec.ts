@@ -75,7 +75,19 @@ test('traffic vehicles reference lanes, route nodes, stop zones, profile speeds,
     visualVariantTags: ['sedan', 'hatchback', 'coupe']
   });
   expect(firstVehicle.route.nodeIds).toHaveLength(13);
-  expect(firstVehicle.stopBehavior.stopZoneOffsetsMeters).toEqual([-220, -176, -132, -88, -44, 0, 44, 88, 132, 176, 220]);
+  expect(firstVehicle.stopBehavior.stopZoneOffsetsMeters).toEqual([
+    -227.3,
+    -183.3,
+    -139.3,
+    -95.3,
+    -51.3,
+    -7.3,
+    36.7,
+    80.7,
+    124.7,
+    168.7,
+    212.7
+  ]);
   expect(firstVehicle.tags).toMatchObject({
     vehicleClass: 'car'
   });

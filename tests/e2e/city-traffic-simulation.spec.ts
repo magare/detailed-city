@@ -54,6 +54,72 @@ function createSimulatedVehicle(overrides: Partial<SimulatedVehicle> = {}): Simu
   };
 }
 
+function runDeterministicSimulationTrace(): readonly {
+  readonly id: string;
+  readonly offset: number;
+  readonly speed: number;
+  readonly behavior: TrafficVehicleRuntimeState['behaviorState'];
+  readonly stopTimer: number;
+}[] {
+  const system = new TrafficSimulationSystem();
+  const vehicles = [
+    createSimulatedVehicle({
+      runtime: createTestVehicleRuntimeState({
+        vehicleId: 'seeded-cruiser',
+        currentRouteOffsetMeters: -50,
+        currentSpeedMetersPerSecond: 0,
+        targetSpeedMetersPerSecond: 12,
+        replaySeed: 'seed:cruiser'
+      })
+    }),
+    createSimulatedVehicle({
+      fixedCoordinate: 54,
+      stopZoneOffsetsMeters: [0],
+      stopLookAheadMeters: 18,
+      runtime: createTestVehicleRuntimeState({
+        vehicleId: 'seeded-stopper',
+        currentRouteOffsetMeters: -12,
+        currentSpeedMetersPerSecond: 9,
+        targetSpeedMetersPerSecond: 9,
+        replaySeed: 'seed:stopper'
+      })
+    }),
+    createSimulatedVehicle({
+      axis: 'x',
+      direction: -1,
+      min: -30,
+      max: 30,
+      fixedCoordinate: -12,
+      runtime: createTestVehicleRuntimeState({
+        vehicleId: 'seeded-wrapper',
+        currentRouteOffsetMeters: -28,
+        currentSpeedMetersPerSecond: 8,
+        targetSpeedMetersPerSecond: 8,
+        replaySeed: 'seed:wrapper'
+      })
+    })
+  ];
+
+  system.addVehicles(vehicles);
+
+  const snapshots = [];
+  for (const deltaSeconds of [0.1, 0.25, 0.5, 1, 0.75, 0.4]) {
+    system.update(deltaSeconds);
+
+    for (const vehicle of vehicles) {
+      snapshots.push({
+        id: vehicle.runtime.vehicleId,
+        offset: Number(vehicle.runtime.currentRouteOffsetMeters.toFixed(6)),
+        speed: Number(vehicle.runtime.currentSpeedMetersPerSecond.toFixed(6)),
+        behavior: vehicle.runtime.behaviorState,
+        stopTimer: Number(vehicle.runtime.stopTimerSeconds.toFixed(6))
+      });
+    }
+  }
+
+  return snapshots;
+}
+
 test('traffic simulation system advances vehicles along their route', () => {
   const system = new TrafficSimulationSystem();
   const vehicle = createSimulatedVehicle();
@@ -353,4 +419,25 @@ test('traffic simulation system clamps existing over-limit runtime speed to spee
   // Movement distance must be based on speed-limit-capped speed (at most 8 meters)
   expect(vehicle.runtime.currentRouteOffsetMeters).toBeLessThanOrEqual(-42);
   expect(vehicle.runtime.currentRouteOffsetMeters).toBeGreaterThan(-50);
+});
+
+test('traffic simulation system produces identical seeded position and speed traces across runs', () => {
+  const firstRunTrace = runDeterministicSimulationTrace();
+  const secondRunTrace = runDeterministicSimulationTrace();
+
+  expect(secondRunTrace).toEqual(firstRunTrace);
+  expect(firstRunTrace).toContainEqual(
+    expect.objectContaining({
+      id: 'seeded-stopper',
+      speed: 0,
+      behavior: 'stopped',
+      stopTimer: 2
+    })
+  );
+  expect(firstRunTrace).toContainEqual(
+    expect.objectContaining({
+      id: 'seeded-wrapper',
+      offset: 30
+    })
+  );
 });
