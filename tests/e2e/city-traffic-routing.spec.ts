@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { DEFAULT_VEHICLE_PROFILES } from '../../src/city/data-contracts/cityContracts';
 import { validateTrafficPlan } from '../../src/city/data-contracts/validation/validateTrafficPlan';
 import { cityConfig } from '../../src/config/cityConfig';
 import { CityGenerator } from '../../src/generation/CityGenerator';
@@ -8,6 +9,7 @@ import {
   initializeTrafficRuntimeState
 } from '../../src/city/data-contracts/trafficRuntimeState';
 import type { TrafficRuntimeState } from '../../src/city/data-contracts/trafficRuntimeState';
+import type { TrafficVehiclePlan, TransitRoute, TransitStop } from '../../src/types/city';
 
 test('traffic vehicles reference lanes, route nodes, stop zones, profile speeds, and vehicle taxonomy', () => {
   const firstCity = new CityGenerator(cityConfig).generate();
@@ -244,6 +246,84 @@ test('traffic validation rejects vehicles with invalid lane, route, speed, hooks
         severity: 'error',
         category: 'identifier',
         objectId: 'traffic vehicle bad id'
+      })
+    ])
+  );
+});
+
+test('traffic validation accepts bus service fields and rejects missing bus route references', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const traffic = createTraffic(city);
+  const [vehicle] = traffic.vehicles;
+  const bus = createBusVehicleFixture(vehicle);
+  const stops = createTransitStopFixtures(bus);
+  const route = createTransitRouteFixture(bus, stops);
+
+  expect(
+    validateTraffic(city, {
+      ...traffic,
+      vehicles: [bus]
+    }, {
+      transitStops: stops,
+      transitRoutes: [route]
+    }).issues
+  ).toEqual([]);
+
+  const missingServiceValidation = validateTraffic(city, {
+    ...traffic,
+    vehicles: [
+      {
+        ...bus,
+        busService: undefined
+      }
+    ]
+  }, {
+    transitStops: stops,
+    transitRoutes: [route]
+  });
+
+  expect(missingServiceValidation.issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: `missing-traffic-bus-service-${bus.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: bus.id
+      })
+    ])
+  );
+
+  const badReferencesValidation = validateTraffic(city, {
+    ...traffic,
+    vehicles: [
+      {
+        ...bus,
+        busService: {
+          ...bus.busService!,
+          transitRouteId: 'missing-route',
+          stopSequenceIds: ['missing-stop'],
+          nextStopId: 'missing-stop'
+        }
+      }
+    ]
+  }, {
+    transitStops: stops,
+    transitRoutes: [route]
+  });
+
+  expect(badReferencesValidation.issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: `missing-traffic-bus-route-${bus.id}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: bus.id
+      }),
+      expect.objectContaining({
+        id: `missing-traffic-bus-stop-${bus.id}-missing-stop`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: bus.id
       })
     ])
   );
@@ -586,16 +666,124 @@ function createTraffic(city: ReturnType<CityGenerator['generate']>) {
 
 function validateTraffic(
   city: ReturnType<CityGenerator['generate']>,
-  traffic: ReturnType<TrafficLaneGenerator['create']>
+  traffic: ReturnType<TrafficLaneGenerator['create']>,
+  transit: {
+    readonly transitStops?: readonly TransitStop[];
+    readonly transitRoutes?: readonly TransitRoute[];
+  } = {}
 ) {
   return validateTrafficPlan({
     roads: city.roads,
     crossings: city.crossings,
     intersections: city.intersections,
     trafficCalmingDevices: city.trafficCalmingDevices,
+    transitStops: transit.transitStops,
+    transitRoutes: transit.transitRoutes,
     assetBindings: city.assetBindings,
     traffic
   });
+}
+
+function createBusVehicleFixture(vehicle: TrafficVehiclePlan): TrafficVehiclePlan {
+  const busProfile = DEFAULT_VEHICLE_PROFILES.find((profile) => profile.vehicleClass === 'bus');
+
+  if (!busProfile) {
+    throw new Error('Expected default bus vehicle profile.');
+  }
+
+  const preferredSpeedKph = Math.round(Math.min(vehicle.speedLimitKph * busProfile.behavior.preferredSpeedFraction, busProfile.behavior.maxSpeedKph) * 100) / 100;
+  const turnSpeedKph = Math.round(preferredSpeedKph * busProfile.behavior.turnSpeedReduction * 100) / 100;
+  const speed = Math.round((preferredSpeedKph / 3.6) * 100) / 100;
+
+  return {
+    ...vehicle,
+    vehicleClass: 'bus',
+    size:
+      vehicle.axis === 'x'
+        ? { x: busProfile.dimensions.lengthMeters, z: busProfile.dimensions.widthMeters }
+        : { x: busProfile.dimensions.widthMeters, z: busProfile.dimensions.lengthMeters },
+    speed,
+    dimensions: busProfile.dimensions,
+    passengerCapacity: busProfile.passengerCapacity,
+    cargoCapacityKg: busProfile.cargoCapacityKg,
+    behaviorProfile: busProfile.behavior,
+    dynamics: {
+      maxSpeedKph: busProfile.behavior.maxSpeedKph,
+      preferredSpeedKph,
+      accelerationMetersPerSecondSq: busProfile.behavior.accelerationMetersPerSecondSq,
+      brakingMetersPerSecondSq: busProfile.behavior.brakingMetersPerSecondSq,
+      comfortableDecelerationMetersPerSecondSq: busProfile.behavior.comfortableDecelerationMetersPerSecondSq,
+      minFollowingDistanceMeters: busProfile.behavior.minFollowingDistanceMeters,
+      reactionTimeSeconds: busProfile.behavior.reactionTimeSeconds,
+      turnSpeedKph,
+      stopToleranceMeters: busProfile.behavior.stopToleranceMeters
+    },
+    assetBindingId: busProfile.defaultAssetBindingId,
+    visualVariantTags: busProfile.visualVariantTags,
+    busService: {
+      transitRouteId: `transit-route-test-${vehicle.roadId}`,
+      stopSequenceIds: [`transit-stop-test-${vehicle.roadId}-0`, `transit-stop-test-${vehicle.roadId}-1`],
+      nextStopId: `transit-stop-test-${vehicle.roadId}-0`,
+      dwellTimeSeconds: 18,
+      doorSide: 'right',
+      scheduleOffsetSeconds: 0,
+      headwayGroupId: `headway-test-${vehicle.roadId}`,
+      passengerLoadEstimate: 32,
+      busLanePermission: true
+    },
+    tags: {
+      ...vehicle.tags,
+      vehicleClass: 'bus',
+      transitRouteId: `transit-route-test-${vehicle.roadId}`
+    }
+  };
+}
+
+function createTransitStopFixtures(bus: TrafficVehiclePlan): readonly TransitStop[] {
+  return bus.busService!.stopSequenceIds.map((stopId, index) => ({
+    id: stopId,
+    kind: 'transit-stop',
+    ownerDomain: 'mobility',
+    parentId: bus.roadId,
+    name: `Test Stop ${index + 1}`,
+    lod: 'lod3',
+    stopType: 'bus-stop',
+    mode: 'bus',
+    roadId: bus.roadId,
+    sidewalkId: `sidewalk-test-${bus.roadId}-${index}`,
+    routeIds: [bus.busService!.transitRouteId],
+    side: index % 2 === 0 ? 'right' : 'left',
+    center: {
+      x: bus.position.x,
+      z: bus.position.z + index * 24
+    },
+    alongRoadMeters: bus.route.startOffsetMeters + index * 24,
+    platformLengthMeters: 18,
+    passengerDemandSeed: 72 + index,
+    serviceHeadwayMinutes: 10,
+    accessible: true,
+    transferRoadIds: [],
+    assetBindingId: 'binding:transit:bus-stop'
+  }));
+}
+
+function createTransitRouteFixture(bus: TrafficVehiclePlan, stops: readonly TransitStop[]): TransitRoute {
+  return {
+    id: bus.busService!.transitRouteId,
+    kind: 'transit-route',
+    ownerDomain: 'mobility',
+    name: 'Test Bus Route',
+    lod: 'lod1',
+    mode: 'bus',
+    routeShortName: 'TB',
+    roadIds: [bus.roadId],
+    stopIds: stops.map((stop) => stop.id),
+    laneIds: [],
+    headwayMinutes: 10,
+    serviceSpan: 'all-day',
+    passengerDemandSeed: stops.reduce((sum, stop) => sum + stop.passengerDemandSeed, 0),
+    colorHex: '#2e6a9e'
+  };
 }
 
 test('traffic vehicle runtime state initializes deterministically from plan', () => {

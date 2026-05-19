@@ -4452,6 +4452,20 @@ export interface TrafficVehicleRoute {
   readonly lengthMeters: number;
 }
 
+export type BusVehicleDoorSide = CurbSide | 'both';
+
+export interface BusVehicleService {
+  readonly transitRouteId: CityId;
+  readonly stopSequenceIds: readonly CityId[];
+  readonly nextStopId: CityId;
+  readonly dwellTimeSeconds: number;
+  readonly doorSide: BusVehicleDoorSide;
+  readonly scheduleOffsetSeconds: number;
+  readonly headwayGroupId: CityId;
+  readonly passengerLoadEstimate: number;
+  readonly busLanePermission: boolean;
+}
+
 export interface TrafficVehicleContract extends CityObjectBase<'traffic-vehicle'> {
   readonly roadId: CityId;
   readonly laneId: CityId;
@@ -4478,6 +4492,7 @@ export interface TrafficVehicleContract extends CityObjectBase<'traffic-vehicle'
   readonly dynamics: VehicleDynamics;
   readonly assetBindingId: CityId;
   readonly visualVariantTags: readonly string[];
+  readonly busService?: BusVehicleService;
 }
 
 export type TrafficCalmingDeviceKind =

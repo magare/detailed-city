@@ -12,13 +12,15 @@ import {
 import { validateCityObjectRegistryIdentity } from '../cityObjectRegistry';
 import { validateCityLodPolicy } from '../lodPolicy';
 import { validateSourceMetadata } from '../sourceMetadata';
-import type { CrossingPlan, IntersectionPlan, RoadSegment, TrafficCalmingDevice, TrafficPlan } from '../../../types/city';
+import type { CrossingPlan, IntersectionPlan, RoadSegment, TrafficCalmingDevice, TrafficPlan, TransitRoute, TransitStop } from '../../../types/city';
 
 export interface TrafficPlanValidationSource {
   readonly roads: readonly RoadSegment[];
   readonly crossings: readonly CrossingPlan[];
   readonly intersections: readonly IntersectionPlan[];
   readonly trafficCalmingDevices?: readonly TrafficCalmingDevice[];
+  readonly transitRoutes?: readonly TransitRoute[];
+  readonly transitStops?: readonly TransitStop[];
   readonly assetBindings: readonly RenderBinding[];
   readonly traffic: TrafficPlan;
   readonly lodPolicy?: CityLodPolicy;
@@ -30,6 +32,8 @@ export function validateTrafficPlan(source: TrafficPlanValidationSource): Valida
   const crossingsById = new Map(source.crossings.map((crossing) => [crossing.id, crossing]));
   const intersectionsById = new Map(source.intersections.map((intersection) => [intersection.id, intersection]));
   const assetBindingsById = new Map(source.assetBindings.map((binding) => [binding.id, binding]));
+  const transitRoutesById = new Map((source.transitRoutes ?? []).map((route) => [route.id, route]));
+  const transitStopsById = new Map((source.transitStops ?? []).map((stop) => [stop.id, stop]));
   const lanesById = new Map(source.roads.flatMap((road) => road.lanes.map((lane) => [lane.id, lane])));
   const laneIds = new Set(lanesById.keys());
   const parentKindsById = createTrafficParentKindIndex(source.roads, source.crossings);
@@ -731,12 +735,174 @@ export function validateTrafficPlan(source: TrafficPlanValidationSource): Valida
         });
       }
     }
+
+    issues.push(...validateBusVehicleService(vehicle, transitRoutesById, transitStopsById));
   }
 
   return {
     passed: issues.every((issue) => issue.severity !== 'error'),
     issues
   };
+}
+
+function validateBusVehicleService(
+  vehicle: TrafficPlan['vehicles'][number],
+  transitRoutesById: ReadonlyMap<CityId, TransitRoute>,
+  transitStopsById: ReadonlyMap<CityId, TransitStop>
+): ValidationIssue[] {
+  if (vehicle.vehicleClass !== 'bus') {
+    return vehicle.busService === undefined
+      ? []
+      : [
+          {
+            id: `unexpected-traffic-vehicle-bus-service-${vehicle.id}`,
+            severity: 'error',
+            category: 'simulation',
+            objectId: vehicle.id,
+            message: `Traffic vehicle ${vehicle.id} must only include bus service fields when vehicleClass is bus.`
+          }
+        ];
+  }
+
+  const service = vehicle.busService;
+
+  if (!service) {
+    return [
+      {
+        id: `missing-traffic-bus-service-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        suggestedFix: 'Attach transit route ID, ordered stop IDs, next stop, dwell timing, door side, headway group, load estimate, and bus-lane permission.',
+        message: `Bus vehicle ${vehicle.id} must include bus service fields.`
+      }
+    ];
+  }
+
+  const issues: ValidationIssue[] = [];
+  const route = transitRoutesById.get(service.transitRouteId);
+  const stopIds = new Set(service.stopSequenceIds);
+  const validDoorSides = new Set(['left', 'right', 'both']);
+
+  if (!route) {
+    issues.push({
+      id: `missing-traffic-bus-route-${vehicle.id}`,
+      severity: 'error',
+      category: 'identifier',
+      objectId: vehicle.id,
+      suggestedFix: `Create transit route ${service.transitRouteId} before spawning bus ${vehicle.id}, or update the bus route reference.`,
+      message: `Bus vehicle ${vehicle.id} references missing transit route ${service.transitRouteId}.`
+    });
+  } else {
+    if (route.mode !== 'bus') {
+      issues.push({
+        id: `traffic-bus-route-mode-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Bus vehicle ${vehicle.id} route ${route.id} must be a bus route.`
+      });
+    }
+
+    if (route.roadIds.length > 0 && !route.roadIds.includes(vehicle.roadId)) {
+      issues.push({
+        id: `traffic-bus-route-road-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: vehicle.id,
+        message: `Bus vehicle ${vehicle.id} must run on a road used by transit route ${route.id}.`
+      });
+    }
+
+    if (route.laneIds.length > 0 && !route.laneIds.includes(vehicle.laneId) && !service.busLanePermission) {
+      issues.push({
+        id: `traffic-bus-lane-permission-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'simulation',
+        objectId: vehicle.id,
+        message: `Bus vehicle ${vehicle.id} must either use a route bus lane or explicitly allow mixed-lane operation.`
+      });
+    }
+
+    if (
+      service.stopSequenceIds.length !== route.stopIds.length ||
+      service.stopSequenceIds.some((stopId, index) => stopId !== route.stopIds[index])
+    ) {
+      issues.push({
+        id: `traffic-bus-stop-sequence-mismatch-${vehicle.id}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: vehicle.id,
+        message: `Bus vehicle ${vehicle.id} stop sequence must match transit route ${route.id}.`
+      });
+    }
+  }
+
+  if (service.stopSequenceIds.length === 0 || stopIds.size !== service.stopSequenceIds.length) {
+    issues.push({
+      id: `invalid-traffic-bus-stop-sequence-${vehicle.id}`,
+      severity: 'error',
+      category: 'simulation',
+      objectId: vehicle.id,
+      message: `Bus vehicle ${vehicle.id} must have a non-empty ordered stop sequence without duplicates.`
+    });
+  }
+
+  if (!stopIds.has(service.nextStopId)) {
+    issues.push({
+      id: `traffic-bus-next-stop-mismatch-${vehicle.id}`,
+      severity: 'error',
+      category: 'simulation',
+      objectId: vehicle.id,
+      message: `Bus vehicle ${vehicle.id} next stop must be part of its stop sequence.`
+    });
+  }
+
+  for (const stopId of service.stopSequenceIds) {
+    const stop = transitStopsById.get(stopId);
+
+    if (!stop) {
+      issues.push({
+        id: `missing-traffic-bus-stop-${vehicle.id}-${stopId}`,
+        severity: 'error',
+        category: 'identifier',
+        objectId: vehicle.id,
+        suggestedFix: `Create transit stop ${stopId} before spawning bus ${vehicle.id}, or update the bus stop sequence.`,
+        message: `Bus vehicle ${vehicle.id} references missing transit stop ${stopId}.`
+      });
+    } else if (stop.mode !== 'bus' || stop.roadId !== vehicle.roadId) {
+      issues.push({
+        id: `traffic-bus-stop-road-mismatch-${vehicle.id}-${stopId}`,
+        severity: 'error',
+        category: 'graph',
+        objectId: vehicle.id,
+        message: `Bus vehicle ${vehicle.id} stop ${stopId} must be a bus stop on the vehicle road.`
+      });
+    }
+  }
+
+  if (
+    service.dwellTimeSeconds < 0 ||
+    service.passengerLoadEstimate < 0 ||
+    service.passengerLoadEstimate > vehicle.passengerCapacity ||
+    !Number.isFinite(service.dwellTimeSeconds) ||
+    !Number.isFinite(service.scheduleOffsetSeconds) ||
+    !Number.isFinite(service.passengerLoadEstimate) ||
+    !validDoorSides.has(service.doorSide) ||
+    service.headwayGroupId.trim().length === 0 ||
+    typeof service.busLanePermission !== 'boolean'
+  ) {
+    issues.push({
+      id: `invalid-traffic-bus-service-${vehicle.id}`,
+      severity: 'error',
+      category: 'simulation',
+      objectId: vehicle.id,
+      suggestedFix: 'Regenerate finite bus dwell, schedule offset, load, door side, headway group, and bus-lane permission values from the transit route.',
+      message: `Bus vehicle ${vehicle.id} has invalid bus service values.`
+    });
+  }
+
+  return issues;
 }
 
 function createTrafficParentKindIndex(
