@@ -1,6 +1,7 @@
 import { CITY_BLUEPRINT } from '../../city/blueprint/cityBlueprint';
 import type { TreeSpecies } from '../../city/data-contracts/cityContracts';
 import type {
+  BuildingPlan,
   CityBounds,
   CityConfig,
   ConstraintPlan,
@@ -11,6 +12,8 @@ import type {
   Waterway
 } from '../../types/city';
 import { isPointInsidePolygon, rectanglePolygon } from '../../utils/geometry';
+import { hashString } from '../../utils/random';
+import { isTreeCenterClear, type TreePlacementAvoidance } from '../vegetation/treePlacementConstraints';
 
 export class TerrainGenerator {
   constructor(private readonly config: CityConfig) {}
@@ -161,24 +164,38 @@ export class TerrainGenerator {
     });
   }
 
-  generateTreePlantings(parks: ParkPatch[]): TreePlanting[] {
+  generateTreePlantings(
+    parks: ParkPatch[],
+    avoidance: { readonly roads: readonly RoadSegment[]; readonly buildings: readonly BuildingPlan[] } = {
+      roads: [],
+      buildings: []
+    }
+  ): TreePlanting[] {
     const trees: TreePlanting[] = [];
+    const treeDensity = Math.max(0, Math.min(1, this.config.density.treeDensity));
+    const parkAreaPerTree = 132 - treeDensity * 58;
+    const placementAvoidance: TreePlacementAvoidance = {
+      ...avoidance,
+      roadClearanceMeters: 0.85,
+      buildingClearanceMeters: 1.25
+    };
 
     for (const park of parks) {
-      const treeCount = Math.max(8, Math.floor((park.size.x * park.size.z) / 260));
+      const treeCount = Math.max(12, Math.floor((park.size.x * park.size.z) / parkAreaPerTree));
 
       for (let index = 0; index < treeCount; index += 1) {
-        const angle = index * 2.399963;
-        const radius = Math.sqrt((index + 0.5) / treeCount);
-        const center = {
-          x: park.center.x + Math.cos(angle) * radius * park.size.x * 0.42,
-          z: park.center.z + Math.sin(angle) * radius * park.size.z * 0.42
-        };
-        const species = CITY_BLUEPRINT.treeSpeciesCycle[index % CITY_BLUEPRINT.treeSpeciesCycle.length];
-        const traits = createParkTreeTraits(species);
+        const treeId = `${park.id}-tree-${index}`;
+        const center = resolveParkTreeCenter(park, index, treeCount, placementAvoidance);
+
+        if (!center) {
+          continue;
+        }
+
+        const species = selectParkTreeSpecies(park, index);
+        const traits = createParkTreeTraits(species, treeId);
 
         trees.push({
-          id: `${park.id}-tree-${index}`,
+          id: treeId,
           kind: 'tree-planting',
           ownerDomain: 'public-realm',
           parentId: park.id,
@@ -352,7 +369,49 @@ function offsetPoint(
   };
 }
 
-function createParkTreeTraits(species: TreeSpecies): {
+function resolveParkTreeCenter(
+  park: ParkPatch,
+  index: number,
+  treeCount: number,
+  avoidance: TreePlacementAvoidance
+): ParkPatch['center'] | undefined {
+  for (let attempt = 0; attempt < 28; attempt += 1) {
+    const center = createParkTreeCenter(park, index, treeCount, attempt);
+
+    if (isTreeCenterClear(center, avoidance)) {
+      return center;
+    }
+  }
+
+  return undefined;
+}
+
+function createParkTreeCenter(park: ParkPatch, index: number, treeCount: number, attempt = 0): ParkPatch['center'] {
+  const variantIndex = index + attempt * Math.max(1, treeCount);
+  const edgeBand = variantIndex % 5 === 0;
+  const angle = variantIndex * 2.399963 + signedUnitHash(`${park.id}:${index}:${attempt}:angle`) * 0.32;
+  const progress = (index + 0.5 + normalizedHash(`${park.id}:${index}:${attempt}:progress`) * 0.58) / treeCount;
+  const radius = edgeBand
+    ? 0.72 + normalizedHash(`${park.id}:${index}:${attempt}:edge`) * 0.2
+    : Math.sqrt(Math.min(0.96, progress)) * (0.34 + normalizedHash(`${park.id}:${index}:${attempt}:radius`) * 0.16);
+  const xRadius = park.size.x * (edgeBand ? 0.47 : 0.42);
+  const zRadius = park.size.z * (edgeBand ? 0.47 : 0.42);
+
+  return {
+    x: roundMeters(park.center.x + Math.cos(angle) * radius * xRadius),
+    z: roundMeters(park.center.z + Math.sin(angle) * radius * zRadius)
+  };
+}
+
+function selectParkTreeSpecies(park: ParkPatch, index: number): TreeSpecies {
+  const species = CITY_BLUEPRINT.treeSpeciesCycle;
+  const parkBias = park.id === 'riverside-green' ? 1 : park.id === 'civic-plaza' ? 3 : 0;
+  const hash = hashString(`${park.id}:${index}:species`);
+
+  return species[(hash + parkBias) % species.length];
+}
+
+function createParkTreeTraits(species: TreeSpecies, variantKey: string): {
   readonly height: number;
   readonly canopyDiameter: number;
   readonly canopyClass: TreePlanting['canopyClass'];
@@ -362,7 +421,7 @@ function createParkTreeTraits(species: TreeSpecies): {
   readonly ecologyScore: number;
 } {
   if (species === 'palm') {
-    return {
+    return varyParkTreeTraits(variantKey, {
       height: 6.8,
       canopyDiameter: 3.4,
       canopyClass: 'palm',
@@ -370,11 +429,11 @@ function createParkTreeTraits(species: TreeSpecies): {
       seasonalColor: 'evergreen',
       heatMitigationScore: 0.52,
       ecologyScore: 0.46
-    };
+    });
   }
 
   if (species === 'rain-tree') {
-    return {
+    return varyParkTreeTraits(variantKey, {
       height: 7.8,
       canopyDiameter: 6.4,
       canopyClass: 'broad',
@@ -382,11 +441,11 @@ function createParkTreeTraits(species: TreeSpecies): {
       seasonalColor: 'summer-green',
       heatMitigationScore: 0.92,
       ecologyScore: 0.86
-    };
+    });
   }
 
   if (species === 'jacaranda') {
-    return {
+    return varyParkTreeTraits(variantKey, {
       height: 6.9,
       canopyDiameter: 5.1,
       canopyClass: 'medium',
@@ -394,10 +453,10 @@ function createParkTreeTraits(species: TreeSpecies): {
       seasonalColor: 'spring-purple',
       heatMitigationScore: 0.73,
       ecologyScore: 0.78
-    };
+    });
   }
 
-  return {
+  return varyParkTreeTraits(variantKey, {
     height: 7.1,
     canopyDiameter: 5.4,
     canopyClass: 'medium',
@@ -405,7 +464,54 @@ function createParkTreeTraits(species: TreeSpecies): {
     seasonalColor: 'autumn-gold',
     heatMitigationScore: 0.77,
     ecologyScore: 0.72
+  });
+}
+
+function varyParkTreeTraits(
+  variantKey: string,
+  base: {
+    readonly height: number;
+    readonly canopyDiameter: number;
+    readonly canopyClass: TreePlanting['canopyClass'];
+    readonly soilVolumeCubicMeters: number;
+    readonly seasonalColor: TreePlanting['seasonalColor'];
+    readonly heatMitigationScore: number;
+    readonly ecologyScore: number;
+  }
+): {
+  readonly height: number;
+  readonly canopyDiameter: number;
+  readonly canopyClass: TreePlanting['canopyClass'];
+  readonly soilVolumeCubicMeters: number;
+  readonly seasonalColor: TreePlanting['seasonalColor'];
+  readonly heatMitigationScore: number;
+  readonly ecologyScore: number;
+} {
+  const heightScale = 0.84 + normalizedHash(`${variantKey}:height`) * 0.38;
+  const canopyScale = 0.78 + normalizedHash(`${variantKey}:canopy`) * 0.44;
+  const canopyDiameter = roundMeters(base.canopyDiameter * canopyScale);
+  const soilScale = 0.9 + normalizedHash(`${variantKey}:soil`) * 0.24;
+
+  return {
+    ...base,
+    height: roundMeters(base.height * heightScale),
+    canopyDiameter,
+    soilVolumeCubicMeters: roundMeters(base.soilVolumeCubicMeters * soilScale),
+    heatMitigationScore: Math.min(1, roundMeters(base.heatMitigationScore * (0.92 + canopyScale * 0.12))),
+    ecologyScore: Math.max(0.3, Math.min(1, roundMeters(base.ecologyScore + (normalizedHash(`${variantKey}:ecology`) - 0.5) * 0.08)))
   };
+}
+
+function normalizedHash(key: string): number {
+  return hashString(key) / 0xffffffff;
+}
+
+function signedUnitHash(key: string): number {
+  return normalizedHash(key) * 2 - 1;
+}
+
+function roundMeters(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function getNearestSidewalkIds(park: ParkPatch, roads: readonly RoadSegment[], limit: number): string[] {

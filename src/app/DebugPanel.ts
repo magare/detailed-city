@@ -9,6 +9,13 @@ export interface DebugPanelStartOptions {
   refreshIntervalMs?: number;
 }
 
+export interface StreetLightDebugState {
+  readonly enabled: boolean;
+  readonly dynamicLightCount: number;
+  readonly shadowCastingLightCount: number;
+  readonly illuminationPoolCount: number;
+}
+
 export interface DebugPanelSource {
   readonly seed: string;
   readonly updatedAt: Date;
@@ -17,6 +24,8 @@ export interface DebugPanelSource {
   readonly getSceneLayerStates: () => readonly CitySceneLayerRuntimeState[];
   readonly setSceneLayerVisible: (layerId: CitySceneLayerId, visible: boolean) => void;
   readonly setSceneLayerRenderOrder: (layerId: CitySceneLayerId, renderOrder: number) => void;
+  readonly getStreetLightRuntimeState: () => StreetLightDebugState;
+  readonly setStreetLightsEnabled: (enabled: boolean) => void;
 }
 
 export class DebugPanel {
@@ -129,6 +138,10 @@ export class DebugPanel {
         layerObjectCounts,
         this.source.setSceneLayerVisible,
         this.source.setSceneLayerRenderOrder
+      ),
+      createStreetLightControls(
+        this.source.getStreetLightRuntimeState(),
+        this.source.setStreetLightsEnabled
       ),
       createMetric(
         'Config',
@@ -537,6 +550,45 @@ function createLayerControls(
     section.append(row);
   }
 
+  return section;
+}
+
+function createStreetLightControls(
+  state: StreetLightDebugState,
+  setStreetLightsEnabled: DebugPanelSource['setStreetLightsEnabled']
+): HTMLElement {
+  const section = document.createElement('section');
+  section.className = 'city-debug-panel__runtime-controls';
+  section.setAttribute('aria-label', 'Runtime lighting controls');
+
+  const heading = document.createElement('div');
+  heading.className = 'city-debug-panel__layer-heading';
+  heading.textContent = 'Lighting';
+
+  const row = document.createElement('div');
+  row.className = 'city-debug-panel__runtime-row';
+
+  const checkbox = document.createElement('input');
+  checkbox.className = 'city-debug-panel__layer-checkbox';
+  checkbox.type = 'checkbox';
+  checkbox.checked = state.enabled;
+  checkbox.dataset.cityStreetLightToggle = 'effects';
+  checkbox.setAttribute('aria-label', 'Street light effects');
+  checkbox.addEventListener('change', () => {
+    setStreetLightsEnabled(checkbox.checked);
+  });
+
+  const label = document.createElement('span');
+  label.className = 'city-debug-panel__layer-label';
+  label.textContent = 'Street Lights';
+
+  const count = document.createElement('span');
+  count.className = 'city-debug-panel__layer-count';
+  count.textContent = `${state.dynamicLightCount}/${state.illuminationPoolCount}`;
+  count.title = `${state.dynamicLightCount} dynamic lights, ${state.shadowCastingLightCount} shadow-casting, ${state.illuminationPoolCount} illuminated fixtures`;
+
+  row.append(checkbox, label, count);
+  section.append(heading, row);
   return section;
 }
 

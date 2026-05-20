@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { RenderConfig } from '../config/renderConfig';
+import { STREET_LIGHT_EFFECTS_RENDER_LAYER } from '../rendering/layers/renderLayers';
 import { applyRendererQuality } from '../systems/performance/QualityManager';
 import type { WeatherPreset } from '../types/city';
 
@@ -20,6 +21,7 @@ export class SceneBootstrap {
       config.near,
       config.far
     );
+    this.camera.layers.enable(STREET_LIGHT_EFFECTS_RENDER_LAYER);
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: config.antialias,

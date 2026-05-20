@@ -144,7 +144,10 @@ export class CityGenerator {
     const cadastreRecords = new CadastreGenerator().create(soilGeology.parcels);
     const developmentPhases = new PhasingGenerator().create({ bounds });
     const weatherPresets = new ClimateWeatherGenerator().create();
-    const parkTrees = terrainGenerator.generateTreePlantings(parksWithFeatures);
+    const parkTrees = terrainGenerator.generateTreePlantings(parksWithFeatures, {
+      roads: roadsWithTopography,
+      buildings: landAndBuildingsWithTopography.buildings
+    });
     const verticalSlices = new DetailedStreetSliceGenerator(this.config).create({
       roads: roadsWithTopography,
       intersections,
@@ -177,10 +180,11 @@ export class CityGenerator {
       crossings: sliceTagged.crossings,
       curbZones
     });
-    const streetTrees = new StreetTreeGenerator().create({
+    const streetTrees = new StreetTreeGenerator(this.config).create({
       slices: verticalSlicesWithCurbs,
       roads: sliceTagged.roads,
-      curbZones
+      curbZones,
+      buildings: sliceTagged.buildings
     });
     const streetLights = new StreetLightGenerator().create({
       slices: verticalSlicesWithCurbs,

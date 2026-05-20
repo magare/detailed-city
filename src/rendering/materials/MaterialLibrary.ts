@@ -92,6 +92,27 @@ export class MaterialLibrary {
     roughness: 0.9
   });
 
+  readonly treeTrunkInstanced = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.95,
+    vertexColors: true
+  });
+
+  readonly treeCanopyInstanced = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.96,
+    metalness: 0,
+    vertexColors: true,
+    side: THREE.DoubleSide
+  });
+
+  readonly understoryFoliage = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 1,
+    metalness: 0,
+    vertexColors: true
+  });
+
   readonly water = new THREE.MeshPhysicalMaterial({
     color: 0x2c6f86,
     roughness: 0.28,
@@ -191,6 +212,24 @@ export class MaterialLibrary {
     color: 0xffd99a,
     transparent: true,
     opacity: 0.72
+  });
+
+  readonly streetLightIllumination = new THREE.MeshBasicMaterial({
+    color: 0xffc46d,
+    transparent: true,
+    opacity: 0.18,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  readonly streetLightDynamicReceiver = new THREE.MeshStandardMaterial({
+    color: 0xffc46d,
+    roughness: 1,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.32,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
   });
 
   readonly streetFurnitureMetal = new THREE.MeshStandardMaterial({
@@ -305,6 +344,8 @@ export class MaterialLibrary {
     foliage: this.treeCanopy,
     'street-light': this.streetLightPole,
     'street-light-glow': this.streetLightGlow,
+    'street-light-illumination': this.streetLightIllumination,
+    'street-light-dynamic-receiver': this.streetLightDynamicReceiver,
     'street-furniture': this.streetFurnitureMetal,
     bench: this.streetFurnitureWood,
     bin: this.streetFurnitureAccent,
@@ -357,6 +398,9 @@ export class MaterialLibrary {
     overlay: this.overlay,
     treeTrunk: this.treeTrunk,
     treeCanopy: this.treeCanopy,
+    treeTrunkInstanced: this.treeTrunkInstanced,
+    treeCanopyInstanced: this.treeCanopyInstanced,
+    understoryFoliage: this.understoryFoliage,
     water: this.water,
     building: this.building,
     rooftop: this.rooftop,
@@ -372,6 +416,8 @@ export class MaterialLibrary {
     entranceDoor: this.entranceDoor,
     streetLightPole: this.streetLightPole,
     streetLightGlow: this.streetLightGlow,
+    streetLightIllumination: this.streetLightIllumination,
+    streetLightDynamicReceiver: this.streetLightDynamicReceiver,
     streetFurnitureMetal: this.streetFurnitureMetal,
     streetFurnitureWood: this.streetFurnitureWood,
     streetFurnitureAccent: this.streetFurnitureAccent,
@@ -444,6 +490,9 @@ export class MaterialLibrary {
     this.overlay.dispose();
     this.treeTrunk.dispose();
     this.treeCanopy.dispose();
+    this.treeTrunkInstanced.dispose();
+    this.treeCanopyInstanced.dispose();
+    this.understoryFoliage.dispose();
     this.water.dispose();
     this.buildingFacadeTexture.dispose();
     this.buildingFacadeBumpTexture.dispose();
@@ -462,6 +511,8 @@ export class MaterialLibrary {
     this.entranceDoor.dispose();
     this.streetLightPole.dispose();
     this.streetLightGlow.dispose();
+    this.streetLightIllumination.dispose();
+    this.streetLightDynamicReceiver.dispose();
     this.streetFurnitureMetal.dispose();
     this.streetFurnitureWood.dispose();
     this.streetFurnitureAccent.dispose();

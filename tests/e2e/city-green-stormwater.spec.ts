@@ -121,6 +121,14 @@ test('green stormwater diagnostics and meshes are visible in browser debug surfa
       (window.cityApp as unknown as { city?: { group: { getObjectByName(name: string): { visible?: boolean } | undefined } } })
         ?.city?.group.getObjectByName('GreenStormwaterPermeablePavingInstances')?.visible
     ),
+    visibleUnderstory: Boolean(
+      (window.cityApp as unknown as { city?: { group: { getObjectByName(name: string): { visible?: boolean } | undefined } } })
+        ?.city?.group.getObjectByName('GreenStormwaterUnderstoryInstances')?.visible
+    ),
+    visibleReeds: Boolean(
+      (window.cityApp as unknown as { city?: { group: { getObjectByName(name: string): { visible?: boolean } | undefined } } })
+        ?.city?.group.getObjectByName('GreenStormwaterReedInstances')?.visible
+    ),
     panelText: document.body.innerText
   }));
 
@@ -131,6 +139,8 @@ test('green stormwater diagnostics and meshes are visible in browser debug surfa
   expect(diagnostics.overlayFeatures).toBe(31);
   expect(diagnostics.visiblePlanting).toBe(true);
   expect(diagnostics.visiblePaving).toBe(true);
+  expect(diagnostics.visibleUnderstory).toBe(true);
+  expect(diagnostics.visibleReeds).toBe(true);
   expect(diagnostics.panelText).toContain('Green Stormwater');
 });
 

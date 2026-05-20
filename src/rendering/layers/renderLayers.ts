@@ -1,0 +1,1 @@
+export const STREET_LIGHT_EFFECTS_RENDER_LAYER = 1;

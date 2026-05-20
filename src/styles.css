@@ -119,6 +119,14 @@ canvas {
   background: rgb(255 255 255 / 8%);
 }
 
+.city-debug-panel__runtime-controls {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 8%);
+}
+
 .city-debug-panel__layer-heading {
   color: #aebbbd;
   font-size: 11px;
@@ -128,6 +136,14 @@ canvas {
 .city-debug-panel__layer-row {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr) minmax(28px, auto) 42px;
+  gap: 6px;
+  align-items: center;
+  min-height: 24px;
+}
+
+.city-debug-panel__runtime-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) minmax(52px, auto);
   gap: 6px;
   align-items: center;
   min-height: 24px;

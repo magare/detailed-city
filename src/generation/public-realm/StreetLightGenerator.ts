@@ -93,7 +93,7 @@ function createStreetLight(
     nightLighting: {
       enabledByDefault: true,
       emissiveIntensity: recipe.emissiveIntensity,
-      castsDynamicLight: false
+      castsDynamicLight: true
     },
     tags: {
       detailedStreetSliceId: slice.id,
@@ -185,7 +185,7 @@ function createCitywideStreetLight(
     nightLighting: {
       enabledByDefault: true,
       emissiveIntensity: recipe.emissiveIntensity,
-      castsDynamicLight: false
+      castsDynamicLight: true
     },
     tags: {
       citywideLighting: true,

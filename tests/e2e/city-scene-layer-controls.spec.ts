@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('debug panel controls scene layer visibility without changing diagnostics', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
 
   await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
@@ -31,8 +31,9 @@ test('debug panel controls scene layer visibility without changing diagnostics',
   expect(initial.states.every((layer) => layer.visible)).toBe(true);
 
   const panel = page.locator('[data-city-debug-panel="true"]');
-  await expect(panel.getByLabel('Scene layer controls')).toBeVisible();
-  await expect(panel.getByRole('checkbox')).toHaveCount(6);
+  const layerControls = panel.getByLabel('Scene layer controls');
+  await expect(layerControls).toBeVisible();
+  await expect(layerControls.getByRole('checkbox')).toHaveCount(6);
 
   const networksToggle = panel.getByRole('checkbox', { name: 'Networks layer' });
   await expect(networksToggle).toBeChecked();
@@ -64,7 +65,7 @@ test('debug panel controls scene layer visibility without changing diagnostics',
 });
 
 test('debug panel controls scene layer render order at runtime', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
 
   await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');

@@ -51,16 +51,31 @@ import type {
 } from '../../types/city';
 import { disposeObject3D } from '../../utils/dispose';
 
+export interface CityRuntimeOptions {
+  readonly streetLightDynamicLightLimit?: number;
+  readonly streetLightShadowCastingLightLimit?: number;
+}
+
+export interface StreetLightRuntimeState {
+  readonly enabled: boolean;
+  readonly dynamicLightCount: number;
+  readonly shadowCastingLightCount: number;
+  readonly illuminationPoolCount: number;
+}
+
 export class City implements Updatable {
   readonly group = new THREE.Group();
   readonly layerGroups: Readonly<Record<CitySceneLayerId, THREE.Group>>;
   readonly pickingCatalog: CityPickingCatalog;
   private readonly trafficSimulation: TrafficSimulationSystem = new TrafficSimulationSystem();
+  private streetLightGroup: THREE.Group | undefined;
+  private streetLightsEnabled = true;
 
   constructor(
     generated: GeneratedCity,
     trafficPlan: TrafficPlan,
-    private readonly materials: MaterialLibrary
+    private readonly materials: MaterialLibrary,
+    private readonly runtimeOptions: CityRuntimeOptions = {}
   ) {
     this.group.name = 'DetailedCity';
     this.layerGroups = this.createLayerGroups();
@@ -103,6 +118,26 @@ export class City implements Updatable {
 
     this.layerGroups[layerId].renderOrder = safeRenderOrder;
     this.layerGroups[layerId].userData.order = safeRenderOrder;
+  }
+
+  getStreetLightRuntimeState(): StreetLightRuntimeState {
+    const runtime = this.streetLightGroup?.userData.streetLightRuntime as
+      | Partial<Omit<StreetLightRuntimeState, 'enabled'>>
+      | undefined;
+
+    return {
+      enabled: this.streetLightsEnabled,
+      dynamicLightCount: Number(runtime?.dynamicLightCount ?? 0),
+      shadowCastingLightCount: Number(runtime?.shadowCastingLightCount ?? 0),
+      illuminationPoolCount: Number(runtime?.illuminationPoolCount ?? 0)
+    };
+  }
+
+  setStreetLightsEnabled(enabled: boolean): void {
+    this.streetLightsEnabled = enabled;
+    this.setStreetLightObjectVisibility('StreetLightGlowInstances', enabled);
+    this.setStreetLightObjectVisibility('StreetLightIlluminancePoolInstances', enabled);
+    this.setStreetLightObjectVisibility('StreetLightDynamicLights', enabled);
   }
 
   private build(generated: GeneratedCity, trafficPlan: TrafficPlan): void {
@@ -261,9 +296,14 @@ export class City implements Updatable {
   private addStreetLights(streetLights: readonly StreetLight[]): void {
     const streetLightGroup = new StreetLightMeshBuilder(
       this.materials,
-      this.pickingCatalog.metadataByObjectId
+      this.pickingCatalog.metadataByObjectId,
+      {
+        dynamicLightLimit: this.runtimeOptions.streetLightDynamicLightLimit,
+        shadowCastingLightLimit: this.runtimeOptions.streetLightShadowCastingLightLimit
+      }
     ).build(streetLights);
 
+    this.streetLightGroup = streetLightGroup;
     this.layerGroups['public-realm'].add(streetLightGroup);
   }
 
@@ -356,5 +396,13 @@ export class City implements Updatable {
     }
 
     return layerGroups;
+  }
+
+  private setStreetLightObjectVisibility(name: string, visible: boolean): void {
+    const object = this.streetLightGroup?.getObjectByName(name);
+
+    if (object) {
+      object.visible = visible;
+    }
   }
 }

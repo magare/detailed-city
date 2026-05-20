@@ -3,6 +3,7 @@ import { createGeneratedCityObjectIndex } from '../../src/city/data-contracts/ge
 import { validateGeneratedCity } from '../../src/city/data-contracts/validation/validateGeneratedCity';
 import { cityConfig } from '../../src/config/cityConfig';
 import { CityGenerator } from '../../src/generation/CityGenerator';
+import { isPointInsidePolygon } from '../../src/utils/geometry';
 import type { CityConfig, GeneratedCity } from '../../src/types/city';
 
 const REPRESENTATIVE_CONFIGS: readonly CityConfig[] = [
@@ -53,6 +54,24 @@ test('representative generated configs preserve core relationship and metadata i
     expect(city.roads.every((road) => road.lanes.length > 0 && road.sidewalks.length > 0)).toBe(true);
     expect(city.utilityNodes.every((node) => node.metadata?.sourceType === 'procedural')).toBe(true);
     expect(city.buildings.every((building) => building.metadata?.sourceType === 'procedural')).toBe(true);
+  }
+});
+
+test('generated tree centers stay out of road corridors and building footprints', () => {
+  for (const config of REPRESENTATIVE_CONFIGS) {
+    const city = new CityGenerator(config).generate();
+    const roadConflicts = city.trees.flatMap((tree) =>
+      city.roads.filter((road) => isPointInsideRoadCorridor(tree.center, road)).map((road) => `${tree.id}:${road.id}`)
+    );
+    const buildingConflicts = city.trees.flatMap((tree) =>
+      city.buildings
+        .filter((building) => isPointInsidePolygon(tree.center, building.footprint))
+        .map((building) => `${tree.id}:${building.id}`)
+    );
+
+    expect(city.trees.length).toBeGreaterThan(250);
+    expect(roadConflicts).toEqual([]);
+    expect(buildingConflicts).toEqual([]);
   }
 });
 
@@ -133,4 +152,18 @@ function getCitySignature(city: GeneratedCity): object {
     },
     validation: city.validation
   };
+}
+
+function isPointInsideRoadCorridor(
+  point: { readonly x: number; readonly z: number },
+  road: GeneratedCity['roads'][number]
+): boolean {
+  const halfWidth = road.widthMeters / 2 + 0.05;
+  const halfLength = road.length / 2;
+
+  if (road.orientation === 'vertical') {
+    return Math.abs(point.x - road.center.x) <= halfWidth && Math.abs(point.z - road.center.z) <= halfLength;
+  }
+
+  return Math.abs(point.z - road.center.z) <= halfWidth && Math.abs(point.x - road.center.x) <= halfLength;
 }

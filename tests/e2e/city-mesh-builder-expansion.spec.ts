@@ -17,6 +17,9 @@ test('city scene delegates core renderable systems to mesh builders', () => {
   cityScene.group.traverse((object) => objectNames.add(object.name));
   const buildingInstances = cityScene.group.getObjectByName('BuildingInstances') as THREE.InstancedMesh | undefined;
   const buildingFacadeWindows = cityScene.group.getObjectByName('BuildingFacadeWindowInstances') as THREE.InstancedMesh | undefined;
+  const treeCanopy = cityScene.group.getObjectByName('TreeCanopyBroadInstances') as THREE.InstancedMesh | undefined;
+  const treeGroundcover = cityScene.group.getObjectByName('TreePitGroundcoverInstances') as THREE.InstancedMesh | undefined;
+  const parkGrass = cityScene.group.getObjectByName('ParkFeatureGrassTuftInstances') as THREE.InstancedMesh | undefined;
 
   expect([...objectNames]).toEqual(
     expect.arrayContaining([
@@ -31,6 +34,14 @@ test('city scene delegates core renderable systems to mesh builders', () => {
       'WaterfrontEdges',
       'BuildingInstances',
       'TreePlantings',
+      'TreePitGroundcoverInstances',
+      'TreeCanopyBroadInstances',
+      'TreeCanopyMediumInstances',
+      'TreeCanopyPalmInstances',
+      'ParkFeatureGrassTuftInstances',
+      'ParkFeatureShrubInstances',
+      'GreenStormwaterUnderstoryInstances',
+      'GreenStormwaterReedInstances',
       'TrafficCalmingDeviceInstances',
       'IndustrialFacilities',
       'BuildingRoofDetails',
@@ -59,6 +70,14 @@ test('city scene delegates core renderable systems to mesh builders', () => {
   expect(getMaterialTextureNames(buildingInstances?.material)).toEqual(
     expect.arrayContaining(['ProceduralBuildingFacadeAlbedo', 'ProceduralBuildingRoofAlbedo'])
   );
+  expectVegetationMaterialIsLit(treeCanopy);
+  expectVegetationMaterialIsLit(treeGroundcover);
+  expectVegetationMaterialIsLit(parkGrass);
+  expect(treeCanopy?.castShadow).toBe(true);
+  expect(treeCanopy?.receiveShadow).toBe(true);
+  expect(treeGroundcover?.receiveShadow).toBe(true);
+  expect(parkGrass?.castShadow).toBe(true);
+  expect(parkGrass?.receiveShadow).toBe(true);
   expect(countSampledBuildingColors(buildingInstances!, city.buildings.length)).toBeGreaterThan(8);
   expect(cityScene.pickingCatalog.pickableObjects.length).toBeGreaterThan(1700);
 
@@ -92,6 +111,16 @@ function getMaterialTextureNames(material: THREE.Material | THREE.Material[] | u
   return materials
     .map((candidate) => (candidate as THREE.MeshStandardMaterial).map?.name)
     .filter((name): name is string => Boolean(name));
+}
+
+function expectVegetationMaterialIsLit(mesh: THREE.InstancedMesh | undefined): void {
+  expect(mesh).toBeTruthy();
+  const material = mesh!.material as THREE.MeshStandardMaterial;
+
+  expect(material.type).toBe('MeshStandardMaterial');
+  expect(material.vertexColors).toBe(true);
+  expect(material.toneMapped).toBe(true);
+  expect(material.fog).toBe(true);
 }
 
 function countSampledBuildingColors(mesh: THREE.InstancedMesh, buildingCount: number): number {

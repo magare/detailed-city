@@ -60,14 +60,14 @@ test('urban heat zones are deterministic, indexed, and exported', () => {
     canopyCoolingZones: 3,
     waterCoolingZones: 3,
     publicRouteRiskZones: 2,
-    highRiskZones: 2,
+    highRiskZones: 1,
     criticalRiskZones: 0,
     maxDaytimeTemperatureDeltaCelsius: 5.3
   });
   expect(diagnostics.urbanHeat.averageMitigationEffectScore).toBeGreaterThan(0.45);
   expect(diagnostics.objectCounts).toMatchObject({
     urbanHeatZones: 17,
-    urbanHeatHighRiskZones: 2,
+    urbanHeatHighRiskZones: 1,
     urbanHeatPublicRouteRiskZones: 2
   });
   expect(overlays.find((overlay) => overlay.id === 'urban-heat')?.featureCount).toBe(17);

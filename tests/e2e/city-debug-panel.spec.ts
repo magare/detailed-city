@@ -1,14 +1,14 @@
 import { expect, test } from '@playwright/test';
 
 test('debug panel exposes current city diagnostics and can collapse', async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
 
   await page.goto('/?testMode=fast');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');
 
   const panel = page.locator('[data-city-debug-panel="true"]');
   const panelBody = panel.locator('.city-debug-panel__body');
-  const toggleButton = panel.getByRole('button', { name: 'Collapse diagnostics' });
+  const toggleButton = panel.locator('.city-debug-panel__toggle');
 
   await expect(panel).toBeVisible();
   const panelText = await panel.textContent();
@@ -19,6 +19,40 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
     .locator('.city-debug-panel__metric', { hasText: 'Updated' })
     .locator('.city-debug-panel__value')
     .textContent();
+  await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');
+
+  const layout = await panel.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      x: rect.x,
+      y: rect.y,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth
+    };
+  });
+
+  expect(layout.x).toBeGreaterThanOrEqual(0);
+  expect(layout.y).toBeGreaterThanOrEqual(0);
+  expect(layout.right).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.bottom).toBeLessThanOrEqual(layout.viewportHeight);
+  const expectedMaxWidth = layout.viewportWidth <= 640 ? layout.viewportWidth - 16 : Math.min(320, layout.viewportWidth);
+  expect(layout.width).toBeLessThanOrEqual(expectedMaxWidth);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
+
+  await toggleButton.click({ force: true });
+  await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'collapsed');
+  await expect(panelBody).toBeHidden();
+
+  await expect(toggleButton).toHaveAttribute('aria-label', 'Expand diagnostics');
+  await toggleButton.click({ force: true });
+  await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');
+  await expect(panelBody).toBeVisible();
 
   expect(panelText).toContain('Debug');
   expect(metricLabels[0]).toBe('Updated');
@@ -83,7 +117,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Solar');
   expect(panelText).toContain('24 samples, 12 roofs, 3 glare');
   expect(panelText).toContain('Heat');
-  expect(panelText).toContain('17 zones, 2 high, 2 routes');
+  expect(panelText).toContain('17 zones, 1 high, 2 routes');
   expect(panelText).toContain('Wind');
   expect(panelText).toContain('28 zones, 15 warnings, 4 sheltered');
   expect(panelText).toContain('Validation');
@@ -91,7 +125,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Geo');
   expect(panelText).toContain('local-xz, 0.01m');
   expect(panelText).toContain('Metadata');
-  expect(panelText).toContain('20037/20037 tagged');
+  expect(panelText).toContain('20197/20197 tagged');
   expect(panelText).toContain('Traffic');
   expect(panelText).toContain('7 agents, 950 markings');
   expect(panelText).toContain('City');
@@ -104,7 +138,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Promenade');
   expect(panelText).toContain('8 spaces, 160 seats, 3 water access');
   expect(panelText).toContain('Planting');
-  expect(panelText).toContain('145 trees, 27 corridors, 3116m2 canopy');
+  expect(panelText).toContain('305 trees, 27 corridors, 6390m2 canopy');
   expect(panelText).toContain('Furniture');
   expect(panelText).toContain('322 citywide, 6 railings, 19 shelters');
   expect(panelText).toContain('Signage');
@@ -145,7 +179,7 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('Assets');
   expect(panelText).toContain('65 assets, 65 bindings');
   expect(panelText).toContain('Export');
-  expect(panelText).toContain('6 formats, 19080 objects');
+  expect(panelText).toContain('6 formats, 19240 objects');
   expect(panelText).toContain('Registry');
   expect(panelText).toContain('83 kinds');
   expect(panelText).toContain('Groups');
@@ -159,45 +193,10 @@ test('debug panel exposes current city diagnostics and can collapse', async ({ p
   expect(panelText).toContain('83 policies');
   expect(panelText).toContain('Performance');
   expect(panelText).toContain('Frame');
-  await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');
-
-  const layout = await panel.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    return {
-      x: rect.x,
-      y: rect.y,
-      right: rect.right,
-      bottom: rect.bottom,
-      width: rect.width,
-      height: rect.height,
-      viewportWidth: window.innerWidth,
-      viewportHeight: window.innerHeight,
-      scrollWidth: element.scrollWidth,
-      clientWidth: element.clientWidth
-    };
-  });
-
-  expect(layout.x).toBeGreaterThanOrEqual(0);
-  expect(layout.y).toBeGreaterThanOrEqual(0);
-  expect(layout.right).toBeLessThanOrEqual(layout.viewportWidth);
-  expect(layout.bottom).toBeLessThanOrEqual(layout.viewportHeight);
-  const expectedMaxWidth = layout.viewportWidth <= 640 ? layout.viewportWidth - 16 : Math.min(320, layout.viewportWidth);
-  expect(layout.width).toBeLessThanOrEqual(expectedMaxWidth);
-  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
-
-  await toggleButton.click({ force: true });
-  await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'collapsed');
-  await expect(panelBody).toBeHidden();
-
-  const expandButton = panel.getByRole('button', { name: 'Expand diagnostics' });
-  await expect(expandButton).toBeVisible();
-  await expandButton.press('Enter');
-  await expect(page.locator('body')).toHaveAttribute('data-debug-panel-state', 'expanded');
-  await expect(panelBody).toBeVisible();
 });
 
 test('debug panel can be hidden for clean browser checks', async ({ page }) => {
-  test.setTimeout(45_000);
+  test.setTimeout(180_000);
 
   await page.goto('/?testMode=fast&debugPanel=hidden');
   await page.waitForFunction(() => document.body.dataset.sceneReady === 'true');

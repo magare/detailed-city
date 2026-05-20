@@ -1,20 +1,38 @@
 import { CITY_BLUEPRINT } from '../../city/blueprint/cityBlueprint';
 import { DEFAULT_STREET_PROFILES, type TreeSpecies } from '../../city/data-contracts/cityContracts';
-import type { CurbZone, DetailedStreetSlice, RoadSegment, TreePlanting } from '../../types/city';
+import type { BuildingPlan, CityConfig, CurbZone, DetailedStreetSlice, RoadSegment, TreePlanting } from '../../types/city';
+import { hashString } from '../../utils/random';
+import {
+  getBuildingCollision,
+  getRoadCollision,
+  isTreeCenterClear,
+  pushPointOutsideRoadCorridor,
+  type TreePlacementAvoidance
+} from '../vegetation/treePlacementConstraints';
 
 export interface StreetTreeSource {
   readonly slices: readonly DetailedStreetSlice[];
   readonly roads: readonly RoadSegment[];
   readonly curbZones: readonly CurbZone[];
+  readonly buildings: readonly BuildingPlan[];
 }
 
 const TREE_PIT_LENGTH_METERS = 3.2;
 const TREE_PIT_WIDTH_METERS = 1.4;
-const CITYWIDE_TREE_SPACING_METERS = 240;
+const CITYWIDE_TREE_MIN_SPACING_METERS = 82;
+const CITYWIDE_TREE_MAX_SPACING_METERS = 148;
 
 export class StreetTreeGenerator {
+  constructor(private readonly config: CityConfig) {}
+
   create(source: StreetTreeSource): TreePlanting[] {
     const detailedRoadIds = new Set(source.slices.map((slice) => slice.corridorRoadId));
+    const avoidance: TreePlacementAvoidance = {
+      roads: source.roads,
+      buildings: source.buildings,
+      roadClearanceMeters: 0.75,
+      buildingClearanceMeters: 1.1
+    };
     const detailedStreetTrees = source.slices.flatMap((slice) => {
       const road = source.roads.find((candidate) => candidate.id === slice.corridorRoadId);
 
@@ -24,12 +42,17 @@ export class StreetTreeGenerator {
 
       return source.curbZones
         .filter((curbZone) => curbZone.sliceId === slice.id && curbZone.curbUse !== 'no-stopping')
-        .map((curbZone, index) => createStreetTree(slice, road, curbZone, index));
+        .flatMap((curbZone, index) => {
+          const tree = createStreetTree(slice, road, curbZone, index);
+          const center = resolveStreetTreeCenter(tree.center, road, tree.id, avoidance);
+
+          return center ? [{ ...tree, center }] : [];
+        });
     });
 
     const citywideStreetTrees = source.roads
       .filter((road) => !detailedRoadIds.has(road.id) && hasTreeZone(road))
-      .flatMap((road) => createCitywideStreetTrees(road));
+      .flatMap((road) => createCitywideStreetTrees(road, this.config.density.treeDensity, avoidance));
 
     return [...detailedStreetTrees, ...citywideStreetTrees];
   }
@@ -41,11 +64,12 @@ function createStreetTree(
   curbZone: CurbZone,
   index: number
 ): TreePlanting {
-  const species = CITY_BLUEPRINT.treeSpeciesCycle[index % CITY_BLUEPRINT.treeSpeciesCycle.length];
-  const traits = createTreeTraits(species, 'shade-corridor');
+  const treeId = `street-tree-${road.id}-${curbZone.side}-${index}`;
+  const species = selectStreetSpecies(road, curbZone.side, index);
+  const traits = createTreeTraits(species, 'shade-corridor', treeId);
 
   return {
-    id: `street-tree-${road.id}-${curbZone.side}-${index}`,
+    id: treeId,
     kind: 'tree-planting',
     ownerDomain: 'public-realm',
     parentId: curbZone.sidewalkId,
@@ -83,23 +107,33 @@ function createStreetTree(
   };
 }
 
-function createCitywideStreetTrees(road: RoadSegment): TreePlanting[] {
-  const spacing = CITYWIDE_TREE_SPACING_METERS;
-  const countPerSide = Math.max(2, Math.floor(road.length / spacing));
+function createCitywideStreetTrees(
+  road: RoadSegment,
+  treeDensity: number,
+  avoidance: TreePlacementAvoidance
+): TreePlanting[] {
+  const spacing = getCitywideTreeSpacing(treeDensity);
+  const countPerSide = Math.max(3, Math.floor(road.length / spacing));
   const sidewalkIds = [`${road.id}-sidewalk-left`, `${road.id}-sidewalk-right`] as const;
 
   return sidewalkIds.flatMap((sidewalkId) => {
     const side = sidewalkId.endsWith('left') ? 'left' : 'right';
 
-    return Array.from({ length: countPerSide }, (_, index) => {
-      const species = CITY_BLUEPRINT.treeSpeciesCycle[(index + road.id.length + (side === 'left' ? 0 : 2)) % CITY_BLUEPRINT.treeSpeciesCycle.length];
+    return Array.from({ length: countPerSide }).flatMap((_, index): TreePlanting[] => {
+      const treeId = `citywide-tree-${road.id}-${side}-${index}`;
+      const species = selectStreetSpecies(road, side, index);
       const role = road.hierarchy === 'promenade' ? 'waterfront-cooling' : 'shade-corridor';
-      const traits = createTreeTraits(species, role);
-      const plantingForm = index % 5 === 0 ? 'raised-planter' : 'street-tree';
-      const center = getRoadSideTreeCenter(road, side, index, countPerSide);
+      const traits = createTreeTraits(species, role, treeId);
+      const plantingForm = shouldUseRaisedPlanter(road, side, index) ? 'raised-planter' : 'street-tree';
+      const candidateCenter = getRoadSideTreeCenter(road, side, index, countPerSide);
+      const center = resolveStreetTreeCenter(candidateCenter, road, treeId, avoidance);
 
-      return {
-        id: `citywide-tree-${road.id}-${side}-${index}`,
+      if (!center) {
+        return [];
+      }
+
+      const tree: TreePlanting = {
+        id: treeId,
         kind: 'tree-planting',
         ownerDomain: 'public-realm',
         parentId: sidewalkId,
@@ -132,6 +166,7 @@ function createCitywideStreetTrees(road: RoadSegment): TreePlanting[] {
           plantingForm
         }
       };
+      return [tree];
     });
   });
 }
@@ -166,9 +201,12 @@ function getRoadSideTreeCenter(
 ): { x: number; z: number } {
   const startInset = Math.min(28, road.length * 0.12);
   const usableLength = Math.max(1, road.length - startInset * 2);
-  const alongRoad = -road.length / 2 + startInset + (usableLength * (index + 0.5)) / countPerSide;
+  const spacing = usableLength / countPerSide;
+  const alongJitter = signedUnitHash(`${road.id}:${side}:${index}:along`) * Math.min(7.5, spacing * 0.18);
+  const offsetJitter = signedUnitHash(`${road.id}:${side}:${index}:offset`) * 0.32;
+  const alongRoad = -road.length / 2 + startInset + (usableLength * (index + 0.5)) / countPerSide + alongJitter;
   const sideSign = side === 'left' ? -1 : 1;
-  const perpendicularOffset = road.widthMeters / 2 + getProfileTreeOffset(road);
+  const perpendicularOffset = road.widthMeters / 2 + getProfileTreeOffset(road) + offsetJitter;
 
   if (road.orientation === 'vertical') {
     return {
@@ -183,9 +221,105 @@ function getRoadSideTreeCenter(
   };
 }
 
+function resolveStreetTreeCenter(
+  center: { readonly x: number; readonly z: number },
+  road: RoadSegment,
+  treeId: string,
+  avoidance: TreePlacementAvoidance
+): { readonly x: number; readonly z: number } | undefined {
+  for (const candidate of createStreetTreeCenterCandidates(center, road, treeId)) {
+    const roadClearCandidate = resolveRoadConflicts(candidate, avoidance);
+
+    if (roadClearCandidate && !getBuildingCollision(roadClearCandidate, avoidance)) {
+      return roadClearCandidate;
+    }
+
+    if (roadClearCandidate && isTreeCenterClear(roadClearCandidate, avoidance)) {
+      return roadClearCandidate;
+    }
+  }
+
+  return undefined;
+}
+
+function createStreetTreeCenterCandidates(
+  center: { readonly x: number; readonly z: number },
+  road: RoadSegment,
+  treeId: string
+): { readonly x: number; readonly z: number }[] {
+  const primaryDirection = signedUnitHash(`${treeId}:placement-direction`) >= 0 ? 1 : -1;
+  const shiftMeters = [0, 5.5, -5.5, 11, -11, 18, -18, 26, -26, 34, -34];
+
+  return shiftMeters.map((shift) => translateAlongRoad(road, center, shift * primaryDirection));
+}
+
+function resolveRoadConflicts(
+  center: { readonly x: number; readonly z: number },
+  avoidance: TreePlacementAvoidance
+): { readonly x: number; readonly z: number } | undefined {
+  let candidate = center;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const collision = getRoadCollision(candidate, avoidance);
+
+    if (!collision) {
+      return candidate;
+    }
+
+    candidate = pushPointOutsideRoadCorridor(candidate, collision, attempt * 0.45);
+  }
+
+  return undefined;
+}
+
+function translateAlongRoad(
+  road: RoadSegment,
+  center: { readonly x: number; readonly z: number },
+  offsetMeters: number
+): { readonly x: number; readonly z: number } {
+  if (road.orientation === 'vertical') {
+    return {
+      x: center.x,
+      z: roundMeters(center.z + offsetMeters)
+    };
+  }
+
+  return {
+    x: roundMeters(center.x + offsetMeters),
+    z: center.z
+  };
+}
+
 function hasTreeZone(road: RoadSegment): boolean {
   const profile = DEFAULT_STREET_PROFILES.find((candidate) => candidate.id === road.streetProfileId);
   return profile?.treeZone === true;
+}
+
+function getCitywideTreeSpacing(treeDensity: number): number {
+  const density = Math.max(0, Math.min(1, treeDensity));
+  return roundMeters(CITYWIDE_TREE_MAX_SPACING_METERS - (CITYWIDE_TREE_MAX_SPACING_METERS - CITYWIDE_TREE_MIN_SPACING_METERS) * density);
+}
+
+function selectStreetSpecies(road: RoadSegment, side: 'left' | 'right', index: number): TreeSpecies {
+  const species = CITY_BLUEPRINT.treeSpeciesCycle;
+  const hierarchyBias = road.hierarchy === 'promenade'
+    ? 1
+    : road.hierarchy === 'local'
+      ? 2
+      : road.hierarchy === 'transit-corridor'
+        ? 3
+        : 0;
+  const hash = hashString(`${road.id}:${side}:${index}:${road.streetProfileId}:${hierarchyBias}`);
+
+  return species[(hash + hierarchyBias) % species.length];
+}
+
+function shouldUseRaisedPlanter(road: RoadSegment, side: 'left' | 'right', index: number): boolean {
+  if (road.hierarchy === 'promenade') {
+    return index % 4 === 0;
+  }
+
+  return normalizedHash(`${road.id}:${side}:${index}:planter`) > 0.72;
 }
 
 function getProfileTreeOffset(road: RoadSegment): number {
@@ -209,7 +343,7 @@ function getProfileFurnishingZoneMeters(profile: (typeof DEFAULT_STREET_PROFILES
   return Math.min(1.6, profile.sidewalkWidthMeters * 0.32);
 }
 
-function createTreeTraits(species: TreeSpecies, role: TreePlanting['greenCorridorRole']): {
+function createTreeTraits(species: TreeSpecies, role: TreePlanting['greenCorridorRole'], variantKey: string): {
   readonly height: number;
   readonly canopyDiameter: number;
   readonly canopyClass: TreePlanting['canopyClass'];
@@ -225,11 +359,26 @@ function createTreeTraits(species: TreeSpecies, role: TreePlanting['greenCorrido
         ? { height: 7.4, canopyDiameter: 5.2, canopyClass: 'medium' as const, seasonalColor: 'spring-purple' as const, ecologyScore: 0.74 }
         : { height: 7.6, canopyDiameter: 5.6, canopyClass: 'medium' as const, seasonalColor: 'autumn-gold' as const, ecologyScore: 0.68 };
   const roleBoost = role === 'waterfront-cooling' ? 0.06 : 0;
+  const heightScale = 0.82 + normalizedHash(`${variantKey}:height`) * 0.36;
+  const canopyScale = 0.76 + normalizedHash(`${variantKey}:canopy`) * 0.42;
+  const ecologyShift = (normalizedHash(`${variantKey}:ecology`) - 0.5) * 0.08;
+  const canopyDiameter = roundMeters(base.canopyDiameter * canopyScale);
 
   return {
     ...base,
-    heatMitigationScore: Math.min(1, roundMeters(base.canopyDiameter / 7 + roleBoost))
+    height: roundMeters(base.height * heightScale),
+    canopyDiameter,
+    heatMitigationScore: Math.min(1, roundMeters(canopyDiameter / 7 + roleBoost)),
+    ecologyScore: Math.max(0.3, Math.min(1, roundMeters(base.ecologyScore + ecologyShift)))
   };
+}
+
+function normalizedHash(key: string): number {
+  return hashString(key) / 0xffffffff;
+}
+
+function signedUnitHash(key: string): number {
+  return normalizedHash(key) * 2 - 1;
 }
 
 function roundMeters(value: number): number {

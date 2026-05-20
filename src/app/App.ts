@@ -21,7 +21,7 @@ import {
   type VisualQaCameraPresetId
 } from '../systems/camera/VisualQaCameraPresets';
 import { Atmosphere } from '../systems/weather/Atmosphere';
-import { City } from '../world/city/City';
+import { City, type StreetLightRuntimeState } from '../world/city/City';
 import type { CityPickResult } from '../city/rendering-handoff/picking/pickingMetadata';
 import { createCityDiagnostics, type CityDiagnostics } from './cityDiagnostics';
 import { validateAppConfig } from '../config/configSchema';
@@ -41,6 +41,8 @@ const FAST_RENDER_CONFIG: Partial<RenderConfig> = {
   maxPixelRatio: 1,
   shadows: false
 };
+const FAST_STREET_LIGHT_DYNAMIC_LIMIT = 0;
+const DEFAULT_STREET_LIGHT_DYNAMIC_LIMIT = 0;
 
 function isFastTestMode(): boolean {
   return new URLSearchParams(window.location.search).get(TEST_MODE_PARAM) === 'fast';
@@ -104,7 +106,10 @@ export class App {
 
     this.atmosphere = new Atmosphere(this.bootstrap.scene, activeWeatherPreset);
     this.materials.applyWeatherPreset(activeWeatherPreset);
-    this.city = new City(generatedCity, trafficPlan, this.materials);
+    this.city = new City(generatedCity, trafficPlan, this.materials, {
+      streetLightDynamicLightLimit: getStreetLightDynamicLightLimit(this.runtimeRenderConfig),
+      streetLightShadowCastingLightLimit: 0
+    });
     this.bootstrap.scene.add(this.city.group);
 
     this.controls = new CityControls(this.bootstrap.camera, this.bootstrap.renderer.domElement);
@@ -128,7 +133,9 @@ export class App {
       getPerformanceDiagnostics: () => this.getPerformanceDiagnostics(),
       getSceneLayerStates: () => this.getSceneLayerStates(),
       setSceneLayerVisible: (layerId, visible) => this.setSceneLayerVisible(layerId, visible),
-      setSceneLayerRenderOrder: (layerId, renderOrder) => this.setSceneLayerRenderOrder(layerId, renderOrder)
+      setSceneLayerRenderOrder: (layerId, renderOrder) => this.setSceneLayerRenderOrder(layerId, renderOrder),
+      getStreetLightRuntimeState: () => this.getStreetLightRuntimeState(),
+      setStreetLightsEnabled: (enabled) => this.setStreetLightsEnabled(enabled)
     }, { refreshIntervalMs: getDebugPanelRefreshIntervalMs() });
   }
 
@@ -175,6 +182,15 @@ export class App {
     }
   }
 
+  getStreetLightRuntimeState(): StreetLightRuntimeState {
+    return this.city.getStreetLightRuntimeState();
+  }
+
+  setStreetLightsEnabled(enabled: boolean): void {
+    this.city.setStreetLightsEnabled(enabled);
+    document.body.dataset.streetLightsEnabled = String(enabled);
+  }
+
   getVisualQaCameraPresets(): readonly VisualQaCameraPreset[] {
     return this.visualQaCameraPresets;
   }
@@ -207,6 +223,7 @@ export class App {
       setLayerVisibilityDataset(layer.id, layer.visible);
       setLayerOrderDataset(layer.id, layer.renderOrder);
     }
+    this.setStreetLightsEnabled(this.city.getStreetLightRuntimeState().enabled);
     document.body.dataset.sceneReady = 'true';
   }
 
@@ -239,4 +256,8 @@ function setLayerVisibilityDataset(layerId: CitySceneLayerId, visible: boolean):
 
 function setLayerOrderDataset(layerId: CitySceneLayerId, renderOrder: number): void {
   document.body.dataset[getLayerDatasetKey(layerId, 'Order')] = String(renderOrder);
+}
+
+function getStreetLightDynamicLightLimit(config: RenderConfig): number {
+  return config.qualityPreset === 'low' ? FAST_STREET_LIGHT_DYNAMIC_LIMIT : DEFAULT_STREET_LIGHT_DYNAMIC_LIMIT;
 }
