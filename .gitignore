@@ -7,3 +7,6 @@ playwright-report
 .env
 .env.local
 *.log
+
+# local visual-QA artifacts
+shots

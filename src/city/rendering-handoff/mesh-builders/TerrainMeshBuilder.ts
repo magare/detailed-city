@@ -6,7 +6,7 @@ export class TerrainMeshBuilder {
   constructor(private readonly materials: MaterialLibrary) {}
 
   build(generated: Pick<GeneratedCity, 'bounds'>): THREE.Mesh {
-    const size = generated.bounds.span * 1.32;
+    const size = generated.bounds.span * 4;
     const geometry = new THREE.PlaneGeometry(size, size, 1, 1);
     geometry.rotateX(-Math.PI / 2);
 

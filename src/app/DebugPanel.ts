@@ -16,6 +16,10 @@ export interface StreetLightDebugState {
   readonly illuminationPoolCount: number;
 }
 
+export interface NightModeDebugState {
+  readonly enabled: boolean;
+}
+
 export interface DebugPanelSource {
   readonly seed: string;
   readonly updatedAt: Date;
@@ -26,6 +30,8 @@ export interface DebugPanelSource {
   readonly setSceneLayerRenderOrder: (layerId: CitySceneLayerId, renderOrder: number) => void;
   readonly getStreetLightRuntimeState: () => StreetLightDebugState;
   readonly setStreetLightsEnabled: (enabled: boolean) => void;
+  readonly getNightModeState: () => NightModeDebugState;
+  readonly setNightModeEnabled: (enabled: boolean) => void;
 }
 
 export class DebugPanel {
@@ -141,7 +147,9 @@ export class DebugPanel {
       ),
       createStreetLightControls(
         this.source.getStreetLightRuntimeState(),
-        this.source.setStreetLightsEnabled
+        this.source.setStreetLightsEnabled,
+        this.source.getNightModeState(),
+        this.source.setNightModeEnabled
       ),
       createMetric(
         'Config',
@@ -555,7 +563,9 @@ function createLayerControls(
 
 function createStreetLightControls(
   state: StreetLightDebugState,
-  setStreetLightsEnabled: DebugPanelSource['setStreetLightsEnabled']
+  setStreetLightsEnabled: DebugPanelSource['setStreetLightsEnabled'],
+  nightModeState: NightModeDebugState,
+  setNightModeEnabled: DebugPanelSource['setNightModeEnabled']
 ): HTMLElement {
   const section = document.createElement('section');
   section.className = 'city-debug-panel__runtime-controls';
@@ -588,7 +598,31 @@ function createStreetLightControls(
   count.title = `${state.dynamicLightCount} dynamic lights, ${state.shadowCastingLightCount} shadow-casting, ${state.illuminationPoolCount} illuminated fixtures`;
 
   row.append(checkbox, label, count);
-  section.append(heading, row);
+
+  const nightRow = document.createElement('div');
+  nightRow.className = 'city-debug-panel__runtime-row';
+
+  const nightCheckbox = document.createElement('input');
+  nightCheckbox.className = 'city-debug-panel__layer-checkbox';
+  nightCheckbox.type = 'checkbox';
+  nightCheckbox.checked = nightModeState.enabled;
+  nightCheckbox.dataset.cityNightModeToggle = 'enabled';
+  nightCheckbox.setAttribute('aria-label', 'Night mode');
+  nightCheckbox.addEventListener('change', () => {
+    setNightModeEnabled(nightCheckbox.checked);
+  });
+
+  const nightLabel = document.createElement('span');
+  nightLabel.className = 'city-debug-panel__layer-label';
+  nightLabel.textContent = 'Night Mode';
+
+  const nightState = document.createElement('span');
+  nightState.className = 'city-debug-panel__layer-count';
+  nightState.textContent = nightModeState.enabled ? 'on' : 'off';
+  nightState.title = 'Darkens the scene so street light coverage and shadows are easier to inspect';
+
+  nightRow.append(nightCheckbox, nightLabel, nightState);
+  section.append(heading, nightRow, row);
   return section;
 }
 

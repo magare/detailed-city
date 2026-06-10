@@ -32,7 +32,10 @@ export class SceneBootstrap {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = weatherRendering?.exposure ?? 1.08;
     applyRendererQuality(this.renderer, config);
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Stats are reset once per frame in RenderLoop instead of per render pass,
+    // so post-processing passes don't wipe the scene's draw call counts.
+    this.renderer.info.autoReset = false;
 
     this.scene.background = new THREE.Color(weatherRendering?.backgroundColor ?? config.background);
     this.scene.fog = new THREE.FogExp2(

@@ -10,7 +10,8 @@ export class RenderLoop {
     private readonly renderer: THREE.WebGLRenderer,
     private readonly scene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera,
-    private readonly updatables: Updatable[]
+    private readonly updatables: Updatable[],
+    private readonly renderFrame?: () => void
   ) {}
 
   start(): void {
@@ -33,6 +34,12 @@ export class RenderLoop {
   }
 
   renderOnce(): void {
+    this.renderer.info.reset();
+    if (this.renderFrame) {
+      this.renderFrame();
+      return;
+    }
+
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -54,7 +61,12 @@ export class RenderLoop {
       updatable.update(delta, elapsed);
     }
 
-    this.renderer.render(this.scene, this.camera);
+    this.renderer.info.reset();
+    if (this.renderFrame) {
+      this.renderFrame();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
     this.frameId = requestAnimationFrame(this.tick);
   };
 }

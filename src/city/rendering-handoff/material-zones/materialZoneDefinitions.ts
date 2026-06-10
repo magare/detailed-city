@@ -84,6 +84,7 @@ export const MATERIAL_ZONE_DEFINITIONS = [
   defineZone('street-light-glow', 'Street Light Glow', 'sign', 'streetLightGlow', 'street-lighting'),
   defineZone('street-light-illumination', 'Street Light Illumination', 'sign', 'streetLightIllumination', 'street-lighting'),
   defineZone('street-light-dynamic-receiver', 'Street Light Dynamic Receiver', 'sign', 'streetLightDynamicReceiver', 'street-lighting'),
+  defineZone('street-light-cone', 'Street Light Cone', 'sign', 'streetLightCone', 'street-lighting'),
   defineZone('street-furniture', 'Street Furniture', 'metal', 'streetFurnitureMetal', 'street-furniture'),
   defineZone('bench', 'Bench', 'metal', 'streetFurnitureWood', 'street-furniture'),
   defineZone('bin', 'Bin', 'utility', 'streetFurnitureAccent', 'street-furniture'),

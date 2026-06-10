@@ -44,6 +44,7 @@ import type {
   PublicAmenity,
   StreetFurniture,
   StreetLight,
+  BuildingPlan,
   TrafficCalmingDevice,
   WaterTransportAccess,
   TrafficPlan,
@@ -137,6 +138,7 @@ export class City implements Updatable {
     this.streetLightsEnabled = enabled;
     this.setStreetLightObjectVisibility('StreetLightGlowInstances', enabled);
     this.setStreetLightObjectVisibility('StreetLightIlluminancePoolInstances', enabled);
+    this.setStreetLightObjectVisibility('StreetLightConeInstances', enabled);
     this.setStreetLightObjectVisibility('StreetLightDynamicLights', enabled);
   }
 
@@ -152,7 +154,7 @@ export class City implements Updatable {
     this.addWaterfrontOpenSpaces(generated);
     this.addTreePlantings(generated);
     this.addGreenStormwaterFeatures(generated);
-    this.addStreetLights(generated.streetLights);
+    this.addStreetLights(generated.streetLights, generated.buildings);
     this.addStreetFurniture(generated.streetFurniture);
     this.addPublicAmenities(generated.publicAmenities);
     this.addEmergencyEquipment(generated.emergencyEquipment);
@@ -293,7 +295,7 @@ export class City implements Updatable {
     );
   }
 
-  private addStreetLights(streetLights: readonly StreetLight[]): void {
+  private addStreetLights(streetLights: readonly StreetLight[], buildings: readonly BuildingPlan[]): void {
     const streetLightGroup = new StreetLightMeshBuilder(
       this.materials,
       this.pickingCatalog.metadataByObjectId,
@@ -301,7 +303,7 @@ export class City implements Updatable {
         dynamicLightLimit: this.runtimeOptions.streetLightDynamicLightLimit,
         shadowCastingLightLimit: this.runtimeOptions.streetLightShadowCastingLightLimit
       }
-    ).build(streetLights);
+    ).build(streetLights, buildings);
 
     this.streetLightGroup = streetLightGroup;
     this.layerGroups['public-realm'].add(streetLightGroup);

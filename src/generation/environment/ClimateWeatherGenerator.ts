@@ -18,15 +18,15 @@ const WEATHER_PRESETS = [
     windSpeedKph: 13,
     transitionSeconds: 18,
     rendering: {
-      backgroundColor: 0x111820,
-      fogColor: 0x9daeb8,
-      fogDensity: 0.0019,
-      skyColor: 0x8fb3c7,
+      backgroundColor: 0x8fb0cd,
+      fogColor: 0xb9c8d4,
+      fogDensity: 0.0005,
+      skyColor: 0x4f83b8,
       skyOpacity: 0.32,
-      sunIntensity: 4.2,
-      hemisphereIntensity: 1.2,
-      fillIntensity: 0.85,
-      exposure: 1.08
+      sunIntensity: 2.7,
+      hemisphereIntensity: 0.55,
+      fillIntensity: 0.32,
+      exposure: 1.0
     },
     simulationHooks: {
       trafficSpeedMultiplier: 1,
@@ -56,10 +56,10 @@ const WEATHER_PRESETS = [
       fogDensity: 0.0024,
       skyColor: 0x9aaeb6,
       skyOpacity: 0.38,
-      sunIntensity: 3.2,
-      hemisphereIntensity: 1.08,
-      fillIntensity: 0.95,
-      exposure: 1.02
+      sunIntensity: 1.8,
+      hemisphereIntensity: 0.62,
+      fillIntensity: 0.42,
+      exposure: 0.98
     },
     simulationHooks: {
       trafficSpeedMultiplier: 0.98,
@@ -89,10 +89,10 @@ const WEATHER_PRESETS = [
       fogDensity: 0.0036,
       skyColor: 0x71828c,
       skyOpacity: 0.46,
-      sunIntensity: 1.9,
-      hemisphereIntensity: 0.92,
-      fillIntensity: 1.05,
-      exposure: 0.96
+      sunIntensity: 0.9,
+      hemisphereIntensity: 0.5,
+      fillIntensity: 0.46,
+      exposure: 0.94
     },
     simulationHooks: {
       trafficSpeedMultiplier: 0.86,
@@ -122,10 +122,10 @@ const WEATHER_PRESETS = [
       fogDensity: 0.0052,
       skyColor: 0x60727b,
       skyOpacity: 0.54,
-      sunIntensity: 1.25,
-      hemisphereIntensity: 0.82,
-      fillIntensity: 1.15,
-      exposure: 0.92
+      sunIntensity: 0.55,
+      hemisphereIntensity: 0.46,
+      fillIntensity: 0.5,
+      exposure: 0.9
     },
     simulationHooks: {
       trafficSpeedMultiplier: 0.74,
@@ -155,10 +155,10 @@ const WEATHER_PRESETS = [
       fogDensity: 0.0044,
       skyColor: 0xaebdc1,
       skyOpacity: 0.5,
-      sunIntensity: 2.25,
-      hemisphereIntensity: 1.05,
-      fillIntensity: 0.9,
-      exposure: 1
+      sunIntensity: 1.3,
+      hemisphereIntensity: 0.6,
+      fillIntensity: 0.4,
+      exposure: 0.98
     },
     simulationHooks: {
       trafficSpeedMultiplier: 0.9,

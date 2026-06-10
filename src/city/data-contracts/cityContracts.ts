@@ -4756,8 +4756,10 @@ export const DEFAULT_PERFORMANCE_BUDGET: PerformanceBudget = {
   initialLoadSeconds: 8,
   targetFps: 60,
   minimumFps: 30,
-  visibleDrawCalls: 450,
-  visibleTriangles: 1_200_000,
+  // Draw calls and triangles are accumulated across the whole frame (shadow
+  // pass + scene pass + post-processing), not just the final on-screen pass.
+  visibleDrawCalls: 900,
+  visibleTriangles: 1_600_000,
   textureMemoryMb: 512,
   dynamicAgents: 300,
   shadowCastingLights: 1,

@@ -1,19 +1,21 @@
 import * as THREE from 'three';
 import { MaterialLibrary } from '../../../rendering/materials/MaterialLibrary';
 import { STREET_LIGHT_EFFECTS_RENDER_LAYER } from '../../../rendering/layers/renderLayers';
-import type { StreetLight } from '../../../types/city';
+import type { StreetLight, BuildingPlan } from '../../../types/city';
 import {
   attachCityPickingInstanceMetadata,
   createCityPickingMetadata,
   type CityPickingMetadata
 } from '../picking/pickingMetadata';
 
-const DEFAULT_DYNAMIC_STREET_LIGHT_LIMIT = 0;
+const DEFAULT_DYNAMIC_STREET_LIGHT_LIMIT = 32;
 const DEFAULT_SHADOW_CASTING_STREET_LIGHT_LIMIT = 0;
 const GROUND_LIGHT_OFFSET_METERS = 0.045;
 const DYNAMIC_LIGHT_RECEIVER_OFFSET_METERS = 0.058;
 const MIN_SPOTLIGHT_ANGLE_RADIANS = THREE.MathUtils.degToRad(28);
 const MAX_SPOTLIGHT_ANGLE_RADIANS = THREE.MathUtils.degToRad(62);
+const FACADE_LIGHT_CLIP_CLEARANCE_METERS = 1.1;
+const TEMP_VECTOR_3 = new THREE.Vector3();
 
 export interface StreetLightMeshBuilderOptions {
   readonly dynamicLightLimit?: number;
@@ -27,7 +29,7 @@ export class StreetLightMeshBuilder {
     private readonly options: StreetLightMeshBuilderOptions = {}
   ) {}
 
-  build(streetLights: readonly StreetLight[]): THREE.Group {
+  build(streetLights: readonly StreetLight[], buildings: readonly BuildingPlan[] = []): THREE.Group {
     const group = new THREE.Group();
     group.name = 'StreetLights';
 
@@ -51,8 +53,13 @@ export class StreetLightMeshBuilder {
       streetLights.length
     );
     const illuminationPoolMesh = new THREE.InstancedMesh(
-      new THREE.CircleGeometry(1, 24),
+      createRadialCircleGeometry(1, 24),
       this.materials.getMaterialForZone('street-light-illumination', 'streetLightIllumination'),
+      streetLights.length
+    );
+    const coneMesh = new THREE.InstancedMesh(
+      createScatteredLightVolumeGeometry(1, 18, 12),
+      this.materials.getMaterialForZone('street-light-cone', 'streetLightCone'),
       streetLights.length
     );
     const matrix = new THREE.Matrix4();
@@ -61,8 +68,11 @@ export class StreetLightMeshBuilder {
     const metadata = streetLights.map(
       (streetLight) => this.metadataByObjectId[streetLight.id] ?? createCityPickingMetadata(streetLight)
     );
+    const clipPlanes = new Float32Array(streetLights.length * 4);
 
     streetLights.forEach((streetLight, index) => {
+      const lightShape = getStreetLightShape(streetLight, buildings);
+
       matrix.compose(
         new THREE.Vector3(streetLight.position.x, streetLight.heightMeters / 2, streetLight.position.z),
         rotation,
@@ -71,14 +81,14 @@ export class StreetLightMeshBuilder {
       poleMesh.setMatrixAt(index, matrix);
 
       matrix.compose(
-        new THREE.Vector3(streetLight.position.x, streetLight.heightMeters, streetLight.position.z),
-        rotation,
+        new THREE.Vector3(lightShape.fixtureCenterX, streetLight.heightMeters, lightShape.fixtureCenterZ),
+        lightShape.fixtureRotation,
         new THREE.Vector3(streetLight.armLengthMeters, 0.18, streetLight.fixtureLengthMeters)
       );
       fixtureMesh.setMatrixAt(index, matrix);
 
       matrix.compose(
-        new THREE.Vector3(streetLight.position.x, streetLight.heightMeters - 0.18, streetLight.position.z),
+        new THREE.Vector3(lightShape.sourceX, streetLight.heightMeters - 0.18, lightShape.sourceZ),
         rotation,
         new THREE.Vector3(
           0.32 + streetLight.nightLighting.emissiveIntensity * 0.16,
@@ -90,36 +100,60 @@ export class StreetLightMeshBuilder {
 
       const poolRadius = getIlluminationPoolRadius(streetLight);
       matrix.compose(
-        new THREE.Vector3(streetLight.position.x, GROUND_LIGHT_OFFSET_METERS, streetLight.position.z),
+        new THREE.Vector3(lightShape.poolCenterX, GROUND_LIGHT_OFFSET_METERS, lightShape.poolCenterZ),
         groundPoolRotation,
         new THREE.Vector3(poolRadius, poolRadius, 1)
       );
       illuminationPoolMesh.setMatrixAt(index, matrix);
+
+      const coneHeight = streetLight.heightMeters - 0.22;
+      matrix.compose(
+        new THREE.Vector3(lightShape.coneCenterX, coneHeight * 0.48, lightShape.coneCenterZ),
+        rotation,
+        new THREE.Vector3(poolRadius * 0.84, coneHeight * 0.42, poolRadius * 0.84)
+      );
+      coneMesh.setMatrixAt(index, matrix);
+
+      const [nx, nz, C, enabled] = lightShape.clipPlane;
+      clipPlanes[index * 4] = nx;
+      clipPlanes[index * 4 + 1] = nz;
+      clipPlanes[index * 4 + 2] = C;
+      clipPlanes[index * 4 + 3] = enabled;
     });
+
+    const clipPlaneAttribute = new THREE.InstancedBufferAttribute(clipPlanes, 4);
+    illuminationPoolMesh.geometry.setAttribute('aClipPlane', clipPlaneAttribute);
+    coneMesh.geometry.setAttribute('aClipPlane', clipPlaneAttribute);
 
     poleMesh.name = 'StreetLightPoleInstances';
     fixtureMesh.name = 'StreetLightFixtureInstances';
     glowMesh.name = 'StreetLightGlowInstances';
     illuminationPoolMesh.name = 'StreetLightIlluminancePoolInstances';
+    coneMesh.name = 'StreetLightConeInstances';
     poleMesh.castShadow = true;
     fixtureMesh.castShadow = true;
     poleMesh.receiveShadow = true;
     fixtureMesh.receiveShadow = true;
     illuminationPoolMesh.renderOrder = 2;
+    coneMesh.renderOrder = 4;
+    coneMesh.receiveShadow = false;
+    coneMesh.castShadow = false;
     poleMesh.instanceMatrix.needsUpdate = true;
     fixtureMesh.instanceMatrix.needsUpdate = true;
     glowMesh.instanceMatrix.needsUpdate = true;
     illuminationPoolMesh.instanceMatrix.needsUpdate = true;
+    coneMesh.instanceMatrix.needsUpdate = true;
     attachCityPickingInstanceMetadata(poleMesh, metadata);
     attachCityPickingInstanceMetadata(fixtureMesh, metadata);
     attachCityPickingInstanceMetadata(glowMesh, metadata);
-    const dynamicLights = createDynamicStreetLightGroup(streetLights, this.options, this.materials);
+    attachCityPickingInstanceMetadata(coneMesh, metadata);
+    const dynamicLights = createDynamicStreetLightGroup(streetLights, this.options, this.materials, buildings);
     group.userData.streetLightRuntime = {
       dynamicLightCount: dynamicLights.userData.dynamicLightCount,
       shadowCastingLightCount: dynamicLights.userData.shadowCastingLightCount,
       illuminationPoolCount: streetLights.length
     };
-    group.add(poleMesh, fixtureMesh, glowMesh, illuminationPoolMesh, dynamicLights);
+    group.add(poleMesh, fixtureMesh, glowMesh, illuminationPoolMesh, coneMesh, dynamicLights);
 
     return group;
   }
@@ -128,12 +162,17 @@ export class StreetLightMeshBuilder {
 function createDynamicStreetLightGroup(
   streetLights: readonly StreetLight[],
   options: StreetLightMeshBuilderOptions,
-  materials: MaterialLibrary
+  materials: MaterialLibrary,
+  buildings: readonly BuildingPlan[]
 ): THREE.Group {
   const group = new THREE.Group();
   group.name = 'StreetLightDynamicLights';
 
-  const dynamicLightLimit = getSafeLimit(options.dynamicLightLimit, DEFAULT_DYNAMIC_STREET_LIGHT_LIMIT);
+  const dynamicLightLimit = getSafeLimit(
+    options.dynamicLightLimit,
+    DEFAULT_DYNAMIC_STREET_LIGHT_LIMIT,
+    streetLights.length
+  );
   const shadowCastingLightLimit = getSafeLimit(
     options.shadowCastingLightLimit,
     DEFAULT_SHADOW_CASTING_STREET_LIGHT_LIMIT
@@ -141,29 +180,31 @@ function createDynamicStreetLightGroup(
   const selectedLights = selectDynamicStreetLights(streetLights, dynamicLightLimit);
   let shadowCastingLightCount = 0;
 
-  const receiverMesh = createDynamicLightReceiverMesh(selectedLights, materials);
+  const receiverMesh = createDynamicLightReceiverMesh(selectedLights, materials, buildings);
 
   if (receiverMesh) {
     group.add(receiverMesh);
   }
 
-  selectedLights.forEach((streetLight, index) => {
+  selectedLights.forEach((streetLight) => {
     const angle = getSpotlightAngle(streetLight);
+    const lightShape = getStreetLightShape(streetLight, buildings);
     const streetLightSource = new THREE.SpotLight(
       colorTemperatureToRgb(streetLight.colorTemperatureKelvin),
       getSpotlightIntensity(streetLight),
       getSpotlightDistance(streetLight),
       angle,
-      streetLight.glareControl.shielded ? 0.28 : 0.5,
+      streetLight.glareControl.shielded ? 0.92 : 0.82,
       2
     );
-    const shadowCasting = shadowCastingLightCount < shadowCastingLightLimit && shouldCastStreetLightShadow(streetLight, index);
+    const shadowCasting = shadowCastingLightCount < shadowCastingLightLimit && shouldCastStreetLightShadow(streetLight);
 
     streetLightSource.name = `StreetLightSpotLight:${streetLight.id}`;
-    streetLightSource.position.set(streetLight.position.x, streetLight.heightMeters - 0.22, streetLight.position.z);
+    streetLightSource.position.set(lightShape.sourceX, streetLight.heightMeters - 0.22, lightShape.sourceZ);
     streetLightSource.target.name = `StreetLightSpotLightTarget:${streetLight.id}`;
-    streetLightSource.target.position.set(streetLight.position.x, 0, streetLight.position.z);
-    streetLightSource.layers.set(STREET_LIGHT_EFFECTS_RENDER_LAYER);
+    streetLightSource.target.position.set(lightShape.poolCenterX, 0, lightShape.poolCenterZ);
+    streetLightSource.layers.enable(0);
+    streetLightSource.layers.enable(STREET_LIGHT_EFFECTS_RENDER_LAYER);
     streetLightSource.target.layers.set(STREET_LIGHT_EFFECTS_RENDER_LAYER);
     streetLightSource.castShadow = shadowCasting;
     streetLightSource.userData.streetLightId = streetLight.id;
@@ -188,34 +229,46 @@ function createDynamicStreetLightGroup(
 
 function createDynamicLightReceiverMesh(
   streetLights: readonly StreetLight[],
-  materials: MaterialLibrary
+  materials: MaterialLibrary,
+  buildings: readonly BuildingPlan[]
 ): THREE.InstancedMesh | undefined {
   if (streetLights.length === 0) {
     return undefined;
   }
 
   const receiverMesh = new THREE.InstancedMesh(
-    new THREE.CircleGeometry(1, 24),
+    createRadialCircleGeometry(1, 24),
     materials.getMaterialForZone('street-light-dynamic-receiver', 'streetLightDynamicReceiver'),
     streetLights.length
   );
   const matrix = new THREE.Matrix4();
   const groundPoolRotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+  const clipPlanes = new Float32Array(streetLights.length * 4);
 
   streetLights.forEach((streetLight, index) => {
     const poolRadius = getIlluminationPoolRadius(streetLight) * 0.72;
+    const lightShape = getStreetLightShape(streetLight, buildings);
 
     matrix.compose(
       new THREE.Vector3(
-        streetLight.position.x,
+        lightShape.poolCenterX,
         DYNAMIC_LIGHT_RECEIVER_OFFSET_METERS,
-        streetLight.position.z
+        lightShape.poolCenterZ
       ),
       groundPoolRotation,
       new THREE.Vector3(poolRadius, poolRadius, 1)
     );
     receiverMesh.setMatrixAt(index, matrix);
+
+    const [nx, nz, C, enabled] = lightShape.clipPlane;
+    clipPlanes[index * 4] = nx;
+    clipPlanes[index * 4 + 1] = nz;
+    clipPlanes[index * 4 + 2] = C;
+    clipPlanes[index * 4 + 3] = enabled;
   });
+
+  const clipPlaneAttribute = new THREE.InstancedBufferAttribute(clipPlanes, 4);
+  receiverMesh.geometry.setAttribute('aClipPlane', clipPlaneAttribute);
 
   receiverMesh.name = 'StreetLightDynamicReceiverInstances';
   receiverMesh.layers.set(STREET_LIGHT_EFFECTS_RENDER_LAYER);
@@ -233,11 +286,24 @@ function selectDynamicStreetLights(streetLights: readonly StreetLight[], limit: 
   const candidates = [...streetLights]
     .filter((streetLight) => streetLight.nightLighting.enabledByDefault)
     .sort((a, b) => getDynamicLightPriority(b) - getDynamicLightPriority(a) || a.id.localeCompare(b.id));
+  const detailedStreetLights = candidates.filter((streetLight) => streetLight.placementContext === 'detailed-street');
   const selected: StreetLight[] = [];
+
+  for (const candidate of detailedStreetLights) {
+    if (selected.length >= limit) {
+      break;
+    }
+
+    selected.push(candidate);
+  }
 
   for (const candidate of candidates) {
     if (selected.length >= limit) {
       break;
+    }
+
+    if (selected.includes(candidate)) {
+      continue;
     }
 
     if (hasEnoughSpacing(candidate, selected)) {
@@ -320,15 +386,19 @@ function getSpotlightAngle(streetLight: StreetLight): number {
   );
 }
 
-function shouldCastStreetLightShadow(streetLight: StreetLight, index: number): boolean {
-  return index === 0 && streetLight.glareControl.shielded && streetLight.coverage.criticalPedestrianPath;
+function shouldCastStreetLightShadow(streetLight: StreetLight): boolean {
+  return streetLight.glareControl.shielded && streetLight.coverage.criticalPedestrianPath;
 }
 
 function configureStreetLightShadow(spotLight: THREE.SpotLight, streetLight: StreetLight): void {
-  spotLight.shadow.mapSize.set(512, 512);
-  spotLight.shadow.camera.near = 0.4;
+  spotLight.shadow.mapSize.set(1024, 1024);
+  spotLight.shadow.camera.near = 0.25;
   spotLight.shadow.camera.far = getSpotlightDistance(streetLight);
-  spotLight.shadow.bias = -0.0007;
+  spotLight.shadow.camera.fov = THREE.MathUtils.radToDeg(spotLight.angle) * 2.08;
+  spotLight.shadow.bias = -0.00035;
+  spotLight.shadow.normalBias = 0.035;
+  spotLight.shadow.radius = 3;
+  spotLight.shadow.camera.updateProjectionMatrix();
 }
 
 function colorTemperatureToRgb(kelvin: number): THREE.Color {
@@ -354,8 +424,151 @@ function colorTemperatureToRgb(kelvin: number): THREE.Color {
   );
 }
 
-function getSafeLimit(limit: number | undefined, fallback: number): number {
-  const value = typeof limit === 'number' && Number.isFinite(limit) ? limit : fallback;
+function getSafeLimit(limit: number | undefined, fallback: number, maximum = Number.POSITIVE_INFINITY): number {
+  const rawValue = typeof limit === 'number' ? limit : fallback;
 
-  return Math.max(0, Math.floor(value));
+  if (!Number.isFinite(rawValue)) {
+    return Number.isFinite(maximum) ? Math.max(0, Math.floor(maximum)) : 0;
+  }
+
+  return Math.max(0, Math.min(Math.floor(rawValue), maximum));
+}
+
+function createRadialCircleGeometry(radius: number, segments: number): THREE.BufferGeometry {
+  const geometry = new THREE.CircleGeometry(radius, segments);
+  const position = geometry.attributes.position;
+  const count = position.count;
+  const colors = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const x = position.getX(i);
+    const y = position.getY(i);
+    const dist = Math.sqrt(x * x + y * y) / radius;
+    const intensity = Math.pow(Math.max(0, 1 - dist), 2.4);
+
+    colors[i * 3] = intensity;
+    colors[i * 3 + 1] = intensity;
+    colors[i * 3 + 2] = intensity;
+  }
+
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
+
+function createScatteredLightVolumeGeometry(
+  radius: number,
+  widthSegments: number,
+  heightSegments: number
+): THREE.BufferGeometry {
+  const geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
+  const position = geometry.attributes.position;
+  const count = position.count;
+  const colors = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const y = position.getY(i);
+    const radialDistance = Math.sqrt(position.getX(i) ** 2 + position.getZ(i) ** 2) / radius;
+    const sourceBias = Math.pow(THREE.MathUtils.clamp((y + 1) * 0.5, 0, 1), 1.35);
+    const radialScatter = Math.exp(-radialDistance * radialDistance * 1.65);
+    const lowerHaze = Math.pow(1 - Math.abs(y) * 0.55, 1.8);
+    const intensity = Math.max(0, sourceBias * 0.72 + lowerHaze * radialScatter * 0.28) * radialScatter;
+
+    colors[i * 3] = intensity;
+    colors[i * 3 + 1] = intensity;
+    colors[i * 3 + 2] = intensity;
+  }
+
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
+
+interface StreetLightShape {
+  readonly sourceX: number;
+  readonly sourceZ: number;
+  readonly fixtureCenterX: number;
+  readonly fixtureCenterZ: number;
+  readonly poolCenterX: number;
+  readonly poolCenterZ: number;
+  readonly coneCenterX: number;
+  readonly coneCenterZ: number;
+  readonly fixtureRotation: THREE.Quaternion;
+  readonly clipPlane: readonly [number, number, number, number];
+}
+
+function getStreetLightShape(streetLight: StreetLight, buildings: readonly BuildingPlan[]): StreetLightShape {
+  const facade = getNearestFacade(streetLight, buildings);
+  const awayX = facade ? -facade.nx : getFallbackArmDirection(streetLight).x;
+  const awayZ = facade ? -facade.nz : getFallbackArmDirection(streetLight).z;
+  const sourceOffset = Math.max(0.18, streetLight.armLengthMeters * 0.82);
+  const sourceX = streetLight.position.x + awayX * sourceOffset;
+  const sourceZ = streetLight.position.z + awayZ * sourceOffset;
+  const fixtureCenterX = streetLight.position.x + awayX * streetLight.armLengthMeters * 0.5;
+  const fixtureCenterZ = streetLight.position.z + awayZ * streetLight.armLengthMeters * 0.5;
+  const poolOffset = Math.min(streetLight.coverage.radiusMeters * 0.18, sourceOffset + 1.7);
+  const poolCenterX = streetLight.position.x + awayX * poolOffset;
+  const poolCenterZ = streetLight.position.z + awayZ * poolOffset;
+  const coneCenterX = (sourceX + poolCenterX) * 0.5;
+  const coneCenterZ = (sourceZ + poolCenterZ) * 0.5;
+  const yaw = Math.atan2(awayZ, awayX);
+
+  return {
+    sourceX,
+    sourceZ,
+    fixtureCenterX,
+    fixtureCenterZ,
+    poolCenterX,
+    poolCenterZ,
+    coneCenterX,
+    coneCenterZ,
+    fixtureRotation: new THREE.Quaternion().setFromAxisAngle(TEMP_VECTOR_3.set(0, 1, 0), -yaw),
+    clipPlane: facade ? [facade.nx, facade.nz, facade.c + FACADE_LIGHT_CLIP_CLEARANCE_METERS, 1] : [0, 0, 0, 0]
+  };
+}
+
+function getFallbackArmDirection(streetLight: StreetLight): { x: number; z: number } {
+  return streetLight.side === 'left' ? { x: 1, z: 0 } : { x: -1, z: 0 };
+}
+
+function getNearestFacade(
+  streetLight: StreetLight,
+  buildings: readonly BuildingPlan[]
+): { readonly nx: number; readonly nz: number; readonly c: number } | undefined {
+  let closestBuilding: BuildingPlan | null = null;
+  let minDistance = Infinity;
+  let closestPX = 0;
+  let closestPZ = 0;
+
+  const Lx = streetLight.position.x;
+  const Lz = streetLight.position.z;
+  const poolRadius = getIlluminationPoolRadius(streetLight);
+
+  for (const building of buildings) {
+    const Cx = building.center.x;
+    const Cz = building.center.z;
+    const hx = building.size.x / 2;
+    const hz = building.size.z / 2;
+
+    const Px = Math.max(Cx - hx, Math.min(Lx, Cx + hx));
+    const Pz = Math.max(Cz - hz, Math.min(Lz, Cz + hz));
+
+    const dx = Px - Lx;
+    const dz = Pz - Lz;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestBuilding = building;
+      closestPX = Px;
+      closestPZ = Pz;
+    }
+  }
+
+  if (closestBuilding && minDistance < poolRadius && minDistance > 0.01) {
+    const nx = (closestPX - Lx) / minDistance;
+    const nz = (closestPZ - Lz) / minDistance;
+    const c = -(nx * closestPX + nz * closestPZ);
+    return { nx, nz, c };
+  }
+
+  return undefined;
 }
