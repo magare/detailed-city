@@ -11,7 +11,7 @@ export class CityControls implements Updatable {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.controls.maxPolarAngle = Math.PI * 0.48;
-    this.controls.minDistance = 80;
+    this.controls.minDistance = 8;
     this.controls.maxDistance = 900;
     this.controls.target.set(0, 12, 0);
   }

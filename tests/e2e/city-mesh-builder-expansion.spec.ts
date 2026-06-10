@@ -68,8 +68,11 @@ test('city scene delegates core renderable systems to mesh builders', () => {
   expect(buildingInstances).toBeTruthy();
   expect(buildingFacadeWindows?.count).toBeGreaterThan(city.buildings.length);
   expect(getMaterialTextureNames(buildingInstances?.material)).toEqual(
-    expect.arrayContaining(['ProceduralBuildingFacadeAlbedo', 'ProceduralBuildingRoofAlbedo'])
+    expect.arrayContaining(['ProceduralBuildingRoofAlbedo'])
   );
+  // Facades are detailed by the world-space procedural window shader instead
+  // of an albedo texture; assert the shader hook is installed.
+  expect(getBuildingFacadeMaterials(buildingInstances?.material).length).toBeGreaterThan(0);
   expectVegetationMaterialIsLit(treeCanopy);
   expectVegetationMaterialIsLit(treeGroundcover);
   expectVegetationMaterialIsLit(parkGrass);
@@ -111,6 +114,14 @@ function getMaterialTextureNames(material: THREE.Material | THREE.Material[] | u
   return materials
     .map((candidate) => (candidate as THREE.MeshStandardMaterial).map?.name)
     .filter((name): name is string => Boolean(name));
+}
+
+function getBuildingFacadeMaterials(material: THREE.Material | THREE.Material[] | undefined): THREE.Material[] {
+  const materials = Array.isArray(material) ? material : material ? [material] : [];
+
+  return materials.filter(
+    (candidate) => candidate.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile
+  );
 }
 
 function expectVegetationMaterialIsLit(mesh: THREE.InstancedMesh | undefined): void {

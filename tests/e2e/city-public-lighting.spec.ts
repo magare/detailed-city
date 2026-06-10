@@ -156,6 +156,113 @@ test('street light mesh builder keeps actual dynamic light support capped and sh
   }
 });
 
+test('street light mesh builder prioritizes all detailed-street lights for real illumination by default', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const materials = new MaterialLibrary();
+  const group = new StreetLightMeshBuilder(materials, {}, {
+    shadowCastingLightLimit: 0
+  }).build(city.streetLights, city.buildings);
+  let spotLights = 0;
+  let physicallyConfiguredSpotLights = 0;
+  const litStreetLightIds = new Set<string>();
+  const detailedStreetLightIds = new Set(
+    city.streetLights
+      .filter((streetLight) => streetLight.placementContext === 'detailed-street')
+      .map((streetLight) => streetLight.id)
+  );
+
+  try {
+    group.traverse((object) => {
+      if (object.type !== 'SpotLight') {
+        return;
+      }
+
+      spotLights += 1;
+
+      const spotLight = object as unknown as {
+        readonly intensity: number;
+        readonly distance: number;
+        readonly angle: number;
+        readonly decay: number;
+        readonly layers: { test(layers: { mask: number }): boolean };
+      };
+
+      if (
+        spotLight.intensity > 0 &&
+        spotLight.distance > 0 &&
+        spotLight.angle > 0 &&
+        spotLight.decay === 2 &&
+        spotLight.layers.test({ mask: 1 })
+      ) {
+        physicallyConfiguredSpotLights += 1;
+        if (typeof object.userData.streetLightId === 'string') {
+          litStreetLightIds.add(object.userData.streetLightId);
+        }
+      }
+    });
+
+    expect(spotLights).toBe(32);
+    expect(physicallyConfiguredSpotLights).toBe(32);
+    expect([...detailedStreetLightIds].every((streetLightId) => litStreetLightIds.has(streetLightId))).toBe(true);
+  } finally {
+    disposeObject3D(group);
+    materials.dispose();
+  }
+});
+
+test('street light mesh builder uses the shadow budget on city geometry layers', () => {
+  const city = new CityGenerator(cityConfig).generate();
+  const materials = new MaterialLibrary();
+  const group = new StreetLightMeshBuilder(materials, {}, {
+    dynamicLightLimit: 8,
+    shadowCastingLightLimit: 3
+  }).build(city.streetLights, city.buildings);
+  let spotLights = 0;
+  let shadowCastingSpotLights = 0;
+  let cityLayerShadowLights = 0;
+
+  try {
+    group.traverse((object) => {
+      if (object.type !== 'SpotLight') {
+        return;
+      }
+
+      spotLights += 1;
+
+      const spotLight = object as unknown as {
+        readonly castShadow: boolean;
+        readonly layers: { test(layers: { mask: number }): boolean };
+        readonly shadow: {
+          readonly mapSize: { readonly width: number; readonly height: number };
+          readonly camera: { readonly fov: number; readonly near: number; readonly far: number };
+        };
+      };
+
+      if (spotLight.castShadow) {
+        shadowCastingSpotLights += 1;
+
+        if (
+          spotLight.layers.test({ mask: 1 }) &&
+          spotLight.shadow.mapSize.width >= 1024 &&
+          spotLight.shadow.mapSize.height >= 1024 &&
+          spotLight.shadow.camera.fov > 0 &&
+          spotLight.shadow.camera.near > 0 &&
+          spotLight.shadow.camera.far > spotLight.shadow.camera.near
+        ) {
+          cityLayerShadowLights += 1;
+        }
+      }
+    });
+
+    expect(spotLights).toBe(8);
+    expect(shadowCastingSpotLights).toBe(3);
+    expect(cityLayerShadowLights).toBe(3);
+  } finally {
+    disposeObject3D(group);
+    materials.dispose();
+  }
+});
+
 test('public lighting diagnostics are visible in browser debug surfaces', async ({ page }) => {
   test.setTimeout(180_000);
 
@@ -188,6 +295,7 @@ test('public lighting diagnostics are visible in browser debug surfaces', async 
       visibleStreetLightGroup: Boolean(cityApp.city?.group.getObjectByName('StreetLights')?.visible),
       streetLightRuntime: cityApp.getStreetLightRuntimeState?.(),
       streetLightEffectsEnabled: document.body.dataset.streetLightsEnabled,
+      nightModeEnabled: document.body.dataset.nightModeEnabled,
       panelText: document.body.innerText
     };
   });
@@ -206,16 +314,44 @@ test('public lighting diagnostics are visible in browser debug surfaces', async 
     illuminationPoolCount: 504
   });
   expect(diagnostics.streetLightEffectsEnabled).toBe('true');
+  expect(diagnostics.nightModeEnabled).toBe('false');
   expect(renderedLighting).toMatchObject({
     dynamicGroupVisible: true,
     dynamicReceiverVisible: false,
     glowVisible: true,
     illuminationPoolVisible: true,
+    coneVisible: true,
     spotLights: 0,
     physicallyConfiguredSpotLights: 0
   });
   expect(diagnostics.panelText).toContain('Public Lighting');
   expect(diagnostics.panelText).toContain('Lighting');
+
+  const nightModeToggle = page.locator(
+    '[data-city-debug-panel="true"] [data-city-night-mode-toggle="enabled"]'
+  );
+  await expect(nightModeToggle).not.toBeChecked();
+  await nightModeToggle.check();
+  await expect(page.locator('body')).toHaveAttribute('data-night-mode-enabled', 'true');
+
+  const nightState = await page.evaluate(() => {
+    const cityApp = window.cityApp as any;
+    const scene = cityApp?.bootstrap?.scene;
+    return {
+      nightMode: cityApp?.getNightModeState?.(),
+      sunIntensity: scene?.getObjectByName('SunLight')?.intensity,
+      backgroundHex: scene?.background?.getHex?.(),
+      fogDensity: scene?.fog?.density
+    };
+  });
+
+  expect(nightState.nightMode).toMatchObject({ enabled: true });
+  expect(nightState.sunIntensity).toBeLessThan(1);
+  expect(nightState.backgroundHex).toBe(0x050914);
+  expect(nightState.fogDensity).toBeGreaterThan(0.001);
+
+  await nightModeToggle.uncheck();
+  await expect(page.locator('body')).toHaveAttribute('data-night-mode-enabled', 'false');
 
   const streetLightToggle = page.locator(
     '[data-city-debug-panel="true"] [data-city-street-light-toggle="effects"]'
@@ -233,6 +369,7 @@ test('public lighting diagnostics are visible in browser debug surfaces', async 
     dynamicReceiverVisible: false,
     glowVisible: false,
     illuminationPoolVisible: false,
+    coneVisible: false,
     spotLights: 0
   });
 });
@@ -298,6 +435,7 @@ function getRenderedStreetLightingState() {
     dynamicReceiverVisible: Boolean(group?.getObjectByName('StreetLightDynamicReceiverInstances')?.visible),
     glowVisible: Boolean(group?.getObjectByName('StreetLightGlowInstances')?.visible),
     illuminationPoolVisible: Boolean(group?.getObjectByName('StreetLightIlluminancePoolInstances')?.visible),
+    coneVisible: Boolean(group?.getObjectByName('StreetLightConeInstances')?.visible),
     spotLights,
     physicallyConfiguredSpotLights
   };

@@ -17,9 +17,9 @@ export interface RenderConfig {
 export const renderConfig: RenderConfig = {
   qualityPreset: 'medium',
   antialias: true,
-  background: 0x111820,
-  fogColor: 0x9daeb8,
-  fogDensity: 0.0019,
+  background: 0x8fb0cd,
+  fogColor: 0xb9c8d4,
+  fogDensity: 0.0005,
   fov: 48,
   maxPixelRatio: 1.75,
   near: 0.1,

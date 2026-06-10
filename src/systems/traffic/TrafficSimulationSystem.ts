@@ -3,7 +3,7 @@ import type { TrafficVehicleRuntimeState } from '../../city/data-contracts/traff
 import type { Updatable } from '../../types/city';
 
 export interface SimulatedVehicle {
-  mesh: THREE.Mesh;
+  mesh: THREE.Object3D;
   axis: 'x' | 'z';
   direction: 1 | -1;
   min: number;
